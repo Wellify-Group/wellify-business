@@ -1,27 +1,6 @@
 [
-  {
-    "id": "restaurant",
-    "name": "Ресторан / Кафе",
-    "description": "Управление сменами, заказами и инвентарем кухни"
-  },
-  {
-    "id": "retail",
-    "name": "Розничная торговля",
-    "description": "Магазины, бутики, точки продаж"
-  },
-  {
-    "id": "service",
-    "name": "Сфера услуг",
-    "description": "Салоны красоты, барбершопы, спа"
-  },
-  {
-    "id": "hotel",
-    "name": "Гостиничный бизнес",
-    "description": "Отели, хостелы, апартаменты"
-  },
-  {
-    "id": "other",
-    "name": "Другое",
-    "description": "Другие виды деятельности"
-  }
+  { "id": 1, "name": "Barber", "fileId": "barber" },
+  { "id": 2, "name": "Beauty Salon", "fileId": "beauty_salon" },
+  { "id": 3, "name": "Car Wash", "fileId": "car_wash" },
+  { "id": 4, "name": "Fitness Gym", "fileId": "fitness_gym" }
 ]
