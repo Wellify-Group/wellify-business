@@ -79,7 +79,7 @@ export default function Home() {
   const SEGMENTS = useMemo(() => {
     return businessTypesData.map((business) => ({
       id: business.id,
-      label: t(`biz_${business.id}`) || business.title,
+      label: t(`biz_${business.id}`) || business.name,
       icon: iconMap[business.id] || Store,
       data: business,
     }));
@@ -91,10 +91,10 @@ export default function Home() {
       const Icon = segment.icon;
       openModal({
         id: segment.data.id,
-        title: segment.data.title,
-        description: segment.data.description,
-        features: segment.data.features,
-        functions: segment.data.functions,
+        title: segment.data.name, // Use name as title
+        description: "", // Provide default empty string
+        features: [], // Provide default empty array
+        functions: [], // Provide default empty array
         icon: (
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Icon className="h-8 w-8 text-primary" />
