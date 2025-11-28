@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveLocation } from '@/lib/db';
 import { Location } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * POST /api/locations/create
  * Create a new location

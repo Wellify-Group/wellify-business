@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+// Note: This route cannot use Edge Runtime due to fs/path dependencies
+// export const runtime = 'edge';
+
 /**
  * SHIFT MESSAGES STORAGE
  * Messages are stored as: data/shifts/{shiftId}-messages.json

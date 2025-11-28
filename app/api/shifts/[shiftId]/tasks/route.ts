@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getShiftTasks, initializeShiftTasks } from '@/lib/db-shift-tasks';
 import { getShifts } from '@/lib/db';
 
+export const runtime = 'edge';
+
 /**
  * GET /api/shifts/[shiftId]/tasks
  * Получает задачи для смены

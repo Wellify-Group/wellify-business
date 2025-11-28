@@ -6,6 +6,8 @@ import {
   getShiftQualityMetrics,
 } from '@/lib/shift-metrics';
 
+export const runtime = 'edge';
+
 /**
  * GET /api/shifts/[shiftId]/metrics
  * Получает метрики смены

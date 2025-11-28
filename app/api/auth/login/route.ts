@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { findUserByCredentials, findUserByEmail } from '@/lib/db';
 import { Role } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * POST /api/auth/login
  * Login user with credentials

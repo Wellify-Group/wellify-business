@@ -5,6 +5,8 @@ import {
 } from '@/lib/db-ingredients';
 import { IngredientStockMovement, StockMovementType } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * GET /api/ingredients/movements?companyId=xxx&pointId=xxx&ingredientId=xxx
  * Get stock movements

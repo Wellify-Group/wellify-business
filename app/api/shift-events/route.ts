@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveShiftEvent, getShiftEvents } from '@/lib/db-shift-events';
 import { ShiftEvent, ShiftEventType } from '@/lib/shift-events';
 
+export const runtime = 'edge';
+
 /**
  * POST /api/shift-events
  * Создает новое событие смены

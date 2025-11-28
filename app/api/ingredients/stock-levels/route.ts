@@ -5,6 +5,7 @@ import {
 } from '@/lib/db-ingredients';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
 
 /**
  * GET /api/ingredients/stock-levels?companyId=xxx&pointId=xxx&days=7

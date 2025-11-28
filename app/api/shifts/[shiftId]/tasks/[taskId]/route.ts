@@ -5,6 +5,8 @@ import { ShiftEventType, ChecklistTaskCompletedPayload, TaskUncompletedPayload }
 import { getShifts } from '@/lib/db';
 import { getLocationById } from '@/lib/db';
 
+export const runtime = 'edge';
+
 /**
  * PATCH /api/shifts/[shiftId]/tasks/[taskId]
  * Обновляет статус задачи (выполнена/не выполнена)

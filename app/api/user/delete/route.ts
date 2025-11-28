@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { deleteUserFile } from '@/lib/db';
 import { Role } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * DELETE /api/user/delete
  * Delete a user file from the file system

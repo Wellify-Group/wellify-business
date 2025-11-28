@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateUser } from '@/lib/db';
 import { Role } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * PUT /api/user/update
  * Update user profile data

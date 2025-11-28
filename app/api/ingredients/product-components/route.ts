@@ -6,6 +6,8 @@ import {
 } from '@/lib/db-ingredients';
 import { ProductComponent } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * GET /api/ingredients/product-components?companyId=xxx&productId=xxx
  * Get product components

@@ -6,6 +6,8 @@ import { ShiftEvent, ShiftEventType, OrderCreatedPayload, OrderCommentAddedPaylo
 import { getProductComponents, saveStockMovement, getIngredientById } from '@/lib/db-ingredients';
 import { IngredientStockMovement } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * POST /api/orders
  * Create a new order

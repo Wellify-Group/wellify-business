@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveUser } from '@/lib/db';
 import { User } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * POST /api/user/create
  * Create a new user (employee or manager)

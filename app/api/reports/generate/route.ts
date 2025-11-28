@@ -3,6 +3,9 @@ import { ReportPayload } from '@/lib/domain/report/Report';
 import { ReportService } from '@/lib/application/report/ReportService';
 import { StorageService } from '@/lib/application/report/StorageService';
 
+// Note: ReportService uses @/lib/db which requires Node.js fs/path - cannot use Edge Runtime
+// export const runtime = 'edge';
+
 /**
  * POST /api/reports/generate
  * Generate a new report

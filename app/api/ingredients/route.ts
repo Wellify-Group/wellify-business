@@ -7,6 +7,8 @@ import {
 } from '@/lib/db-ingredients';
 import { Ingredient, IngredientUnit } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * GET /api/ingredients?companyId=xxx
  * Get all ingredients for a company

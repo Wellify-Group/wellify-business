@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveShiftEvent } from '@/lib/db-shift-events';
 import { ShiftEvent, ShiftEventType, ChecklistTaskCompletedPayload } from '@/lib/shift-events';
 
+export const runtime = 'edge';
+
 /**
  * POST /api/shift-events/checklist-task
  * Создает событие выполнения задачи чек-листа

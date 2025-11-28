@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveUser, findUserByEmail } from '@/lib/db';
 import { User } from '@/lib/store';
 
+export const runtime = 'edge';
+
 /**
  * POST /api/auth/register
  * Register a new director

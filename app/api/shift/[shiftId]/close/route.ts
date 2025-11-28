@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveShift, saveShift, getShifts } from '@/lib/db';
 
+export const runtime = 'edge';
+
 /**
  * PATCH /api/shift/[shiftId]/close
  * Закрытие смены с динамическими полями

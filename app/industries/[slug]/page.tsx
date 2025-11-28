@@ -1,5 +1,7 @@
 "use client";
 
+export const runtime = 'edge';
+
 import { useLanguage } from "@/components/language-provider";
 import { INDUSTRIES, type IndustryProfile } from "@/lib/industries";
 import { motion } from "framer-motion";

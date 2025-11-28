@@ -4,6 +4,8 @@ import { getLocationById } from '@/lib/db';
 import { findUserByEmail } from '@/lib/db';
 import { getShiftTasks } from '@/lib/db-shift-tasks';
 
+export const runtime = 'edge';
+
 /**
  * GET /api/shift-report/[shiftId]
  * Генерация PDF отчета о смене

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+
 /**
  * PATCH /api/shift/[shiftId]/stats
  * Обновление статистики смены

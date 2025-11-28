@@ -1,5 +1,7 @@
 "use client";
 
+export const runtime = 'edge';
+
 import { useParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
