@@ -3,7 +3,7 @@ import { getUserData } from '@/lib/db';
 import { Role } from '@/lib/store';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/sync

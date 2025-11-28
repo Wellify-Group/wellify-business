@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteLocation, getLocationById } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * DELETE /api/locations/delete

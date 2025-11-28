@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getShiftTasksStats } from '@/lib/db-shift-tasks';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/shifts/[shiftId]/tasks/stats

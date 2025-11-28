@@ -1,6 +1,6 @@
 "use client";
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 import { useLanguage } from "@/components/language-provider";
 import { INDUSTRIES, type IndustryProfile } from "@/lib/industries";

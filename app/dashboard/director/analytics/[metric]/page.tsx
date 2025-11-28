@@ -1,6 +1,6 @@
 "use client";
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 import { useParams } from "next/navigation";
 import { useStore } from "@/lib/store";

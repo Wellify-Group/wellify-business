@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveShift } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/employee/shifts/active

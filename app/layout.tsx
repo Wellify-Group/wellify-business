@@ -10,7 +10,7 @@ import { BusinessModal } from "@/components/modals/BusinessModal";
 import { MainWrapper } from "@/components/main-wrapper";
 import { ProductBrandInit } from "@/components/product-brand-init";
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],

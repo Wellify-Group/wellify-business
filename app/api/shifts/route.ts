@@ -4,7 +4,7 @@ import { saveShiftEvent } from '@/lib/db-shift-events';
 import { ShiftEvent, ShiftEventType, ShiftClosedPayload } from '@/lib/shift-events';
 import { getShiftEvents } from '@/lib/db-shift-events';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/shifts

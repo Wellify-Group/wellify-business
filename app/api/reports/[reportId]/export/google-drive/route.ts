@@ -3,8 +3,7 @@ import { ReportExporter } from '@/lib/application/report/ReportExporter';
 import { StorageService } from '@/lib/application/report/StorageService';
 import { MailerService } from '@/lib/application/report/MailerService';
 
-// Note: ReportExporter uses services that may require Node.js fs/path - cannot use Edge Runtime
-// export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * POST /api/reports/:reportId/export/google-drive

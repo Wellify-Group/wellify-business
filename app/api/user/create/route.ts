@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveUser } from '@/lib/db';
 import { User } from '@/lib/store';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * POST /api/user/create

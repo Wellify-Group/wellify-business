@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getLocations } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/locations/list

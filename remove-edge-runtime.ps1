@@ -1,4 +1,4 @@
-# Script to remove export const runtime = 'edge'; from routes that use @/lib/db*
+# Script to remove export const runtime = 'nodejs'; from routes that use @/lib/db*
 $routes = @(
     "app\api\auth\login\route.ts",
     "app\api\auth\register\route.ts",
@@ -38,9 +38,10 @@ $routes = @(
 foreach ($route in $routes) {
     if (Test-Path $route) {
         $content = Get-Content $route -Raw
-        $content = $content -replace "export const runtime = 'edge';", "// Note: Uses @/lib/db* which requires Node.js fs/path - cannot use Edge Runtime`n// export const runtime = 'edge';"
+        $content = $content -replace "export const runtime = 'nodejs';", "// Note: Uses @/lib/db* which requires Node.js fs/path - cannot use Edge Runtime`n// export const runtime = 'nodejs';"
         Set-Content $route -Value $content -NoNewline
         Write-Host "Updated: $route"
     }
 }
+
 

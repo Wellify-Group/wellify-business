@@ -5,7 +5,7 @@ import { ShiftEventType, ChecklistTaskCompletedPayload, TaskUncompletedPayload }
 import { getShifts } from '@/lib/db';
 import { getLocationById } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * PATCH /api/shifts/[shiftId]/tasks/[taskId]

@@ -5,7 +5,7 @@ import {
 } from '@/lib/db-ingredients';
 import { IngredientStockMovement, StockMovementType } from '@/lib/store';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/ingredients/movements?companyId=xxx&pointId=xxx&ingredientId=xxx

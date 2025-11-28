@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { saveLocation } from '@/lib/db';
 import { Location } from '@/lib/store';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * POST /api/locations/create

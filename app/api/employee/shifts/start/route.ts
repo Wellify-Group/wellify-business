@@ -3,7 +3,7 @@ import { saveShift, getActiveShift } from '@/lib/db';
 import { saveShiftEvent } from '@/lib/db-shift-events';
 import { ShiftEvent, ShiftEventType, ShiftStartedPayload } from '@/lib/shift-events';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {

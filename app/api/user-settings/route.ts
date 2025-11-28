@@ -3,7 +3,7 @@ import { getOrCreateUserSettings, updateMonitoringPreferences } from '@/lib/db-u
 import { MonitoringPreferences } from '@/lib/user-settings';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/user-settings?userId=...

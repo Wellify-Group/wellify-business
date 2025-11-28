@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateUser } from '@/lib/db';
 import { Role } from '@/lib/store';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * PUT /api/user/update
