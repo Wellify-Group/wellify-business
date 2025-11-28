@@ -86,11 +86,11 @@ export default function Home() {
   }, [t]);
 
   const handleCardClick = (segment: typeof SEGMENTS[0]) => {
-    setSelectedSegment(segment.id);
+    setSelectedSegment(String(segment.id));
     if (segment.data) {
       const Icon = segment.icon;
       openModal({
-        id: segment.data.id,
+        id: String(segment.data.id),
         title: segment.data.name, // Use name as title
         description: "", // Provide default empty string
         features: [], // Provide default empty array
@@ -251,7 +251,7 @@ export default function Home() {
                   transition={{ delay: index * 0.05, duration: 0.3 }}
                   className={cn(
                     "flex flex-col items-center justify-center rounded-[20px] px-4 py-6 text-center text-sm transition-all cursor-pointer shadow-[0_10px_35px_rgba(0,0,0,0.07)]",
-                    selectedSegment === segment.id
+                    selectedSegment === String(segment.id)
                       ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-[0_10px_35px_rgba(0,0,0,0.15)]"
                       : "bg-white hover:shadow-[0_10px_35px_rgba(0,0,0,0.12)] dark:bg-zinc-900 dark:hover:shadow-[0_10px_35px_rgba(0,0,0,0.25)]"
                   )}
