@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { List, X } from "lucide-react";
-import { useStore, Order } from "@/lib/store";
+import useStore, { Order } from "@/lib/store";
 import { OrderDetailsModal } from "./order-details-modal";
 import { useClickOutside } from "@/lib/hooks/use-click-outside";
 import { useRef } from "react";

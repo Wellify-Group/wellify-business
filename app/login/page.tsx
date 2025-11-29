@@ -6,7 +6,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
 import { Building2, Store, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 
 const MAX_BLOCKS = 4;
 const BLOCK_LENGTH = 4;

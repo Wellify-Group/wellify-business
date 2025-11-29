@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator 
 } from "@/components/ui/dropdown-menu";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { Problem, ProblemCategory } from "@/lib/problem-types";
 import { getManagerForProblem } from "@/lib/problem-utils";

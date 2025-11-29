@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { 
   LayoutDashboard, MapPin, Users, FileText, Settings, 

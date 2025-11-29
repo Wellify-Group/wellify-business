@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { ConversationManager } from "@/components/dashboard/conversation-manager";
 import Link from "next/link";

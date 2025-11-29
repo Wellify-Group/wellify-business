@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { X } from "lucide-react";
 

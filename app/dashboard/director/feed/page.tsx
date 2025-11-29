@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { Clock, Camera, DollarSign, MapPin, User } from "lucide-react";
 import Link from "next/link";
 

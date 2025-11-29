@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { Plus, Trash2, MapPin, Edit2, MoreVertical, BarChart3, X, User, ChevronLeft, ChevronRight, UserPlus, Dices, Check, Pencil, Briefcase, PauseCircle, PlayCircle, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -11,6 +11,8 @@ import { INDUSTRIES_ARRAY, INDUSTRIES } from "@/lib/industries";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+
+
 
 interface EmployeeRow {
   id: string;
@@ -22,7 +24,20 @@ interface EmployeeRow {
 
 function LocationsContent() {
   const { t } = useLanguage();
-  const { locations, currency, shifts, employees, updateFormConfig, addLocation, addEmployee, currentUser, toggleLocationPause, deleteLocation } = useStore();
+  const {
+    locations,
+    currency,
+    shifts,
+    employees,
+    updateFormConfig,
+    addLocation,
+    addEmployee,
+    currentUser,
+    toggleLocationPause,
+    deleteLocation,
+    fetchLocations,
+    savedCompanyId,
+  } = useStore();    
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -36,6 +51,22 @@ function LocationsContent() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteLocationId, setDeleteLocationId] = useState<string | null>(null);
   
+  // Всегда синхронизируем локации с сервером при заходе на страницу
+  useEffect(() => {
+    // Пытаемся взять businessId из текущего пользователя или из savedCompanyId
+    let effectiveBusinessId =
+      currentUser?.businessId ||
+      savedCompanyId ||
+      (locations.length > 0 ? locations[0].businessId : null);
+
+    if (!effectiveBusinessId) {
+      console.warn('[Locations] Нет businessId для загрузки локаций');
+      return;
+    }
+
+    fetchLocations(effectiveBusinessId);
+  }, [currentUser?.businessId, savedCompanyId, fetchLocations]);
+
   // Show industry selection only for first location
   const isFirstLocation = locations.length === 0;
 

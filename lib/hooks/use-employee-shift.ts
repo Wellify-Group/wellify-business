@@ -1,4 +1,4 @@
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useCallback } from "react";
 
 export function useEmployeeShift() {

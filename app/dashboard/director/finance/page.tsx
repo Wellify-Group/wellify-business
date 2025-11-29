@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { ArrowDown, ArrowUp, Filter, Calendar } from "lucide-react";
 

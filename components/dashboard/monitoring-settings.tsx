@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { MonitoringPreferences } from "@/lib/user-settings";
 import { Save } from "lucide-react";
 

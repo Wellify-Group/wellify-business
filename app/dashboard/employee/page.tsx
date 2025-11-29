@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { EmployeeShift } from "@/components/dashboard/employee/employee-shift";
 
 export default function EmployeePage() {

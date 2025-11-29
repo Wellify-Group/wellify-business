@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { X, Building2, AlertCircle } from "lucide-react";
 
 export default function ManagerPage() {

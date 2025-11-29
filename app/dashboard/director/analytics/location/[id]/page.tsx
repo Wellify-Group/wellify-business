@@ -3,7 +3,7 @@
 export const runtime = 'nodejs';
 
 import { useParams } from "next/navigation";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { useMemo } from "react";
 import { MapPin, Users, TrendingUp, Clock } from "lucide-react";

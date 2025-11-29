@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore, Order } from "@/lib/store";
+import useStore, { Order } from "@/lib/store";
 
 export function OrdersFeed() {
   const { t } = useLanguage();

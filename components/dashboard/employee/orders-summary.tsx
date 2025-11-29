@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore, Order } from "@/lib/store";
+import useStore, { Order } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Filter } from "lucide-react";
 

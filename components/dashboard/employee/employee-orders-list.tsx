@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore, Order } from "@/lib/store";
+import useStore, { Order } from "@/lib/store";
 import { MoreVertical, Edit, Trash2, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { OrderForm } from "./order-form";

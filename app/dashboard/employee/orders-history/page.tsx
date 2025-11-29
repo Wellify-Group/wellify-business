@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useStore, Order } from "@/lib/store";
+import useStore, { Order } from "@/lib/store";
 import { OrderDetailsModal } from "@/components/dashboard/employee/order-details-modal";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";

@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { ShiftEvent, ShiftEventType } from "@/lib/shift-events";
 import { ArrowLeft, Clock, DollarSign, ShoppingCart, CheckCircle2, AlertTriangle, X } from "lucide-react";
 

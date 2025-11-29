@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Clock, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { Collapse } from "@/components/ui/collapse";
 

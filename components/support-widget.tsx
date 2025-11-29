@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
 
 export function SupportWidget() {

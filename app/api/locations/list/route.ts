@@ -1,57 +1,55 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getLocations } from '@/lib/db';
+import { createServerSupabaseClient } from '@/lib/supabase/serverClient';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-/**
- * GET /api/locations/list
- * Get all locations for a business
- *
- * Query params: businessId (required)
- */
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const { searchParams } = new URL(req.url);
     const businessId = searchParams.get('businessId');
 
     if (!businessId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required parameter: businessId' },
-        { status: 400 }
+      return Response.json(
+        {
+          success: false,
+          error: 'businessId is required',
+          locations: [],
+        },
+        { status: 400 },
       );
     }
 
-    // Get locations from file system
-    const locations = await getLocations(businessId);
+    const supabase = createServerSupabaseClient();
 
-    return NextResponse.json({
+    const { data, error } = await supabase
+      .from('locations')
+      .select('*')
+      .eq('company_id', businessId) // ВАЖНО: имя колонки в БД должно быть businessId
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('[api/locations/list] Supabase error', error);
+      return Response.json(
+        {
+          success: false,
+          error: error.message,
+          locations: [],
+        },
+        { status: 500 },
+      );
+    }
+
+    return Response.json({
       success: true,
-      locations: locations,
-    }, { status: 200 });
-
-  } catch (error) {
-    console.error('List locations error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
+      error: null,
+      locations: data ?? [],
+    });
+  } catch (e) {
+    console.error('[api/locations/list] Unexpected error', e);
+    return Response.json(
+      {
+        success: false,
+        error: String(e),
+        locations: [],
+      },
+      { status: 500 },
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

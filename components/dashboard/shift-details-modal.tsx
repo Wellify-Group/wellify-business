@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { X, Clock, DollarSign, Camera, FileText, MessageCircle, MapPin, CheckCircle2, AlertCircle, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";

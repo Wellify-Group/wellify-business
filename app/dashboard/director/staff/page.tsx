@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/components/language-provider";
-import { useStore, User } from "@/lib/store";
+import useStore, { User } from "@/lib/store";
 import { UserPlus, Trophy, AlertTriangle, Users, MapPin, Briefcase, Dice1, ChevronDown, Eye, Edit2 } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";

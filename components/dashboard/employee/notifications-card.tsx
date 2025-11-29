@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { AlertCircle, Bell } from "lucide-react";
 
 export function NotificationsCard() {

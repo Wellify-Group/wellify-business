@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { motion } from "framer-motion";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { Trash2, Plus, Edit2, Dices, Save, X, Copy, Eye, EyeOff, Check } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { MonitoringSettings } from "@/components/dashboard/monitoring-settings";

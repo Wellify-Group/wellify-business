@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { CheckCircle2, Circle } from "lucide-react";
 
 interface Task {

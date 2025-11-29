@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, TrendingUp, Clock, Sparkles } from "lucide-react";
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Edit2, CheckCircle2, AlertCircle, Download, Lock } from "lucide-react";
 import { downloadShiftReport } from "@/lib/shift-pdf-generator";

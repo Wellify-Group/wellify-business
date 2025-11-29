@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { X, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 

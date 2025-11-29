@@ -5,7 +5,7 @@ import { DashboardHeader } from "@/components/dashboard/header";
 import { MessageComposer } from "@/components/dashboard/message-composer";
 import { ConversationManager } from "@/components/dashboard/conversation-manager";
 import { ToastContainer } from "@/components/ui/toast";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";

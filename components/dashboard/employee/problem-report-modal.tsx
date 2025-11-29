@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { X, AlertTriangle } from "lucide-react";
 
 interface ProblemReportModalProps {

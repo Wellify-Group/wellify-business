@@ -228,7 +228,7 @@ export interface AppState {
   businessLogo: string | null; // URL for business logo image
   businessAddress: string; // Business address
   currency: string;
-  companyCode: string; // 12-digit company code (e.g., "1000-2000-3000")
+  companyCode: string; // 16-digit company code (e.g., "1000-2000-3000-4000")
   savedCompanyId: string | null; // Saved company ID for device
   savedLocationId: string | null; // Saved location ID for employee
   users: User[];
@@ -325,7 +325,7 @@ export interface AppState {
   
   // Shifts
   submitShift: (shift: Omit<Shift, 'id' | 'date'>) => Promise<void>;
-  startShift: (locationId: string, employeeId: string) => void;
+  startShift: (locationId: string, employeeId: string) => Promise<void>;
   closeShift: (closingData?: { cash?: number; card?: number; guests?: number; comment?: string; checklist?: string[]; closingFields?: Record<string, any> }) => Promise<void>; // закрытие смены через API
   endShift: (data: { cash: number; card: number; guests?: number; notes?: Array<{ text: string; time: string }>; checklist: string[] }) => Promise<Shift | null>; // DEPRECATED: используйте closeShift
   updateShift: (shiftId: string, updates: Partial<Shift>) => void;
@@ -348,6 +348,7 @@ export interface AppState {
   duplicateLocation: (id: string) => string; // Returns new location ID
   updateLocationProfile: (id: string, data: Partial<Location>) => Promise<void>;
   assignManager: (locationId: string, userId: string | null) => void;
+  assignStaffToPoint: (staffId: string, pointId: string | null) => void;
   updateLocationBranding: (id: string, logo: string | null, banner: string | null) => Promise<void>;
   addLocationDocument: (id: string, doc: { name: string; type: string; url: string }) => void;
   removeLocationDocument: (id: string, docId: string) => void;
@@ -382,7 +383,7 @@ export interface AppState {
   // Onboarding Tour
   completeTour: () => void;
   
-  // Demo Data
+  // Demo Data - опциональный помощник для демо-режима. По умолчанию стор пустой.
   loadDemoData: () => void;
   
   // Synchronization
@@ -437,50 +438,6 @@ export interface AppState {
   // Aliases for compatibility
   user?: User | null;
 }
-
-// Helper function to generate mock test accounts
-const generateMockUsers = (): { users: User[]; employees: User[] } => {
-  const directors: User[] = Array.from({ length: 5 }, (_, i) => ({
-    id: `test-dir-${i + 1}`,
-    name: `Director ${i + 1}`,
-    fullName: `Shevchenko Andrey Viktorovich`,
-    role: 'director' as Role,
-    email: `dir${i + 1}@test.com`,
-    password: '123',
-    businessId: `test-biz-${i + 1}`,
-    companyCode: i === 0 ? '1000-2000-3000-4000' : undefined, // Default director has company code
-    status: 'active' as const
-  }));
-
-  const managers: User[] = Array.from({ length: 5 }, (_, i) => ({
-    id: `test-mgr-${i + 1}`,
-    name: `Manager ${i + 1}`,
-    fullName: `Petrov Sergey Dmitrievich`,
-    role: 'manager' as Role,
-    email: `man${i + 1}@test.com`,
-    password: '123',
-    businessId: `test-biz-${i + 1}`,
-    status: 'active' as const
-  }));
-
-  const employees: User[] = Array.from({ length: 5 }, (_, i) => ({
-    id: `test-emp-${i + 1}`,
-    name: `Employee ${i + 1}`,
-    role: 'employee' as Role,
-    pin: String(i + 1).padStart(4, '0'), // 0001, 0002, etc.
-    businessId: 'test-biz-1',
-    status: 'active' as const,
-    rating: 80 + (i % 5) * 4 // 80, 84, 88, 92, 96 - детерминированные значения для гидратации
-  }));
-
-  return {
-    users: [...directors, ...managers, ...employees],
-    employees: employees
-  };
-};
-
-// Initialize mock users
-const mockData = generateMockUsers();
 
 // Создаём store для доступа к getState вне компонентов
 let storeInstance: {
@@ -555,17 +512,13 @@ export const useStore = create<AppState>()(
       companyCode: "1000-2000-3000-4000", // Default company code for employees
       savedCompanyId: null,
       savedLocationId: null,
-      users: mockData.users,
-      employees: mockData.employees,
+      users: [],
+      employees: [],
       locations: [],
       shifts: [],
       currentShift: null,
       orders: [], // Initialize orders as empty array
-      employeeNotifications: [
-        { id: 'notif-1', from: 'Director', text: 'Проверьте холодильник перед закрытием', time: new Date(Date.now() - 3600000).toISOString(), isRead: false },
-        { id: 'notif-2', from: 'Manager', text: 'Отличная работа вчера!', time: new Date(Date.now() - 86400000).toISOString(), isRead: false },
-        { id: 'notif-3', from: 'Director', text: 'Не забудьте проверить витрину', time: new Date(Date.now() - 7200000).toISOString(), isRead: true },
-      ],
+      employeeNotifications: [],
       ultraMode: false,
       isSidebarCollapsed: false,
       isSupportOpen: false,
@@ -706,57 +659,52 @@ export const useStore = create<AppState>()(
         }
       },
       
+      // Опциональный помощник для демо-режима. По умолчанию стор пустой.
+      // Эта функция создает минимальные тестовые данные только при наличии авторизованного пользователя.
       loadDemoData: () => {
-        set((state: AppState) => ({
+        const state = get();
+        if (!state.currentUser || !state.currentUser.businessId) {
+          console.warn('[loadDemoData] Cannot load demo data: user is not authenticated or businessId is missing');
+          return;
+        }
+
+        const businessId = state.currentUser.businessId;
+        const userId = state.currentUser.id;
+
+        set({
           employees: [
-            { id: 'demo-emp', name: 'Anna', role: 'employee', pin: '0000', businessId: state.currentUser?.businessId || 'demo', status: 'active', rating: 92, jobTitle: 'Senior Barista' },
-            { id: 'emp-1', name: 'Dmitry', role: 'employee', pin: '1234', businessId: state.currentUser?.businessId || 'demo', status: 'active', rating: 88, jobTitle: 'Trainee' }
+            { id: 'demo-emp', name: 'Demo Employee', role: 'employee' as Role, pin: '0000', businessId, status: 'active' as const, rating: 92 }
           ],
           locations: [
-            { id: 'loc-1', name: 'Kyiv Point 1', address: 'Kyiv, Main St. 1', status: 'green', dailyPlan: 50000, businessId: state.currentUser?.businessId || 'demo' },
-            { id: 'loc-2', name: 'Kyiv Point 2', address: 'Kyiv, Main St. 2', status: 'yellow', dailyPlan: 30000, businessId: state.currentUser?.businessId || 'demo' }
+            { id: 'demo-loc', name: 'Demo Location', address: 'Demo Address', status: 'green' as const, dailyPlan: 50000, businessId }
           ],
           shifts: [
             {
-              id: 'shift-1',
+              id: 'demo-shift',
               employeeId: 'demo-emp',
-              employeeName: 'Anna',
+              employeeName: 'Demo Employee',
               date: Date.now() - 86400000,
               revenueCash: 15000,
               revenueCard: 35000,
               guestCount: 120,
               checkCount: 120,
-              status: 'ok',
+              status: 'ok' as const,
               anomalies: []
-            },
-            {
-              id: 'shift-2',
-              employeeId: 'emp-1',
-              employeeName: 'Dmitry',
-              date: Date.now() - 172800000,
-              revenueCash: 8000,
-              revenueCard: 12000,
-              guestCount: 80,
-              checkCount: 80,
-              status: 'issue',
-              anomalies: ['Low revenue compared to plan']
             }
           ],
           messages: [
             {
-              id: 'msg-1',
-              fromId: state.currentUser?.id || 'demo-dir',
+              id: 'demo-msg',
+              fromId: userId,
               toId: 'demo-emp',
-              text: 'Пожалуйста, проверьте инвентарь в Центре',
-              attachments: [
-                { type: 'location', id: 'loc-1', label: 'Kyiv Point 1' }
-              ],
+              text: 'Demo message',
+              attachments: [],
               isRead: false,
               readAt: null,
               createdAt: new Date().toISOString()
             }
           ]
-        }));
+        });
       },
 
       login: async (role: Role, creds: { email?: string; pass?: string; pin?: string; businessId?: string }) => {
@@ -2744,46 +2692,36 @@ export const useStore = create<AppState>()(
   { 
     name: 'shiftflow-storage',
     partialize: (state: AppState) => ({
-        currentUser: state.currentUser,
-        businessName: state.businessName,
-        currency: state.currency,
-        formConfig: state.formConfig,
-        ultraMode: state.ultraMode,
-        isSidebarCollapsed: state.isSidebarCollapsed,
-        hasSeenTour: state.hasSeenTour,
-        users: state.users,
-        employees: state.employees,
-        locations: state.locations,
-        shifts: state.shifts
-      }),
+      currentUser: state.currentUser,
+      businessName: state.businessName,
+      currency: state.currency,
+      formConfig: state.formConfig,
+      ultraMode: state.ultraMode,
+      isSidebarCollapsed: state.isSidebarCollapsed,
+      hasSeenTour: state.hasSeenTour,
+      users: state.users,
+      employees: state.employees,
+      locations: state.locations,
+      shifts: state.shifts,
+      // дополнительные поля для лучшего UX
+      companyCode: state.companyCode,
+      savedCompanyId: state.savedCompanyId,
+      savedLocationId: state.savedLocationId,
+      settings: state.settings,
+      lastClosedShiftId: state.lastClosedShiftId,
+      isTimerVisible: state.isTimerVisible,
+    }),
     merge: (persistedState: any, currentState: AppState) => {
-        // Merge strategy: keep persisted users, but ensure mock users exist
-        const persistedUsers = persistedState?.users || [];
-        const persistedEmployees = persistedState?.employees || [];
-        
-        // Check if mock users already exist in persisted state
-        const hasMockUsers = persistedUsers.some((u: User) => u.id?.startsWith('test-'));
-        
-        // If no mock users, add them (but don't duplicate)
-        const users = hasMockUsers 
-          ? persistedUsers 
-          : [...mockData.users, ...persistedUsers.filter((u: User) => !u.id?.startsWith('test-'))];
-        
-        const hasMockEmployees = persistedEmployees.some((e: User) => e.id?.startsWith('test-'));
-        const employees = hasMockEmployees
-          ? persistedEmployees
-          : [...mockData.employees, ...persistedEmployees.filter((e: User) => !e.id?.startsWith('test-'))];
-        
-        return {
-          ...currentState,
-          ...persistedState,
-          users,
-          employees
-        };
-      }
+      return {
+        ...currentState,
+        ...persistedState,
+      };
+    }
     }
   )
 );
+
+export default useStore;
 
 // Helper function to get formal name for addressing
 export function getFormalName(user: User | null): string {

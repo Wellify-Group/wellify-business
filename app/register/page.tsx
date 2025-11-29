@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertCircle } from "lucide-react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 
 export default function RegisterPage() {
   const { t } = useLanguage();

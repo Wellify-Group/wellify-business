@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { ConversationDialog } from "./conversation-dialog";
 
 export function ConversationManager() {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore, Order } from "@/lib/store";
+import useStore, { Order } from "@/lib/store";
 import { ShoppingCart, AlertTriangle, Package } from "lucide-react";
 import { OrderForm } from "./order-form";
 import { ProblemReportModal } from "./problem-report-modal";

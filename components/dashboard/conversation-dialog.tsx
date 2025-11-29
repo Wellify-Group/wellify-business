@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { X, Send, Minimize2, ExternalLink, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";

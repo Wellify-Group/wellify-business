@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore, FormField } from "@/lib/store";
+import useStore, { FormField } from "@/lib/store";
 import { X, Power, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";

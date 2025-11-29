@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { Send } from "lucide-react";
 
 interface ShiftMessagesCardProps {

@@ -3,7 +3,7 @@
 import { EmployeeHeader } from "@/components/dashboard/employee/employee-header";
 import { ToastContainer } from "@/components/ui/toast";
 import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShiftClosingForm } from "@/components/dashboard/employee/shift-closing-form";

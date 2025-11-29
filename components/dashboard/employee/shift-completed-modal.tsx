@@ -1,7 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { X, Download, Share2, Copy, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useStore } from '@/lib/store';
+import useStore from '@/lib/store';
 import { useToast } from '@/components/ui/toast';
 import { OrderConfirmationModal } from './order-confirmation-modal';
 

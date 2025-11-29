@@ -2,7 +2,7 @@
 
 import { NotificationsCard } from "./notifications-card";
 import { ShiftMessagesCard } from "./shift-messages-card";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 
 export function EmployeeNotifications() {
   const { currentShift } = useStore();

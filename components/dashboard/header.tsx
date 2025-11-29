@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
-import { useStore, getFormalName } from "@/lib/store";
+import useStore, { getFormalName } from "@/lib/store";
 import { useTheme } from "next-themes";
 import { Language } from "@/lib/translations";
 import { Menu, Bell, ChevronDown, LogOut, Settings, PenSquare, ChevronRight, ArrowLeft, User, Globe, Check, Moon } from "lucide-react";

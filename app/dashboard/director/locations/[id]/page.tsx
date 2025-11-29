@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { 
   PauseCircle, 
   PlayCircle, 

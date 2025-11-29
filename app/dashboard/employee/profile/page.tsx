@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore } from "@/lib/store";
+import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
 import { 

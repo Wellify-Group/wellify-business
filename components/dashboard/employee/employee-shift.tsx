@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useStore, Order } from "@/lib/store";
+import useStore, { Order } from "@/lib/store";
 import { useToast } from "@/components/ui/toast";
 import { OrderConfirmationModal } from "./order-confirmation-modal";
 import { ShiftClosingForm } from "./shift-closing-form";

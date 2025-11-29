@@ -1,10 +1,9 @@
 "use client";
 
 import { User as UserIcon, LogOut, Globe, Moon, ListChecks } from "lucide-react";
-import { useStore, useUIStore } from "@/lib/store";
+import useStore, { useUIStore } from "@/lib/store";
 import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/components/language-provider";
-import { useEmployeeShift } from "@/lib/hooks/use-employee-shift";
 import { Logo } from "@/components/logo";
 import { useTheme } from "next-themes";
 import { Language } from "@/lib/translations";
@@ -41,7 +40,7 @@ export function EmployeeHeader({ onCloseShift, onStartShift, locationName }: Emp
     shiftEndTime,
     finishShift
   } = useStore();
-  const { fetchCurrentShift } = useEmployeeShift();
+  const fetchCurrentShift = useStore((state) => state.fetchCurrentShift);
   const router = useRouter();
   const { error: toastError, success: toastSuccess } = useToast();
   const [showStartShiftModal, setShowStartShiftModal] = useState(false);
@@ -66,7 +65,7 @@ export function EmployeeHeader({ onCloseShift, onStartShift, locationName }: Emp
 
   // При монтировании загружаем текущую смену с сервера
   useEffect(() => {
-    if (currentUser?.id) {
+    if (currentUser?.id && typeof fetchCurrentShift === "function") {
       fetchCurrentShift();
     }
   }, [currentUser?.id, fetchCurrentShift]);
