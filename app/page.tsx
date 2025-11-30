@@ -271,42 +271,39 @@ export default function Home() {
                   onClick={() => handleCardClick(segment)}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-2xl bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 p-4 text-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all shadow-lg hover:shadow-xl hover:border-white/60 dark:hover:border-white/20",
+                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-black/5 bg-white px-8 py-6 text-sm font-medium text-neutral-900 shadow-[0_18px_60px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-1 hover:bg-neutral-50 hover:shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800 dark:hover:shadow-[0_24px_80px_rgba(0,0,0,0.85)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isActive
                       ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200"
                       : ""
                   )}
                 >
-                  <div className="flex flex-col gap-2 items-center justify-center w-full text-center">
-                    <Icon className={cn(
-                      "h-6 w-6 flex-shrink-0",
+                  <Icon className={cn(
+                    "h-6 w-6",
+                    isActive 
+                      ? "text-white dark:text-zinc-900" 
+                      : "text-neutral-500 dark:text-neutral-200"
+                  )} />
+                  <span className={cn(
+                    "break-words leading-tight",
+                    isActive 
+                      ? "text-white dark:text-zinc-900" 
+                      : "text-neutral-900 dark:text-neutral-50"
+                  )}>
+                    {segment.label}
+                  </span>
+                  {segment.description && (
+                    <p className={cn(
+                      "text-xs leading-tight text-center",
                       isActive 
-                        ? "text-white dark:text-zinc-900" 
-                        : "text-primary"
-                    )} />
-                    <span className={cn(
-                      "text-sm font-medium break-words leading-tight",
-                      isActive 
-                        ? "text-white dark:text-zinc-900" 
-                        : "text-foreground"
+                        ? "text-white/90 dark:text-zinc-900/90" 
+                        : "text-neutral-600 dark:text-neutral-400"
                     )}>
-                      {segment.label}
-                    </span>
-                    {segment.description && (
-                      <p className={cn(
-                        "text-xs leading-tight",
-                        isActive 
-                          ? "text-white/90 dark:text-zinc-900/90" 
-                          : "text-muted-foreground"
-                      )}>
-                        {segment.description}
-                      </p>
-                    )}
-                  </div>
+                      {segment.description}
+                    </p>
+                  )}
                 </motion.button>
               );
             })}
