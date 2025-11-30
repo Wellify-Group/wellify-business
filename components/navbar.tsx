@@ -20,7 +20,7 @@ export function Navbar() {
   if (isDashboard) return null;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 pt-4 px-4 md:px-6 bg-background/80 backdrop-blur-md">
+    <header className="fixed top-0 left-0 right-0 z-50 pt-4 px-4 md:px-6">
       {/* Плавающая "пилюля" с glass effect */}
       <div className="mx-auto w-full max-w-[80%] bg-card/95 backdrop-blur-xl border border-border rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
         <div className="flex h-[64px] items-center justify-between px-6 md:px-8">
