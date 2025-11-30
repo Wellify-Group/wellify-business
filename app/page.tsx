@@ -90,13 +90,16 @@ export default function Home() {
         : translationKey === 'fitness_gym' ? 'sports'
         : translationKey;
       
+      // Для ключей переводов заменяем дефисы на подчеркивания (car-dealer -> car_dealer)
+      const translationKeyNormalized = normalizedKey.replace(/-/g, '_');
+      
       // Получаем описание для категории
-      const descriptionKey = `landing_industriesDescriptions_${normalizedKey}`;
+      const descriptionKey = `landing_industriesDescriptions_${translationKeyNormalized}`;
       const description = t(descriptionKey) || "";
       
       return {
         id: business.id,
-        label: t(`biz_${normalizedKey}`) || business.name,
+        label: t(`biz_${translationKeyNormalized}`) || business.name,
         description: description,
         icon: iconMap[normalizedKey] || iconMap[translationKey] || Store,
         data: business,
