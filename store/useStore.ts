@@ -1,10 +1,7 @@
-import useStore, * as storeExports from "@/lib/store";
+'use client';
 
-export * from "@/lib/store";
+// Просто реэкспортируем всё из "@/lib/store"
+// и дефолтный экспорт тоже прокидываем дальше
 
-export const useStore = storeExports.useStore;
-export const useUIStore = storeExports.useUIStore;
-
-export default useStore;
-
-
+export { default } from '@/lib/store';
+export * from '@/lib/store';
