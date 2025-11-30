@@ -90,7 +90,7 @@ export default function Home() {
       return {
         id: business.id,
         label: t(`biz_${normalizedKey}`) || business.name,
-        icon: iconMap[normalizedKey] || iconMap[business.id] || Store,
+        icon: iconMap[normalizedKey] || iconMap[translationKey] || Store,
         data: business,
       };
     });
@@ -241,13 +241,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. BUSINESS TYPES - Selectable Cards */}
+      {/* 2. BUSINESS TYPES - Full Grid of Categories */}
       <section className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 pt-8 pb-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-8 text-center text-3xl font-bold text-foreground">
             {t("sec_whom")}
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
               return (
@@ -259,16 +259,16 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  transition={{ delay: index * 0.05, duration: 0.3 }}
+                  transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-2xl p-6 text-center text-sm transition-all cursor-pointer shadow-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "flex flex-col items-center justify-center rounded-2xl p-4 sm:p-5 text-center text-xs sm:text-sm transition-all cursor-pointer shadow-lg bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 min-h-[100px] sm:min-h-[110px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 hover:shadow-xl hover:border-white/60 dark:hover:border-white/20",
                     selectedSegment === String(segment.id)
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-lg"
-                      : "bg-white dark:bg-white/5 hover:shadow-md"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200"
+                      : ""
                   )}
                 >
-                  <Icon className="mb-3 h-6 w-6 flex-shrink-0" />
-                  <span className="break-words leading-tight">{segment.label}</span>
+                  <Icon className="mb-2 sm:mb-3 h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 text-zinc-700 dark:text-zinc-300" />
+                  <span className="break-words leading-tight font-medium">{segment.label}</span>
                 </motion.button>
               );
             })}

@@ -1,6 +1,22 @@
 [
-  { "id": 1, "name": "Barber", "fileId": "barber" },
-  { "id": 2, "name": "Beauty Salon", "fileId": "beauty_salon" },
-  { "id": 3, "name": "Car Wash", "fileId": "car_wash" },
-  { "id": 4, "name": "Fitness Gym", "fileId": "fitness_gym" }
+  { "id": 1, "name": "Cafe & Restaurants", "fileId": "cafe" },
+  { "id": 2, "name": "Coffee Shops", "fileId": "coffee" },
+  { "id": 3, "name": "Retail Stores", "fileId": "retail" },
+  { "id": 4, "name": "Beauty Salon", "fileId": "beauty_salon" },
+  { "id": 5, "name": "Street Food & Kiosks", "fileId": "street" },
+  { "id": 6, "name": "Bakeries", "fileId": "bakery" },
+  { "id": 7, "name": "Car Service & Wash", "fileId": "car_wash" },
+  { "id": 8, "name": "Pickup Points", "fileId": "pickup" },
+  { "id": 9, "name": "Flower Shops", "fileId": "flowers" },
+  { "id": 10, "name": "Call Centers", "fileId": "print" },
+  { "id": 11, "name": "Service Sector", "fileId": "services" },
+  { "id": 12, "name": "Food Delivery", "fileId": "dark" },
+  { "id": 13, "name": "Barbershops", "fileId": "barber" },
+  { "id": 14, "name": "Medical Centers", "fileId": "medical" },
+  { "id": 15, "name": "Sports Studios", "fileId": "fitness_gym" },
+  { "id": 16, "name": "Car Dealers / Parts", "fileId": "car-dealer" },
+  { "id": 17, "name": "Tire Service", "fileId": "tire" },
+  { "id": 18, "name": "Tech Repair", "fileId": "repair" },
+  { "id": 19, "name": "Hotels / Hostels", "fileId": "hotel" },
+  { "id": 20, "name": "Photo Studios", "fileId": "photo" }
 ]
