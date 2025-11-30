@@ -197,15 +197,15 @@ export default function LoginPage() {
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         className="w-full max-w-[400px] relative z-10"
       >
-        <div className="w-full bg-white dark:bg-zinc-900 rounded-[24px] shadow-[0_18px_45px_rgba(15,23,42,0.12)] p-8">
+        <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
           <div className="flex flex-col gap-6">
             {/* Tabs */}
-            <div className="grid w-full grid-cols-2 gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl">
+            <div className="grid w-full grid-cols-2 gap-1 p-1 bg-muted rounded-xl">
               <button
                 onClick={() => handleTabChange("office")}
                 className={`relative flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 h-9 rounded-[10px] ${
                   activeTab === "office"
-                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -217,7 +217,7 @@ export default function LoginPage() {
                 onClick={() => handleTabChange("terminal")}
                 className={`relative flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 h-9 rounded-[10px] ${
                   activeTab === "terminal"
-                    ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                    ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -266,8 +266,8 @@ export default function LoginPage() {
                             setError("");
                           }}
                           required
-                          className={`h-12 w-full bg-white dark:bg-zinc-900 border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 focus:border-transparent focus:ring-black dark:focus:ring-white transition-all ${
-                             isError ? "border-red-500 text-red-500 focus:ring-red-500" : "border-zinc-200 dark:border-zinc-700"
+                          className={`h-12 w-full bg-card border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all ${
+                             isError ? "border-destructive text-destructive focus:ring-destructive" : "border-border"
                           }`}
                           placeholder="you@example.com"
                         />
@@ -320,7 +320,7 @@ export default function LoginPage() {
                       disabled={isLoading}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
-                      className="h-12 w-full mt-1 bg-black dark:bg-white text-white dark:text-black rounded-[20px] font-semibold text-[15px] shadow-lg shadow-black/5 dark:shadow-white/5 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="h-12 w-full mt-1 bg-primary text-primary-foreground rounded-[20px] font-semibold text-[15px] shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                       {isLoading ? (t("logging_in") || "Вход...") : (t("btn_login") || "Войти")}
                     </motion.button>
@@ -334,9 +334,9 @@ export default function LoginPage() {
 
                   <div className="relative flex items-center justify-center py-1">
                     <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-zinc-100 dark:border-zinc-800"></span>
+                      <span className="w-full border-t border-border"></span>
                     </div>
-                    <span className="relative px-3 bg-white dark:bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-400">
+                    <span className="relative px-3 bg-card text-[10px] uppercase tracking-wider text-muted-foreground">
                       {t("login_or_social") || "Или"}
                     </span>
                   </div>
@@ -359,7 +359,7 @@ export default function LoginPage() {
                                 setIsError(true);
                             }
                         }}
-                        className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+                        className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all"
                     >
                         <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
                             <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.065 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/>
@@ -387,7 +387,7 @@ export default function LoginPage() {
                                 setIsError(true);
                             }
                         }}
-                         className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+                         className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all"
                     >
                          <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="h-5 w-5 text-zinc-900 dark:text-white">
                             <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.127 3.675-.552 9.12 1.519 12.12 1.014 1.454 2.227 3.09 3.82 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702z"/>

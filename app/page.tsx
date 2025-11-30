@@ -251,9 +251,9 @@ export default function Home() {
     : "/register?role=director";
 
   return (
-    <main className="relative min-h-screen bg-[#F7F7F7] dark:bg-[#0F0F0F]">
+    <main className="relative min-h-screen bg-background">
       {/* 1. HERO - Redesigned */}
-      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8 bg-[#F7F7F7] dark:bg-[#0F0F0F]">
+      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8 bg-background">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 py-8 md:py-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -279,7 +279,7 @@ export default function Home() {
           >
             <Link
               href={signupHref}
-              className="inline-flex items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-900 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               {t("landing_btn_create_director")}
             </Link>
@@ -295,7 +295,7 @@ export default function Home() {
       </section>
 
       {/* 2. BUSINESS TYPES - Full Grid of Categories */}
-      <section className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 pt-8 pb-10 sm:px-6 lg:px-8">
+      <section className="relative bg-background px-4 pt-8 pb-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-8 text-center text-3xl font-bold text-foreground">
             {t("sec_whom")}
@@ -314,9 +314,9 @@ export default function Home() {
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-black/5 bg-white px-8 py-6 text-sm font-medium text-neutral-900 shadow-[0_18px_60px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-1 hover:bg-neutral-50 hover:shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-white/5 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800 dark:hover:shadow-[0_24px_80px_rgba(0,0,0,0.85)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-8 py-6 text-sm font-medium text-card-foreground shadow-lg transition-all duration-200 hover:-translate-y-1 hover:bg-muted hover:shadow-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isActive
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200"
+                      ? "bg-primary text-primary-foreground shadow-2xl border-primary"
                       : ""
                   )}
                 >
@@ -342,7 +342,7 @@ export default function Home() {
       </section>
 
       {/* 3. CORE FEATURES - Categorized */}
-      <section className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 py-[60px] sm:px-6 lg:px-8">
+      <section className="relative bg-background px-4 py-[60px] sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
             {t("sec_caps")}
@@ -380,7 +380,7 @@ export default function Home() {
                           duration: 0.3,
                         }}
                         whileHover={{ scale: 1.02, y: -2 }}
-                        className="flex flex-col gap-2 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-black/10 dark:border-white/10 p-6 transition-all duration-300 ease-out shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:border-black/20 dark:hover:border-white/20"
+                        className="flex flex-col gap-2 rounded-xl bg-card/50 backdrop-blur-sm border border-border p-6 transition-all duration-300 ease-out shadow-lg hover:shadow-xl hover:bg-card"
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-6 w-6 flex-shrink-0 text-primary" />
@@ -478,7 +478,7 @@ export default function Home() {
       </section>
 
       {/* 5. QUICK START */}
-      <section className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 py-[60px] sm:px-6 lg:px-8">
+      <section className="relative bg-background px-4 py-[60px] sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
           <h2 className="mb-4 text-center text-3xl font-bold text-foreground">
             {t("landing_quick_start_title")}
@@ -494,7 +494,7 @@ export default function Home() {
           >
             <Link
               href="/register"
-              className="inline-flex items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-900 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               {t("landing_btn_create_director")}
             </Link>
