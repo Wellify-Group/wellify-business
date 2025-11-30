@@ -154,50 +154,45 @@ export function SupportWidget() {
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed z-50 bottom-6 right-6 w-[360px] max-h-[520px] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-white/40 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              className="fixed z-50 bottom-6 right-6 w-[360px] max-h-[520px] rounded-[28px] md:rounded-[32px] bg-black/70 dark:bg-black/75 backdrop-blur-[22px] border border-white/10 shadow-2xl overflow-hidden flex flex-col"
             >
-            {/* Header with Icon and Title */}
-            <div className="relative p-5 pb-4 flex-shrink-0">
+            {/* Header */}
+            <div className="relative px-5 pt-4 pb-3 md:px-6 md:pt-5 md:pb-4 flex-shrink-0">
               {/* Close Button */}
               <button
                 onClick={toggleSupport}
-                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                className="absolute top-4 right-4 md:top-5 md:right-5 h-8 w-8 rounded-full flex items-center justify-center bg-white/5 text-neutral-400 hover:bg-white/10 transition-colors"
                 aria-label="Close"
               >
-                <X className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
+                <X className="h-4 w-4" />
               </button>
 
-              {/* Icon and Title */}
-              <div className="flex items-start gap-3 pr-8">
-                <div className="flex-shrink-0 p-2 rounded-xl bg-primary/10 dark:bg-primary/20">
-                  <Send className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
-                    {t("support.title")}
-                  </h3>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                    {t("support.subtitle")}
-                  </p>
-                </div>
+              {/* Title */}
+              <div className="pr-10">
+                <h3 className="text-base font-bold text-white mb-1">
+                  {t("support.title")}
+                </h3>
+                <p className="text-xs md:text-[13px] text-neutral-400 dark:text-neutral-400 leading-snug">
+                  Отвечаем в течение нескольких минут
+                </p>
               </div>
             </div>
 
             {/* Scrollable Content Area */}
-            <div className="flex-1 overflow-y-auto px-5 space-y-4 scrollbar-hide" ref={chatContainerRef}>
+            <div className="flex-1 overflow-y-auto px-5 md:px-6 space-y-4 scrollbar-hide pb-3 md:pb-4" ref={chatContainerRef}>
               {/* FAQ Section */}
               <div>
-                <h4 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-3 uppercase tracking-wide">
+                <h4 className="text-xs font-semibold text-neutral-300 mb-3 uppercase tracking-wide">
                   {t("support.quick_answers")}
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-2 overflow-hidden rounded-2xl">
                   {faqs.map((faq, index) => (
                     <motion.div
                       key={faq.key}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="rounded-xl bg-black/3 dark:bg-white/5 overflow-hidden transition-all hover:bg-black/5 dark:hover:bg-white/10"
+                      className="rounded-2xl bg-white/4 dark:bg-white/4 overflow-hidden transition-all hover:bg-white/6 dark:hover:bg-white/6"
                     >
                       <button
                         onClick={() =>
@@ -205,17 +200,17 @@ export function SupportWidget() {
                         }
                         className="w-full px-4 py-3 flex items-center justify-between text-left transition-colors"
                       >
-                        <span className="flex-1 pr-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                        <span className="flex-1 pr-3 text-sm font-medium text-neutral-100">
                           {faq.question}
                         </span>
                         {expandedFaq === faq.key ? (
-                          <ChevronUp className="h-4 w-4 text-zinc-500 dark:text-zinc-400 flex-shrink-0" />
+                          <ChevronUp className="h-4 w-4 text-neutral-400 flex-shrink-0" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-zinc-500 dark:text-zinc-400 flex-shrink-0" />
+                          <ChevronDown className="h-4 w-4 text-neutral-400 flex-shrink-0" />
                         )}
                       </button>
                       <Collapse isOpen={expandedFaq === faq.key}>
-                        <div className="px-4 pb-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                        <div className="px-4 pb-3 text-xs text-neutral-400 leading-relaxed">
                           {faq.answer}
                         </div>
                       </Collapse>
@@ -227,7 +222,7 @@ export function SupportWidget() {
               {/* Chat Section */}
               {messages.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-3 uppercase tracking-wide">
+                  <h4 className="text-xs font-semibold text-neutral-300 mb-3 uppercase tracking-wide">
                     Чат
                   </h4>
                   <div className="space-y-2">
@@ -241,8 +236,8 @@ export function SupportWidget() {
                         <div
                           className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs ${
                             msg.sender === 'user'
-                              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                              : 'bg-black/5 dark:bg-white/10 text-zinc-900 dark:text-zinc-100'
+                              ? 'bg-white text-neutral-900'
+                              : 'bg-white/10 text-neutral-100'
                           }`}
                         >
                           <p className="break-words leading-relaxed">{msg.text}</p>
@@ -256,39 +251,34 @@ export function SupportWidget() {
             </div>
 
             {/* Footer - Input and Telegram Button */}
-            <div className="border-t border-white/20 dark:border-white/10 p-4 space-y-3 flex-shrink-0">
+            <div className="border-t border-white/10 px-5 py-4 md:px-6 md:py-5 space-y-3 flex-shrink-0">
               {/* Message Input */}
-              <div className="flex items-center gap-2">
+              <div className="mt-3 flex items-center gap-2 rounded-full bg-white/4 dark:bg-white/4 border border-white/10 px-4 py-2">
                 <input
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   placeholder={t("support.input_placeholder")}
-                  className="flex-1 rounded-full border border-white/40 dark:border-white/10 bg-white/50 dark:bg-white/5 px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                  className="flex-1 bg-transparent text-sm text-neutral-100 placeholder:text-neutral-500 focus:outline-none"
                 />
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <button
                   onClick={handleSendMessage}
                   disabled={!inputMessage.trim()}
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-neutral-900 shadow-[0_8px_30px_rgba(0,0,0,0.45)] hover:shadow-[0_10px_40px_rgba(0,0,0,0.6)] transition-transform duration-150 hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   aria-label={t("support.btn_send")}
                 >
-                  <Send className="h-4 w-4" />
-                </motion.button>
+                  <Send className="h-4 w-4 text-neutral-900" />
+                </button>
               </div>
 
               {/* Telegram Button */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <button
                 onClick={handleTelegramClick}
-                className="w-full rounded-full bg-gradient-to-r from-zinc-900 to-zinc-800 dark:from-zinc-100 dark:to-zinc-200 px-5 py-3 text-sm font-semibold text-white dark:text-zinc-900 shadow-lg transition-all hover:shadow-xl flex items-center justify-center gap-2"
+                className="mt-3 w-full h-11 md:h-[44px] rounded-full bg-white text-neutral-900 text-sm md:text-[15px] font-medium flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.55)] hover:shadow-[0_14px_55px_rgba(0,0,0,0.7)] transition-all duration-200 hover:-translate-y-[1px]"
               >
-                <Send className="h-4 w-4" />
-                <span>{t("support.btn_telegram")}</span>
-              </motion.button>
+                {t("support.btn_telegram")}
+              </button>
             </div>
             </motion.div>
           </>

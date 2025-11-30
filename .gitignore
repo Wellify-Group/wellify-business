@@ -34,8 +34,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local data files
-/data
-
-
 node_modules
