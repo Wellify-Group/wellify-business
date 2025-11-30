@@ -8,6 +8,7 @@ import { welcomeTranslations, WelcomeLanguage } from '@/lib/i18n/welcome';
 import useStore from '@/lib/store';
 import { PrimaryButton } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import { AppFooter } from '@/components/footer';
 
 const t = welcomeTranslations;
 
@@ -441,9 +442,7 @@ export default function WelcomePage() {
         </section>
       </main>
 
-      <footer className="px-8 pb-6 text-xs text-white/40 text-center">
-        {t.footerText[lang]}
-      </footer>
+      <AppFooter lang={lang} />
     </div>
   );
 }

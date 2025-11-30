@@ -126,11 +126,63 @@ export const welcomeTranslations: Record<string, Record<WelcomeLanguage, string>
     en: "By continuing, you agree to Wellify's terms of service.",
   },
 
-  // Низ страницы
+  // Низ страницы (простой футер)
   footerText: {
     uk: '© 2025 Wellify. Усі права захищені.',
     ru: '© 2025 Wellify. Все права защищены.',
     en: '© 2025 Wellify. All rights reserved.',
+  },
+
+  // Переводы для полного футера
+  footerBrandTitle: {
+    uk: 'WELLIFY business',
+    ru: 'WELLIFY business',
+    en: 'WELLIFY business',
+  },
+  footerBrandDescription: {
+    uk: 'Вся виручка, зміни й співробітники в одному кабінеті.',
+    ru: 'Вся выручка, смены и сотрудники в одном кабинете.',
+    en: 'All revenue, shifts and staff in a single dashboard.',
+  },
+  footerLinksTitle: {
+    uk: 'Посилання',
+    ru: 'Ссылки',
+    en: 'Links',
+  },
+  footerLinkPrivacy: {
+    uk: 'Політика конфіденційності',
+    ru: 'Политика конфиденциальности',
+    en: 'Privacy policy',
+  },
+  footerLinkTerms: {
+    uk: 'Користувацька угода',
+    ru: 'Пользовательское соглашение',
+    en: 'Terms of use',
+  },
+  footerLinkSupport: {
+    uk: 'Підтримка',
+    ru: 'Поддержка',
+    en: 'Support',
+  },
+  footerContactsTitle: {
+    uk: 'Контакти',
+    ru: 'Контакты',
+    en: 'Contacts',
+  },
+  footerContactEmail: {
+    uk: 'Email підтримки',
+    ru: 'Email поддержки',
+    en: 'Support email',
+  },
+  footerContactTelegram: {
+    uk: 'Telegram бот',
+    ru: 'Telegram бот',
+    en: 'Telegram bot',
+  },
+  footerBottomText: {
+    uk: '© 2025 WELLIFY business. Усі права захищені.',
+    ru: '© 2025 WELLIFY business. Все права защищены.',
+    en: '© 2025 WELLIFY business. All rights reserved.',
   },
 
   // Переключатель языка
