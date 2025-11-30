@@ -198,24 +198,26 @@ export function SupportWidget() {
     <>
       {/* Launcher Button - Скрывается при открытом окне чата */}
       {!isDashboard && !isSupportOpen && (
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           <motion.button
             key="launcher"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ 
-              scale: [1, 1.02, 1],
+              scale: [0, 1, 1.02, 1],
               opacity: 1
             }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ 
-              scale: {
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              },
               opacity: {
-                duration: 0.3,
+                duration: 0.7,
                 ease: "easeOut",
+              },
+              scale: {
+                duration: 2.7,
+                times: [0, 0.26, 0.5, 1],
+                repeat: Infinity,
+                repeatDelay: 0,
+                ease: ["easeOut", "easeInOut", "easeInOut", "easeInOut"],
               }
             }}
             onClick={handleLauncherClick}
@@ -227,11 +229,16 @@ export function SupportWidget() {
               top: 'auto',
               zIndex: 9999
             }}
-            className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-card border border-border shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all relative"
-            whileHover={{ scale: 1.05 }}
+            className="flex h-[48px] w-[48px] items-center justify-center rounded-full border transition-all relative"
+            style={{
+              background: 'var(--color-brand)',
+              borderColor: 'transparent',
+              boxShadow: 'var(--shadow-floating)',
+            }}
+            whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Send className="h-5 w-5 text-foreground" />
+            <Send className="h-5 w-5 text-white" />
             
             {/* Индикатор непрочитанных сообщений */}
             {hasUnread && (
@@ -265,7 +272,10 @@ export function SupportWidget() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={handleClosePanel}
-              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+              className="fixed inset-0 z-40 backdrop-blur-[14px]"
+              style={{
+                backgroundColor: 'var(--color-overlay)',
+              }}
             />
             
             {/* Chat Window */}
@@ -273,12 +283,27 @@ export function SupportWidget() {
               initial={{ opacity: 0, y: 10, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 400, damping: 30, duration: 0.3 }}
+              transition={{ 
+                transform: { duration: 0.22, ease: 'var(--ease-soft)' },
+                opacity: { duration: 0.22, ease: 'var(--ease-soft)' }
+              }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed z-50 bottom-6 right-6 w-[360px] max-h-[520px] rounded-[24px] md:rounded-[28px] bg-popover/95 backdrop-blur-[22px] border border-border shadow-[0_24px_80px_rgba(0,0,0,0.65)] overflow-hidden flex flex-col"
+              className="fixed z-50 bottom-6 right-6 w-[360px] max-h-[520px] overflow-hidden flex flex-col"
+              style={{
+                backgroundColor: 'var(--color-surface)',
+                borderRadius: 'var(--radius-xl)',
+                boxShadow: 'var(--shadow-modal)',
+                border: '1px solid var(--color-border-subtle)',
+              }}
             >
               {/* Header */}
-              <div className="relative px-5 pt-4 pb-3 md:px-6 md:pt-5 md:pb-4 flex-shrink-0">
+              <div 
+                className="relative flex-shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent)',
+                  padding: '24px 32px 16px',
+                }}
+              >
                 {/* Close Button */}
                 <button
                   onClick={handleClosePanel}
@@ -290,7 +315,13 @@ export function SupportWidget() {
 
                 {/* Title */}
                 <div className="pr-10">
-                  <h3 className="text-base font-bold mb-1 text-popover-foreground">
+                  <h3 
+                    className="mb-1 font-semibold"
+                    style={{
+                      fontSize: 'var(--font-size-xl)',
+                      color: 'var(--color-text-main)',
+                    }}
+                  >
                     {t("support.title")}
                   </h3>
                   <motion.p 
@@ -299,7 +330,11 @@ export function SupportWidget() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
                     transition={{ duration: 0.3 }}
-                    className="text-xs md:text-[13px] leading-snug text-muted-foreground"
+                    className="leading-snug"
+                    style={{
+                      fontSize: 'var(--font-size-sm)',
+                      color: 'var(--color-text-muted)',
+                    }}
                   >
                     {getSubtitle()}
                   </motion.p>
@@ -410,17 +445,38 @@ export function SupportWidget() {
                   <button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim()}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-150 hover:scale-105 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    className="flex h-11 w-11 items-center justify-center rounded-full transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    style={{
+                      background: 'var(--color-brand)',
+                      color: 'white',
+                      transitionDuration: 'var(--transition-base)',
+                      transitionTimingFunction: 'var(--ease-soft)',
+                    }}
                     aria-label={t("support.btn_send")}
                   >
                     <Send className="h-5 w-5" />
                   </button>
                 </div>
 
-                {/* Telegram Button - менее доминантная, чем основной CTA */}
+                {/* Telegram Button - как primary button, но высота 44px */}
                 <button
                   onClick={handleTelegramClick}
-                  className="w-full h-9 rounded-full text-sm font-medium flex items-center justify-center bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80 transition-all duration-200 hover:-translate-y-[1px] shadow-md hover:shadow-lg"
+                  className="w-full text-sm font-semibold flex items-center justify-center transition-all hover:-translate-y-[1px] active:translate-y-[0px] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{
+                    height: '44px',
+                    background: 'var(--color-brand)',
+                    color: 'var(--color-text-inverse)',
+                    boxShadow: 'var(--shadow-floating)',
+                    borderRadius: 'var(--radius-pill)',
+                    transitionDuration: 'var(--transition-base)',
+                    transitionTimingFunction: 'var(--ease-soft)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-brand-strong)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--color-brand)';
+                  }}
                 >
                   {t("support.btn_telegram")}
                 </button>

@@ -50,13 +50,13 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
         className={cn(
           "flex items-center transition-colors",
           isCompact
-            ? "h-8 w-8 flex items-center justify-center p-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:opacity-70 transition-opacity"
+            ? "h-8 w-8 flex items-center justify-center p-1.5 text-xs font-medium text-zinc-500 dark:text-[#c7d2fe] hover:opacity-70 transition-opacity"
             : "h-9 gap-2 rounded-lg border border-border bg-card/80 px-3 backdrop-blur-sm hover:bg-muted"
         )}
         aria-label="Change language"
       >
         {isCompact ? (
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+          <span className="text-xs font-medium text-slate-700 dark:text-[#c7d2fe]">
             {currentLang?.label}
           </span>
         ) : (

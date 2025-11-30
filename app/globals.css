@@ -40,6 +40,82 @@
     --ring: 222 84% 56%;
     --radius: 1rem;
 
+    /* ============================================
+       WELLIFY DESIGN TOKENS - Light Theme
+       ============================================ */
+    
+    /* Брендовые цвета */
+    --color-brand: #2563eb;
+    --color-brand-soft: #3b82f6;
+    --color-brand-strong: #1d4ed8;
+
+    /* Фоны и поверхности */
+    --color-bg: #f4f6fb;
+    --color-surface: #ffffff;
+    --color-surface-soft: #f9fafb;
+
+    /* Границы */
+    --color-border-subtle: #e5e7eb;
+    --color-border-strong: #d1d5db;
+
+    /* Текст */
+    --color-text-main: #0f172a;
+    --color-text-muted: #6b7280;
+    --color-text-soft: #9ca3af;
+    --color-text-inverse: #f9fafb;
+
+    /* Семантические цвета */
+    --color-success: #22c55e;
+    --color-warning: #f97316;
+    --color-danger: #ef4444;
+
+    /* Оверлей */
+    --color-overlay: rgba(15, 23, 42, 0.55);
+
+    /* Радиусы */
+    --radius-xs: 0.25rem;  /* 4px */
+    --radius-sm: 0.5rem;   /* 8px */
+    --radius-md: 0.75rem;  /* 12px */
+    --radius-lg: 1rem;     /* 16px */
+    --radius-xl: 1.5rem;   /* 24px */
+    --radius-pill: 9999px;
+
+    /* Тени */
+    --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.10);
+    --shadow-navbar: 0 12px 40px rgba(15, 23, 42, 0.35);
+    --shadow-modal: 0 24px 80px rgba(15, 23, 42, 0.45);
+    --shadow-floating: 0 16px 50px rgba(15, 23, 42, 0.35);
+
+    /* Типографика */
+    --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    --font-size-xs: 0.75rem;  /* 12px */
+    --font-size-sm: 0.875rem; /* 14px */
+    --font-size-base: 1rem;   /* 16px */
+    --font-size-lg: 1.125rem; /* 18px */
+    --font-size-xl: 1.25rem;  /* 20px */
+    --font-size-2xl: 1.5rem;  /* 24px */
+    --font-size-3xl: 1.875rem;/* 30px */
+    --font-size-4xl: 2.25rem; /* 36px */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Интервалы и анимации */
+    --transition-fast: 150ms;
+    --transition-base: 220ms;
+    --transition-slow: 320ms;
+    --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Спейсинг */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
     /* Legacy variables (для обратной совместимости) */
     --bg-primary: hsl(210 40% 98%);
     --bg-secondary: hsl(0 0% 100%);
@@ -95,6 +171,84 @@
 
     --ring: 222 84% 60%;
 
+    /* Единая палитра для тёмной темы */
+    --color-bg: #020617;
+    --color-surface: #07101f;
+
+    /* ============================================
+       WELLIFY DESIGN TOKENS - Dark Theme
+       ============================================ */
+    
+    /* Брендовые цвета */
+    --color-brand: #2563eb;
+    --color-brand-soft: #3b82f6;
+    --color-brand-strong: #1d4ed8;
+
+    /* Фоны и поверхности */
+    --color-surface-soft: #020617;
+
+    /* Границы */
+    --color-border-subtle: rgba(148, 163, 184, 0.24);
+    --color-border-strong: rgba(148, 163, 184, 0.40);
+
+    /* Текст */
+    --color-text-main: #e5e7eb;
+    --color-text-muted: #9ca3af;
+    --color-text-soft: #6b7280;
+    --color-text-inverse: #020617;
+
+    /* Семантические цвета */
+    --color-success: #22c55e;
+    --color-warning: #f97316;
+    --color-danger: #ef4444;
+
+    /* Оверлей */
+    --color-overlay: rgba(15, 23, 42, 0.70);
+
+    /* Радиусы */
+    --radius-xs: 0.25rem;  /* 4px */
+    --radius-sm: 0.5rem;   /* 8px */
+    --radius-md: 0.75rem;  /* 12px */
+    --radius-lg: 1rem;     /* 16px */
+    --radius-xl: 1.5rem;   /* 24px */
+    --radius-pill: 9999px;
+
+    /* Тени */
+    --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.45);
+    --shadow-card: 0 26px 60px rgba(0, 0, 0, 0.55);
+    --shadow-navbar: 0 18px 60px rgba(0, 0, 0, 0.75);
+    --shadow-modal: 0 30px 95px rgba(0, 0, 0, 0.85);
+    --shadow-floating: 0 22px 80px rgba(0, 0, 0, 0.75);
+
+    /* Типографика */
+    --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    --font-size-xs: 0.75rem;  /* 12px */
+    --font-size-sm: 0.875rem; /* 14px */
+    --font-size-base: 1rem;   /* 16px */
+    --font-size-lg: 1.125rem; /* 18px */
+    --font-size-xl: 1.25rem;  /* 20px */
+    --font-size-2xl: 1.5rem;  /* 24px */
+    --font-size-3xl: 1.875rem;/* 30px */
+    --font-size-4xl: 2.25rem; /* 36px */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Интервалы и анимации */
+    --transition-fast: 150ms;
+    --transition-base: 220ms;
+    --transition-slow: 320ms;
+    --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Спейсинг */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
     /* Legacy variables (для обратной совместимости) */
     --bg-primary: hsl(222 47% 4%);
     --bg-secondary: hsl(222 47% 6%);
@@ -126,6 +280,10 @@
     font-family: var(--font-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  
+  .dark body {
+    background-color: var(--color-bg, #020617);
   }
 }
 

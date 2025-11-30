@@ -9,20 +9,38 @@ import { Logo } from "./logo";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export function Navbar() {
   const { t } = useLanguage();
   const nav = t<TranslationTree["nav"]>("nav");
   const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const isDashboard = pathname?.startsWith('/dashboard');
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
   
   // Навбар скрыт только в дашборде
   if (isDashboard) return null;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 pt-4 px-4 md:px-6">
+    <header className="fixed top-0 left-0 right-0 z-50 pt-5 px-4 md:px-6" style={{ paddingTop: 'max(1.25rem, 1.25rem)', paddingLeft: 'max(1.5rem, 5vw)', paddingRight: 'max(1.5rem, 5vw)' }}>
       {/* Плавающая "пилюля" с glass effect */}
-      <div className="mx-auto w-full max-w-[80%] bg-card/95 backdrop-blur-xl border border-border rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+      <div 
+        className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-[18px] transition-all"
+        style={{
+          backgroundColor: isDark ? 'rgba(7, 16, 31, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+          borderColor: isDark ? 'rgba(148, 163, 184, 0.18)' : 'var(--color-border-subtle)',
+          boxShadow: 'var(--shadow-navbar)',
+          borderRadius: 'var(--radius-xl)',
+        }}
+      >
         <div className="flex h-[64px] items-center justify-between px-6 md:px-8">
           {/* Логотип слева */}
           <Link href="/" className="flex items-center">
@@ -48,18 +66,40 @@ export function Navbar() {
               <motion.button
                 whileHover={{ opacity: 0.7 }}
                 whileTap={{ scale: 0.98 }}
-                className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-foreground hover:opacity-70 transition-opacity"
+                className="hidden sm:inline-flex px-4 py-2 text-sm font-medium transition-opacity"
+                style={{
+                  color: 'var(--color-text-main)',
+                }}
               >
                 {nav.login}
               </motion.button>
             </Link>
 
-            {/* Кнопка "Создать аккаунт" - стиль как CTA на лендинге */}
+            {/* Кнопка "Создать аккаунт" - премиальный стиль с новыми токенами */}
             <Link href="/register">
               <motion.button
                 whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-lg hover:bg-primary/90 hover:shadow-xl transition-all"
+                whileTap={{ scale: 0.99, y: 0 }}
+                className="inline-flex items-center justify-center gap-2 px-6 h-12 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style={{
+                  borderRadius: 'var(--radius-pill)',
+                  transitionDuration: 'var(--transition-base)',
+                  transitionTimingFunction: 'var(--ease-soft)',
+                }}
+                style={{
+                  background: 'var(--color-brand)',
+                  color: 'var(--color-text-inverse)',
+                  boxShadow: isDark ? 'var(--shadow-floating)' : 'var(--shadow-soft)',
+                  borderRadius: 'var(--radius-pill)',
+                  transitionDuration: 'var(--transition-base)',
+                  transitionTimingFunction: 'var(--ease-soft)',
+                }}
+                onHoverStart={(e) => {
+                  e.currentTarget.style.background = 'var(--color-brand-strong)';
+                }}
+                onHoverEnd={(e) => {
+                  e.currentTarget.style.background = 'var(--color-brand)';
+                }}
               >
                 {nav.createAccount}
                 <ArrowRight className="h-4 w-4" />
