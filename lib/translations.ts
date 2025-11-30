@@ -99,7 +99,7 @@ export const TRANSLATIONS = {
       }
     },
     // Landing
-    landing_hero_main_title: "WELLIFY business - all revenue, shifts and employees in one dashboard",
+    landing_hero_main_title: "All revenue, shifts and employees in one dashboard",
     landing_hero_main_desc: "Full business control: revenue, payroll, motivation, photo reports and much more. Connect employees and manage locations remotely.",
     landing_btn_create_director: "Create Director Account",
     landing_btn_how_it_works: "How it works",
@@ -266,7 +266,7 @@ export const TRANSLATIONS = {
       }
     },
     // Landing
-    landing_hero_main_title: "WELLIFY business - вся виручка, зміни та співробітники в одному кабінеті",
+    landing_hero_main_title: "Вся виручка, зміни та співробітники в одному кабінеті",
     landing_hero_main_desc: "Повний контроль бізнесу: виручка, зарплата, мотивація, фотозвіти та багато іншого. Підключіть співробітників та керуйте точками віддалено.",
     landing_btn_create_director: "Створити акаунт директора",
     landing_btn_how_it_works: "Як це працює",
@@ -433,7 +433,7 @@ export const TRANSLATIONS = {
       }
     },
     // Landing
-    landing_hero_main_title: "WELLIFY business - вся выручка, смены и сотрудники в одном кабинете",
+    landing_hero_main_title: "Вся выручка, смены и сотрудники в одном кабинете",
     landing_hero_main_desc: "Полный контроль бизнеса: выручка, зарплата, мотивация, фото-отчеты и многое другое. Подключите сотрудников и управляйте точками удаленно.",
     landing_btn_create_director: "Создать аккаунт директора",
     landing_btn_how_it_works: "Как это работает",

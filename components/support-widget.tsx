@@ -139,7 +139,7 @@ export function SupportWidget() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={toggleSupport}
-              className="fixed inset-0 z-[9998] bg-black/20 backdrop-blur-sm"
+              className="fixed inset-0 z-[9998] bg-black/10"
             />
 
             {/* Window Panel - Fixed to bottom-right corner */}
@@ -148,7 +148,7 @@ export function SupportWidget() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed z-[9999] bottom-[88px] right-[20px] w-[350px] max-h-[600px] bg-card/90 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="fixed z-[9999] bottom-[88px] right-[20px] w-[350px] max-h-[600px] bg-white dark:bg-zinc-900 border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               {/* Header - Gradient Brand Color */}
               <motion.div

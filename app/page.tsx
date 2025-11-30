@@ -187,15 +187,15 @@ export default function Home() {
     : "/register?role=director";
 
   return (
-    <main className="relative min-h-screen bg-neutral-50 dark:bg-background">
+    <main className="relative min-h-screen bg-[#FAFAFA] dark:bg-background">
       {/* 1. HERO - Redesigned */}
-      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8">
+      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8 bg-[#FAFAFA] dark:bg-background">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 py-8 md:py-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05, duration: 0.5 }}
-            className="text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl dark:text-zinc-100"
+            className="text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl md:text-6xl dark:text-zinc-100 leading-tight"
           >
             {t("landing_hero_main_title")}
           </motion.h1>
@@ -236,7 +236,7 @@ export default function Home() {
           <h2 className="mb-8 text-center text-3xl font-bold text-foreground">
             {t("sec_whom")}
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
               return (
@@ -250,14 +250,14 @@ export default function Home() {
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.05, duration: 0.3 }}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-[20px] px-4 py-6 text-center text-sm transition-all cursor-pointer shadow-[0_10px_35px_rgba(0,0,0,0.07)]",
+                    "flex flex-col items-center justify-center rounded-[20px] px-4 py-6 text-center text-sm transition-all cursor-pointer shadow-[0_10px_35px_rgba(0,0,0,0.07)] min-h-[120px]",
                     selectedSegment === String(segment.id)
                       ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-[0_10px_35px_rgba(0,0,0,0.15)]"
                       : "bg-white hover:shadow-[0_10px_35px_rgba(0,0,0,0.12)] dark:bg-zinc-900 dark:hover:shadow-[0_10px_35px_rgba(0,0,0,0.25)]"
                   )}
                 >
-                  <Icon className="mb-3 h-6 w-6" />
-                  <span>{segment.label}</span>
+                  <Icon className="mb-3 h-6 w-6 flex-shrink-0" />
+                  <span className="break-words leading-tight">{segment.label}</span>
                 </motion.button>
               );
             })}
