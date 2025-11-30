@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveUser, findUserByEmail } from '@/lib/db';
-import { User } from '@/lib/store';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-/**
- * POST /api/auth/register
- * Register a new director
- * 
- * Body: { email, password, fullName }
- */
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password, fullName } = body;
 
-    // Validation
     if (!email || !password || !fullName) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
@@ -23,56 +26,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = await findUserByEmail('director', email);
-    if (existingUser) {
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+
+    const exists =
+      existingUsers?.users?.find(
+        (u) => u.email?.toLowerCase() === email.toLowerCase()
+      );
+
+    if (exists) {
       return NextResponse.json(
         { success: false, error: 'User with this email already exists' },
         { status: 409 }
       );
     }
 
-    // Generate random 16-digit company code (4 blocks of 4)
     const generateCompanyCode = () => {
-      const part1 = Math.floor(1000 + Math.random() * 9000);
-      const part2 = Math.floor(1000 + Math.random() * 9000);
-      const part3 = Math.floor(1000 + Math.random() * 9000);
-      const part4 = Math.floor(1000 + Math.random() * 9000);
-      return `${part1}-${part2}-${part3}-${part4}`;
+      const part = () => Math.floor(1000 + Math.random() * 9000);
+      return `${part()}-${part()}-${part()}-${part()}`;
     };
 
     const companyCode = generateCompanyCode();
+    const businessId = `biz-${Date.now()}`;
 
-    // Generate unique ID
-    const userId = `dir-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const businessId = `${Date.now()}-biz`;
-
-    // Create new user object
-    const newUser: User = {
-      id: userId,
-      name: email.split('@')[0], // Use email prefix as default name
-      fullName: fullName.trim(),
-      role: 'director',
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: email.toLowerCase().trim(),
-      password: password, // Save password for authentication
-      businessId: businessId,
-      companyCode: companyCode, // Save company code to user object
-      status: 'active',
-      // Initialize empty arrays for shifts and locations
-    };
+      password,
+      email_confirm: true,
+      user_metadata: {
+        fullName,
+        role: 'director',
+        businessId,
+        companyCode,
+      },
+    });
 
-    // Save user to file system
-    await saveUser(newUser);
+    if (error) {
+      console.error('Supabase createUser error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Registration failed' },
+        { status: 500 }
+      );
+    }
 
-    // Return user data (without password for security)
-    const { password: _, ...userWithoutPassword } = newUser;
+    const user = data.user;
 
-    return NextResponse.json({
-      success: true,
-      user: userWithoutPassword,
-      companyCode: companyCode, // Return company code separately
-    }, { status: 201 });
-
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: user?.id,
+          email: user?.email,
+          fullName,
+          role: 'director',
+          businessId,
+          companyCode,
+        },
+        companyCode,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
@@ -81,4 +93,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
