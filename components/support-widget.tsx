@@ -267,8 +267,7 @@ export function SupportWidget() {
               <div
                 className="relative flex-shrink-0"
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent)",
+                  backgroundColor: "var(--color-surface)",
                   padding: "24px 32px 16px",
                 }}
               >

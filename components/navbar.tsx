@@ -39,13 +39,14 @@ export function Navbar() {
     >
       {/* Плавающая "пилюля" с glass effect */}
       <div
-        className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-[18px]"
+        className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-xl"
         style={{
           backgroundColor: "var(--color-surface-elevated)",
           borderBottom: "1px solid rgba(255,255,255,0.05)",
           borderColor: "rgba(255,255,255,0.05)",
           boxShadow: "0 4px 30px rgba(0,0,0,0.4)",
           borderRadius: "var(--radius-xl)",
+          backdropFilter: "blur(12px) saturate(180%)",
         }}
       >
         <div className="flex h-[64px] items-center justify-between px-6 md:px-8">
