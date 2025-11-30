@@ -41,9 +41,10 @@ export function Navbar() {
       <div
         className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-[18px]"
         style={{
-          backgroundColor: "var(--color-navbar)",
-          borderColor: "var(--color-border-subtle)",
-          boxShadow: "var(--shadow-navbar)",
+          backgroundColor: "var(--color-surface-elevated)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          borderColor: "rgba(255,255,255,0.05)",
+          boxShadow: "0 4px 30px rgba(0,0,0,0.4)",
           borderRadius: "var(--radius-xl)",
         }}
       >

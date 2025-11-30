@@ -61,8 +61,8 @@ export function ShiftClosingModal({ isOpen, onClose, onConfirm }: ShiftClosingMo
         <div 
           className="rounded-[18px] p-6 w-full max-w-[420px]"
           style={{ 
-            backgroundColor: 'var(--color-surface)',
-            boxShadow: '0 0 40px rgba(0, 0, 0, 0.65)' 
+            backgroundColor: 'var(--color-surface-elevated)',
+            boxShadow: '0 0 20px rgba(0, 0, 0, 0.45)' 
           }}
         >
           {/* Header */}

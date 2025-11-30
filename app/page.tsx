@@ -314,7 +314,7 @@ export default function Home() {
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-8 py-6 text-sm font-medium text-card-foreground shadow-lg transition-all duration-200 hover:-translate-y-1 hover:bg-muted hover:shadow-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border dark:bg-surface-elevated bg-card px-8 py-6 text-sm font-medium text-card-foreground dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] shadow-lg transition-all duration-200 hover:-translate-y-1 hover:bg-muted hover:shadow-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isActive
                       ? "bg-primary text-primary-foreground shadow-2xl border-primary"
                       : ""
@@ -380,7 +380,7 @@ export default function Home() {
                           duration: 0.3,
                         }}
                         whileHover={{ scale: 1.02, y: -2 }}
-                        className="flex flex-col gap-2 rounded-xl bg-card/50 backdrop-blur-sm border border-border p-6 transition-all duration-300 ease-out shadow-lg hover:shadow-xl hover:bg-card"
+                        className="flex flex-col gap-2 rounded-xl dark:bg-surface-elevated bg-card/50 backdrop-blur-sm border border-border p-6 transition-all duration-300 ease-out dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] shadow-lg hover:shadow-xl hover:bg-card"
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-6 w-6 flex-shrink-0 text-primary" />

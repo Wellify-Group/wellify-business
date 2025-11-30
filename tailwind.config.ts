@@ -76,6 +76,7 @@ const config: Config = {
         bg: "var(--color-bg)",
         surface: "var(--color-surface)",
         "surface-soft": "var(--color-surface-soft)",
+        "surface-elevated": "var(--color-surface-elevated)",
         brand: "var(--color-brand)",
         "brand-soft": "var(--color-brand-soft)",
         "brand-strong": "var(--color-brand-strong)",

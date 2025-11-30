@@ -217,10 +217,10 @@ export function ConversationDialog({
                 <button
                   onClick={handleSend}
                   disabled={!messageText.trim()}
-                  className="h-9 w-9 rounded-full bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0"
+                  className="h-12 w-12 rounded-full bg-emerald-700 p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0"
                   title="Отправить"
                 >
-                  <Send className="h-4 w-4 text-white" />
+                  <Send className="h-5 w-5 text-white m-0 p-0 pointer-events-none" style={{ transform: "none" }} />
                 </button>
               </div>
               {/* Дополнительные кнопки действий */}

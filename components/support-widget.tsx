@@ -471,16 +471,15 @@ export function SupportWidget() {
                   <button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim()}
-                    className="flex h-11 w-11 items-center justify-center rounded-full transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     style={{
                       background: "var(--color-brand)",
                       color: "white",
-                      transitionDuration: "var(--transition-base)",
-                      transitionTimingFunction: "var(--ease-soft)",
+                      transform: "none",
                     }}
                     aria-label={t("support.btn_send")}
                   >
-                    <Send className="h-5 w-5" />
+                    <Send className="h-5 w-5 m-0 p-0 pointer-events-none" style={{ transform: "none" }} />
                   </button>
                 </div>
 

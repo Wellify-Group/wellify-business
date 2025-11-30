@@ -146,10 +146,10 @@
      ============================================ */
   .dark {
     /* Основные цвета в формате HSL (H S L без hsl()) */
-    --background: 220 39% 4.5%;        /* общий фон страницы: #070A10 */
+    --background: 215 50% 4%;          /* общий фон страницы: #050B13 */
     --foreground: 213 31% 91%;         /* основной текст */
 
-    --card: 220 39% 5.5%;              /* карточки / модалки / блоки: немного светлее #070A10 */
+    --card: 215 50% 7%;                /* карточки / модалки / блоки: #0B1320 */
     --card-foreground: 210 40% 98%;
 
     --popover: 222 47% 9%;
@@ -176,12 +176,13 @@
     --ring: 222 84% 60%;
 
     /* Единая палитра для тёмной темы */
-    --color-background: #070A10; /* основной фон */
-    --color-surface: #0A0F18; /* фон карточек и панелей */
-    --color-navbar: #0A0F18; /* фон навбара */
-    --color-card: #0B111C; /* немного светлее поверхности для 3D-объёмных элементов */
+    --color-background: #050B13; /* основной фон */
+    --color-surface: #0B1320; /* фон карточек и панелей */
+    --color-navbar: #0B1320; /* фон навбара */
+    --color-card: #0B1320; /* немного светлее поверхности для 3D-объёмных элементов */
+    --color-surface-elevated: #0B1320; /* приподнятые поверхности (navbar, карточки, модалки) */
     /* Legacy для обратной совместимости */
-    --color-bg: #070A10;
+    --color-bg: #050B13;
 
     /* ============================================
        WELLIFY DESIGN TOKENS - Dark Theme
@@ -193,7 +194,7 @@
     --color-brand-strong: #1d4ed8;
 
     /* Фоны и поверхности */
-    --color-surface-soft: #0A0F18;
+    --color-surface-soft: #0B1320;
 
     /* Границы */
     --color-border-subtle: rgba(148, 163, 184, 0.24);
@@ -203,7 +204,7 @@
     --color-text-main: #e5e7eb;
     --color-text-muted: #9ca3af;
     --color-text-soft: #6b7280;
-    --color-text-inverse: #070A10;
+    --color-text-inverse: #050B13;
 
     /* Семантические цвета */
     --color-success: #22c55e;
@@ -258,11 +259,11 @@
     --space-8: 2rem;
 
     /* Legacy variables (для обратной совместимости) */
-    --bg-primary: hsl(220 39% 4.5%);
-    --bg-secondary: hsl(220 39% 5.5%);
-    --bg-tertiary: hsl(220 39% 6.5%);
-    --surface-1: hsl(220 39% 5.5%);
-    --surface-2: hsl(220 39% 6.5%);
+    --bg-primary: hsl(215 50% 4%);
+    --bg-secondary: hsl(215 50% 7%);
+    --bg-tertiary: hsl(215 50% 7%);
+    --surface-1: hsl(215 50% 7%);
+    --surface-2: hsl(215 50% 7%);
     --surface-3: hsl(217 33% 15%);
     --border-color: hsl(217 33% 17%);
     --border-strong: hsl(217 33% 25%);
@@ -274,7 +275,7 @@
     --success: hsl(142 71% 55%);
     --error: hsl(0 62% 55%);
     --warning: hsl(38 92% 60%);
-    --sidebar-bg: hsl(220 39% 5.5%);
+    --sidebar-bg: hsl(215 50% 7%);
   }
 }
 
@@ -291,7 +292,7 @@
   }
   
   .dark body {
-    background-color: var(--color-background, #070A10);
+    background-color: var(--color-background, #050B13);
   }
 }
 
