@@ -271,37 +271,42 @@ export default function Home() {
                   onClick={() => handleCardClick(segment)}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-2xl p-4 sm:p-5 text-center cursor-pointer bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 min-h-[120px] sm:min-h-[140px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 ease-out shadow-lg hover:shadow-xl hover:scale-[1.02] hover:bg-white dark:hover:bg-white/10 hover:border-white/60 dark:hover:border-white/20",
+                    "flex flex-col items-center justify-center rounded-2xl bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 p-4 text-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all shadow-lg hover:shadow-xl hover:border-white/60 dark:hover:border-white/20",
                     isActive
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200 scale-[1.02]"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200"
                       : ""
                   )}
                 >
-                  <Icon className={cn(
-                    "mb-2 sm:mb-3 h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0",
-                    isActive 
-                      ? "text-white dark:text-zinc-900" 
-                      : "text-zinc-700 dark:text-zinc-300"
-                  )} />
-                  <span className={cn(
-                    "break-words leading-tight font-medium text-xs sm:text-sm mb-1",
-                    isActive ? "text-white dark:text-zinc-900" : ""
-                  )}>
-                    {segment.label}
-                  </span>
-                  {segment.description && (
-                    <span className={cn(
-                      "text-[10px] sm:text-xs leading-tight mt-1 opacity-80",
+                  <div className="flex flex-col gap-2 items-center justify-center w-full">
+                    <Icon className={cn(
+                      "h-6 w-6 flex-shrink-0",
                       isActive 
-                        ? "text-white/90 dark:text-zinc-900/90" 
-                        : "text-zinc-600 dark:text-zinc-400"
+                        ? "text-white dark:text-zinc-900" 
+                        : "text-primary"
+                    )} />
+                    <span className={cn(
+                      "text-sm font-medium break-words leading-tight text-center",
+                      isActive 
+                        ? "text-white dark:text-zinc-900" 
+                        : "text-foreground"
                     )}>
-                      {segment.description}
+                      {segment.label}
                     </span>
-                  )}
+                    {segment.description && (
+                      <p className={cn(
+                        "text-xs leading-tight text-center",
+                        isActive 
+                          ? "text-white/90 dark:text-zinc-900/90" 
+                          : "text-muted-foreground"
+                      )}>
+                        {segment.description}
+                      </p>
+                    )}
+                  </div>
                 </motion.button>
               );
             })}
