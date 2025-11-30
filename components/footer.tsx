@@ -3,30 +3,29 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
-import { type WelcomeLanguage, welcomeTranslations } from "@/lib/i18n/welcome";
-
-type AppFooterProps = {
-  lang?: WelcomeLanguage;
-};
+import { welcomeTranslations } from "@/lib/i18n/welcome";
+import { useInterfaceLanguageStore } from "@/lib/store/interfaceLanguageStore";
 
 const t = welcomeTranslations;
 
-export function AppFooter({ lang }: AppFooterProps) {
+export function AppFooter() {
   const pathname = usePathname();
   const { t: generalT } = useLanguage();
+  const { lang } = useInterfaceLanguageStore();
   const isDashboard = pathname?.startsWith('/dashboard');
   const hideFooterOn = ['/register', '/login'];
+  const isWelcomePage = pathname === '/welcome';
   
   // Скрываем футер в дашборде и на страницах регистрации/входа
-  // Если передан lang, значит футер используется явно (например, на welcome-странице) и не скрываем его
-  if (!lang && (isDashboard || (pathname && hideFooterOn.includes(pathname)))) return null;
+  // На welcome-странице показываем футер с переводами
+  if (isDashboard || (pathname && hideFooterOn.includes(pathname))) {
+    // На welcome-странице всегда показываем футер
+    if (!isWelcomePage) return null;
+  }
 
-  // Если передан lang, используем переводы из welcomeTranslations
-  const useWelcomeTranslations = lang !== undefined;
-  const currentLang = lang || 'ru'; // Fallback на русский, если lang не передан
-
-  // Специальные стили для welcome-страницы (темная тема)
-  const isWelcomePage = lang !== undefined;
+  // Используем переводы из welcomeTranslations на welcome-странице
+  const useWelcomeTranslations = isWelcomePage;
+  const currentLang = lang;
   
   return (
     <footer className={isWelcomePage 

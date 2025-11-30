@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { welcomeTranslations, WelcomeLanguage } from '@/lib/i18n/welcome';
+import { welcomeTranslations } from '@/lib/i18n/welcome';
+import { useInterfaceLanguageStore } from '@/lib/store/interfaceLanguageStore';
 import useStore from '@/lib/store';
 import { PrimaryButton } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
@@ -13,7 +14,7 @@ import { AppFooter } from '@/components/footer';
 const t = welcomeTranslations;
 
 export default function WelcomePage() {
-  const [lang, setLang] = useState<WelcomeLanguage>('ru');
+  const { lang, setLang } = useInterfaceLanguageStore();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const router = useRouter();
   const { login, registerDirector } = useStore();
@@ -442,7 +443,7 @@ export default function WelcomePage() {
         </section>
       </main>
 
-      <AppFooter lang={lang} />
+      <AppFooter />
     </div>
   );
 }
