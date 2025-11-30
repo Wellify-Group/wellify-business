@@ -527,6 +527,28 @@ export const TRANSLATIONS = {
     biz_repair: "Ремонт техники",
     biz_hotel: "Отели / хостелы",
     biz_photo: "Фото-студии",
+
+    // Industry Descriptions
+    landing_industriesDescriptions_cafe: "Учет смен, выручки и оплаты, контроль чек-листов и фотоотчетов по залу и кухне.",
+    landing_industriesDescriptions_coffee: "Фиксация каждой смены и выручки, контроль бариста и качества обслуживания.",
+    landing_industriesDescriptions_retail: "Прозрачная выручка по сменам, задачи для продавцов и контроль выполнения стандартов.",
+    landing_industriesDescriptions_beauty: "Контроль работы мастеров, выручки по сменам и состояния зала по фотоотчетам.",
+    landing_industriesDescriptions_street: "Учет каждой точки, смен и кассы, подтверждение работы сотрудников на месте.",
+    landing_industriesDescriptions_bakery: "Контроль ночных и дневных смен, выработки и выкладки продукции по фото.",
+    landing_industriesDescriptions_auto: "Отслеживание загруженности, смен, выручки и качества работы персонала.",
+    landing_industriesDescriptions_pickup: "Контроль присутствия сотрудников, графика смен и качества обслуживания клиентов.",
+    landing_industriesDescriptions_flowers: "Учет смен и выручки, контроль витрины и порядков по фотоотчетам.",
+    landing_industriesDescriptions_print: "Фиксация смен операторов, задач и результатов по каждой рабочей смене.",
+    landing_industriesDescriptions_services: "Единый контроль смен, задач и выручки для любой сервисной компании.",
+    landing_industriesDescriptions_dark: "Контроль смен курьеров и кухни, фиксация проблем и состояние точек по фото.",
+    landing_industriesDescriptions_barbershop: "Контроль работы барберов, смен и выручки без сложных CRM.",
+    landing_industriesDescriptions_medical: "Прозрачный учет смен администраторов и персонала, контроль стандартов сервиса.",
+    landing_industriesDescriptions_sports: "Контроль смен тренеров и администраторов, выручки и загрузки студии.",
+    landing_industriesDescriptions_car_dealer: "Учет смен менеджеров и продавцов, контроль плана продаж и выручки.",
+    landing_industriesDescriptions_tire: "Простое отслеживание смен мастеров, выручки и загрузки точки.",
+    landing_industriesDescriptions_repair: "Контроль занятости мастеров, смен и выручки без сложных таблиц.",
+    landing_industriesDescriptions_hotel: "Смены и задачи ресепшн, выручка и контроль порядка по фотоотчетам.",
+    landing_industriesDescriptions_photo: "Учет смен администраторов, бронирований и выручки по сменам.",
   },
 };
 

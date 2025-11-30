@@ -42,8 +42,7 @@ import {
 
 export default function Home() {
   const { t } = useLanguage();
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
-  const { openModal } = useBusinessModalStore();
+  const { openModal, isOpen, modalData } = useBusinessModalStore();
 
   const scrollToHowItWorks = () => {
     document
@@ -87,25 +86,30 @@ export default function Home() {
         : translationKey === 'fitness_gym' ? 'sports'
         : translationKey;
       
+      // Получаем описание для категории
+      const descriptionKey = `landing_industriesDescriptions_${normalizedKey}`;
+      const description = t(descriptionKey) || "";
+      
       return {
         id: business.id,
         label: t(`biz_${normalizedKey}`) || business.name,
+        description: description,
         icon: iconMap[normalizedKey] || iconMap[translationKey] || Store,
         data: business,
+        normalizedKey: normalizedKey,
       };
     });
   }, [t]);
 
   const handleCardClick = (segment: typeof SEGMENTS[0]) => {
-    setSelectedSegment(String(segment.id));
     if (segment.data) {
       const Icon = segment.icon;
       openModal({
         id: String(segment.data.id),
-        title: segment.data.name, // Use name as title
-        description: "", // Provide default empty string
-        features: [], // Provide default empty array
-        functions: [], // Provide default empty array
+        title: segment.label,
+        description: segment.description,
+        features: [],
+        functions: [],
         icon: (
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Icon className="h-8 w-8 text-primary" />
@@ -114,6 +118,9 @@ export default function Home() {
       });
     }
   };
+
+  // Определяем активную карточку на основе открытой модалки
+  const activeCategoryId = isOpen && modalData ? modalData.id : null;
 
   const FEATURES = [
     {
@@ -193,8 +200,8 @@ export default function Home() {
     },
   ];
 
-  const signupHref = selectedSegment
-    ? `/register?role=director&segment=${selectedSegment}`
+  const signupHref = activeCategoryId
+    ? `/register?role=director&segment=${activeCategoryId}`
     : "/register?role=director";
 
   return (
@@ -250,6 +257,7 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
+              const isActive = activeCategoryId === String(segment.id);
               return (
                 <motion.button
                   key={segment.id}
@@ -261,14 +269,34 @@ export default function Home() {
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-2xl p-4 sm:p-5 text-center text-xs sm:text-sm transition-all cursor-pointer shadow-lg bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 min-h-[100px] sm:min-h-[110px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 hover:shadow-xl hover:border-white/60 dark:hover:border-white/20",
-                    selectedSegment === String(segment.id)
+                    "flex flex-col items-center justify-center rounded-2xl p-4 sm:p-5 text-center transition-all cursor-pointer shadow-lg bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 min-h-[120px] sm:min-h-[140px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 hover:shadow-xl hover:border-white/60 dark:hover:border-white/20",
+                    isActive
                       ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200"
                       : ""
                   )}
                 >
-                  <Icon className="mb-2 sm:mb-3 h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 text-zinc-700 dark:text-zinc-300" />
-                  <span className="break-words leading-tight font-medium">{segment.label}</span>
+                  <Icon className={cn(
+                    "mb-2 sm:mb-3 h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0",
+                    isActive 
+                      ? "text-white dark:text-zinc-900" 
+                      : "text-zinc-700 dark:text-zinc-300"
+                  )} />
+                  <span className={cn(
+                    "break-words leading-tight font-medium text-xs sm:text-sm mb-1",
+                    isActive ? "text-white dark:text-zinc-900" : ""
+                  )}>
+                    {segment.label}
+                  </span>
+                  {segment.description && (
+                    <span className={cn(
+                      "text-[10px] sm:text-xs leading-tight mt-1 opacity-80",
+                      isActive 
+                        ? "text-white/90 dark:text-zinc-900/90" 
+                        : "text-zinc-600 dark:text-zinc-400"
+                    )}>
+                      {segment.description}
+                    </span>
+                  )}
                 </motion.button>
               );
             })}
@@ -308,7 +336,7 @@ export default function Home() {
                           duration: 0.3,
                         }}
                         whileHover={{ scale: 1.02, y: -2 }}
-                        className="flex flex-col gap-2 rounded-[20px] bg-white dark:bg-zinc-900 p-4 transition-all shadow-[0_10px_35px_rgba(0,0,0,0.07)] hover:shadow-[0_10px_35px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_10px_35px_rgba(0,0,0,0.25)]"
+                        className="flex flex-col gap-2 rounded-2xl bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 p-4 transition-all shadow-lg hover:shadow-xl hover:border-white/60 dark:hover:border-white/20"
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-6 w-6 flex-shrink-0 text-primary" />
@@ -332,7 +360,7 @@ export default function Home() {
       {/* 4. HOW IT WORKS - Updated */}
       <section
         id="how-it-works"
-        className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 py-[60px] sm:px-6 lg:px-8"
+        className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32"
       >
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
