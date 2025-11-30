@@ -183,8 +183,8 @@ export default function Home() {
   ];
 
   const signupHref = selectedSegment
-    ? `/signup?role=director&segment=${selectedSegment}`
-    : "/signup?role=director";
+    ? `/register?role=director&segment=${selectedSegment}`
+    : "/register?role=director";
 
   return (
     <main className="relative min-h-screen bg-neutral-50 dark:bg-background">
