@@ -17,7 +17,7 @@ export default function FormBuilder() {
           <h1 className="text-2xl font-bold text-white">{t('dashboard.report_builder') || 'Конструктор отчёта'}</h1>
           <p className="text-zinc-400">Настройте, что видит сотрудник при закрытии смены.</p>
         </div>
-        <div className="bg-[#0A0D14] border border-white/10 rounded-2xl p-6 space-y-6">
+        <div className="bg-[var(--color-surface)] border border-white/10 rounded-2xl p-6 space-y-6">
           <h3 className="text-lg font-semibold text-white border-b border-white/5 pb-4">Поля ввода</h3>
           
           <ToggleItem 
@@ -51,7 +51,7 @@ export default function FormBuilder() {
             onChange={(v: boolean) => updateFormConfig({ showNotes: v })} 
           />
         </div>
-        <div className="bg-[#0A0D14] border border-white/10 rounded-2xl p-6">
+        <div className="bg-[var(--color-surface)] border border-white/10 rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Пользовательские метрики</h3>
           <button className="w-full py-3 border border-dashed border-zinc-700 rounded-xl text-zinc-400 hover:text-white hover:border-zinc-500 flex items-center justify-center gap-2 transition-colors">
             <Plus size={16} />
@@ -65,7 +65,7 @@ export default function FormBuilder() {
       </div>
 
       {/* RIGHT: LIVE PREVIEW */}
-      <div className="flex items-center justify-center bg-[#070A10] rounded-3xl border border-white/5 relative overflow-hidden">
+      <div className="flex items-center justify-center rounded-3xl border border-white/5 relative overflow-hidden" style={{ backgroundColor: 'var(--color-background)' }}>
         <div className="absolute inset-0 bg-grid-white/[0.02]" /> {/* Grid Background */}
         
         {/* Phone Frame */}

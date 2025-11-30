@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
 import type { TranslationTree } from "@/lib/translations";
 import { ThemeToggle } from "./theme-toggle";
@@ -40,14 +39,10 @@ export function Navbar() {
     >
       {/* Плавающая "пилюля" с glass effect */}
       <div
-        className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-[18px] transition-all"
+        className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-[18px]"
         style={{
-          backgroundColor: isDark
-            ? "#070A10"
-            : "rgba(255, 255, 255, 0.95)",
-          borderColor: isDark
-            ? "rgba(148, 163, 184, 0.18)"
-            : "var(--color-border-subtle)",
+          backgroundColor: "var(--color-navbar)",
+          borderColor: "var(--color-border-subtle)",
           boxShadow: "var(--shadow-navbar)",
           borderRadius: "var(--radius-xl)",
         }}
@@ -74,24 +69,20 @@ export function Navbar() {
 
             {/* Кнопка "Войти" */}
             <Link href="/login">
-              <motion.button
-                whileHover={{ opacity: 0.7 }}
-                whileTap={{ scale: 0.98 }}
-                className="hidden sm:inline-flex px-4 py-2 text-sm font-medium transition-opacity"
+              <button
+                className="hidden sm:inline-flex px-4 py-2 text-sm font-medium"
                 style={{
                   color: "var(--color-text-main)",
                 }}
               >
                 {nav.login}
-              </motion.button>
+              </button>
             </Link>
 
             {/* Кнопка "Создать аккаунт" - премиальный стиль с новыми токенами */}
             <Link href="/register">
-              <motion.button
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.99, y: 0 }}
-                className="inline-flex items-center justify-center gap-2 px-6 h-12 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              <button
+                className="inline-flex items-center justify-center gap-2 px-6 h-12 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style={{
                   background: "var(--color-brand)",
                   color: "var(--color-text-inverse)",
@@ -99,21 +90,11 @@ export function Navbar() {
                     ? "var(--shadow-floating)"
                     : "var(--shadow-soft)",
                   borderRadius: "var(--radius-pill)",
-                  transitionDuration: "var(--transition-base)",
-                  transitionTimingFunction: "var(--ease-soft)",
-                }}
-                onHoverStart={(e) => {
-                  const target = e.currentTarget as HTMLElement;
-                  target.style.background = "var(--color-brand-strong)";
-                }}
-                onHoverEnd={(e) => {
-                  const target = e.currentTarget as HTMLElement;
-                  target.style.background = "var(--color-brand)";
                 }}
               >
                 {nav.createAccount}
                 <ArrowRight className="h-4 w-4" />
-              </motion.button>
+              </button>
             </Link>
           </div>
         </div>

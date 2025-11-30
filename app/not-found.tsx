@@ -10,7 +10,7 @@ export default function NotFound() {
   const { t } = useLanguage();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAFA] dark:bg-background px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] dark:bg-background px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

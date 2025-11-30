@@ -404,7 +404,8 @@ export default function Home() {
       {/* 4. HOW IT WORKS - Updated */}
       <section
         id="how-it-works"
-        className="relative bg-[#F7F7F7] dark:bg-[#070A10] px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32"
+        className="relative px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32"
+        style={{ backgroundColor: 'var(--color-background)' }}
       >
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">

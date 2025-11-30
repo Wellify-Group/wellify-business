@@ -44,7 +44,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased bg-[#F7F7F7] dark:bg-[#070A10]`}>
+      <body className={`${inter.className} antialiased`} style={{ backgroundColor: 'var(--color-background)' }}>
         <LanguageProvider>
           {/* Initialize product brand colors */}
           <ProductBrandInit />

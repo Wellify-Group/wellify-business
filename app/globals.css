@@ -9,7 +9,7 @@
      ============================================ */
   :root {
     /* Основные цвета в формате HSL (H S L без hsl()) */
-    --background: 210 40% 98%;         /* общий фон страницы */
+    --background: 210 40% 98.4%;      /* общий фон страницы: #F8FAFC */
     --foreground: 222 47% 11%;         /* основной текст */
 
     --card: 0 0% 100%;                 /* карточки, модалки, блоки */
@@ -50,9 +50,13 @@
     --color-brand-strong: #1d4ed8;
 
     /* Фоны и поверхности */
-    --color-bg: #f4f6fb;
-    --color-surface: #ffffff;
-    --color-surface-soft: #f9fafb;
+    --color-background: #F8FAFC; /* основной фон */
+    --color-surface: #FFFFFF; /* фон карточек, панелей и навбара */
+    --color-navbar: #FFFFFF; /* фон навбара */
+    --color-card: #FFFFFF; /* фон карточек и лёгких контейнеров */
+    /* Legacy для обратной совместимости */
+    --color-bg: #F8FAFC;
+    --color-surface-soft: #F8FAFC;
 
     /* Границы */
     --color-border-subtle: #e5e7eb;
@@ -117,11 +121,11 @@
     --space-8: 2rem;
 
     /* Legacy variables (для обратной совместимости) */
-    --bg-primary: hsl(210 40% 98%);
+    --bg-primary: hsl(210 40% 98.4%);
     --bg-secondary: hsl(0 0% 100%);
-    --bg-tertiary: hsl(210 40% 96%);
+    --bg-tertiary: hsl(210 40% 98.4%);
     --surface-1: hsl(0 0% 100%);
-    --surface-2: hsl(210 40% 96%);
+    --surface-2: hsl(210 40% 98.4%);
     --surface-3: hsl(210 40% 94%);
     --border-color: hsl(214 32% 91%);
     --border-strong: hsl(214 32% 85%);
@@ -172,9 +176,12 @@
     --ring: 222 84% 60%;
 
     /* Единая палитра для тёмной темы */
+    --color-background: #070A10; /* основной фон */
+    --color-surface: #0A0F18; /* фон карточек и панелей */
+    --color-navbar: #0A0F18; /* фон навбара */
+    --color-card: #0B111C; /* немного светлее поверхности для 3D-объёмных элементов */
+    /* Legacy для обратной совместимости */
     --color-bg: #070A10;
-    --color-surface: #070A10;
-    --color-card: #0A0D14; /* немного светлее для панелей */
 
     /* ============================================
        WELLIFY DESIGN TOKENS - Dark Theme
@@ -186,7 +193,7 @@
     --color-brand-strong: #1d4ed8;
 
     /* Фоны и поверхности */
-    --color-surface-soft: #070A10;
+    --color-surface-soft: #0A0F18;
 
     /* Границы */
     --color-border-subtle: rgba(148, 163, 184, 0.24);
@@ -284,7 +291,7 @@
   }
   
   .dark body {
-    background-color: var(--color-bg, #070A10);
+    background-color: var(--color-background, #070A10);
   }
 }
 

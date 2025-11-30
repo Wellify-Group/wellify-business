@@ -15,8 +15,8 @@ export const colors = {
   dark: {
     background: {
       primary: '#070A10',
-      card: '#1A1A1A',
-      secondary: '#252525',
+      card: '#0A0F18',
+      secondary: '#0B111C',
     },
     border: {
       default: '#2A2A2A',
@@ -47,9 +47,9 @@ export const colors = {
   // Light Theme
   light: {
     background: {
-      primary: '#FFFFFF',
-      card: '#F7F7F8',
-      secondary: '#F0F0F0',
+      primary: '#F8FAFC',
+      card: '#FFFFFF',
+      secondary: '#F8FAFC',
     },
     border: {
       default: '#E6E6E6',

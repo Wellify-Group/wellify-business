@@ -59,8 +59,11 @@ export function ShiftClosingModal({ isOpen, onClose, onConfirm }: ShiftClosingMo
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
         <div 
-          className="bg-[#070A10] rounded-[18px] p-6 w-full max-w-[420px]"
-          style={{ boxShadow: '0 0 40px rgba(0, 0, 0, 0.65)' }}
+          className="rounded-[18px] p-6 w-full max-w-[420px]"
+          style={{ 
+            backgroundColor: 'var(--color-surface)',
+            boxShadow: '0 0 40px rgba(0, 0, 0, 0.65)' 
+          }}
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -82,7 +85,7 @@ export function ShiftClosingModal({ isOpen, onClose, onConfirm }: ShiftClosingMo
           <div className="space-y-4 mb-6">
             {/* Arrival Time */}
             {startTime && (
-              <div className="flex items-center gap-3 p-4 bg-[#0A0D14] rounded-[14px] border border-white/8">
+              <div className="flex items-center gap-3 p-4 bg-[var(--color-card)] rounded-[14px] border border-white/8">
                 <Clock className="h-5 w-5 text-emerald-400 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm text-white">
@@ -99,7 +102,7 @@ export function ShiftClosingModal({ isOpen, onClose, onConfirm }: ShiftClosingMo
             )}
 
             {/* Orders Count */}
-            <div className="flex items-center gap-3 p-4 bg-[#0A0D14] rounded-[14px] border border-white/8">
+            <div className="flex items-center gap-3 p-4 bg-[var(--color-card)] rounded-[14px] border border-white/8">
               <TrendingUp className="h-5 w-5 text-blue-400 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm text-white">
