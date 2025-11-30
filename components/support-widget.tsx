@@ -202,9 +202,22 @@ export function SupportWidget() {
           <motion.button
             key="launcher"
             initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            animate={{ 
+              scale: [1, 1.02, 1],
+              opacity: 1
+            }}
             exit={{ scale: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            transition={{ 
+              scale: {
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              },
+              opacity: {
+                duration: 0.3,
+                ease: "easeOut",
+              }
+            }}
             onClick={handleLauncherClick}
             style={{ 
               position: 'fixed',
@@ -214,17 +227,9 @@ export function SupportWidget() {
               top: 'auto',
               zIndex: 9999
             }}
-            className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-card border border-border shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.3)] transition-all relative"
+            className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-card border border-border shadow-[0_4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-all relative"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            animate={{
-              scale: [1, 1.02, 1],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
           >
             <Send className="h-5 w-5 text-foreground" />
             
