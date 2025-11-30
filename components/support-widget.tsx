@@ -48,18 +48,6 @@ export function SupportWidget() {
     setMounted(true);
   }, []);
 
-  // Блокировка скролла при открытии панели
-  useEffect(() => {
-    if (isSupportOpen && !isMinimized) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isSupportOpen, isMinimized]);
 
   // Проверка на появление агента в сообщениях
   useEffect(() => {
@@ -251,7 +239,7 @@ export function SupportWidget() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={handleClosePanel}
-              className="fixed inset-0 z-40 backdrop-blur-[14px]"
+              className="fixed inset-0 z-40"
               style={{
                 backgroundColor: "var(--color-overlay)",
               }}
