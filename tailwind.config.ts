@@ -40,7 +40,6 @@ const config: Config = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -87,8 +86,8 @@ const config: Config = {
           inverse: "var(--color-text-inverse)",
         },
         border: {
-          DEFAULT: "var(--color-border-subtle)",      // это даст класс border-border
-          subtle: "var(--color-border-subtle)",       // явно для border-border-subtle
+          DEFAULT: "hsl(var(--border))",             // обратная совместимость для border-border
+          subtle: "var(--color-border-subtle)",       // border-border-subtle
           strong: "var(--color-border-strong)",       // border-border-strong
         },
         success: "var(--color-success)",
