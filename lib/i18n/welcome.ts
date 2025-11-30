@@ -79,7 +79,7 @@ export const welcomeTranslations: Record<string, Record<WelcomeLanguage, string>
     en: 'Password',
   },
   rememberMe: {
-    uk: 'Запам'ятати мене на цьому пристрої',
+    uk: "Запам'ятати мене на цьому пристрої",
     ru: 'Запомнить меня на этом устройстве',
     en: 'Remember me on this device',
   },
@@ -101,7 +101,7 @@ export const welcomeTranslations: Record<string, Record<WelcomeLanguage, string>
     en: 'Company name',
   },
   fieldOwnerName: {
-    uk: 'Ваше ім'я',
+    uk: "Ваше ім'я",
     ru: 'Ваше имя',
     en: 'Your name',
   },
@@ -111,7 +111,7 @@ export const welcomeTranslations: Record<string, Record<WelcomeLanguage, string>
     en: 'Work Email',
   },
   fieldOwnerPhone: {
-    uk: 'Телефон (для зв'язку з менеджером)',
+    uk: "Телефон (для зв'язку з менеджером)",
     ru: 'Телефон (для связи с менеджером)',
     en: 'Phone (for manager contact)',
   },
@@ -123,7 +123,7 @@ export const welcomeTranslations: Record<string, Record<WelcomeLanguage, string>
   termsText: {
     uk: 'Продовжуючи, ви погоджуєтесь з умовами сервісу Wellify.',
     ru: 'Продолжая, вы соглашаетесь с условиями сервиса Wellify.',
-    en: 'By continuing, you agree to Wellify's terms of service.',
+    en: "By continuing, you agree to Wellify's terms of service.",
   },
 
   // Низ страницы
