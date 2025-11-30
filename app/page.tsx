@@ -281,7 +281,7 @@ export default function Home() {
                       : ""
                   )}
                 >
-                  <div className="flex flex-col gap-2 items-center justify-center w-full">
+                  <div className="flex flex-col gap-2 items-center justify-center w-full text-center">
                     <Icon className={cn(
                       "h-6 w-6 flex-shrink-0",
                       isActive 
@@ -289,7 +289,7 @@ export default function Home() {
                         : "text-primary"
                     )} />
                     <span className={cn(
-                      "text-sm font-medium break-words leading-tight text-center",
+                      "text-sm font-medium break-words leading-tight",
                       isActive 
                         ? "text-white dark:text-zinc-900" 
                         : "text-foreground"
@@ -298,7 +298,7 @@ export default function Home() {
                     </span>
                     {segment.description && (
                       <p className={cn(
-                        "text-xs leading-tight text-center",
+                        "text-xs leading-tight",
                         isActive 
                           ? "text-white/90 dark:text-zinc-900/90" 
                           : "text-muted-foreground"
