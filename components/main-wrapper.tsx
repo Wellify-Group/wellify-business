@@ -8,7 +8,10 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
   
   // Отступ нужен только для публичных страниц (где есть навбар)
   return (
-    <main className={`flex flex-col ${isDashboard ? '' : 'pt-24'}`}>
+    <main 
+      className={`flex flex-col ${isDashboard ? '' : 'pt-24'}`}
+      style={{ backgroundColor: 'var(--color-background)' }}
+    >
       {children}
     </main>
   );

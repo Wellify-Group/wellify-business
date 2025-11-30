@@ -212,65 +212,32 @@ export function SupportWidget() {
     <>
       {/* Launcher Button - Скрывается при открытом окне чата */}
       {!isDashboard && !isSupportOpen && (
-        <AnimatePresence mode="wait">
-          <motion.button
-            key="launcher"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{
-              scale: [0, 1, 1.02, 1],
-              opacity: 1,
-            }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{
-              opacity: {
-                duration: 0.7,
-                ease: "easeOut",
-              },
-              scale: {
-                duration: 2.7,
-                times: [0, 0.26, 0.5, 1],
-                repeat: Infinity,
-                repeatDelay: 0,
-                ease: ["easeOut", "easeInOut", "easeInOut", "easeInOut"],
-              },
-            }}
-            onClick={handleLauncherClick}
-            className="flex h-[48px] w-[48px] items-center justify-center rounded-full border transition-all relative"
-            style={{
-              position: "fixed",
-              bottom: "24px",
-              right: "24px",
-              left: "auto",
-              top: "auto",
-              zIndex: 9999,
-              background: "var(--color-brand)",
-              borderColor: "transparent",
-              boxShadow: "var(--shadow-floating)",
-            }}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Send className="h-5 w-5 text-white" />
+        <button
+          onClick={handleLauncherClick}
+          className="flex h-12 w-12 items-center justify-center rounded-full border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none relative p-0"
+          style={{
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
+            left: "auto",
+            top: "auto",
+            zIndex: 9999,
+            background: "var(--color-brand)",
+            borderColor: "transparent",
+            boxShadow: "var(--shadow-floating)",
+            transform: "none",
+          }}
+        >
+          <Send className="h-5 w-5 text-white m-0 p-0 pointer-events-none" style={{ transform: "none" }} />
 
-            {/* Индикатор непрочитанных сообщений */}
-            {hasUnread && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.8, 1, 0.8],
-                }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute -top-1 -right-1 h-[10px] w-[10px] rounded-full bg-red-500 border-2 border-card shadow-lg"
-              />
-            )}
-          </motion.button>
-        </AnimatePresence>
+          {/* Индикатор непрочитанных сообщений */}
+          {hasUnread && (
+            <div
+              className="absolute -top-1 -right-1 h-[10px] w-[10px] rounded-full bg-red-500 border-2 border-card shadow-lg"
+              style={{ transform: "none" }}
+            />
+          )}
+        </button>
       )}
 
       {/* Premium Support Window */}

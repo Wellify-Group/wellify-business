@@ -252,9 +252,9 @@ export default function Home() {
     : "/register?role=director";
 
   return (
-    <main className="relative min-h-screen bg-background">
+    <main className="relative min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
       {/* 1. HERO - Redesigned */}
-      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8 bg-background">
+      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 py-8 md:py-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -295,7 +295,7 @@ export default function Home() {
       </section>
 
       {/* 2. BUSINESS TYPES - Full Grid of Categories */}
-      <section className="relative bg-background px-4 pt-8 pb-10 sm:px-6 lg:px-8">
+      <section className="relative px-4 pt-8 pb-10 sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-8 text-center text-3xl font-bold text-foreground">
             {t("sec_whom")}
@@ -342,7 +342,7 @@ export default function Home() {
       </section>
 
       {/* 3. CORE FEATURES - Categorized */}
-      <section className="relative bg-background px-4 py-[60px] sm:px-6 lg:px-8">
+      <section className="relative px-4 py-[60px] sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
             {t("sec_caps")}
@@ -479,7 +479,7 @@ export default function Home() {
       </section>
 
       {/* 5. QUICK START */}
-      <section className="relative bg-background px-4 py-[60px] sm:px-6 lg:px-8">
+      <section className="relative px-4 py-[60px] sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
         <div className="mx-auto max-w-2xl">
           <h2 className="mb-4 text-center text-3xl font-bold text-foreground">
             {t("landing_quick_start_title")}
