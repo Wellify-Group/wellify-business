@@ -76,13 +76,13 @@ export function SupportWidget() {
           onClick={toggleSupport}
           style={{ 
             position: 'fixed',
-            bottom: '20px',
-            right: '20px',
+            bottom: '24px',
+            right: '24px',
             left: 'auto',
             top: 'auto',
             zIndex: 9999
           }}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 relative"
+          className="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 relative"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           animate={!isSupportOpen ? {
@@ -133,22 +133,13 @@ export function SupportWidget() {
       <AnimatePresence>
         {isSupportOpen && (
           <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={toggleSupport}
-              className="fixed inset-0 z-[9998] bg-black/10"
-            />
-
             {/* Window Panel - Fixed to bottom-right corner */}
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed z-[9999] bottom-[88px] right-[20px] w-[350px] max-h-[600px] bg-white dark:bg-zinc-900 border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              className="fixed z-[9999] bottom-6 right-6 w-[320px] max-h-[600px] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               {/* Header - Gradient Brand Color */}
               <motion.div

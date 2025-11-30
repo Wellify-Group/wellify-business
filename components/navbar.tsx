@@ -20,9 +20,9 @@ export function Navbar() {
   if (isDashboard) return null;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 pt-4 px-4 md:px-6">
+    <header className="fixed top-0 left-0 right-0 z-50 pt-4 px-4 md:px-6 bg-[#F7F7F7] dark:bg-[#0F0F0F]">
       {/* Плавающая "пилюля" */}
-      <div className="mx-auto w-full max-w-[80%] bg-[var(--surface-1)] rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+      <div className="mx-auto w-full max-w-[80%] bg-[#F7F7F7] dark:bg-[#0F0F0F] rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
         <div className="flex h-[64px] items-center justify-between px-6 md:px-8">
           {/* Логотип слева */}
           <Link href="/" className="flex items-center">

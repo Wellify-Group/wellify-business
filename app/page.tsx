@@ -77,12 +77,23 @@ export default function Home() {
 
   // Объединяем данные из JSON с иконками и переводами
   const SEGMENTS = useMemo(() => {
-    return businessTypesData.map((business) => ({
-      id: business.id,
-      label: t(`biz_${business.id}`) || business.name,
-      icon: iconMap[business.id] || Store,
-      data: business,
-    }));
+    return businessTypesData.map((business) => {
+      // Используем fileId для переводов, если он есть, иначе id
+      const translationKey = business.fileId || String(business.id);
+      // Нормализуем ключ: barber -> barbershop, beauty_salon -> beauty, car_wash -> auto, fitness_gym -> sports
+      const normalizedKey = translationKey === 'barber' ? 'barbershop' 
+        : translationKey === 'beauty_salon' ? 'beauty'
+        : translationKey === 'car_wash' ? 'auto'
+        : translationKey === 'fitness_gym' ? 'sports'
+        : translationKey;
+      
+      return {
+        id: business.id,
+        label: t(`biz_${normalizedKey}`) || business.name,
+        icon: iconMap[normalizedKey] || iconMap[business.id] || Store,
+        data: business,
+      };
+    });
   }, [t]);
 
   const handleCardClick = (segment: typeof SEGMENTS[0]) => {
@@ -187,17 +198,17 @@ export default function Home() {
     : "/register?role=director";
 
   return (
-    <main className="relative min-h-screen bg-[#FAFAFA] dark:bg-background">
+    <main className="relative min-h-screen bg-[#F7F7F7] dark:bg-[#0F0F0F]">
       {/* 1. HERO - Redesigned */}
-      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8 bg-[#FAFAFA] dark:bg-background">
+      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8 bg-[#F7F7F7] dark:bg-[#0F0F0F]">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 py-8 md:py-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05, duration: 0.5 }}
-            className="text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl md:text-6xl dark:text-zinc-100 leading-tight"
+            className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-tight"
           >
-            {t("landing_hero_main_title")}
+            Вся выручка, смены и сотрудники в одном кабинете
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -231,12 +242,12 @@ export default function Home() {
       </section>
 
       {/* 2. BUSINESS TYPES - Selectable Cards */}
-      <section className="relative bg-[#FAFAFA] dark:bg-background px-4 pt-8 pb-10 sm:px-6 lg:px-8">
+      <section className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 pt-8 pb-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-8 text-center text-3xl font-bold text-foreground">
             {t("sec_whom")}
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
               return (
@@ -250,10 +261,10 @@ export default function Home() {
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.05, duration: 0.3 }}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-[20px] px-4 py-6 text-center text-sm transition-all cursor-pointer shadow-[0_10px_35px_rgba(0,0,0,0.07)] min-h-[120px]",
+                    "flex flex-col items-center justify-center rounded-2xl p-6 text-center text-sm transition-all cursor-pointer shadow-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     selectedSegment === String(segment.id)
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-[0_10px_35px_rgba(0,0,0,0.15)]"
-                      : "bg-white hover:shadow-[0_10px_35px_rgba(0,0,0,0.12)] dark:bg-zinc-900 dark:hover:shadow-[0_10px_35px_rgba(0,0,0,0.25)]"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-lg"
+                      : "bg-white dark:bg-white/5 hover:shadow-md"
                   )}
                 >
                   <Icon className="mb-3 h-6 w-6 flex-shrink-0" />
@@ -266,7 +277,7 @@ export default function Home() {
       </section>
 
       {/* 3. CORE FEATURES - Categorized */}
-      <section className="relative bg-[#FAFAFA] dark:bg-background px-4 py-[60px] sm:px-6 lg:px-8">
+      <section className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 py-[60px] sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
             {t("sec_caps")}
@@ -321,7 +332,7 @@ export default function Home() {
       {/* 4. HOW IT WORKS - Updated */}
       <section
         id="how-it-works"
-        className="relative bg-[#FAFAFA] dark:bg-background px-4 py-[60px] sm:px-6 lg:px-8"
+        className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 py-[60px] sm:px-6 lg:px-8"
       >
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
@@ -395,7 +406,7 @@ export default function Home() {
       </section>
 
       {/* 5. QUICK START */}
-      <section className="relative bg-[#FAFAFA] dark:bg-background px-4 py-[60px] sm:px-6 lg:px-8">
+      <section className="relative bg-[#F7F7F7] dark:bg-[#0F0F0F] px-4 py-[60px] sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
           <h2 className="mb-4 text-center text-3xl font-bold text-foreground">
             {t("landing_quick_start_title")}
