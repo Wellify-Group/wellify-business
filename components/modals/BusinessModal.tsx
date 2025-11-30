@@ -41,6 +41,7 @@ export function BusinessModal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             onClick={closeModal}
             className="fixed inset-0 z-50 bg-black/20 dark:bg-black/60 backdrop-blur-sm"
           />
@@ -51,8 +52,9 @@ export function BusinessModal() {
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="relative w-full max-w-2xl rounded-[20px] bg-white dark:bg-zinc-900 p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)] pointer-events-auto"
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-2xl rounded-2xl bg-white/90 dark:bg-zinc-900/95 backdrop-blur-sm border border-white/40 dark:border-white/10 p-8 shadow-2xl pointer-events-auto"
             >
               {/* Close Button */}
               <button
@@ -74,12 +76,14 @@ export function BusinessModal() {
                     </div>
                   )}
                   <div className="flex-1">
-                    <h2 className="text-3xl font-bold text-foreground mb-2">
+                    <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
                       {modalData.title}
                     </h2>
-                    <p className="text-muted-foreground text-base">
-                      {modalData.description}
-                    </p>
+                    {modalData.description && (
+                      <p className="text-zinc-600 dark:text-zinc-400 text-base leading-relaxed">
+                        {modalData.description}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -143,7 +147,7 @@ export function BusinessModal() {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full rounded-[20px] bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
+                      className="w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 shadow-lg hover:shadow-xl"
                     >
                       {t("landing_btn_create_director")}
                     </motion.button>

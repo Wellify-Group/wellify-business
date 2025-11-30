@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,8 @@ import {
 
 export default function Home() {
   const { t } = useLanguage();
-  const { openModal, isOpen, modalData } = useBusinessModalStore();
+  const { openModal, isOpen, modalData, closeModal } = useBusinessModalStore();
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
   const scrollToHowItWorks = () => {
     document
@@ -104,6 +105,7 @@ export default function Home() {
   const handleCardClick = (segment: typeof SEGMENTS[0]) => {
     if (segment.data) {
       const Icon = segment.icon;
+      setActiveCategoryId(String(segment.data.id));
       openModal({
         id: String(segment.data.id),
         title: segment.label,
@@ -119,8 +121,12 @@ export default function Home() {
     }
   };
 
-  // Определяем активную карточку на основе открытой модалки
-  const activeCategoryId = isOpen && modalData ? modalData.id : null;
+  // Сбрасываем активную карточку при закрытии модалки
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveCategoryId(null);
+    }
+  }, [isOpen]);
 
   const FEATURES = [
     {
@@ -265,13 +271,12 @@ export default function Home() {
                   onClick={() => handleCardClick(segment)}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-2xl p-4 sm:p-5 text-center transition-all cursor-pointer shadow-lg bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 min-h-[120px] sm:min-h-[140px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 hover:shadow-xl hover:border-white/60 dark:hover:border-white/20",
+                    "flex flex-col items-center justify-center rounded-2xl p-4 sm:p-5 text-center cursor-pointer bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 min-h-[120px] sm:min-h-[140px] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 ease-out shadow-lg hover:shadow-xl hover:scale-[1.02] hover:bg-white dark:hover:bg-white/10 hover:border-white/60 dark:hover:border-white/20",
                     isActive
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-2xl border-zinc-800 dark:border-zinc-200 scale-[1.02]"
                       : ""
                   )}
                 >
