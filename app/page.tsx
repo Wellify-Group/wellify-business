@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useLanguage } from "@/components/language-provider";
 import { useBusinessModalStore } from "@/lib/useBusinessModalStore";
 import businessTypesData from "@/data/businessTypes.json";
+import { BUSINESS_MODAL_CONFIG } from "@/data/businessModalConfig";
 import {
   Smartphone,
   ArrowRight,
@@ -107,17 +108,38 @@ export default function Home() {
   const handleCardClick = (segment: typeof SEGMENTS[0]) => {
     if (segment.data) {
       const Icon = segment.icon;
+      const normalizedKey = segment.normalizedKey;
+      const config = BUSINESS_MODAL_CONFIG[normalizedKey];
+      
       setActiveCategoryId(String(segment.data.id));
-      openModal({
-        id: String(segment.data.id),
-        title: segment.label,
-        description: segment.description,
-        features: [],
-        functions: [],
-        icon: (
-          <Icon className="h-8 w-8 text-neutral-200 dark:text-neutral-100" />
-        ),
-      });
+      
+      if (config) {
+        openModal({
+          id: config.id,
+          title: config.title,
+          format: config.format,
+          description: config.description,
+          benefits: config.benefits,
+          howToStart: config.howToStart,
+          icon: (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Icon className="h-8 w-8 text-primary" />
+            </div>
+          ),
+        });
+      } else {
+        // Fallback для старых данных
+        openModal({
+          id: String(segment.data.id),
+          title: segment.label,
+          description: segment.description,
+          features: [],
+          functions: [],
+          icon: (
+            <Icon className="h-8 w-8 text-neutral-200 dark:text-neutral-100" />
+          ),
+        });
+      }
     }
   };
 
