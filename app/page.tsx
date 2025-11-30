@@ -294,16 +294,6 @@ export default function Home() {
                   )}>
                     {segment.label}
                   </span>
-                  {segment.description && (
-                    <p className={cn(
-                      "text-xs leading-tight text-center",
-                      isActive 
-                        ? "text-white/90 dark:text-zinc-900/90" 
-                        : "text-neutral-600 dark:text-neutral-400"
-                    )}>
-                      {segment.description}
-                    </p>
-                  )}
                 </motion.button>
               );
             })}
