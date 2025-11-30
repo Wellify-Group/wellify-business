@@ -14,7 +14,8 @@ export function AppFooter() {
   const { lang } = useInterfaceLanguageStore();
   const isDashboard = pathname?.startsWith('/dashboard');
   const hideFooterOn = ['/register', '/login'];
-  const isWelcomePage = pathname === '/welcome';
+  // Определяем welcome-страницу более надёжно
+  const isWelcomePage = pathname === '/welcome' || pathname?.startsWith('/welcome');
   
   // Скрываем футер в дашборде и на страницах регистрации/входа
   // На welcome-странице показываем футер с переводами
@@ -23,9 +24,8 @@ export function AppFooter() {
     if (!isWelcomePage) return null;
   }
 
-  // Используем переводы из welcomeTranslations на welcome-странице
-  const useWelcomeTranslations = isWelcomePage;
-  const currentLang = lang;
+  // На welcome-странице всегда используем переводы из welcomeTranslations
+  // На других страницах используем общие переводы или fallback
   
   return (
     <footer className={isWelcomePage 
@@ -39,13 +39,13 @@ export function AppFooter() {
               ? "mb-3 text-sm font-semibold text-white"
               : "mb-3 text-sm font-semibold text-foreground"
             }>
-              {useWelcomeTranslations ? t.footerBrandTitle[currentLang] : 'WELLIFY business'}
+              {isWelcomePage ? t.footerBrandTitle[lang] : 'WELLIFY business'}
             </h3>
             <p className={isWelcomePage
               ? "text-xs text-white/60"
               : "text-xs text-muted-foreground"
             }>
-              {useWelcomeTranslations ? t.footerBrandDescription[currentLang] : 'Вся выручка, смены и сотрудники в одном кабинете.'}
+              {isWelcomePage ? t.footerBrandDescription[lang] : 'Вся выручка, смены и сотрудники в одном кабинете.'}
             </p>
           </div>
           
@@ -54,7 +54,7 @@ export function AppFooter() {
               ? "mb-3 text-sm font-semibold text-white"
               : "mb-3 text-sm font-semibold text-foreground"
             }>
-              {useWelcomeTranslations ? t.footerLinksTitle[currentLang] : 'Ссылки'}
+              {isWelcomePage ? t.footerLinksTitle[lang] : 'Ссылки'}
             </h3>
             <nav className="flex flex-col gap-2">
               <Link
@@ -64,7 +64,7 @@ export function AppFooter() {
                   : "text-xs text-muted-foreground hover:text-foreground transition-colors"
                 }
               >
-                {useWelcomeTranslations ? t.footerLinkPrivacy[currentLang] : 'Политика конфиденциальности'}
+                {isWelcomePage ? t.footerLinkPrivacy[lang] : 'Политика конфиденциальности'}
               </Link>
               <Link
                 href="/terms"
@@ -73,7 +73,7 @@ export function AppFooter() {
                   : "text-xs text-muted-foreground hover:text-foreground transition-colors"
                 }
               >
-                {useWelcomeTranslations ? t.footerLinkTerms[currentLang] : 'Пользовательское соглашение'}
+                {isWelcomePage ? t.footerLinkTerms[lang] : 'Пользовательское соглашение'}
               </Link>
               <Link
                 href="/support"
@@ -82,7 +82,7 @@ export function AppFooter() {
                   : "text-xs text-muted-foreground hover:text-foreground transition-colors"
                 }
               >
-                {useWelcomeTranslations ? t.footerLinkSupport[currentLang] : 'Поддержка'}
+                {isWelcomePage ? t.footerLinkSupport[lang] : 'Поддержка'}
               </Link>
             </nav>
           </div>
@@ -92,7 +92,7 @@ export function AppFooter() {
               ? "mb-3 text-sm font-semibold text-white"
               : "mb-3 text-sm font-semibold text-foreground"
             }>
-              {useWelcomeTranslations ? t.footerContactsTitle[currentLang] : 'Контакты'}
+              {isWelcomePage ? t.footerContactsTitle[lang] : 'Контакты'}
             </h3>
             <div className={isWelcomePage
               ? "space-y-2 text-xs text-white/70"
@@ -108,7 +108,7 @@ export function AppFooter() {
                 ? "block hover:text-white transition-colors"
                 : "block hover:text-foreground transition-colors"
               }>
-                {useWelcomeTranslations ? t.footerContactTelegram[currentLang] : 'Telegram бот'}
+                {isWelcomePage ? t.footerContactTelegram[lang] : 'Telegram бот'}
               </a>
             </div>
           </div>
@@ -122,8 +122,8 @@ export function AppFooter() {
             ? "text-center text-xs text-white/40"
             : "text-center text-xs text-muted-foreground"
           }>
-            {useWelcomeTranslations 
-              ? t.footerBottomText[currentLang].replace('2025', String(new Date().getFullYear()))
+            {isWelcomePage 
+              ? t.footerBottomText[lang].replace('2025', String(new Date().getFullYear()))
               : `© ${new Date().getFullYear()} WELLIFY business. Все права защищены.`}
           </p>
         </div>

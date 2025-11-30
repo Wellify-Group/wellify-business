@@ -9,7 +9,6 @@ import { useInterfaceLanguageStore } from '@/lib/store/interfaceLanguageStore';
 import useStore from '@/lib/store';
 import { PrimaryButton } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
-import { AppFooter } from '@/components/footer';
 
 const t = welcomeTranslations;
 
@@ -442,8 +441,6 @@ export default function WelcomePage() {
           </motion.div>
         </section>
       </main>
-
-      <AppFooter />
     </div>
   );
 }
