@@ -43,7 +43,7 @@ export function Navbar() {
         className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-[18px] transition-all"
         style={{
           backgroundColor: isDark
-            ? "rgba(7, 16, 31, 0.9)"
+            ? "#070A10"
             : "rgba(255, 255, 255, 0.95)",
           borderColor: isDark
             ? "rgba(148, 163, 184, 0.18)"

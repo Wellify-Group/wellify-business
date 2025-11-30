@@ -142,10 +142,10 @@
      ============================================ */
   .dark {
     /* Основные цвета в формате HSL (H S L без hsl()) */
-    --background: 222 47% 4%;          /* общий фон страницы: глубокий графит */
+    --background: 220 39% 4.5%;        /* общий фон страницы: #070A10 */
     --foreground: 213 31% 91%;         /* основной текст */
 
-    --card: 222 47% 7%;                /* карточки / модалки / блоки */
+    --card: 220 39% 5.5%;              /* карточки / модалки / блоки: немного светлее #070A10 */
     --card-foreground: 210 40% 98%;
 
     --popover: 222 47% 9%;
@@ -172,8 +172,9 @@
     --ring: 222 84% 60%;
 
     /* Единая палитра для тёмной темы */
-    --color-bg: #020617;
-    --color-surface: #07101f;
+    --color-bg: #070A10;
+    --color-surface: #070A10;
+    --color-card: #0A0D14; /* немного светлее для панелей */
 
     /* ============================================
        WELLIFY DESIGN TOKENS - Dark Theme
@@ -185,7 +186,7 @@
     --color-brand-strong: #1d4ed8;
 
     /* Фоны и поверхности */
-    --color-surface-soft: #020617;
+    --color-surface-soft: #070A10;
 
     /* Границы */
     --color-border-subtle: rgba(148, 163, 184, 0.24);
@@ -195,7 +196,7 @@
     --color-text-main: #e5e7eb;
     --color-text-muted: #9ca3af;
     --color-text-soft: #6b7280;
-    --color-text-inverse: #020617;
+    --color-text-inverse: #070A10;
 
     /* Семантические цвета */
     --color-success: #22c55e;
@@ -250,11 +251,11 @@
     --space-8: 2rem;
 
     /* Legacy variables (для обратной совместимости) */
-    --bg-primary: hsl(222 47% 4%);
-    --bg-secondary: hsl(222 47% 6%);
-    --bg-tertiary: hsl(222 47% 8%);
-    --surface-1: hsl(222 47% 7%);
-    --surface-2: hsl(222 47% 9%);
+    --bg-primary: hsl(220 39% 4.5%);
+    --bg-secondary: hsl(220 39% 5.5%);
+    --bg-tertiary: hsl(220 39% 6.5%);
+    --surface-1: hsl(220 39% 5.5%);
+    --surface-2: hsl(220 39% 6.5%);
     --surface-3: hsl(217 33% 15%);
     --border-color: hsl(217 33% 17%);
     --border-strong: hsl(217 33% 25%);
@@ -266,7 +267,7 @@
     --success: hsl(142 71% 55%);
     --error: hsl(0 62% 55%);
     --warning: hsl(38 92% 60%);
-    --sidebar-bg: hsl(222 47% 7%);
+    --sidebar-bg: hsl(220 39% 5.5%);
   }
 }
 
@@ -283,7 +284,7 @@
   }
   
   .dark body {
-    background-color: var(--color-bg, #020617);
+    background-color: var(--color-bg, #070A10);
   }
 }
 
