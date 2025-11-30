@@ -103,11 +103,12 @@ export function Navbar() {
                   transitionTimingFunction: "var(--ease-soft)",
                 }}
                 onHoverStart={(e) => {
-                  e.currentTarget.style.background =
-                    "var(--color-brand-strong)";
+                  const target = e.currentTarget as HTMLElement;
+                  target.style.background = "var(--color-brand-strong)";
                 }}
                 onHoverEnd={(e) => {
-                  e.currentTarget.style.background = "var(--color-brand)";
+                  const target = e.currentTarget as HTMLElement;
+                  target.style.background = "var(--color-brand)";
                 }}
               >
                 {nav.createAccount}
