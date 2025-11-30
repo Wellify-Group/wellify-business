@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, ChevronDown, ChevronUp, PaperPlane } from "lucide-react";
+import { MessageCircle, X, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
@@ -83,7 +83,7 @@ export function SupportWidget() {
                 animate={{ rotate: 0, opacity: 1 }}
                 exit={{ rotate: -90, opacity: 0 }}
               >
-                <PaperPlane className="h-6 w-6" />
+                <Send className="h-6 w-6" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -114,7 +114,7 @@ export function SupportWidget() {
               {/* Icon and Title */}
               <div className="flex items-start gap-3 pr-8">
                 <div className="flex-shrink-0 p-2 rounded-xl bg-primary/10 dark:bg-primary/20">
-                  <PaperPlane className="h-5 w-5 text-primary" />
+                  <Send className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
