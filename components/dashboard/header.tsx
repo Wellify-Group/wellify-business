@@ -214,7 +214,7 @@ export function DashboardHeader() {
     <header 
       id="dashboard-header" 
       data-tour="header" 
-      className="bg-[var(--surface-1)] border-b border-[var(--border-color)]"
+      className="bg-[var(--surface-1)] border-b border-[var(--border-color)] h-14 flex-shrink-0"
     >
       <div 
         className="flex items-center justify-between h-full"

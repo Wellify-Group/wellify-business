@@ -1,99 +1,91 @@
+// app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { findUserByCredentials, findUserByEmail } from '@/lib/db';
-import { Role } from '@/lib/store';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-/**
- * POST /api/auth/login
- * Login user with credentials
- * 
- * Body: { role, identifier, password }
- * - For director/manager: identifier is email, password is password
- * - For employee: identifier can be email or company code, password is PIN
- */
+// Админ-клиент Supabase для серверных операций
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!, // важно: service role, только на сервере
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { role, identifier, password, businessId } = body;
 
-    // Debug: Log the login attempt
-    console.log('[Login API] Login Attempt:', { 
-      role, 
-      identifier: identifier ? `"${identifier}"` : 'missing',
-      password: password ? `"${password}"` : 'missing',
-      passwordLength: password ? password.length : 0,
-      businessId 
-    });
+    // Для отладки - можно оставить
+    console.log('LOGIN BODY:', body);
 
-    // Validation
-    if (!role || !identifier || !password) {
-      console.log('[Login API] Validation failed:', { 
-        hasRole: !!role, 
-        hasIdentifier: !!identifier, 
-        hasPassword: !!password 
-      });
+    // Фронт сейчас шлёт: { role, identifier, password }
+    const { identifier, password } = body as {
+      identifier?: string;
+      password?: string;
+      role?: string;
+    };
+
+    const email = identifier?.toLowerCase().trim();
+
+    // Валидация входных данных
+    if (!email || !password) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Missing email or password' },
         { status: 400 }
       );
     }
 
-    let user = null;
+    // === ЛОГИН В SUPABASE ===
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    // Universal login using findUserByCredentials with Deep Content Scan
-    // For director/manager: identifier is email/phone, password is password
-    // For employee: identifier is businessId (company code), password is PIN
-    if (role === 'director' || role === 'manager') {
-      // For director/manager: identifier can be email or phone
-      const normalizedIdentifier = identifier.toLowerCase().trim();
-      console.log('[Login API] Searching for director/manager:', { 
-        role, 
-        originalIdentifier: identifier,
-        normalizedIdentifier,
-        passwordType: typeof password,
-        passwordValue: password
-      });
-      user = await findUserByCredentials(role, normalizedIdentifier, String(password));
-    } 
-    else if (role === 'employee') {
-      // For employee: identifier is businessId (company code), password is PIN
-      // Use businessId as identifier if provided, otherwise use identifier from body
-      const companyCode = businessId || identifier;
-      console.log('[Login API] Searching for employee:', { 
-        role, 
-        companyCode,
-        passwordType: typeof password,
-        passwordValue: password
-      });
-      user = await findUserByCredentials(role, companyCode, String(password));
-    }
-
-    if (!user) {
+    if (error || !data.user) {
+      console.error('supabase signIn error:', error);
       return NextResponse.json(
-        { success: false, error: 'error_invalid_credentials' },
+        { success: false, error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    // Remove password from response (keep PIN for employees as it's needed)
-    const { password: userPassword, ...userWithoutPassword } = user;
-    const safeUser = {
-      ...userWithoutPassword,
-      // Don't expose password in response, but PIN is okay for employees
+    // === ПОДТЯГИВАЕМ ПРОФИЛЬ ИЗ ТАБЛИЦЫ profiles ===
+    // Важно: русские имена колонок нужно брать в двойные кавычки
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('email, "ФИО", "имя", "роль"')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Load profile error:', profileError);
+    }
+
+    const userPayload = {
+      id: data.user.id,
+      email: data.user.email,
+      fullName: profile?.['ФИО'] ?? null,
+      shortName: profile?.['имя'] ?? null,
+      role: profile?.['роль'] ?? 'директор',
     };
 
-    return NextResponse.json({
-      success: true,
-      user: safeUser,
-    });
-
-  } catch (error) {
-    console.error('Login error:', error);
+    return NextResponse.json(
+      {
+        success: true,
+        user: userPayload,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error('Login handler error:', err);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
-
