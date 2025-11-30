@@ -38,6 +38,7 @@ import {
   Dumbbell,
   Building,
   Image as ImageIcon,
+  BarChart3,
 } from "lucide-react";
 
 export default function Home() {
@@ -113,9 +114,7 @@ export default function Home() {
         features: [],
         functions: [],
         icon: (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Icon className="h-8 w-8 text-primary" />
-          </div>
+          <Icon className="h-8 w-8 text-neutral-200 dark:text-neutral-100" />
         ),
       });
     }
@@ -181,6 +180,11 @@ export default function Home() {
           title: t("landing_feature_export_title"),
           description: t("landing_feature_export_desc"),
           icon: Download,
+        },
+        {
+          title: t("landing_feature_analytics_title"),
+          description: t("landing_feature_analytics_desc"),
+          icon: BarChart3,
         },
       ],
     },
@@ -319,7 +323,14 @@ export default function Home() {
                 <h3 className="mb-6 text-xl font-semibold text-foreground">
                   {category.category}
                 </h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className={cn(
+                  "grid gap-4",
+                  categoryIndex === 0 
+                    ? "md:grid-cols-2 lg:grid-cols-3"
+                    : categoryIndex === 1
+                    ? "md:grid-cols-2 lg:grid-cols-3"
+                    : "sm:grid-cols-2 lg:grid-cols-3"
+                )}>
                   {category.items.map((item, itemIndex) => {
                     const Icon = item.icon;
                     return (

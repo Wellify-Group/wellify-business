@@ -136,13 +136,26 @@ export function SupportWidget() {
       {/* Premium Support Window */}
       <AnimatePresence>
         {isSupportOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed z-[9999] bottom-6 right-6 w-[360px] max-h-[520px] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-white/40 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
-          >
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={toggleSupport}
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+            />
+            
+            {/* Chat Window */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed z-50 bottom-6 right-6 w-[360px] max-h-[520px] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-white/40 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            >
             {/* Header with Icon and Title */}
             <div className="relative p-5 pb-4 flex-shrink-0">
               {/* Close Button */}
@@ -277,7 +290,8 @@ export function SupportWidget() {
                 <span>{t("support.btn_telegram")}</span>
               </motion.button>
             </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

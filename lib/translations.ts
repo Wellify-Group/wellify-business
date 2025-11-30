@@ -141,6 +141,8 @@ export const TRANSLATIONS = {
     landing_feature_statement_desc: "Profit and Loss in clear format",
     landing_feature_export_title: "Export to Excel",
     landing_feature_export_desc: "Download data for accounting",
+    landing_feature_analytics_title: "Analytics & Dashboard",
+    landing_feature_analytics_desc: "Data visualization and key metrics in real-time",
 
     landing_feature_rating_title: "Employee Rating",
     landing_feature_rating_desc: "Motivation based on performance",
@@ -316,6 +318,8 @@ export const TRANSLATIONS = {
     landing_feature_statement_desc: "Прибутки та збитки у зрозумілому форматі",
     landing_feature_export_title: "Експорт в Excel",
     landing_feature_export_desc: "Вивантаження даних для бухгалтерії",
+    landing_feature_analytics_title: "Аналітика та дашборд",
+    landing_feature_analytics_desc: "Візуалізація даних та ключові метрики в реальному часі",
 
     landing_feature_rating_title: "Рейтинг співробітників",
     landing_feature_rating_desc: "Мотивація на основі показників",
@@ -491,6 +495,8 @@ export const TRANSLATIONS = {
     landing_feature_statement_desc: "Прибыли и убытки в понятном формате",
     landing_feature_export_title: "Экспорт в Excel",
     landing_feature_export_desc: "Выгрузка данных для бухгалтерии",
+    landing_feature_analytics_title: "Аналитика и дашборд",
+    landing_feature_analytics_desc: "Визуализация данных и ключевые метрики в реальном времени",
 
     landing_feature_rating_title: "Рейтинг сотрудников",
     landing_feature_rating_desc: "Мотивация на основе показателей",

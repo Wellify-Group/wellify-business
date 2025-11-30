@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check } from "lucide-react";
+import { X } from "lucide-react";
 import { useBusinessModalStore } from "@/lib/useBusinessModalStore";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
@@ -54,12 +54,12 @@ export function BusinessModal() {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-2xl rounded-2xl bg-white/90 dark:bg-zinc-900/95 backdrop-blur-sm border border-white/40 dark:border-white/10 p-8 shadow-2xl pointer-events-auto"
+              className="relative w-full max-w-xl rounded-3xl bg-white border border-black/5 shadow-[0_32px_120px_rgba(15,23,42,0.18)] text-neutral-900 dark:bg-neutral-950/90 dark:backdrop-blur-xl dark:border-white/10 dark:shadow-[0_32px_120px_rgba(0,0,0,0.85)] dark:text-neutral-50 px-10 py-8 pointer-events-auto"
             >
               {/* Close Button */}
               <button
                 onClick={closeModal}
-                className="absolute top-4 right-4 p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                className="absolute right-5 top-5 text-neutral-400 hover:text-neutral-200 dark:hover:text-neutral-200 transition-colors"
                 aria-label="Закрыть модальное окно"
                 tabIndex={0}
               >
@@ -67,20 +67,20 @@ export function BusinessModal() {
               </button>
 
               {/* Content */}
-              <div className="space-y-6">
+              <div className="flex flex-col gap-6">
                 {/* Icon and Title */}
                 <div className="flex items-start gap-4">
                   {modalData.icon && (
-                    <div className="flex-shrink-0 mt-1">
+                    <div className="flex-shrink-0">
                       {modalData.icon}
                     </div>
                   )}
-                  <div className="flex-1">
-                    <h2 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+                  <div className="flex-1 space-y-1">
+                    <h2 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-50">
                       {modalData.title}
                     </h2>
                     {modalData.description && (
-                      <p className="text-zinc-600 dark:text-zinc-400 text-base leading-relaxed">
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400">
                         {modalData.description}
                       </p>
                     )}
@@ -90,7 +90,7 @@ export function BusinessModal() {
                 {/* Problems */}
                 {modalData.features && modalData.features.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground mb-3">
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-3">
                       Проблемы
                     </h3>
                     <ul className="space-y-2">
@@ -102,8 +102,7 @@ export function BusinessModal() {
                           transition={{ delay: index * 0.05 }}
                           className="flex items-start gap-3"
                         >
-                          <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-neutral-600 dark:text-neutral-400">
                             {feature}
                           </span>
                         </motion.li>
@@ -115,7 +114,7 @@ export function BusinessModal() {
                 {/* How WELLIFY helps */}
                 {modalData.functions && modalData.functions.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground mb-3">
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 mb-3">
                       Как помогает WELLIFY
                     </h3>
                     <ul className="space-y-2">
@@ -127,8 +126,7 @@ export function BusinessModal() {
                           transition={{ delay: (modalData.features?.length || 0) * 0.05 + index * 0.05 }}
                           className="flex items-start gap-3"
                         >
-                          <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-neutral-600 dark:text-neutral-400">
                             {func}
                           </span>
                         </motion.li>
@@ -138,16 +136,16 @@ export function BusinessModal() {
                 )}
 
                 {/* CTA Button */}
-                <div className="pt-4">
+                <div className="mt-2">
                   <Link
                     href="/register"
                     onClick={closeModal}
                     className="block"
                   >
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
+                      whileHover={{ scale: 1.02, y: -0.5 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full rounded-2xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center justify-center w-full rounded-full bg-white text-neutral-950 dark:bg-neutral-50 dark:text-neutral-950 px-6 py-3 text-sm font-semibold shadow-[0_18px_60px_rgba(0,0,0,0.5)] hover:shadow-[0_24px_80px_rgba(0,0,0,0.7)] hover:-translate-y-0.5 transition-all duration-200"
                     >
                       {t("landing_btn_create_director")}
                     </motion.button>
@@ -161,4 +159,3 @@ export function BusinessModal() {
     </AnimatePresence>
   );
 }
-
