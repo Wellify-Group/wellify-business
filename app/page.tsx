@@ -39,6 +39,7 @@ import {
   Building,
   Image as ImageIcon,
   BarChart3,
+  AlarmClock,
 } from "lucide-react";
 
 export default function Home() {
@@ -150,6 +151,16 @@ export default function Home() {
           title: t("landing_feature_geo_title"),
           description: t("landing_feature_geo_desc"),
           icon: MapPin,
+        },
+        {
+          title: t("landing_feature_late_control_title"),
+          description: t("landing_feature_late_control_desc"),
+          icon: AlarmClock,
+        },
+        {
+          title: t("landing_feature_incidents_title"),
+          description: t("landing_feature_incidents_desc"),
+          icon: AlertTriangle,
         },
       ],
     },
@@ -344,7 +355,7 @@ export default function Home() {
                           duration: 0.3,
                         }}
                         whileHover={{ scale: 1.02, y: -2 }}
-                        className="flex flex-col gap-2 rounded-2xl bg-white/90 dark:bg-white/5 backdrop-blur-sm border border-white/40 dark:border-white/10 p-4 transition-all shadow-lg hover:shadow-xl hover:border-white/60 dark:hover:border-white/20"
+                        className="flex flex-col gap-2 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-sm border border-black/10 dark:border-white/10 p-6 transition-all duration-300 ease-out shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.18)] hover:border-black/20 dark:hover:border-white/20"
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-6 w-6 flex-shrink-0 text-primary" />

@@ -130,6 +130,10 @@ export const TRANSLATIONS = {
     landing_feature_photo_desc: "Confirm location status with photos",
     landing_feature_geo_title: "Geolocation",
     landing_feature_geo_desc: "Verify employee is at the workplace",
+    landing_feature_late_control_title: "Late Control",
+    landing_feature_late_control_desc: "Shift start tracking and notifications for late arrivals.",
+    landing_feature_incidents_title: "Problems & Incidents",
+    landing_feature_incidents_desc: "Quick reporting of breakdowns, conflicts and non-standard situations.",
 
     landing_feature_revenue_title: "Live Revenue",
     landing_feature_revenue_desc: "Track income in real-time",
@@ -307,6 +311,10 @@ export const TRANSLATIONS = {
     landing_feature_photo_desc: "Підтвердження стану точки фотографіями",
     landing_feature_geo_title: "Геолокація",
     landing_feature_geo_desc: "Перевірка, що співробітник знаходиться на робочому місці",
+    landing_feature_late_control_title: "Контроль запізнень",
+    landing_feature_late_control_desc: "Фіксація початку зміни та сповіщення при запізненнях.",
+    landing_feature_incidents_title: "Проблеми та інциденти",
+    landing_feature_incidents_desc: "Швидка відправка повідомлень про поломки, конфлікти та нестандартні ситуації.",
 
     landing_feature_revenue_title: "Виручка онлайн",
     landing_feature_revenue_desc: "Слідкуйте за доходами в реальному часі",
@@ -484,6 +492,10 @@ export const TRANSLATIONS = {
     landing_feature_photo_desc: "Подтверждение состояния точки фотографиями",
     landing_feature_geo_title: "Геолокация",
     landing_feature_geo_desc: "Проверка, что сотрудник находится на рабочем месте",
+    landing_feature_late_control_title: "Контроль опозданий",
+    landing_feature_late_control_desc: "Фиксация начала смены и уведомления при опозданиях.",
+    landing_feature_incidents_title: "Проблемы и инциденты",
+    landing_feature_incidents_desc: "Быстрая отправка сообщений о поломках, конфликтах и нестандартных ситуациях.",
 
     landing_feature_revenue_title: "Выручка онлайн",
     landing_feature_revenue_desc: "Следите за доходами в реальном времени",
