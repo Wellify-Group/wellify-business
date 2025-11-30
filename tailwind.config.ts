@@ -87,8 +87,9 @@ const config: Config = {
           inverse: "var(--color-text-inverse)",
         },
         border: {
-          subtle: "var(--color-border-subtle)",
-          strong: "var(--color-border-strong)",
+          DEFAULT: "var(--color-border-subtle)",      // это даст класс border-border
+          subtle: "var(--color-border-subtle)",       // явно для border-border-subtle
+          strong: "var(--color-border-strong)",       // border-border-strong
         },
         success: "var(--color-success)",
         warning: "var(--color-warning)",
