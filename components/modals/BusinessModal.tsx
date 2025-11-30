@@ -7,6 +7,7 @@ import { useBusinessModalStore } from "@/lib/useBusinessModalStore";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
+import { PrimaryButton } from "@/components/ui/button";
 
 export function BusinessModal() {
   const { isOpen, modalData, closeModal } = useBusinessModalStore();
@@ -157,13 +158,9 @@ export function BusinessModal() {
                     onClick={closeModal}
                     className="block"
                   >
-                    <motion.button
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full h-12 md:h-[52px] rounded-full text-sm md:text-[15px] font-medium flex items-center justify-center bg-primary text-primary-foreground shadow-[0_12px_40px_rgba(0,0,0,0.45)] transition-all duration-200 hover:-translate-y-[1px] hover:bg-primary/90 hover:shadow-[0_16px_55px_rgba(0,0,0,0.55)]"
-                    >
+                    <PrimaryButton className="w-full h-12 md:h-[52px] text-sm md:text-[15px]">
                       {t("landing_btn_create_director")}
-                    </motion.button>
+                    </PrimaryButton>
                   </Link>
                 </motion.div>
               </div>

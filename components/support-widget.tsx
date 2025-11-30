@@ -196,40 +196,40 @@ export function SupportWidget() {
 
   return (
     <>
-      {/* Launcher Button - Always visible, only hide on dashboard */}
-      {!isDashboard && (
-        <motion.button
-          onClick={handleLauncherClick}
-          style={{ 
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            left: 'auto',
-            top: 'auto',
-            zIndex: 9999
-          }}
-          className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-card border border-border shadow-[0_18px_45px_rgba(0,0,0,0.65)] dark:shadow-[0_18px_45px_rgba(0,0,0,0.65)] transition-all relative"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          animate={!isSupportOpen ? {
-            scale: [1, 1.02, 1],
-          } : {
-            scale: 1,
-            rotate: [0, 5, -5, 0],
-          }}
-          transition={!isSupportOpen ? {
-            duration: 2,
-            repeat: Infinity,
-            ease: "easeInOut",
-          } : {
-            duration: 0.3,
-          }}
-        >
-          <Send className="h-5 w-5 text-foreground" />
-          
-          {/* Индикатор непрочитанных сообщений */}
-          <AnimatePresence>
-            {hasUnread && !isSupportOpen && (
+      {/* Launcher Button - Скрывается при открытом окне чата */}
+      {!isDashboard && !isSupportOpen && (
+        <AnimatePresence>
+          <motion.button
+            key="launcher"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            onClick={handleLauncherClick}
+            style={{ 
+              position: 'fixed',
+              bottom: '24px',
+              right: '24px',
+              left: 'auto',
+              top: 'auto',
+              zIndex: 9999
+            }}
+            className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-card border border-border shadow-[0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.3)] transition-all relative"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            animate={{
+              scale: [1, 1.02, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <Send className="h-5 w-5 text-foreground" />
+            
+            {/* Индикатор непрочитанных сообщений */}
+            {hasUnread && (
               <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ 
@@ -245,8 +245,8 @@ export function SupportWidget() {
                 className="absolute -top-1 -right-1 h-[10px] w-[10px] rounded-full bg-red-500 border-2 border-card shadow-lg"
               />
             )}
-          </AnimatePresence>
-        </motion.button>
+          </motion.button>
+        </AnimatePresence>
       )}
 
       {/* Premium Support Window */}
@@ -265,10 +265,10 @@ export function SupportWidget() {
             
             {/* Chat Window */}
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              initial={{ opacity: 0, y: 10, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              exit={{ opacity: 0, y: 10, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30, duration: 0.3 }}
               onClick={(e) => e.stopPropagation()}
               className="fixed z-50 bottom-6 right-6 w-[360px] max-h-[520px] rounded-[24px] md:rounded-[28px] bg-popover/95 backdrop-blur-[22px] border border-border shadow-[0_24px_80px_rgba(0,0,0,0.65)] overflow-hidden flex flex-col"
             >
@@ -405,17 +405,17 @@ export function SupportWidget() {
                   <button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim()}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-150 hover:scale-105 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-150 hover:scale-105 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     aria-label={t("support.btn_send")}
                   >
-                    <Send className="h-4 w-4" />
+                    <Send className="h-5 w-5" />
                   </button>
                 </div>
 
-                {/* Telegram Button */}
+                {/* Telegram Button - менее доминантная, чем основной CTA */}
                 <button
                   onClick={handleTelegramClick}
-                  className="w-full h-10 md:h-[44px] rounded-full text-sm md:text-[15px] font-medium flex items-center justify-center bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80 transition-all duration-200 hover:-translate-y-[1px] shadow-lg"
+                  className="w-full h-9 rounded-full text-sm font-medium flex items-center justify-center bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80 transition-all duration-200 hover:-translate-y-[1px] shadow-md hover:shadow-lg"
                 >
                   {t("support.btn_telegram")}
                 </button>

@@ -8,6 +8,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useBusinessModalStore } from "@/lib/useBusinessModalStore";
 import businessTypesData from "@/data/businessTypes.json";
 import { BUSINESS_MODAL_CONFIG } from "@/data/businessModalConfig";
+import { PrimaryButton } from "@/components/ui/button";
 import {
   Smartphone,
   ArrowRight,
@@ -277,11 +278,10 @@ export default function Home() {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="flex flex-col items-center gap-3 sm:flex-row"
           >
-            <Link
-              href={signupHref}
-              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              {t("landing_btn_create_director")}
+            <Link href={signupHref}>
+              <PrimaryButton>
+                {t("landing_btn_create_director")}
+              </PrimaryButton>
             </Link>
             <button
               type="button"
@@ -492,11 +492,10 @@ export default function Home() {
             transition={{ duration: 0.5 }}
             className="flex justify-center"
           >
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              {t("landing_btn_create_director")}
+            <Link href="/register">
+              <PrimaryButton>
+                {t("landing_btn_create_director")}
+              </PrimaryButton>
             </Link>
           </motion.div>
         </div>

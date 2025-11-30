@@ -8,21 +8,27 @@ export interface ButtonProps
   variant?: "default" | "primary" | "secondary" | "outline" | "ghost" | "destructive" | "success" | "warning";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
+  rounded?: "default" | "full";
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "md", isLoading, children, disabled, ...props }, ref) => {
-    const baseStyles = "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+  ({ className, variant = "default", size = "md", isLoading, rounded = "default", children, disabled, ...props }, ref) => {
+    const baseStyles = "inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+    
+    const roundedStyles = {
+      default: "rounded-lg",
+      full: "rounded-full",
+    };
     
     const variants = {
-      default: "bg-[var(--surface-1)] border border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--surface-2)]",
-      primary: "bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-hover)] shadow-sm",
-      secondary: "bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)]",
-      outline: "border border-[var(--border-strong)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--surface-2)]",
-      ghost: "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
-      destructive: "bg-[var(--error)] text-white hover:bg-[var(--error)]/90",
-      success: "bg-[var(--success)] text-white hover:bg-[var(--success)]/90",
-      warning: "bg-[var(--warning)] text-white hover:bg-[var(--warning)]/90",
+      default: "bg-card border border-border text-card-foreground hover:bg-muted",
+      primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl",
+      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+      outline: "border border-border bg-transparent text-foreground hover:bg-muted",
+      ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+      success: "bg-green-600 text-white hover:bg-green-700",
+      warning: "bg-yellow-600 text-white hover:bg-yellow-700",
     };
 
     const sizes = {
@@ -35,6 +41,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         className={cn(
           baseStyles,
+          roundedStyles[rounded],
           variants[variant],
           sizes[size],
           className
@@ -76,7 +83,34 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
-export { Button };
+// PrimaryButton - переиспользуемый компонент для CTA кнопок
+export interface PrimaryButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  isLoading?: boolean;
+  children: React.ReactNode;
+}
+
+const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonProps>(
+  ({ className, isLoading, children, disabled, ...props }, ref) => {
+    return (
+      <Button
+        ref={ref}
+        variant="primary"
+        size="md"
+        rounded="full"
+        isLoading={isLoading}
+        disabled={disabled}
+        className={cn("px-6 py-3 text-sm font-medium", className)}
+        {...props}
+      >
+        {children}
+      </Button>
+    );
+  }
+);
+PrimaryButton.displayName = "PrimaryButton";
+
+export { Button, PrimaryButton };
 
 
 

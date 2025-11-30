@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Building2, Store, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import useStore from "@/lib/store";
+import { PrimaryButton } from "@/components/ui/button";
 
 const MAX_BLOCKS = 4;
 const BLOCK_LENGTH = 4;
@@ -315,15 +316,19 @@ export default function LoginPage() {
                       </motion.div>
                     )}
 
-                    <motion.button
-                      type="submit"
-                      disabled={isLoading}
+                    <motion.div
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
-                      className="h-12 w-full mt-1 bg-primary text-primary-foreground rounded-[20px] font-semibold text-[15px] shadow-lg hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="h-12 w-full mt-1"
                     >
-                      {isLoading ? (t("logging_in") || "Вход...") : (t("btn_login") || "Войти")}
-                    </motion.button>
+                      <PrimaryButton
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full h-full rounded-[20px] text-[15px] font-semibold"
+                      >
+                        {isLoading ? (t("logging_in") || "Вход...") : (t("btn_login") || "Войти")}
+                      </PrimaryButton>
+                    </motion.div>
                   </form>
 
                     <div className="text-center">
@@ -438,15 +443,19 @@ export default function LoginPage() {
                         </motion.div>
                       )}
 
-                      <motion.button
-                        type="button"
-                        onClick={handleContinueFromCompanyId}
+                      <motion.div
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
-                        className="h-12 w-full bg-black dark:bg-white text-white dark:text-black rounded-[20px] font-semibold text-[15px] shadow-lg shadow-black/5 dark:shadow-white/5 hover:opacity-90 transition-all"
+                        className="h-12 w-full"
                       >
-                        Продолжить
-                      </motion.button>
+                        <PrimaryButton
+                          type="button"
+                          onClick={handleContinueFromCompanyId}
+                          className="w-full h-full rounded-[20px] text-[15px] font-semibold"
+                        >
+                          Продолжить
+                        </PrimaryButton>
+                      </motion.div>
                     </div>
                   )}
 
@@ -488,16 +497,20 @@ export default function LoginPage() {
                         >
                           Назад
                         </button>
-                        <motion.button
-                          type="button"
-                          onClick={handleTerminalLogin}
-                          disabled={isLoading}
+                        <motion.div
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
-                           className="flex-[2] h-12 bg-black dark:bg-white text-white dark:text-black rounded-[20px] font-semibold text-[15px] shadow-lg shadow-black/5 dark:shadow-white/5 hover:opacity-90 transition-all flex items-center justify-center"
+                          className="flex-[2] h-12"
                         >
-                          {isLoading ? "Вход..." : "Войти"}
-                        </motion.button>
+                          <PrimaryButton
+                            type="button"
+                            onClick={handleTerminalLogin}
+                            disabled={isLoading}
+                            className="w-full h-full rounded-[20px] text-[15px] font-semibold"
+                          >
+                            {isLoading ? "Вход..." : "Войти"}
+                          </PrimaryButton>
+                        </motion.div>
                       </div>
                     </div>
                   )}
