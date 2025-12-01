@@ -10,7 +10,7 @@ import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
 
 interface SupportMessage {
-  id: string;
+  id: number;
   author: "user" | "support";
   text: string;
   createdAt: string;
@@ -28,12 +28,63 @@ export function SupportWidget() {
   const [hasRealAgentJoined, setHasRealAgentJoined] = useState(false);
 
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
+  const [cid, setCid] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const isDashboard = pathname?.startsWith("/dashboard");
+
+  // 1. читаем cid из localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem('support_cid');
+    if (stored) {
+      setCid(stored);
+    }
+  }, []);
+
+  // 2. polling сообщений
+  useEffect(() => {
+    if (!cid) return;
+
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch(
+          `/api/support/messages?cid=${encodeURIComponent(cid)}`,
+        );
+        if (!res.ok) {
+          // можно залогировать, но не спамить
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled && data?.ok && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+          // Проверяем, есть ли сообщения от поддержки
+          const hasSupportMessages = data.messages.some((m: SupportMessage) => m.author === 'support');
+          if (hasSupportMessages) {
+            setHasRealAgentJoined(true);
+          }
+        }
+      } catch (e) {
+        console.error('SupportWidget poll error:', e);
+      } finally {
+        if (!cancelled) {
+          setTimeout(poll, 5000);
+        }
+      }
+    }
+
+    poll();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cid]);
 
   // Проверка непрочитанных сообщений
   useEffect(() => {
@@ -63,40 +114,45 @@ export function SupportWidget() {
     },
   ];
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text) return;
+    if (!text || isSending) return;
 
-    setInputMessage("");
+    setIsSending(true);
 
-    // Добавляем сообщение пользователя локально
-    const userMessage: SupportMessage = {
-      id: crypto.randomUUID(),
-      author: "user",
-      text,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const res = await fetch('/api/support/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cid,
+          message: text,
+          name: currentUser?.fullName || currentUser?.name || null,
+          userId: currentUser?.id || null,
+          email: currentUser?.email || null,
+        }),
+      });
 
-    setMessages((prev) => [...prev, userMessage]);
+      const data = await res.json();
 
-    if (!hasUserSentMessage) {
-      setHasUserSentMessage(true);
+      if (data?.ok && data.cid) {
+        if (!cid) {
+          setCid(data.cid);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('support_cid', data.cid);
+          }
+        }
+        if (!hasUserSentMessage) {
+          setHasUserSentMessage(true);
+        }
+        setInputMessage('');
+        // история подтянется при следующем poll
+      }
+    } catch (e) {
+      console.error('SupportWidget send error:', e);
+    } finally {
+      setIsSending(false);
     }
-
-    // Опционально: можно вызвать API для логирования, но не ждем результата
-    // Это не влияет на UI, так как сообщение уже добавлено локально
-    fetch("/api/support/chat/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: text,
-        name: currentUser?.fullName || currentUser?.name,
-        userId: currentUser?.id,
-        email: currentUser?.email,
-      }),
-    }).catch(() => {
-      // Игнорируем ошибки - виджет работает оффлайн
-    });
   };
 
   const handleLauncherClick = () => {
@@ -359,15 +415,18 @@ export function SupportWidget() {
                     type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={(e) =>
-                      e.key === "Enter" && handleSendMessage()
-                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
                     placeholder={t("support.input_placeholder")}
                     className="flex-1 bg-transparent text-sm text-popover-foreground placeholder:text-muted-foreground focus:outline-none"
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim()}
+                    disabled={!inputMessage.trim() || isSending}
                     className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     style={{
                       background: "var(--color-brand)",
