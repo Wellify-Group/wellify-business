@@ -1,6 +1,6 @@
 // app/api/support/chat/send/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { addSupportMessage, SupportMessage } from "@/lib/supportStore";
+import { saveSupportMessage } from "@/lib/support-chat";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SUPPORT_CHAT_ID = process.env.TELEGRAM_SUPPORT_CHAT_ID; // ид группы
@@ -32,19 +32,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Сохраняем сообщение пользователя в in-memory store
-    const msg: SupportMessage = {
-      id: crypto.randomUUID(),
+    // Сохраняем сообщение пользователя через общий модуль
+    const saved = await saveSupportMessage({
       cid,
       author: "user",
       text: message,
-      createdAt: new Date().toISOString(),
-    };
-    addSupportMessage(msg);
+      name,
+      userId,
+      email,
+    });
 
     // Если нет настроенного бота / чата - просто выходим
     if (!BOT_TOKEN || !SUPPORT_CHAT_ID) {
-      return NextResponse.json({ ok: true, skippedTelegram: true });
+      return NextResponse.json({ ok: true, skippedTelegram: true, message: saved });
     }
 
     // Формируем "карточку" в группу
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, message: saved });
   } catch (error) {
     console.error("POST /api/support/chat/send error", error);
     return NextResponse.json(

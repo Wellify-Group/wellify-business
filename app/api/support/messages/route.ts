@@ -1,6 +1,6 @@
 // app/api/support/messages/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getSupportMessages } from "@/lib/supportStore";
+import { getSupportMessagesByCid } from "@/lib/support-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const messages = getSupportMessages(cid);
+    const messages = await getSupportMessagesByCid(cid);
 
     return NextResponse.json(
       {
