@@ -41,12 +41,21 @@ export function Navbar() {
       <div
         className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-xl"
         style={{
-          backgroundColor: "var(--color-surface-elevated)",
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
-          borderColor: "rgba(255,255,255,0.05)",
-          boxShadow: "0 4px 30px rgba(0,0,0,0.4)",
+          backgroundColor: isDark 
+            ? "rgba(11, 19, 32, 0.7)" 
+            : "rgba(255, 255, 255, 0.7)",
+          borderBottom: isDark
+            ? "1px solid rgba(148, 163, 184, 0.15)"
+            : "1px solid rgba(255,255,255,0.05)",
+          borderColor: isDark
+            ? "rgba(148, 163, 184, 0.15)"
+            : "rgba(255,255,255,0.05)",
+          boxShadow: isDark
+            ? "0 4px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(148, 163, 184, 0.1)"
+            : "0 4px 30px rgba(0,0,0,0.1), 0 0 0 1px rgba(15, 23, 42, 0.05)",
           borderRadius: "var(--radius-xl)",
           backdropFilter: "blur(12px) saturate(180%)",
+          WebkitBackdropFilter: "blur(12px) saturate(180%)",
         }}
       >
         <div className="flex h-[64px] items-center justify-between px-6 md:px-8">
