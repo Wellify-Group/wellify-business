@@ -124,7 +124,7 @@ export default function WelcomePage() {
               type="button"
               onClick={() => setLang('uk')}
               className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                lang === 'uk' ? 'bg-white text-black' : 'text-white/70 hover:text-white'
+                lang === 'uk' ? 'bg-white text-black dark:text-white' : 'text-white/70 hover:text-white'
               }`}
             >
               UA
@@ -133,7 +133,7 @@ export default function WelcomePage() {
               type="button"
               onClick={() => setLang('ru')}
               className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                lang === 'ru' ? 'bg-white text-black' : 'text-white/70 hover:text-white'
+                lang === 'ru' ? 'bg-white text-black dark:text-white' : 'text-white/70 hover:text-white'
               }`}
             >
               RU
@@ -142,7 +142,7 @@ export default function WelcomePage() {
               type="button"
               onClick={() => setLang('en')}
               className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                lang === 'en' ? 'bg-white text-black' : 'text-white/70 hover:text-white'
+                lang === 'en' ? 'bg-white text-black dark:text-white' : 'text-white/70 hover:text-white'
               }`}
             >
               EN
@@ -198,7 +198,7 @@ export default function WelcomePage() {
                 }}
                 className={`relative flex items-center justify-center text-sm font-medium transition-all duration-200 h-9 rounded-lg ${
                   activeTab === 'login'
-                    ? 'bg-white text-black'
+                    ? 'bg-white text-black dark:text-white'
                     : 'text-white/70 hover:text-white'
                 }`}
               >
@@ -212,7 +212,7 @@ export default function WelcomePage() {
                 }}
                 className={`relative flex items-center justify-center text-sm font-medium transition-all duration-200 h-9 rounded-lg ${
                   activeTab === 'register'
-                    ? 'bg-white text-black'
+                    ? 'bg-white text-black dark:text-white'
                     : 'text-white/70 hover:text-white'
                 }`}
               >

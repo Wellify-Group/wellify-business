@@ -112,7 +112,7 @@ export function ShiftCompletedModal({ isOpen, onClose, shiftId }: ShiftCompleted
             <div className="flex gap-2">
               <button
                 onClick={handleCopyLink}
-                className="flex-1 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-white rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
               >
                 {copied ? (
                   <>

@@ -48,19 +48,22 @@ export function SupportWidget() {
 
   // 2. polling сообщений
   useEffect(() => {
+    // если cid ещё нет - вообще не запускаем polling
     if (!cid) return;
 
     let cancelled = false;
+    const currentCid: string = cid; // фиксируем как строку
 
     async function poll() {
       try {
         const res = await fetch(
-          `/api/support/messages?cid=${encodeURIComponent(cid)}`,
+          `/api/support/messages?cid=${encodeURIComponent(currentCid)}`,
         );
+
         if (!res.ok) {
-          // можно залогировать, но не спамить
           return;
         }
+
         const data = await res.json();
         if (!cancelled && data?.ok && Array.isArray(data.messages)) {
           setMessages(data.messages);
