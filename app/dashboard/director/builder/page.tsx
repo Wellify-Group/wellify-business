@@ -53,7 +53,7 @@ export default function FormBuilder() {
         </div>
         <div className="bg-[var(--color-surface)] border border-white/10 rounded-2xl p-6">
           <h3 className="text-lg font-semibold text-white mb-4">Пользовательские метрики</h3>
-          <button className="w-full py-3 border border-dashed border-zinc-700 rounded-xl text-zinc-400 hover:text-white hover:border-zinc-500 flex items-center justify-center gap-2 transition-colors">
+          <button className="w-full py-3 border border-dashed border-zinc-700 rounded-xl text-white hover:text-white hover:border-zinc-500 flex items-center justify-center gap-2 transition-colors">
             <Plus size={16} />
             {t('dashboard.add_metric') || 'Добавить метрику (напр. "Круассаны")'}
           </button>

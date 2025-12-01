@@ -73,7 +73,7 @@ export function Hero() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-                className="glass-card flex items-center gap-2 bg-card px-7 py-3 text-base font-medium text-card-foreground transition-colors hover:bg-card/80"
+                className="glass-card flex items-center gap-2 bg-card px-7 py-3 text-base font-medium text-white transition-colors hover:bg-card/80"
             >
               <Play className="h-4 w-4" />
               {t<string>("landing_btn_how_it_works")}

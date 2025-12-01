@@ -21,12 +21,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
     
     const variants = {
-      default: "bg-card border border-border text-card-foreground hover:bg-muted",
-      primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-      outline: "border border-border bg-transparent text-foreground hover:bg-muted",
-      ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
-      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+      default: "bg-card border border-border text-white hover:bg-muted",
+      primary: "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl",
+      secondary: "bg-secondary text-white hover:bg-secondary/80",
+      outline: "border border-border bg-transparent text-white hover:bg-muted",
+      ghost: "text-white hover:bg-muted hover:text-white",
+      destructive: "bg-destructive text-white hover:bg-destructive/90",
       success: "bg-green-600 text-white hover:bg-green-700",
       warning: "bg-yellow-600 text-white hover:bg-yellow-700",
     };

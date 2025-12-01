@@ -364,7 +364,7 @@ export default function LoginPage() {
                                 setIsError(true);
                             }
                         }}
-                        className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all"
+                        className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white"
                     >
                         <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
                             <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.065 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/>
@@ -372,7 +372,7 @@ export default function LoginPage() {
                             <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/>
                             <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.719 1.233 5.313l4.044-3.045Z"/>
                         </svg>
-                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Google</span>
+                        <span className="text-sm font-medium text-white">Google</span>
                     </button>
 
                     <button
@@ -392,12 +392,12 @@ export default function LoginPage() {
                                 setIsError(true);
                             }
                         }}
-                         className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all"
+                         className="flex-1 h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white"
                     >
-                         <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="h-5 w-5 text-zinc-900 dark:text-white">
+                         <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="h-5 w-5 text-white">
                             <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.127 3.675-.552 9.12 1.519 12.12 1.014 1.454 2.227 3.09 3.82 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702z"/>
                         </svg>
-                        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">Apple</span>
+                        <span className="text-sm font-medium text-white">Apple</span>
                     </button>
                   </div>
                 </motion.div>

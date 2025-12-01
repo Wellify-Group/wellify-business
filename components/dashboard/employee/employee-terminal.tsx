@@ -452,7 +452,7 @@ const EmployeeTerminal = () => {
 
               <h3 className="font-medium text-sm text-foreground flex items-center gap-2"><ShoppingBag size={16} className="text-indigo-400" /> Текущий чек ({currentBasket.length})</h3>
 
-              {currentBasket.length > 0 && <button onClick={clearBasket} className="text-xs text-muted-foreground hover:text-red-400 flex items-center gap-1 transition px-2 py-1"><XCircle size={12} /> Очистить</button>}
+              {currentBasket.length > 0 && <button onClick={clearBasket} className="text-xs text-white hover:text-red-400 flex items-center gap-1 transition px-2 py-1"><XCircle size={12} /> Очистить</button>}
 
             </div>
 
@@ -470,7 +470,7 @@ const EmployeeTerminal = () => {
 
                   <thead className="text-[10px] text-muted-foreground uppercase border-b border-border/50 sticky top-0 bg-card"><tr><th className="p-2 pl-3">Товар</th><th className="p-2 text-center">Кол-во</th><th className="p-2 text-right">Сумма</th><th className="p-2 w-8"></th></tr></thead>
 
-                  <tbody className="divide-y divide-border/30 text-sm">{currentBasket.map((item) => (<tr key={item.id} className="group hover:bg-muted/50"><td className="p-2 pl-3"><div className="text-foreground">{item.name}</div></td><td className="p-2 text-center text-muted-foreground font-mono text-xs">x{item.qty}</td><td className="p-2 text-right font-mono text-foreground">{(item.price * item.qty).toLocaleString()} ₴</td><td className="p-2 text-right"><button onClick={() => removeFromBasket(item.id)} className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 p-1.5 rounded"><Trash2 size={14} /></button></td></tr>))}</tbody>
+                  <tbody className="divide-y divide-border/30 text-sm">{currentBasket.map((item) => (<tr key={item.id} className="group hover:bg-muted/50"><td className="p-2 pl-3"><div className="text-foreground">{item.name}</div></td><td className="p-2 text-center text-muted-foreground font-mono text-xs">x{item.qty}</td><td className="p-2 text-right font-mono text-foreground">{(item.price * item.qty).toLocaleString()} ₴</td><td className="p-2 text-right"><button onClick={() => removeFromBasket(item.id)} className="text-white hover:text-red-500 hover:bg-red-500/10 p-1.5 rounded"><Trash2 size={14} /></button></td></tr>))}</tbody>
 
                 </table>
 
@@ -484,7 +484,7 @@ const EmployeeTerminal = () => {
 
               <div className="flex items-center justify-between mb-3">
 
-                 <div className="flex gap-2"><button onClick={() => setPaymentMethod('card')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition ${paymentMethod === 'card' ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-zinc-700 text-zinc-400'}`}><CreditCard size={14} /> Карта</button><button onClick={() => setPaymentMethod('cash')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition ${paymentMethod === 'cash' ? 'bg-emerald-600 border-emerald-500 text-white' : 'border-zinc-700 text-zinc-400'}`}><Banknote size={14} /> Наличные</button></div>
+                 <div className="flex gap-2"><button onClick={() => setPaymentMethod('card')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition ${paymentMethod === 'card' ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-zinc-700 text-white'}`}><CreditCard size={14} /> Карта</button><button onClick={() => setPaymentMethod('cash')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition ${paymentMethod === 'cash' ? 'bg-emerald-600 border-emerald-500 text-white' : 'border-zinc-700 text-white'}`}><Banknote size={14} /> Наличные</button></div>
 
                  <div className="text-right"><span className="text-2xl font-bold text-foreground font-mono tracking-tight">{basketTotal.toLocaleString()} ₴</span></div>
 
@@ -518,9 +518,9 @@ const EmployeeTerminal = () => {
 
         <div className="grid grid-cols-2 p-2 gap-1 border-b border-border flex-shrink-0">
 
-           <button onClick={() => setActiveTab('tasks')} className={`py-2 text-xs font-medium rounded-md transition ${activeTab === 'tasks' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>Задачи</button>
+           <button onClick={() => setActiveTab('tasks')} className={`py-2 text-xs font-medium rounded-md transition ${activeTab === 'tasks' ? 'bg-muted text-white' : 'text-white hover:text-white'}`}>Задачи</button>
 
-           <button onClick={() => setActiveTab('chat')} className={`py-2 text-xs font-medium rounded-md transition ${activeTab === 'chat' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>Чат</button>
+           <button onClick={() => setActiveTab('chat')} className={`py-2 text-xs font-medium rounded-md transition ${activeTab === 'chat' ? 'bg-muted text-white' : 'text-white hover:text-white'}`}>Чат</button>
 
         </div>
 

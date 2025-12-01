@@ -203,7 +203,7 @@ export default function RegisterPage() {
               disabled={isCreating || !fullName.trim() || password !== confirmPassword || password.length < 6}
               whileHover={isCreating ? undefined : { scale: 1.01 }}
               whileTap={isCreating ? undefined : { scale: 0.99 }}
-              className="h-12 w-full flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-base font-semibold text-primary-foreground transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
+              className="h-12 w-full flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-base font-semibold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
             >
               {isCreating ? (
                 <>

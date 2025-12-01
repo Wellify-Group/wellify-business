@@ -116,7 +116,7 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
         disabled={loading}
         whileHover={{ scale: loading ? 1 : 1.01 }}
         whileTap={{ scale: loading ? 1 : 0.99 }}
-        className="h-12 w-full rounded-xl bg-primary px-4 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="h-12 w-full rounded-xl bg-primary px-4 text-base font-semibold text-white transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? "Загрузка..." : mode === "login" ? "Войти" : "Зарегистрироваться"}
       </motion.button>
