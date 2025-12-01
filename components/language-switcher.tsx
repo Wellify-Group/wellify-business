@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Language } from "@/lib/translations";
 import { useLanguage } from "@/components/language-provider";
+import { useInterfaceLanguageStore } from "@/lib/store/interfaceLanguageStore";
 import { cn } from "@/lib/utils";
 
 const languages: { code: Language; label: string }[] = [
@@ -13,12 +14,20 @@ const languages: { code: Language; label: string }[] = [
   { code: "ru", label: "RU" },
 ];
 
+// Маппинг между старым типом Language и интерфейсным языком
+const languageToInterfaceLang: Record<Language, "en" | "ru" | "uk"> = {
+  en: "en",
+  ua: "uk",
+  ru: "ru",
+};
+
 interface LanguageSwitcherProps {
   variant?: "default" | "compact";
 }
 
 export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps) {
   const { language, setLanguage } = useLanguage();
+  const { setLang: setInterfaceLang } = useInterfaceLanguageStore();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,9 +46,22 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const currentLang = languages.find((lang) => lang.code === language);
+  // При первом рендере тоже синхронизируем стор интерфейсного языка
+  useEffect(() => {
+    setInterfaceLang(languageToInterfaceLang[language]);
+  }, [language, setInterfaceLang]);
 
+  const currentLang = languages.find((lang) => lang.code === language);
   const isCompact = variant === "compact";
+
+  const handleChangeLanguage = (code: Language) => {
+    if (language !== code) {
+      setLanguage(code); // старый провайдер
+      setInterfaceLang(languageToInterfaceLang[code]); // стор welcome/футера
+      router.refresh();
+    }
+    setIsOpen(false);
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -83,12 +105,7 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (language !== lang.code) {
-                    setLanguage(lang.code);
-                    // Force page refresh to update all translations
-                    router.refresh();
-                  }
-                  setIsOpen(false);
+                  handleChangeLanguage(lang.code);
                 }}
                 className={`w-full rounded-xl px-4 py-2 text-left text-sm font-medium transition-colors ${
                   language === lang.code
@@ -105,6 +122,3 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
     </div>
   );
 }
-
-
-
