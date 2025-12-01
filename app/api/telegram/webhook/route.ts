@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addSupportMessage } from "@/lib/supportChatStore";
-import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -70,43 +69,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Обработка сообщений в группе поддержки
-    if (chatId && Number(chatId) === Number(telegramChatId)) {
-      // Проверяем, что это ответ на сообщение (reply)
-      if (!message.reply_to_message || !message.reply_to_message.text) {
+    // ===== ОБРАБОТКА ОТВЕТА СОТРУДНИКА ПОДДЕРЖКИ =====
+    if (
+      message.chat?.id === Number(process.env.TELEGRAM_SUPPORT_CHAT_ID) &&
+      message.reply_to_message &&
+      message.reply_to_message.text
+    ) {
+      const originalText = message.reply_to_message.text;
+      const supportText = message.text?.trim() ?? "";
+
+      // Если у сообщения поддержки нет текста – игнорируем.
+      if (!supportText) {
         return NextResponse.json({ ok: true });
       }
 
-      const replyText = message.reply_to_message.text;
-      const supportText = message.text.trim();
+      // Извлекаем CID из текста карточки
+      const match = originalText.match(/CID:\s*([a-f0-9-]+)/i);
+      const cid = match?.[1];
 
-      // Извлекаем CID из текста ответа
-      // Формат: "🧩 CID: <cid>"
-      const cidMatch = replyText.match(/CID:\s*([a-f0-9-]+)/i);
-
-      if (!cidMatch || !cidMatch[1]) {
-        // Если CID не найден, игнорируем апдейт
+      // Если CID не найден — игнорируем (чтобы не ломать вебхук)
+      if (!cid) {
         return NextResponse.json({ ok: true });
       }
 
-      const cid = cidMatch[1].trim();
-
-      // Сохраняем ответ в хранилище
-      try {
-        await addSupportMessage({
-          id: randomUUID(),
-          cid,
-          author: "support",
-          text: supportText,
-          createdAt: new Date().toISOString(),
-        });
-      } catch (dbError) {
-        console.error("Error saving support message:", dbError);
-        return NextResponse.json(
-          { ok: false, error: "STORAGE_ERROR" },
-          { status: 500 }
-        );
-      }
+      await addSupportMessage({
+        id: crypto.randomUUID(),
+        cid,
+        author: "support",
+        text: supportText,
+        createdAt: new Date().toISOString(),
+      });
 
       return NextResponse.json({ ok: true });
     }
