@@ -83,6 +83,54 @@ export function SupportWidget() {
     [cid]
   );
 
+  // Polling для получения новых сообщений (fallback)
+  const startPolling = useCallback(() => {
+    if (!cid || pollingIntervalRef.current) return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(
+          `/api/support/chat/poll?cid=${encodeURIComponent(cid)}`
+        );
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.messages) && data.messages.length > 0) {
+          addMessages(data.messages);
+        }
+      } catch (e) {
+        console.error("[Support Widget] Polling error:", e);
+      }
+    };
+
+    // Первый запрос сразу
+    poll();
+
+    // Далее каждые 2-3 секунды
+    pollingIntervalRef.current = setInterval(poll, 2500);
+  }, [cid, addMessages]);
+
+  // Остановка polling
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // Остановка Realtime
+  const stopRealtime = useCallback(() => {
+    if (realtimeChannelRef.current) {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        supabase.removeChannel(realtimeChannelRef.current);
+      } catch (error) {
+        console.error("[Support Widget] Error removing Realtime channel:", error);
+      }
+      realtimeChannelRef.current = null;
+    }
+  }, []);
+
   // Подключение к Supabase Realtime
   const startRealtime = useCallback(() => {
     if (!cid || realtimeChannelRef.current || !useRealtimeRef.current) return;
@@ -154,55 +202,7 @@ export function SupportWidget() {
       // Не пытаемся использовать Realtime снова в этой сессии
       startPolling();
     }
-  }, [cid, addMessages, startPolling]);
-
-  // Остановка Realtime
-  const stopRealtime = useCallback(() => {
-    if (realtimeChannelRef.current) {
-      try {
-        const supabase = createBrowserSupabaseClient();
-        supabase.removeChannel(realtimeChannelRef.current);
-      } catch (error) {
-        console.error("[Support Widget] Error removing Realtime channel:", error);
-      }
-      realtimeChannelRef.current = null;
-    }
-  }, []);
-
-  // Polling для получения новых сообщений (fallback)
-  const startPolling = useCallback(() => {
-    if (!cid || pollingIntervalRef.current) return;
-
-    const poll = async () => {
-      try {
-        const res = await fetch(
-          `/api/support/chat/poll?cid=${encodeURIComponent(cid)}`
-        );
-        if (!res.ok) return;
-
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.messages) && data.messages.length > 0) {
-          addMessages(data.messages);
-        }
-      } catch (e) {
-        console.error("[Support Widget] Polling error:", e);
-      }
-    };
-
-    // Первый запрос сразу
-    poll();
-
-    // Далее каждые 2-3 секунды
-    pollingIntervalRef.current = setInterval(poll, 2500);
-  }, [cid, addMessages]);
-
-  // Остановка polling
-  const stopPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  }, []);
+  }, [cid, addMessages, startPolling, stopRealtime]);
 
   // Управление Realtime/Polling при изменении cid или isSupportOpen
   useEffect(() => {
