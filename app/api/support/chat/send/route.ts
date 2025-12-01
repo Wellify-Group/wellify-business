@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addSupportMessage } from "@/lib/supportChatStore";
+import { addSupportMessage } from "@/lib/db/support";
 import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -86,17 +86,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Сохранение сообщения в файловое хранилище
+    // Сохранение сообщения в Supabase
     try {
       await addSupportMessage({
         id: randomUUID(),
         cid,
-        author: "client",
+        author: "user",
         text: message.trim(),
         createdAt: new Date().toISOString(),
       });
     } catch (dbError) {
-      console.error("Error saving message to storage:", dbError);
+      console.error("Error saving message to database:", dbError);
       // Не возвращаем ошибку, так как сообщение уже отправлено в Telegram
     }
 

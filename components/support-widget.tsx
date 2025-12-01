@@ -11,44 +11,10 @@ import { Collapse } from "@/components/ui/collapse";
 
 interface SupportMessage {
   id: string;
+  cid: string;
+  author: "user" | "support";
   text: string;
-  author: "client" | "support";
   createdAt: string;
-}
-
-interface ChatMessage {
-  id: string;
-  text: string;
-  sender: "client" | "support";
-  createdAt: string;
-}
-
-// Генерация UUID v4
-function generateUUID(): string {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  // Fallback для старых браузеров
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
-// Получение или создание CID (conversation id)
-function getOrCreateCid(): string {
-  if (typeof window === "undefined") return "";
-  
-  const storageKey = "wellify_support_cid";
-  let cid = localStorage.getItem(storageKey);
-  
-  if (!cid) {
-    cid = generateUUID();
-    localStorage.setItem(storageKey, cid);
-  }
-  
-  return cid;
 }
 
 export function SupportWidget() {
@@ -64,131 +30,75 @@ export function SupportWidget() {
   const [hasRealAgentJoined, setHasRealAgentJoined] = useState(false);
 
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [cid, setCid] = useState<string>("");
+  const [cid, setCid] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [lastTimestamp, setLastTimestamp] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hide floating button on dashboard pages
   const isDashboard = pathname?.startsWith("/dashboard");
 
-  // Монтирование компонента
+  // Инициализация CID
   useEffect(() => {
     setMounted(true);
-    // Получаем или создаем CID
-    const id = getOrCreateCid();
-    setCid(id);
+    let storedCid = typeof window !== "undefined" ? localStorage.getItem("support_cid") : null;
+
+    if (!storedCid) {
+      storedCid = crypto.randomUUID();
+      if (typeof window !== "undefined") {
+        localStorage.setItem("support_cid", storedCid);
+      }
+    }
+
+    setCid(storedCid);
   }, []);
 
-  // Загрузка сообщений при монтировании
+  // Опрос /api/support/messages и полная замена списка
   useEffect(() => {
-    if (!cid || !mounted) return;
+    if (!cid) return;
 
-    const loadMessages = async () => {
+    let isCancelled = false;
+
+    async function loadMessages() {
       try {
-        const response = await fetch(`/api/support/messages?cid=${cid}`);
-        const data = await response.json();
+        const res = await fetch(`/api/support/messages?cid=${encodeURIComponent(cid)}`);
+        if (!res.ok) return;
+        const data = await res.json();
 
-        if (data.ok && data.messages) {
-          // Конвертируем SupportMessage в ChatMessage
-          const chatMessages: ChatMessage[] = data.messages.map((msg: SupportMessage) => ({
-            id: msg.id,
-            text: msg.text,
-            sender: msg.author,
-            createdAt: msg.createdAt,
-          }));
-
-          setMessages(chatMessages);
-
-          // Устанавливаем lastTimestamp как максимальный createdAt
-          if (chatMessages.length > 0) {
-            const timestamps = chatMessages.map((m) => new Date(m.createdAt).getTime());
-            const maxTimestamp = new Date(Math.max(...timestamps)).toISOString();
-            setLastTimestamp(maxTimestamp);
-          }
-
+        if (!isCancelled && data.ok && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+          
           // Проверяем, есть ли сообщения от поддержки
-          const hasSupportMessages = chatMessages.some((m) => m.sender === "support");
+          const hasSupportMessages = data.messages.some((m: SupportMessage) => m.author === "support");
           if (hasSupportMessages) {
             setHasRealAgentJoined(true);
           }
         }
-      } catch (error) {
-        console.error("Error loading messages:", error);
+      } catch (e) {
+        console.error("Failed to load support messages", e);
       }
-    };
+    }
 
+    // Первый запрос сразу
     loadMessages();
-  }, [cid, mounted]);
 
-  // Пуллинг новых сообщений
-  useEffect(() => {
-    if (!cid || !mounted) return;
-
-    const pollMessages = async () => {
-      try {
-        const url = lastTimestamp
-          ? `/api/support/messages?cid=${cid}&since=${encodeURIComponent(lastTimestamp)}`
-          : `/api/support/messages?cid=${cid}`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.ok && data.messages && data.messages.length > 0) {
-          // Конвертируем SupportMessage в ChatMessage
-          const newChatMessages: ChatMessage[] = data.messages.map((msg: SupportMessage) => ({
-            id: msg.id,
-            text: msg.text,
-            sender: msg.author,
-            createdAt: msg.createdAt,
-          }));
-
-          setMessages((prev) => {
-            // Объединяем и убираем дубликаты
-            const existingIds = new Set(prev.map((m) => m.id));
-            const uniqueNew = newChatMessages.filter((m) => !existingIds.has(m.id));
-            return [...prev, ...uniqueNew].sort((a, b) => {
-              return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-            });
-          });
-
-          // Обновляем lastTimestamp
-          const timestamps = newChatMessages.map((m) => new Date(m.createdAt).getTime());
-          const maxTimestamp = new Date(Math.max(...timestamps)).toISOString();
-          setLastTimestamp(maxTimestamp);
-
-          // Проверяем, есть ли новые сообщения от поддержки
-          const hasNewSupportMessages = newChatMessages.some((m) => m.sender === "support");
-          if (hasNewSupportMessages) {
-            setHasRealAgentJoined(true);
-            setHasUnread(!isSupportOpen);
-          }
-        }
-      } catch (error) {
-        console.error("Error polling messages:", error);
-      }
-    };
-
-    // Запускаем пуллинг каждые 4 секунды
-    pollingIntervalRef.current = setInterval(pollMessages, 4000);
+    // Далее – polling раз в 3 секунды
+    const interval = setInterval(loadMessages, 3000);
 
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
+      isCancelled = true;
+      clearInterval(interval);
     };
-  }, [cid, mounted, lastTimestamp, isSupportOpen]);
+  }, [cid]);
 
   // Проверка непрочитанных сообщений от поддержки при свернутой панели
   useEffect(() => {
     if (!isSupportOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.sender === "support") {
+      if (lastMessage.author === "support") {
         setHasUnread(true);
       }
     }
@@ -218,21 +128,19 @@ export function SupportWidget() {
 
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text || !cid || isSending) return;
+    if (!text || !cid) return;
 
-    setIsSending(true);
+    setInputMessage("");
 
-    // Optimistic update - добавляем сообщение в стейт сразу
-    const tempId = generateUUID();
-    const userMessage: ChatMessage = {
-      id: tempId,
+    const optimistic: SupportMessage = {
+      id: crypto.randomUUID(),
+      cid,
+      author: "user",
       text,
-      sender: "client",
       createdAt: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
+    setMessages((prev) => [...prev, optimistic]);
 
     // Устанавливаем флаг, что пользователь отправил сообщение
     if (!hasUserSentMessage) {
@@ -240,37 +148,20 @@ export function SupportWidget() {
     }
 
     try {
-      // Формируем payload в новом формате
-      const payload = {
-        cid,
-        message: text,
-        name: currentUser?.fullName || currentUser?.name,
-        userId: currentUser?.id,
-        email: currentUser?.email,
-      };
-
-      const response = await fetch("/api/support/chat/send", {
+      await fetch("/api/support/chat/send", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          cid, 
+          message: text,
+          name: currentUser?.fullName || currentUser?.name,
+          userId: currentUser?.id,
+          email: currentUser?.email,
+        }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Failed to send message");
-      }
-
-      // Обновляем lastTimestamp после успешной отправки
-      setLastTimestamp(userMessage.createdAt);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      // Можно пометить сообщение как failed, но для простоты оставляем как есть
-      // В реальном приложении можно добавить индикатор ошибки
-    } finally {
-      setIsSending(false);
+    } catch (e) {
+      console.error("Failed to send support message", e);
+      // Опционально можно пометить сообщение как failed
     }
   };
 
@@ -509,38 +400,24 @@ export function SupportWidget() {
                         Чат
                       </h4>
                     )}
-                    <div className="space-y-2">
-                      {messages.map((msg) => (
-                        <motion.div
-                          key={msg.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`flex flex-col ${
-                            msg.sender === "client"
-                              ? "items-end"
-                              : "items-start"
-                          }`}
-                        >
-                          <div
+                    <div className="flex flex-col gap-2">
+                      {messages.map((msg) => {
+                        const isUser = msg.author === "user";
+                        return (
+                          <motion.div
+                            key={msg.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
                             className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs ${
-                              msg.sender === "client"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground"
+                              isUser
+                                ? "self-end bg-primary text-primary-foreground"
+                                : "self-start bg-muted text-muted-foreground"
                             }`}
                           >
-                            <p className="break-words leading-relaxed">
-                              {msg.text}
-                            </p>
-                          </div>
-                          <span
-                            className={`text-[10px] text-muted-foreground mt-1 px-1 ${
-                              msg.sender === "client" ? "text-right" : "text-left"
-                            }`}
-                          >
-                            {msg.sender === "client" ? "Вы" : "Поддержка"}
-                          </span>
-                        </motion.div>
-                      ))}
+                            <p className="break-words leading-relaxed">{msg.text}</p>
+                          </motion.div>
+                        );
+                      })}
                       <div ref={messagesEndRef} />
                     </div>
                   </motion.div>
@@ -563,7 +440,7 @@ export function SupportWidget() {
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isSending || !cid}
+                    disabled={!inputMessage.trim() || !cid}
                     className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     style={{
                       background: "var(--color-brand)",

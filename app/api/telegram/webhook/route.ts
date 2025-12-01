@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addSupportMessage } from "@/lib/supportChatStore";
+import { addSupportMessage } from "@/lib/db/support";
 
 export const dynamic = "force-dynamic";
 

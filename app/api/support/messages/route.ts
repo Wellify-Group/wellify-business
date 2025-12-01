@@ -1,31 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getMessagesByCid } from "@/lib/supportChatStore";
+import { NextResponse } from "next/server";
+import { getSupportMessages } from "@/lib/db/support";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const { searchParams } = new URL(req.url);
     const cid = searchParams.get("cid");
-    const since = searchParams.get("since");
 
-    // Валидация
     if (!cid) {
       return NextResponse.json(
-        { ok: false, error: "CID is required" },
+        { ok: false, error: "MISSING_CID" },
         { status: 400 }
       );
     }
 
-    // Получаем сообщения
-    const messages = await getMessagesByCid(cid, since || undefined);
+    const messages = await getSupportMessages(cid);
 
-    return NextResponse.json({
-      ok: true,
-      messages,
-    });
+    return NextResponse.json({ ok: true, messages }, { status: 200 });
   } catch (error) {
-    console.error("Error in get messages route:", error);
+    console.error("[/api/support/messages] error", error);
     return NextResponse.json(
       { ok: false, error: "INTERNAL_ERROR" },
       { status: 500 }
