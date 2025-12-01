@@ -1,110 +1,83 @@
+// app/api/support/chat/send/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { addSupportMessage } from "@/lib/db/support";
-import { randomUUID } from "crypto";
+import { addSupportMessage, SupportMessage } from "@/lib/supportStore";
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const SUPPORT_CHAT_ID = process.env.TELEGRAM_SUPPORT_CHAT_ID; // ид группы
+
+if (!BOT_TOKEN) {
+  console.warn("TELEGRAM_BOT_TOKEN is not set");
+}
+if (!SUPPORT_CHAT_ID) {
+  console.warn("TELEGRAM_SUPPORT_CHAT_ID is not set");
+}
 
 export const dynamic = "force-dynamic";
 
-interface SendMessageRequest {
-  cid: string;          // conversation id из localStorage
-  message: string;      // текст от пользователя
-  name?: string;        // ФИО, если есть
-  userId?: string;      // внутренний ID пользователя, если есть
-  email?: string;       // email, если есть
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    // Проверка переменных окружения
-    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
-    const telegramChatId = process.env.TELEGRAM_SUPPORT_CHAT_ID;
+    const body = await req.json();
+    const { cid, message, name, userId, email } = body as {
+      cid?: string;
+      message?: string;
+      name?: string | null;
+      userId?: string | null;
+      email?: string | null;
+    };
 
-    if (!telegramBotToken || !telegramChatId) {
-      console.error("Missing Telegram environment variables");
+    if (!cid || !message) {
       return NextResponse.json(
-        { ok: false, error: "TELEGRAM_CONFIG_MISSING" },
-        { status: 500 }
-      );
-    }
-
-    // Парсинг тела запроса
-    const body: SendMessageRequest = await request.json();
-    const { cid, message, name, userId, email } = body;
-
-    // Валидация
-    if (!cid || !message || message.trim().length === 0) {
-      return NextResponse.json(
-        { ok: false, error: "INVALID_PAYLOAD" },
+        { ok: false, error: "CID_AND_MESSAGE_REQUIRED" },
         { status: 400 }
       );
     }
 
-    // Формирование данных пользователя с дефолтами
-    const safeName = name || "Гость сайта";
-    const safeUserId = userId || "—";
-    const safeEmail = email || "—";
+    // Сохраняем сообщение пользователя в in-memory store
+    const msg: SupportMessage = {
+      id: crypto.randomUUID(),
+      cid,
+      author: "user",
+      text: message,
+      createdAt: new Date().toISOString(),
+    };
+    addSupportMessage(msg);
 
-    // Формирование текста сообщения для Telegram (без markdown, обычный текст)
-    const telegramText = [
+    // Если нет настроенного бота / чата - просто выходим
+    if (!BOT_TOKEN || !SUPPORT_CHAT_ID) {
+      return NextResponse.json({ ok: true, skippedTelegram: true });
+    }
+
+    // Формируем "карточку" в группу
+    const lines = [
       "💬 WELLIFY business SUPPORT",
-      "👤 WELLIFY business SUPPORT",
       "",
       "Новый запрос с сайта",
       "",
-      `🆔 Имя: ${safeName}`,
-      `🪪 ID пользователя: ${safeUserId}`,
-      `✉️ Email: ${safeEmail}`,
-      "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬",
+      `🧑‍💻 Имя: ${name || "Гость сайта"}`,
+      `🆔 ID пользователя: ${userId || "—"}`,
+      `📧 Email: ${email || "—"}`,
+      "",
       `🧩 CID: ${cid}`,
-      "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬",
-      "💭 Сообщение:",
-      message.trim(),
-    ].join("\n");
+      "─────────────",
+      `💬 Сообщение:`,
+      message,
+    ];
 
-    // Отправка сообщения в Telegram
-    const telegramResponse = await fetch(
-      `https://api.telegram.org/bot${telegramBotToken}/sendMessage`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          chat_id: telegramChatId,
-          text: telegramText,
-        }),
-      }
-    );
+    const textToSend = lines.join("\n");
 
-    const telegramData = await telegramResponse.json();
-
-    // Проверка ответа от Telegram
-    if (!telegramResponse.ok || !telegramData.ok) {
-      console.error("Telegram API error:", telegramData);
-      return NextResponse.json(
-        { ok: false, error: "TELEGRAM_SEND_FAILED" },
-        { status: 502 }
-      );
-    }
-
-    // Сохранение сообщения в Supabase
-    try {
-      await addSupportMessage({
-        id: randomUUID(),
-        cid,
-        author: "user",
-        text: message.trim(),
-        createdAt: new Date().toISOString(),
-      });
-    } catch (dbError) {
-      console.error("Error saving message to database:", dbError);
-      // Не возвращаем ошибку, так как сообщение уже отправлено в Telegram
-    }
-
-    return NextResponse.json({ 
-      ok: true 
+    const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    await fetch(telegramUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: SUPPORT_CHAT_ID,
+        text: textToSend,
+      }),
     });
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Error in send message route:", error);
+    console.error("POST /api/support/chat/send error", error);
     return NextResponse.json(
       { ok: false, error: "INTERNAL_ERROR" },
       { status: 500 }

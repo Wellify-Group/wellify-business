@@ -1,27 +1,34 @@
-import { NextResponse } from "next/server";
-import { getSupportMessages } from "@/lib/db/support";
+// app/api/support/messages/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getSupportMessages } from "@/lib/supportStore";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const cid = searchParams.get("cid");
+    const url = new URL(req.url);
+    const cid = url.searchParams.get("cid");
 
     if (!cid) {
       return NextResponse.json(
-        { ok: false, error: "MISSING_CID" },
+        { ok: false, error: "CID_REQUIRED", messages: [] },
         { status: 400 }
       );
     }
 
-    const messages = await getSupportMessages(cid);
+    const messages = getSupportMessages(cid);
 
-    return NextResponse.json({ ok: true, messages }, { status: 200 });
-  } catch (error) {
-    console.error("[/api/support/messages] error", error);
     return NextResponse.json(
-      { ok: false, error: "INTERNAL_ERROR" },
+      {
+        ok: true,
+        messages,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("GET /api/support/messages error", error);
+    return NextResponse.json(
+      { ok: false, error: "INTERNAL_ERROR", messages: [] },
       { status: 500 }
     );
   }
