@@ -11,8 +11,7 @@ export function AppFooter() {
   const pathname = usePathname();
   const { lang } = useInterfaceLanguageStore();
 
-  // Welcome-page должна включать ВСЕ root-варианты:
-  // '/', '/welcome', '/welcome/*'
+  // Считаем приветственной и главную, и /welcome, и любые /welcome/*
   const isWelcomePage =
     pathname === "/" ||
     pathname === "/welcome" ||
@@ -21,16 +20,25 @@ export function AppFooter() {
   const isDashboard = pathname?.startsWith("/dashboard");
   const hideFooterOn = ["/login", "/register"];
 
-  // Прячем футер только на страницах дашборда и логина/регистрации
+  // Полное выключение футера на дашборде и страницах логина/регистрации
   if (isDashboard || hideFooterOn.includes(pathname)) {
     return null;
   }
 
-  // WELCOME FOOTER (переводимый)
+  // ==== DEBUG: временно покажем, что реально видит компонент ====
+  // УДАЛИ ЭТО, когда убедишься, что всё ок.
+  console.log("FOOTER DEBUG", { pathname, isWelcomePage, lang });
+
+  // ====== ФУТЕР ДЛЯ ПРИВЕТСТВЕННОЙ/ГЛАВНОЙ СТРАНИЦЫ ======
   if (isWelcomePage) {
     return (
       <footer className="border-t border-white/10 bg-[#05070A] text-sm text-white/70">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          {/* DEBUG-строка прямо на странице, временно */}
+          <p className="mb-2 text-[10px] text-red-400 text-center">
+            debug: path={pathname} | welcome={String(isWelcomePage)} | lang={lang}
+          </p>
+
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
             {/* BRAND */}
             <div>
@@ -83,9 +91,9 @@ export function AppFooter() {
                 </a>
                 <a
                   href="https://t.me/wellify_business_bot"
-                  className="block hover:text-white transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="block hover:text-white transition-colors"
                 >
                   {t.footerContactTelegram[lang]}
                 </a>
@@ -107,7 +115,7 @@ export function AppFooter() {
     );
   }
 
-  // DEFAULT FOOTER (для остальных страниц)
+  // ====== ПРОСТОЙ ФУТЕР ДЛЯ ВСЕХ ПРОЧИХ СТРАНИЦ ======
   return (
     <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-background text-sm">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
