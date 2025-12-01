@@ -55,7 +55,6 @@ export default function Home() {
       ?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Иконки для типов бизнеса
   const iconMap: Record<string, any> = {
     cafe: UtensilsCrossed,
     coffee: Coffee,
@@ -79,25 +78,26 @@ export default function Home() {
     photo: ImageIcon,
   };
 
-  // Объединяем данные из JSON с иконками и переводами
   const SEGMENTS = useMemo(() => {
     return businessTypesData.map((business) => {
-      // Используем fileId для переводов, если он есть, иначе id
       const translationKey = business.fileId || String(business.id);
-      // Нормализуем ключ: barber -> barbershop, beauty_salon -> beauty, car_wash -> auto, fitness_gym -> sports
-      const normalizedKey = translationKey === 'barber' ? 'barbershop' 
-        : translationKey === 'beauty_salon' ? 'beauty'
-        : translationKey === 'car_wash' ? 'auto'
-        : translationKey === 'fitness_gym' ? 'sports'
-        : translationKey;
-      
-      // Для ключей переводов заменяем дефисы на подчеркивания (car-dealer -> car_dealer)
-      const translationKeyNormalized = normalizedKey.replace(/-/g, '_');
-      
-      // Получаем описание для категории
+
+      const normalizedKey =
+        translationKey === "barber"
+          ? "barbershop"
+          : translationKey === "beauty_salon"
+          ? "beauty"
+          : translationKey === "car_wash"
+          ? "auto"
+          : translationKey === "fitness_gym"
+          ? "sports"
+          : translationKey;
+
+      const translationKeyNormalized = normalizedKey.replace(/-/g, "_");
+
       const descriptionKey = `landing_industriesDescriptions_${translationKeyNormalized}`;
       const description = t(descriptionKey) || "";
-      
+
       return {
         id: business.id,
         label: t(`biz_${translationKeyNormalized}`) || business.name,
@@ -114,9 +114,9 @@ export default function Home() {
       const Icon = segment.icon;
       const normalizedKey = segment.normalizedKey;
       const config = BUSINESS_MODAL_CONFIG[normalizedKey];
-      
+
       setActiveCategoryId(String(segment.data.id));
-      
+
       if (config) {
         openModal({
           id: config.id,
@@ -132,7 +132,6 @@ export default function Home() {
           ),
         });
       } else {
-        // Fallback для старых данных
         openModal({
           id: String(segment.data.id),
           title: segment.label,
@@ -147,7 +146,6 @@ export default function Home() {
     }
   };
 
-  // Сбрасываем активную карточку при закрытии модалки
   useEffect(() => {
     if (!isOpen) {
       setActiveCategoryId(null);
@@ -252,9 +250,15 @@ export default function Home() {
     : "/register?role=director";
 
   return (
-    <main className="relative min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
-      {/* 1. HERO - Redesigned */}
-      <section className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
+    <main
+      className="relative min-h-screen"
+      style={{ backgroundColor: "var(--color-background)" }}
+    >
+      {/* HERO */}
+      <section
+        className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8"
+        style={{ backgroundColor: "var(--color-background)" }}
+      >
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 py-8 md:py-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -262,8 +266,9 @@ export default function Home() {
             transition={{ delay: 0.05, duration: 0.5 }}
             className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-tight"
           >
-            Вся выручка, смены и сотрудники в одном кабинете
+            {t("landing_hero_main_title")}
           </motion.h1>
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -272,6 +277,7 @@ export default function Home() {
           >
             {t("landing_hero_main_desc")}
           </motion.p>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -283,6 +289,7 @@ export default function Home() {
                 {t("landing_btn_create_director")}
               </PrimaryButton>
             </Link>
+
             <button
               type="button"
               onClick={scrollToHowItWorks}
@@ -294,16 +301,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. BUSINESS TYPES - Full Grid of Categories */}
-      <section className="relative px-4 pt-8 pb-10 sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
+      {/* BUSINESS CATEGORIES */}
+      <section
+        className="relative px-4 pt-8 pb-10 sm:px-6 lg:px-8"
+        style={{ backgroundColor: "var(--color-background)" }}
+      >
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-8 text-center text-3xl font-bold text-foreground">
             {t("sec_whom")}
           </h2>
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
               const isActive = activeCategoryId === String(segment.id);
+
               return (
                 <motion.button
                   key={segment.id}
@@ -320,18 +332,22 @@ export default function Home() {
                       : ""
                   )}
                 >
-                  <Icon className={cn(
-                    "h-6 w-6",
-                    isActive 
-                      ? "text-white dark:text-zinc-900" 
-                      : "text-neutral-500 dark:text-neutral-200"
-                  )} />
-                  <span className={cn(
-                    "break-words leading-tight",
-                    isActive 
-                      ? "text-white dark:text-zinc-900" 
-                      : "text-neutral-900 dark:text-neutral-50"
-                  )}>
+                  <Icon
+                    className={cn(
+                      "h-6 w-6",
+                      isActive
+                        ? "text-white dark:text-zinc-900"
+                        : "text-neutral-500 dark:text-neutral-200"
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "break-words leading-tight",
+                      isActive
+                        ? "text-white dark:text-zinc-900"
+                        : "text-neutral-900 dark:text-neutral-50"
+                    )}
+                  >
                     {segment.label}
                   </span>
                 </motion.button>
@@ -341,12 +357,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. CORE FEATURES - Categorized */}
-      <section className="relative px-4 py-[60px] sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
+      {/* CORE FEATURES */}
+      <section
+        className="relative px-4 py-[60px] sm:px-6 lg:px-8"
+        style={{ backgroundColor: "var(--color-background)" }}
+      >
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
             {t("sec_caps")}
           </h2>
+
           <div className="space-y-12">
             {FEATURES.map((category, categoryIndex) => (
               <motion.div
@@ -359,16 +379,20 @@ export default function Home() {
                 <h3 className="mb-6 text-xl font-semibold text-foreground">
                   {category.category}
                 </h3>
-                <div className={cn(
-                  "grid gap-4",
-                  categoryIndex === 0 
-                    ? "md:grid-cols-2 lg:grid-cols-3"
-                    : categoryIndex === 1
-                    ? "md:grid-cols-2 lg:grid-cols-3"
-                    : "sm:grid-cols-2 lg:grid-cols-3"
-                )}>
+
+                <div
+                  className={cn(
+                    "grid gap-4",
+                    categoryIndex === 0
+                      ? "md:grid-cols-2 lg:grid-cols-3"
+                      : categoryIndex === 1
+                      ? "md:grid-cols-2 lg:grid-cols-3"
+                      : "sm:grid-cols-2 lg:grid-cols-3"
+                  )}
+                >
                   {category.items.map((item, itemIndex) => {
                     const Icon = item.icon;
+
                     return (
                       <motion.div
                         key={item.title}
@@ -376,7 +400,8 @@ export default function Home() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{
-                          delay: categoryIndex * 0.1 + itemIndex * 0.05,
+                          delay:
+                            categoryIndex * 0.1 + itemIndex * 0.05,
                           duration: 0.3,
                         }}
                         whileHover={{ scale: 1.02, y: -2 }}
@@ -401,16 +426,17 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 4. HOW IT WORKS - Updated */}
+      {/* HOW IT WORKS */}
       <section
         id="how-it-works"
         className="relative px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32"
-        style={{ backgroundColor: 'var(--color-background)' }}
+        style={{ backgroundColor: "var(--color-background)" }}
       >
         <div className="mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
             {t("sec_how")}
           </h2>
+
           <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-between">
             {/* Step 1 */}
             <motion.div
@@ -431,7 +457,6 @@ export default function Home() {
               </p>
             </motion.div>
 
-            {/* Arrow */}
             <ArrowRight className="hidden h-8 w-8 rotate-90 text-muted-foreground lg:block lg:rotate-0" />
 
             {/* Step 2 */}
@@ -453,7 +478,6 @@ export default function Home() {
               </p>
             </motion.div>
 
-            {/* Arrow */}
             <ArrowRight className="hidden h-8 w-8 rotate-90 text-muted-foreground lg:block lg:rotate-0" />
 
             {/* Step 3 */}
@@ -478,15 +502,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 5. QUICK START */}
-      <section className="relative px-4 py-[60px] sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--color-background)' }}>
+      {/* QUICK START */}
+      <section
+        className="relative px-4 py-[60px] sm:px-6 lg:px-8"
+        style={{ backgroundColor: "var(--color-background)" }}
+      >
         <div className="mx-auto max-w-2xl">
           <h2 className="mb-4 text-center text-3xl font-bold text-foreground">
             {t("landing_quick_start_title")}
           </h2>
+
           <p className="mb-8 text-center text-muted-foreground max-w-xl mx-auto">
-            Откройте аккаунт директора и настройте свои точки, сотрудников и смены в одном кабинете.
+            Откройте аккаунт директора и настройте свои точки, сотрудников и
+            смены в одном кабинете.
           </p>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -501,7 +531,6 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-
     </main>
   );
 }
