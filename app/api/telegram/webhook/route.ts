@@ -76,17 +76,15 @@ export async function POST(req: NextRequest) {
     console.log(`[Telegram Webhook] Support message saved for CID: ${session.cid}, topicId: ${topicId}`);
 
     // Отправляем через Realtime для мгновенной доставки (если клиент подключен)
-    try {
-      await sendRealtimeBroadcast(session.cid, {
-        sender: "support",
-        text: text.trim(),
-        createdAt: savedMessage.created_at,
-      });
-      console.log(`[Telegram Webhook] Realtime broadcast sent for CID: ${session.cid}`);
-    } catch (error) {
+    // Не ждем результата - если не получится, polling подхватит
+    sendRealtimeBroadcast(session.cid, {
+      sender: "support",
+      text: text.trim(),
+      createdAt: savedMessage.created_at,
+    }).catch((error) => {
       // Realtime может быть недоступен - это нормально, будет polling fallback
       console.log(`[Telegram Webhook] Realtime broadcast failed for CID ${session.cid} (will use polling):`, error);
-    }
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

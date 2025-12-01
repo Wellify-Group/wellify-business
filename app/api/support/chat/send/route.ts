@@ -95,16 +95,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Отправляем через Realtime для мгновенной доставки (если клиент подключен)
-    try {
-      await sendRealtimeBroadcast(cid, {
-        sender: "client",
-        text: message.trim(),
-        createdAt: savedMessage.created_at,
-      });
-    } catch (error) {
+    // Не ждем результата - если не получится, polling подхватит
+    sendRealtimeBroadcast(cid, {
+      sender: "client",
+      text: message.trim(),
+      createdAt: savedMessage.created_at,
+    }).catch((error) => {
       // Realtime может быть недоступен - это нормально, будет polling fallback
       console.log(`[Support API] Realtime broadcast failed for CID ${cid} (will use polling):`, error);
-    }
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

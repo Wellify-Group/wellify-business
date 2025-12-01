@@ -25,16 +25,16 @@ export async function sendRealtimeBroadcast(
     const subscribePromise = new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("Channel subscription timeout"));
-      }, 5000);
+      }, 3000); // Уменьшили таймаут до 3 секунд
 
       channel
         .subscribe((status) => {
           if (status === "SUBSCRIBED") {
             clearTimeout(timeout);
             resolve();
-          } else if (status === "CHANNEL_ERROR") {
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             clearTimeout(timeout);
-            reject(new Error("Channel subscription failed"));
+            reject(new Error(`Channel subscription failed: ${status}`));
           }
         });
     });
@@ -56,8 +56,10 @@ export async function sendRealtimeBroadcast(
 
     return status;
   } catch (error) {
-    console.error("Error sending realtime broadcast:", error);
-    throw error;
+    // Не бросаем ошибку - просто логируем, polling подхватит сообщение
+    console.log(`[Realtime] Broadcast failed for CID ${clientId} (will use polling):`, error instanceof Error ? error.message : error);
+    // Возвращаем false вместо throw, чтобы не ломать основной поток
+    return false;
   }
 }
 

@@ -87,6 +87,14 @@ export function SupportWidget() {
   const startRealtime = useCallback(() => {
     if (!cid || realtimeChannelRef.current || !useRealtimeRef.current) return;
 
+    // Проверяем наличие переменных окружения Supabase
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.warn("[Support Widget] Supabase env vars not set, using polling only");
+      useRealtimeRef.current = false;
+      startPolling();
+      return;
+    }
+
     try {
       const supabase = createBrowserSupabaseClient();
 
@@ -96,6 +104,16 @@ export function SupportWidget() {
           broadcast: { self: true },
         },
       });
+
+      // Таймаут для подключения
+      const connectionTimeout = setTimeout(() => {
+        if (realtimeChannelRef.current === channel) {
+          console.warn(`[Support Widget] Realtime connection timeout for CID: ${cid}, falling back to polling`);
+          useRealtimeRef.current = false;
+          stopRealtime();
+          startPolling();
+        }
+      }, 5000);
 
       // Подписываемся на новые сообщения
       channel
@@ -115,13 +133,17 @@ export function SupportWidget() {
           }
         })
         .subscribe((status) => {
+          clearTimeout(connectionTimeout);
+          
           if (status === "SUBSCRIBED") {
-            console.log(`[Support Widget] Realtime connected for CID: ${cid}`);
-          } else if (status === "CHANNEL_ERROR") {
-            console.warn(`[Support Widget] Realtime error for CID: ${cid}, falling back to polling`);
+            console.log(`[Support Widget] ✅ Realtime connected for CID: ${cid}`);
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            console.warn(`[Support Widget] Realtime ${status} for CID: ${cid}, falling back to polling`);
             useRealtimeRef.current = false;
             stopRealtime();
             startPolling();
+          } else {
+            console.log(`[Support Widget] Realtime status: ${status} for CID: ${cid}`);
           }
         });
 
@@ -129,9 +151,10 @@ export function SupportWidget() {
     } catch (error) {
       console.error("[Support Widget] Failed to start Realtime:", error);
       useRealtimeRef.current = false;
+      // Не пытаемся использовать Realtime снова в этой сессии
       startPolling();
     }
-  }, [cid, addMessages]);
+  }, [cid, addMessages, startPolling]);
 
   // Остановка Realtime
   const stopRealtime = useCallback(() => {
@@ -189,11 +212,12 @@ export function SupportWidget() {
       return;
     }
 
-    // Пытаемся использовать Realtime, если доступен
+    // Пытаемся использовать Realtime, если доступен и еще не было ошибок
     if (useRealtimeRef.current) {
       startRealtime();
+      // Если Realtime не подключится за 5 секунд, startRealtime сам переключится на polling
     } else {
-      // Fallback на polling
+      // Fallback на polling (если Realtime уже не работает)
       startPolling();
     }
 
