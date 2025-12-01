@@ -49,15 +49,13 @@ export const TRANSLATIONS = {
       documents: "Documents",
       emp_special_requirements: "Special Requirements",
       emp_no_requirements: "No special requirements",
-      start_shift_confirmation:
-        "After starting the shift, quick actions will be available and shift data will be recorded.",
+      start_shift_confirmation: "After starting the shift, quick actions will be available and shift data will be recorded.",
       cancel: "Cancel",
       starting_shift: "Starting...",
       end_shift_confirm: "End Shift?",
       revenue: "Revenue",
       checks_count: "Checks",
-      end_shift_confirm_text:
-        "Are you sure you want to end the shift? You will be able to download the report afterwards.",
+      end_shift_confirm_text: "Are you sure you want to end the shift? You will be able to download the report afterwards.",
       end_shift: "End Shift",
       shift_terminal: "Shift Terminal",
       welcome_boss: "Welcome, Boss",
@@ -97,29 +95,27 @@ export const TRANSLATIONS = {
       title: "Everything you need to run your business",
       checkins: {
         title: "Smart Check-ins",
-        description:
-          "Employees check in with geolocation and photo verification. You always know who is at work.",
+        description: "Employees check in with geolocation and photo verification. You always know who is at work."
       },
       autoAnalysis: {
         title: "Auto Analysis",
-        description: "System automatically identifies anomalies and potential theft attempts.",
+        description: "System automatically identifies anomalies and potential theft attempts."
       },
       zeroConfig: {
         title: "Zero Configuration",
-        description: "Start in 30 seconds. No complex setup required. Just invite your team.",
-      },
+        description: "Start in 30 seconds. No complex setup required. Just invite your team."
+      }
     },
     // Landing
     landing_hero_main_title: "All revenue, shifts and employees in one dashboard",
-    landing_hero_main_desc:
-      "Full business control: revenue, payroll, motivation, photo reports and much more. Connect employees and manage locations remotely.",
+    landing_hero_main_desc: "Full business control: revenue, payroll, motivation, photo reports and much more. Connect employees and manage locations remotely.",
     landing_btn_create_director: "Create Director Account",
     landing_btn_how_it_works: "How it works",
-
+    
     sec_whom: "Who is it for?",
     sec_caps: "System Features",
     sec_how: "How to start?",
-
+    
     landing_quick_start_title: "Quick Start",
 
     landing_features_category_shifts: "Shifts & Control",
@@ -135,11 +131,9 @@ export const TRANSLATIONS = {
     landing_feature_geo_title: "Geolocation",
     landing_feature_geo_desc: "Verify employee is at the workplace",
     landing_feature_late_control_title: "Late Control",
-    landing_feature_late_control_desc:
-      "Automatic shift start time tracking and notifications to director for late arrivals.",
+    landing_feature_late_control_desc: "Automatic shift start time tracking and notifications to director for late arrivals.",
     landing_feature_incidents_title: "Problems & Incidents",
-    landing_feature_incidents_desc:
-      "Employee can report a problem in seconds: equipment breakdown, stock shortage, conflict, suspicious situation.",
+    landing_feature_incidents_desc: "Employee can report a problem in seconds: equipment breakdown, stock shortage, conflict, suspicious situation.",
 
     landing_feature_revenue_title: "Live Revenue",
     landing_feature_revenue_desc: "Track income in real-time",
@@ -189,50 +183,7 @@ export const TRANSLATIONS = {
     biz_repair: "Tech Repair",
     biz_hotel: "Hotels / Hostels",
     biz_photo: "Photo Studios",
-
-    // Industry Descriptions
-    landing_industriesDescriptions_cafe:
-      "Track shifts, revenue and payroll, control checklists and photo reports for hall and kitchen.",
-    landing_industriesDescriptions_coffee:
-      "Track each shift and revenue, control baristas and service quality.",
-    landing_industriesDescriptions_retail:
-      "Transparent revenue per shift, tasks for sales staff and control of standards.",
-    landing_industriesDescriptions_beauty:
-      "Control of masters' work, shift revenue and salon condition via photo reports.",
-    landing_industriesDescriptions_street:
-      "Accounting for each point, its shifts and cash, confirmation that staff really worked on site.",
-    landing_industriesDescriptions_bakery:
-      "Control of night and day shifts, production and display of products via photos.",
-    landing_industriesDescriptions_auto:
-      "Monitor workload, shifts, revenue and quality of staff work.",
-    landing_industriesDescriptions_pickup:
-      "Control staff presence, shift schedules and quality of customer service.",
-    landing_industriesDescriptions_flowers:
-      "Track shifts and revenue, control window display and order in the shop via photo reports.",
-    landing_industriesDescriptions_print:
-      "Track operators’ shifts, tasks and results for every working day.",
-    landing_industriesDescriptions_services:
-      "Unified control of shifts, tasks and revenue for any service company.",
-    landing_industriesDescriptions_dark:
-      "Control shifts of couriers and kitchen, log issues and monitor points through photos.",
-    landing_industriesDescriptions_barbershop:
-      "Control barbers’ work, shifts and revenue without complex CRM.",
-    landing_industriesDescriptions_medical:
-      "Transparent accounting of shifts for admins and staff, control of service standards.",
-    landing_industriesDescriptions_sports:
-      "Control shifts of trainers and admins, revenue and studio load.",
-    landing_industriesDescriptions_car_dealer:
-      "Track shifts of managers and salespeople, control sales targets and revenue.",
-    landing_industriesDescriptions_tire:
-      "Simple tracking of mechanics’ shifts, revenue and workload.",
-    landing_industriesDescriptions_repair:
-      "Control of masters’ workload, shifts and revenue without complicated spreadsheets.",
-    landing_industriesDescriptions_hotel:
-      "Shifts and tasks of reception, revenue and order control through photo reports.",
-    landing_industriesDescriptions_photo:
-      "Track shifts of admins, bookings and revenue per shift.",
   },
-
   ua: {
     // --- LOGIN PAGE KEYS ---
     login_office_title: "Вхід в офіс",
@@ -279,15 +230,13 @@ export const TRANSLATIONS = {
       documents: "Документи",
       emp_special_requirements: "Особливі вимоги",
       emp_no_requirements: "Особливих вимог немає",
-      start_shift_confirmation:
-        "Після початку зміни будуть доступні швидкі дії та почнуть фіксуватися дані зміни.",
+      start_shift_confirmation: "Після початку зміни будуть доступні швидкі дії та почнуть фіксуватися дані зміни.",
       cancel: "Скасувати",
       starting_shift: "Запуск...",
       end_shift_confirm: "Закінчити зміну?",
       revenue: "Виручка",
       checks_count: "Чеків",
-      end_shift_confirm_text:
-        "Ви впевнені, що хочете завершити зміну? Після завершення ви зможете завантажити звіт.",
+      end_shift_confirm_text: "Ви впевнені, що хочете завершити зміну? Після завершення ви зможете завантажити звіт.",
       end_shift: "Закінчити зміну",
       shift_terminal: "Термінал зміни",
       welcome_boss: "Ласкаво просимо, босе",
@@ -309,12 +258,10 @@ export const TRANSLATIONS = {
     },
     support: {
       title: "Підтримка WELLIFY",
-      subtitle:
-        "Виберіть питання або напишіть нам — зазвичай відповідаємо за кілька хвилин",
+      subtitle: "Виберіть питання або напишіть нам — зазвичай відповідаємо за кілька хвилин",
       quick_answers: "Швидкі відповіді",
       faq_location: "Як знайти точку?",
-      faq_location_ans:
-        "Перейдіть у вкладку 'Моя точка', щоб побачити адресу та карту.",
+      faq_location_ans: "Перейдіть у вкладку 'Моя точка', щоб побачити адресу та карту.",
       faq_pin: "Забули PIN-код?",
       faq_pin_ans: "Зверніться до адміністратора для відновлення доступу.",
       faq_billing: "Питання по білінгу",
@@ -329,31 +276,27 @@ export const TRANSLATIONS = {
       title: "Все необхідне для керування бізнесом",
       checkins: {
         title: "Розумні чекіни",
-        description:
-          "Співробітники відмічаються з геолокацією та фото. Ви завжди знаєте, хто на роботі.",
+        description: "Співробітники відмічаються з геолокацією та фото. Ви завжди знаєте, хто на роботі."
       },
       autoAnalysis: {
         title: "Автоаналіз",
-        description: "Система автоматично виявляє аномалії та спроби крадіжок.",
+        description: "Система автоматично виявляє аномалії та спроби крадіжок."
       },
       zeroConfig: {
         title: "Нульова конфігурація",
-        description:
-          "Старт за 30 секунд. Ніяких складних налаштувань. Просто запросіть команду.",
-      },
+        description: "Старт за 30 секунд. Ніяких складних налаштувань. Просто запросіть команду."
+      }
     },
     // Landing
-    landing_hero_main_title:
-      "Вся виручка, зміни та співробітники в одному кабінеті",
-    landing_hero_main_desc:
-      "Повний контроль бізнесу: виручка, зарплата, мотивація, фотозвіти та багато іншого. Підключіть співробітників та керуйте точками віддалено.",
+    landing_hero_main_title: "Вся виручка, зміни та співробітники в одному кабінеті",
+    landing_hero_main_desc: "Повний контроль бізнесу: виручка, зарплата, мотивація, фотозвіти та багато іншого. Підключіть співробітників та керуйте точками віддалено.",
     landing_btn_create_director: "Створити акаунт директора",
     landing_btn_how_it_works: "Як це працює",
-
+    
     sec_whom: "Для кого підходить?",
     sec_caps: "Можливості системи",
     sec_how: "Як почати користуватися?",
-
+    
     landing_quick_start_title: "Швидкий старт",
 
     landing_features_category_shifts: "Зміни та контроль",
@@ -363,59 +306,42 @@ export const TRANSLATIONS = {
     landing_feature_shift_30s_title: "Відкриття за 30 секунд",
     landing_feature_shift_30s_desc: "Швидкий старт зміни з телефону або планшета",
     landing_feature_checklists_title: "Чек-листи",
-    landing_feature_checklists_desc:
-      "Контроль виконання завдань при відкритті та закритті",
+    landing_feature_checklists_desc: "Контроль виконання завдань при відкритті та закритті",
     landing_feature_photo_title: "Фотозвіти",
-    landing_feature_photo_desc:
-      "Підтвердження стану точки фотографіями",
+    landing_feature_photo_desc: "Підтвердження стану точки фотографіями",
     landing_feature_geo_title: "Геолокація",
-    landing_feature_geo_desc:
-      "Перевірка, що співробітник знаходиться на робочому місці",
+    landing_feature_geo_desc: "Перевірка, що співробітник знаходиться на робочому місці",
     landing_feature_late_control_title: "Контроль запізнень",
-    landing_feature_late_control_desc:
-      "Автоматична фіксація часу початку зміни та сповіщення директору при запізненнях.",
+    landing_feature_late_control_desc: "Автоматична фіксація часу початку зміни та сповіщення директору при запізненнях.",
     landing_feature_incidents_title: "Проблеми та інциденти",
-    landing_feature_incidents_desc:
-      "Співробітник може за секунду повідомити про проблему: поломка обладнання, нестача товару, конфлікт, підозріла ситуація.",
+    landing_feature_incidents_desc: "Співробітник може за секунду повідомити про проблему: поломка обладнання, нестача товару, конфлікт, підозріла ситуація.",
 
     landing_feature_revenue_title: "Виручка онлайн",
-    landing_feature_revenue_desc:
-      "Слідкуйте за доходами в реальному часі",
+    landing_feature_revenue_desc: "Слідкуйте за доходами в реальному часі",
     landing_feature_plan_title: "План продажів",
-    landing_feature_plan_desc:
-      "Встановлення цілей та відстеження виконання",
+    landing_feature_plan_desc: "Встановлення цілей та відстеження виконання",
     landing_feature_anomalies_title: "Аномалії",
-    landing_feature_anomalies_desc:
-      "Сповіщення про підозрілі операції",
+    landing_feature_anomalies_desc: "Сповіщення про підозрілі операції",
     landing_feature_statement_title: "P&L звіт",
-    landing_feature_statement_desc:
-      "Прибутки та збитки у зрозумілому форматі",
+    landing_feature_statement_desc: "Прибутки та збитки у зрозумілому форматі",
     landing_feature_export_title: "Експорт в Excel",
-    landing_feature_export_desc:
-      "Вивантаження даних для бухгалтерії",
+    landing_feature_export_desc: "Вивантаження даних для бухгалтерії",
     landing_feature_analytics_title: "Аналітика та дашборд",
-    landing_feature_analytics_desc:
-      "Візуалізація даних та ключові метрики в реальному часі",
+    landing_feature_analytics_desc: "Візуалізація даних та ключові метрики в реальному часі",
 
     landing_feature_rating_title: "Рейтинг співробітників",
-    landing_feature_rating_desc:
-      "Мотивація на основі показників",
+    landing_feature_rating_desc: "Мотивація на основі показників",
     landing_feature_notifications_title: "Push-сповіщення",
-    landing_feature_notifications_desc:
-      "Миттєві сповіщення про важливі події",
+    landing_feature_notifications_desc: "Миттєві сповіщення про важливі події",
     landing_feature_telegram_title: "Telegram бот",
-    landing_feature_telegram_desc:
-      "Отримуйте звіти прямо в месенджер",
+    landing_feature_telegram_desc: "Отримуйте звіти прямо в месенджер",
 
     landing_how_works_step1_title: "Створіть акаунт",
-    landing_how_works_step1_desc:
-      "Зареєструйтеся як директор і додайте свою першу точку",
+    landing_how_works_step1_desc: "Зареєструйтеся як директор і додайте свою першу точку",
     landing_how_works_step2_title: "Додайте співробітників",
-    landing_how_works_step2_desc:
-      "Запросіть персонал за посиланням або створіть профілі вручну",
+    landing_how_works_step2_desc: "Запросіть персонал за посиланням або створіть профілі вручну",
     landing_how_works_step3_title: "Слідкуйте за результатом",
-    landing_how_works_step3_desc:
-      "Співробітники відкривають зміни, а ви бачите всю статистику",
+    landing_how_works_step3_desc: "Співробітники відкривають зміни, а ви бачите всю статистику",
 
     // Business Types
     biz_cafe: "Кафе та ресторани",
@@ -433,58 +359,214 @@ export const TRANSLATIONS = {
     biz_barbershop: "Барбершопи",
     biz_medical: "Медичні центри",
     biz_sports: "Спортивні студії",
-    biz_car_dealer: "Автосалони / запчастини",
+    biz_car_dealer: "Автосалони / запчасти",
     biz_tire: "Шиномонтаж",
     biz_repair: "Ремонт техніки",
     biz_hotel: "Готелі / хостели",
     biz_photo: "Фото-студії",
+  },
+  ru: {
+    // --- LOGIN PAGE KEYS ---
+    login_office_title: "Вход в офис",
+    login_office_desc: "Войдите как директор или менеджер",
+    login_btn_office: "Офис",
+    login_btn_terminal: "Терминал",
+    password_label: "ПАРОЛЬ",
+    login_forgot_password: "Забыли пароль?",
+    btn_login: "Войти",
+    login_or_social: "ИЛИ ВОЙТИ ЧЕРЕЗ",
+    // -----------------------
+
+    role_employee: "Сотрудник",
+    logout: "Выйти",
+    dashboard: {
+      dashboard_point: "Точка",
+      dashboard_shift_active: "Смена идет",
+      dashboard_shift_finished: "Смена завершена",
+      dashboard_shift_not_started: "Смена не начата",
+      profile: "Профиль",
+      shift_history: "История смен",
+      menu_dark_mode: "Тёмный режим",
+      interface_language: "Язык интерфейса",
+      btn_exit: "Выйти",
+      start_shift: "Начать смену",
+      close_shift: "Закрыть смену",
+      closing_shift: "Закрываем...",
+      shift_finished_success: "Смена успешно завершена",
+      error_finish_shift: "Не удалось завершить смену",
+      error_missing_location_or_user: "Отсутствует ID точки или пользователя",
+      shift_started_success: "Смена успешно начата",
+      error_start_shift: "Не удалось начать смену",
+      cannot_logout_active_shift: "Нельзя выйти, пока смена не завершена",
+      emp_my_location: "Моя точка",
+      no_location_assigned: "Точка не назначена",
+      emp_working: "Работает",
+      emp_on_pause: "На паузе",
+      emp_closed: "Закрыта",
+      emp_location_rules: "Правила точки",
+      emp_no_rules: "Правила не указаны",
+      emp_closing_standards: "Стандарти закрытия",
+      emp_no_standards: "Стандарты не указаны",
+      schedule: "График работы",
+      documents: "Документы",
+      emp_special_requirements: "Особые требования",
+      emp_no_requirements: "Особых требований нет",
+      start_shift_confirmation: "После начала смены будут доступны быстрые действия и данные смены начнут фиксироваться.",
+      cancel: "Отмена",
+      starting_shift: "Запуск...",
+      end_shift_confirm: "Закончить смену?",
+      revenue: "Выручка",
+      checks_count: "Чеков",
+      end_shift_confirm_text: "Вы уверены, что хотите завершить смену? После завершения вы сможете скачать отчёт.",
+      end_shift: "Закончить смену",
+      shift_terminal: "Терминал смены",
+      welcome_boss: "Добро пожаловать, босс",
+      point_control: "Контроль точки",
+      ready_shift: "Готов начать смену",
+      nav_overview: "Обзор",
+      nav_locations: "Локации",
+      nav_staff: "Персонал",
+      nav_reports: "Отчёты",
+      nav_settings: "Настройки",
+    },
+    nav: {
+      features: "Возможности",
+      pricing: "Цены",
+      contacts: "Контакты",
+      login: "Войти",
+      getStarted: "Начать",
+      createAccount: "Создать аккаунт",
+    },
+    support: {
+      title: "Поддержка WELLIFY",
+      subtitle: "Выберите вопрос или напишите нам — обычно отвечаем за несколько минут",
+      quick_answers: "Быстрые ответы",
+      faq_location: "Как найти точку?",
+      faq_location_ans: "Перейдите во вкладку 'Моя точка', чтобы увидеть адрес и карту.",
+      faq_pin: "Забыли PIN-код?",
+      faq_pin_ans: "Обратитесь к администратору для восстановления доступа.",
+      faq_billing: "Вопросы по биллингу",
+      faq_billing_ans: "Все финансовые данные доступны в разделе 'Отчёты'.",
+      btn_telegram: "Написать в Telegram",
+      telegram_desc: "Напишите нам в Telegram для быстрой помощи",
+      input_placeholder: "Напишите сообщение...",
+      btn_send: "Отправить",
+      auto_reply: "Спасибо за обращение! Мы свяжемся с вами в ближайшее время.",
+    },
+    features: {
+      title: "Всё необходимое для управления бизнесом",
+      checkins: {
+        title: "Умные чекины",
+        description: "Сотрудники отмечаются с геолокацией и фото. Вы всегда знаете, кто на работе."
+      },
+      autoAnalysis: {
+        title: "Автоанализ",
+        description: "Система автоматически выявляет аномалії и попытки воровства."
+      },
+      zeroConfig: {
+        title: "Нулевая конфигурация",
+        description: "Старт за 30 секунд. Никаких сложных настроек. Просто пригласите команду."
+      }
+    },
+    // Landing
+    landing_hero_main_title: "Вся выручка, смены и сотрудники в одном кабинете",
+    landing_hero_main_desc: "Полный контроль бизнеса: выручка, зарплата, мотивация, фото-отчеты и многое другое. Подключите сотрудников и управляйте точками удаленно.",
+    landing_btn_create_director: "Создать аккаунт директора",
+    landing_btn_how_it_works: "Как это работает",
+    
+    sec_whom: "Для кого подходит?",
+    sec_caps: "Возможности системы",
+    sec_how: "Как начать пользоваться?",
+    
+    landing_quick_start_title: "Быстрый старт",
+
+    landing_features_category_shifts: "Смены и контроль",
+    landing_features_category_finance: "Финансы и аналитика",
+    landing_features_category_team: "Команда и мотивация",
+
+    landing_feature_shift_30s_title: "Открытие за 30 секунд",
+    landing_feature_shift_30s_desc: "Быстрый старт смены с телефона или планшета",
+    landing_feature_checklists_title: "Чек-листы",
+    landing_feature_checklists_desc: "Контроль выполнения задач при открытии и закрытии",
+    landing_feature_photo_title: "Фото-отчеты",
+    landing_feature_photo_desc: "Подтверждение состояния точки фотографиями",
+    landing_feature_geo_title: "Геолокация",
+    landing_feature_geo_desc: "Проверка, что сотрудник находится на рабочем месте",
+    landing_feature_late_control_title: "Контроль опозданий",
+    landing_feature_late_control_desc: "Автоматическая фиксация времени начала смены и уведомления директору при опозданиях.",
+    landing_feature_incidents_title: "Проблемы и инциденты",
+    landing_feature_incidents_desc: "Сотрудник может за секунду сообщить о проблеме: поломка оборудования, нехватка товара, конфликт, подозрительная ситуация.",
+
+    landing_feature_revenue_title: "Выручка онлайн",
+    landing_feature_revenue_desc: "Следите за доходами в реальном времени",
+    landing_feature_plan_title: "План продаж",
+    landing_feature_plan_desc: "Установка целей и отслеживание выполнения",
+    landing_feature_anomalies_title: "Аномалии",
+    landing_feature_anomalies_desc: "Оповещения о подозрительных операциях",
+    landing_feature_statement_title: "P&L отчет",
+    landing_feature_statement_desc: "Прибыли и убытки в понятном формате",
+    landing_feature_export_title: "Экспорт в Excel",
+    landing_feature_export_desc: "Выгрузка данных для бухгалтерии",
+    landing_feature_analytics_title: "Аналитика и дашборд",
+    landing_feature_analytics_desc: "Визуализация данных и ключевые метрики в реальном времени",
+
+    landing_feature_rating_title: "Рейтинг сотрудников",
+    landing_feature_rating_desc: "Мотивация на основе показателей",
+    landing_feature_notifications_title: "Push-уведомления",
+    landing_feature_notifications_desc: "Мгновенные оповещения о важных событиях",
+    landing_feature_telegram_title: "Telegram бот",
+    landing_feature_telegram_desc: "Получайте отчеты прямо в мессенджер",
+
+    landing_how_works_step1_title: "Создайте аккаунт",
+    landing_how_works_step1_desc: "Зарегистрируйтесь как директор и добавьте свою первую точку",
+    landing_how_works_step2_title: "Добавьте сотрудников",
+    landing_how_works_step2_desc: "Пригласите персонал по ссылке или создайте профили вручную",
+    landing_how_works_step3_title: "Следите за результатом",
+    landing_how_works_step3_desc: "Сотрудники открывают смены, а вы видите всю статистику",
+
+    // Business Types
+    biz_cafe: "Кафе и рестораны",
+    biz_coffee: "Кофейни",
+    biz_retail: "Магазины",
+    biz_beauty: "Салоны красоты",
+    biz_street: "Стритфуд и киоски",
+    biz_bakery: "Пекарни",
+    biz_auto: "Автосервисы и мойки",
+    biz_pickup: "Пункты выдачи",
+    biz_flowers: "Цветочные магазины",
+    biz_print: "Коллцентр",
+    biz_services: "Сфера услуг",
+    biz_dark: "Доставка еды",
+    biz_barbershop: "Барбершопы",
+    biz_medical: "Медицинские центры",
+    biz_sports: "Спортивные студии",
+    biz_car_dealer: "Автосалоны / запчасти",
+    biz_tire: "Шиномонтаж",
+    biz_repair: "Ремонт техники",
+    biz_hotel: "Отели / хостелы",
+    biz_photo: "Фото-студии",
 
     // Industry Descriptions
-    landing_industriesDescriptions_cafe:
-      "Облік змін, виручки та оплати, контроль чек-листів і фотозвітів по залу та кухні.",
-    landing_industriesDescriptions_coffee:
-      "Фіксація кожної зміни й виручки, контроль бариста та якості сервісу.",
-    landing_industriesDescriptions_retail:
-      "Прозора виручка по змінах, завдання для продавців та контроль дотримання стандартів.",
-    landing_industriesDescriptions_beauty:
-      "Контроль роботи майстрів, виручки по змінах і стану залу через фотозвіти.",
-    landing_industriesDescriptions_street:
-      "Облік кожної точки, змін і каси, підтвердження роботи співробітників на місці.",
-    landing_industriesDescriptions_bakery:
-      "Контроль нічних та денних змін, виробітку й викладки продукції по фото.",
-    landing_industriesDescriptions_auto:
-      "Відстеження завантаженості, змін, виручки та якості роботи персоналу.",
-    landing_industriesDescriptions_pickup:
-      "Контроль присутності співробітників, графіка змін та якості обслуговування клієнтів.",
-    landing_industriesDescriptions_flowers:
-      "Облік змін і виручки, контроль вітрини та порядку за фотозвітами.",
-    landing_industriesDescriptions_print:
-      "Фіксація змін операторів, завдань і результатів кожної робочої зміни.",
-    landing_industriesDescriptions_services:
-      "Єдиний контроль змін, завдань і виручки для будь-якої сервісної компанії.",
-    landing_industriesDescriptions_dark:
-      "Контроль змін кур'єрів та кухні, фіксація проблем і стану точок по фото.",
-    landing_industriesDescriptions_barbershop:
-      "Контроль роботи барберів, змін і виручки без складних CRM.",
-    landing_industriesDescriptions_medical:
-      "Прозорий облік змін адміністраторів і персоналу, контроль стандартів сервісу.",
-    landing_industriesDescriptions_sports:
-      "Контроль змін тренерів і адміністраторів, виручки та завантаженості студії.",
-    landing_industriesDescriptions_car_dealer:
-      "Облік змін менеджерів і продавців, контроль плану продажів та виручки.",
-    landing_industriesDescriptions_tire:
-      "Просте відстеження змін майстрів, виручки та завантаженості точки.",
-    landing_industriesDescriptions_repair:
-      "Контроль завантаженості майстрів, змін і виручки без складних таблиць.",
-    landing_industriesDescriptions_hotel:
-      "Зміни й завдання ресепшн, виручка та контроль порядку через фотозвіти.",
-    landing_industriesDescriptions_photo:
-      "Облік змін адміністраторів, бронювань і виручки по змінах.",
-  },
-
-  // ru блок оставляешь таким, как у тебя сейчас (он уже полный)
-  ru: {
-    // ... твой существующий ru-объект без изменений ...
+    landing_industriesDescriptions_cafe: "Учет смен, выручки и оплаты, контроль чек-листов и фотоотчетов по залу и кухне.",
+    landing_industriesDescriptions_coffee: "Фиксация каждой смены и выручки, контроль бариста и качества обслуживания.",
+    landing_industriesDescriptions_retail: "Прозрачная выручка по сменам, задачи для продавцов и контроль выполнения стандартов.",
+    landing_industriesDescriptions_beauty: "Контроль работы мастеров, выручки по сменам и состояния зала по фотоотчетам.",
+    landing_industriesDescriptions_street: "Учет каждой точки, смен и кассы, подтверждение работы сотрудников на месте.",
+    landing_industriesDescriptions_bakery: "Контроль ночных и дневных смен, выработки и выкладки продукции по фото.",
+    landing_industriesDescriptions_auto: "Отслеживание загруженности, смен, выручки и качества работы персонала.",
+    landing_industriesDescriptions_pickup: "Контроль присутствия сотрудников, графика смен и качества обслуживания клиентов.",
+    landing_industriesDescriptions_flowers: "Учет смен и выручки, контроль витрины и порядков по фотоотчетам.",
+    landing_industriesDescriptions_print: "Фиксация смен операторов, задач и результатов по каждой рабочей смене.",
+    landing_industriesDescriptions_services: "Единый контроль смен, задач и выручки для любой сервисной компании.",
+    landing_industriesDescriptions_dark: "Контроль смен курьеров и кухни, фиксация проблем и состояние точек по фото.",
+    landing_industriesDescriptions_barbershop: "Контроль работы барберов, смен и выручки без сложных CRM.",
+    landing_industriesDescriptions_medical: "Прозрачный учет смен администраторов и персонала, контроль стандартов сервиса.",
+    landing_industriesDescriptions_sports: "Контроль смен тренеров и администраторов, выручки и загрузки студии.",
+    landing_industriesDescriptions_car_dealer: "Учет смен менеджеров и продавцов, контроль плана продаж и выручки.",
+    landing_industriesDescriptions_tire: "Простое отслеживание смен мастеров, выручки и загрузки точки.",
+    landing_industriesDescriptions_repair: "Контроль занятости мастеров, смен и выручки без сложных таблиц.",
+    landing_industriesDescriptions_hotel: "Смены и задачи ресепшн, выручка и контроль порядка по фотоотчетам.",
+    landing_industriesDescriptions_photo: "Учет смен администраторов, бронирований и выручки по сменам.",
   },
 };
 
