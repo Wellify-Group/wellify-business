@@ -44,7 +44,10 @@ export function SupportWidget() {
   // Инициализация CID
   useEffect(() => {
     setMounted(true);
-    let storedCid = typeof window !== "undefined" ? localStorage.getItem("support_cid") : null;
+    let storedCid =
+      typeof window !== "undefined"
+        ? localStorage.getItem("support_cid")
+        : null;
 
     if (!storedCid) {
       storedCid = crypto.randomUUID();
@@ -58,21 +61,26 @@ export function SupportWidget() {
 
   // Опрос /api/support/messages и полная замена списка
   useEffect(() => {
-    if (!cid) return;
-
     let isCancelled = false;
 
     async function loadMessages() {
+      // Гард: если CID ещё нет, не делаем запрос
+      if (!cid) return;
+
       try {
-        const res = await fetch(`/api/support/messages?cid=${encodeURIComponent(cid)}`);
+        const res = await fetch(
+          `/api/support/messages?cid=${encodeURIComponent(cid)}`
+        );
         if (!res.ok) return;
         const data = await res.json();
 
         if (!isCancelled && data.ok && Array.isArray(data.messages)) {
           setMessages(data.messages);
-          
+
           // Проверяем, есть ли сообщения от поддержки
-          const hasSupportMessages = data.messages.some((m: SupportMessage) => m.author === "support");
+          const hasSupportMessages = data.messages.some(
+            (m: SupportMessage) => m.author === "support"
+          );
           if (hasSupportMessages) {
             setHasRealAgentJoined(true);
           }
@@ -151,8 +159,8 @@ export function SupportWidget() {
       await fetch("/api/support/chat/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          cid, 
+        body: JSON.stringify({
+          cid,
           message: text,
           name: currentUser?.fullName || currentUser?.name,
           userId: currentUser?.id,
@@ -239,7 +247,10 @@ export function SupportWidget() {
             transform: "none",
           }}
         >
-          <Send className="h-5 w-5 text-white m-0 p-0 pointer-events-none" style={{ transform: "none" }} />
+          <Send
+            className="h-5 w-5 text-white m-0 p-0 pointer-events-none"
+            style={{ transform: "none" }}
+          />
 
           {/* Индикатор непрочитанных сообщений */}
           {hasUnread && (
@@ -414,7 +425,9 @@ export function SupportWidget() {
                                 : "self-start bg-muted text-muted-foreground"
                             }`}
                           >
-                            <p className="break-words leading-relaxed">{msg.text}</p>
+                            <p className="break-words leading-relaxed">
+                              {msg.text}
+                            </p>
                           </motion.div>
                         );
                       })}
@@ -449,7 +462,10 @@ export function SupportWidget() {
                     }}
                     aria-label={t("support.btn_send")}
                   >
-                    <Send className="h-5 w-5 m-0 p-0 pointer-events-none" style={{ transform: "none" }} />
+                    <Send
+                      className="h-5 w-5 m-0 p-0 pointer-events-none"
+                      style={{ transform: "none" }}
+                    />
                   </button>
                 </div>
 
