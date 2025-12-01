@@ -8,13 +8,41 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/components/language-provider";
 import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 interface ChatMessage {
   id: string;
   text: string;
-  senderType: "user" | "system" | "agent";
-  timestamp: Date;
-  agentName?: string; // Имя агента для сообщений типа 'agent'
+  sender: "client" | "support";
+  createdAt: string;
+}
+
+// Генерация UUID v4
+function generateUUID(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback для старых браузеров
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+// Получение или создание clientId
+function getOrCreateClientId(): string {
+  if (typeof window === "undefined") return "";
+  
+  const storageKey = "wellify_client_id";
+  let clientId = localStorage.getItem(storageKey);
+  
+  if (!clientId) {
+    clientId = generateUUID();
+    localStorage.setItem(storageKey, clientId);
+  }
+  
+  return clientId;
 }
 
 export function SupportWidget() {
@@ -27,12 +55,13 @@ export function SupportWidget() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [hasUserSentMessage, setHasUserSentMessage] = useState(false);
-  const [activeAgentName, setActiveAgentName] = useState<string | null>(null);
   const [hasRealAgentJoined, setHasRealAgentJoined] = useState(false);
 
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
+  const [clientId, setClientId] = useState<string>("");
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -40,31 +69,57 @@ export function SupportWidget() {
   // Hide floating button on dashboard pages
   const isDashboard = pathname?.startsWith("/dashboard");
 
-  // Определение темы
-  const isDark = mounted && resolvedTheme === "dark";
-
   // Монтирование компонента
   useEffect(() => {
     setMounted(true);
+    // Получаем или создаем clientId
+    const id = getOrCreateClientId();
+    setClientId(id);
   }, []);
 
-
-  // Проверка на появление агента в сообщениях
+  // Подписка на Supabase Realtime для получения ответов от поддержки
   useEffect(() => {
-    const agentMessage = messages.find((msg) => msg.senderType === "agent");
-    if (agentMessage && !hasRealAgentJoined) {
-      setHasRealAgentJoined(true);
-      const agentName =
-        agentMessage.agentName || (Math.random() > 0.5 ? "Антон" : "Євген");
-      setActiveAgentName(agentName);
-    }
-  }, [messages, hasRealAgentJoined]);
+    if (!clientId || !mounted) return;
 
-  // Проверка непрочитанных сообщений от агента при свернутой панели
+    const supabase = createBrowserSupabaseClient();
+    const channel = supabase.channel(`support_chat:${clientId}`);
+
+    channel
+      .on("broadcast", { event: "new_message" }, (payload) => {
+        const { sender, text, createdAt } = payload.payload as {
+          sender: "client" | "support";
+          text: string;
+          createdAt: string;
+        };
+
+        if (sender === "support") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: generateUUID(),
+              sender: "support",
+              text,
+              createdAt,
+            },
+          ]);
+
+          setHasRealAgentJoined(true);
+          setHasUnread(!isSupportOpen);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+      supabase.removeChannel(channel);
+    };
+  }, [clientId, mounted, isSupportOpen]);
+
+  // Проверка непрочитанных сообщений от поддержки при свернутой панели
   useEffect(() => {
     if (!isSupportOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.senderType === "agent") {
+      if (lastMessage.sender === "support") {
         setHasUnread(true);
       }
     }
@@ -89,56 +144,55 @@ export function SupportWidget() {
   ];
 
   const handleTelegramClick = () => {
-    window.open("https://t.me/shiftflow_support", "_blank");
+    window.open("https://t.me/wellifybusinesssupport_bot", "_blank");
   };
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      const userMessage: ChatMessage = {
-        id: Date.now().toString(),
-        text: inputMessage.trim(),
-        senderType: "user",
-        timestamp: new Date(),
-      };
+  const handleSendMessage = async () => {
+    const text = inputMessage.trim();
+    if (!text || !clientId || isSending) return;
 
-      setMessages((prev) => [...prev, userMessage]);
-      setInputMessage("");
+    setIsSending(true);
 
-      // Устанавливаем флаг, что пользователь отправил сообщение
-      if (!hasUserSentMessage) {
-        setHasUserSentMessage(true);
+    // Optimistic update
+    const tempId = generateUUID();
+    const userMessage: ChatMessage = {
+      id: tempId,
+      text,
+      sender: "client",
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
+
+    // Устанавливаем флаг, что пользователь отправил сообщение
+    if (!hasUserSentMessage) {
+      setHasUserSentMessage(true);
+    }
+
+    try {
+      const response = await fetch("/api/support/chat/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clientId,
+          text,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Failed to send message");
       }
-
-      // Автоответ после 1 секунды (системное сообщение)
-      setTimeout(() => {
-        const systemMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          text: t("support.auto_reply"),
-          senderType: "system",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, systemMessage]);
-      }, 1000);
-
-      // Имитация ответа от агента через 3 секунды (для демонстрации)
-      setTimeout(() => {
-        const agentName =
-          activeAgentName || (Math.random() > 0.5 ? "Антон" : "Євген");
-        const agentMessage: ChatMessage = {
-          id: (Date.now() + 2).toString(),
-          text: "Добрый день! Чем могу помочь?",
-          senderType: "agent",
-          timestamp: new Date(),
-          agentName: agentName,
-        };
-        setMessages((prev) => [...prev, agentMessage]);
-
-        // Если агент еще не был определен, устанавливаем его
-        if (!hasRealAgentJoined) {
-          setHasRealAgentJoined(true);
-          setActiveAgentName(agentName);
-        }
-      }, 3000);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Можно пометить сообщение как failed, но для простоты оставляем как есть
+      // В реальном приложении можно добавить индикатор ошибки
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -190,8 +244,8 @@ export function SupportWidget() {
 
   // Получение подзаголовка
   const getSubtitle = () => {
-    if (hasRealAgentJoined && activeAgentName) {
-      return `${activeAgentName}, служба підтримки`;
+    if (hasRealAgentJoined) {
+      return "Служба поддержки онлайн";
     }
     return "Отвечаем в течение нескольких минут";
   };
@@ -384,14 +438,14 @@ export function SupportWidget() {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           className={`flex ${
-                            msg.senderType === "user"
+                            msg.sender === "client"
                               ? "justify-end"
                               : "justify-start"
                           }`}
                         >
                           <div
                             className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs ${
-                              msg.senderType === "user"
+                              msg.sender === "client"
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-muted text-muted-foreground"
                             }`}
@@ -424,7 +478,7 @@ export function SupportWidget() {
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim()}
+                    disabled={!inputMessage.trim() || isSending || !clientId}
                     className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     style={{
                       background: "var(--color-brand)",
@@ -438,9 +492,11 @@ export function SupportWidget() {
                 </div>
 
                 {/* Telegram Button - как primary button, но высота 44px */}
-                <button
-                  onClick={handleTelegramClick}
-                  className="w-full text-sm font-semibold flex items-center justify-center transition-all hover:-translate-y-[1px] active:translate-y-[0px] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                <a
+                  href="https://t.me/wellifybusinesssupport_bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full rounded-xl bg-primary text-white text-sm font-medium py-3 flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
                   style={{
                     height: "44px",
                     background: "var(--color-brand)",
@@ -449,6 +505,7 @@ export function SupportWidget() {
                     borderRadius: "var(--radius-pill)",
                     transitionDuration: "var(--transition-base)",
                     transitionTimingFunction: "var(--ease-soft)",
+                    textDecoration: "none",
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background =
@@ -459,7 +516,7 @@ export function SupportWidget() {
                   }}
                 >
                   {t("support.btn_telegram")}
-                </button>
+                </a>
               </div>
             </motion.div>
           </>
