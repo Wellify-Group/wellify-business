@@ -17,13 +17,6 @@ interface SupportMessage {
   createdAt: string;
 }
 
-// Формат сообщения с сервера
-interface ServerMessage {
-  text: string;
-  from: "user" | "admin";
-  timestamp: string;
-}
-
 export function SupportWidget() {
   const { t } = useLanguage();
   const pathname = usePathname();
@@ -43,10 +36,8 @@ export function SupportWidget() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Refs для управления соединениями
-  const sseEventSourceRef = useRef<EventSource | null>(null);
+  // Ref для polling
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const useSSERef = useRef(true); // Пробуем SSE сначала
 
   const isDashboard = pathname?.startsWith("/dashboard");
 
@@ -68,53 +59,35 @@ export function SupportWidget() {
     setCid(storedCid);
   }, []);
 
-  // Преобразование ServerMessage в SupportMessage
-  const convertServerMessage = useCallback(
-    (msg: ServerMessage, cid: string): SupportMessage => {
-      return {
-        id: crypto.randomUUID(),
-        cid,
-        author: msg.from === "admin" ? "support" : "user",
-        text: msg.text,
-        createdAt: msg.timestamp,
-      };
-    },
-    []
-  );
-
   // Добавление новых сообщений
   const addMessages = useCallback(
-    (newMessages: ServerMessage[]) => {
+    (newMessages: SupportMessage[]) => {
       if (!cid || newMessages.length === 0) return;
 
-      const converted = newMessages.map((msg) => convertServerMessage(msg, cid));
-
       setMessages((prev) => {
-        // Избегаем дубликатов по тексту и времени
-        const existingIds = new Set(prev.map((m) => `${m.text}-${m.createdAt}`));
-        const unique = converted.filter(
-          (m) => !existingIds.has(`${m.text}-${m.createdAt}`)
-        );
+        // Избегаем дубликатов по id
+        const existingIds = new Set(prev.map((m) => m.id));
+        const unique = newMessages.filter((m) => !existingIds.has(m.id));
         return [...prev, ...unique];
       });
 
       // Проверяем, есть ли сообщения от поддержки
-      const hasSupport = newMessages.some((m) => m.from === "admin");
+      const hasSupport = newMessages.some((m) => m.author === "support");
       if (hasSupport) {
         setHasRealAgentJoined(true);
       }
     },
-    [cid, convertServerMessage]
+    [cid]
   );
 
-  // Polling fallback
+  // Polling для получения новых сообщений
   const startPolling = useCallback(() => {
     if (!cid || pollingIntervalRef.current) return;
 
     const poll = async () => {
       try {
         const res = await fetch(
-          `/api/support/poll?cid=${encodeURIComponent(cid)}`
+          `/api/support/chat/poll?cid=${encodeURIComponent(cid)}`
         );
         if (!res.ok) return;
 
@@ -130,8 +103,8 @@ export function SupportWidget() {
     // Первый запрос сразу
     poll();
 
-    // Далее каждую секунду
-    pollingIntervalRef.current = setInterval(poll, 1000);
+    // Далее каждые 2-3 секунды
+    pollingIntervalRef.current = setInterval(poll, 2500);
   }, [cid, addMessages]);
 
   // Остановка polling
@@ -142,70 +115,19 @@ export function SupportWidget() {
     }
   }, []);
 
-  // SSE соединение
-  const startSSE = useCallback(() => {
-    if (!cid || sseEventSourceRef.current) return;
-
-    try {
-      const eventSource = new EventSource(
-        `/api/support/ws?cid=${encodeURIComponent(cid)}`
-      );
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.ok && Array.isArray(data.messages)) {
-            addMessages(data.messages);
-          }
-        } catch (e) {
-          console.error("SSE message parse error:", e);
-        }
-      };
-
-      eventSource.onerror = () => {
-        // SSE недоступен - переключаемся на polling
-        eventSource.close();
-        sseEventSourceRef.current = null;
-        useSSERef.current = false;
-        startPolling();
-      };
-
-      sseEventSourceRef.current = eventSource;
-    } catch (e) {
-      console.error("SSE connection error:", e);
-      useSSERef.current = false;
-      startPolling();
-    }
-  }, [cid, addMessages, startPolling]);
-
-  // Остановка SSE
-  const stopSSE = useCallback(() => {
-    if (sseEventSourceRef.current) {
-      sseEventSourceRef.current.close();
-      sseEventSourceRef.current = null;
-    }
-  }, []);
-
-  // Управление соединениями при изменении cid или isSupportOpen
+  // Управление polling при изменении cid или isSupportOpen
   useEffect(() => {
     if (!cid || !isSupportOpen || isMinimized) {
-      stopSSE();
       stopPolling();
       return;
     }
 
-    // Пробуем SSE, если не работает - fallback на polling
-    if (useSSERef.current) {
-      startSSE();
-    } else {
-      startPolling();
-    }
+    startPolling();
 
     return () => {
-      stopSSE();
       stopPolling();
     };
-  }, [cid, isSupportOpen, isMinimized, startSSE, startPolling, stopSSE, stopPolling]);
+  }, [cid, isSupportOpen, isMinimized, startPolling, stopPolling]);
 
   // Проверка непрочитанных сообщений
   useEffect(() => {
@@ -257,7 +179,7 @@ export function SupportWidget() {
     }
 
     try {
-      const res = await fetch("/api/support/send", {
+      const res = await fetch("/api/support/chat/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

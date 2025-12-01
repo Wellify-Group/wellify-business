@@ -1,9 +1,9 @@
 // app/api/telegram/webhook/route.ts
-// Старый endpoint для обратной совместимости - перенаправляет на новый
 import { NextRequest, NextResponse } from "next/server";
-import { getCidByTopicId, addPendingMessage, getSession } from "@/lib/supportSession";
+import { getSessionByTopicId, saveSupportMessage } from "@/lib/db-support";
 import { getSupportChatId } from "@/lib/telegram";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
@@ -34,35 +34,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Находим cid по topicId
-    const cid = getCidByTopicId(topicId);
-    if (!cid) {
-      // Нет привязки - возможно, это первое сообщение в теме (карточка клиента)
-      // Или тема была создана вручную - игнорируем
-      console.warn(`No cid found for topicId: ${topicId}`);
+    // Проверяем, что это не карточка клиента (первое сообщение)
+    if (
+      text.includes("Новый запрос с сайта") ||
+      text.includes("CID:") ||
+      text.includes("──────────────")
+    ) {
       return NextResponse.json({ ok: true });
     }
 
-    // Проверяем, что это не первое сообщение (карточка клиента)
-    const session = getSession(cid);
-    if (session) {
-      // Проверяем, что это не карточка клиента
-      if (
-        text.includes("Новый запрос с сайта") ||
-        text.includes("CID:") ||
-        text.includes("──────────────")
-      ) {
-        return NextResponse.json({ ok: true });
-      }
+    // Находим сессию по topic_id
+    const session = await getSessionByTopicId(topicId);
+    if (!session) {
+      // Нет привязки - возможно, тема была создана вручную
+      console.warn(`No session found for topicId: ${topicId}`);
+      return NextResponse.json({ ok: true });
     }
 
-    // Сохраняем сообщение админа
-    addPendingMessage(cid, {
+    // Сохраняем сообщение админа в Supabase
+    await saveSupportMessage({
+      cid: session.cid,
+      author: "support",
       text: text.trim(),
-      from: "admin",
-      timestamp: new Date(
-        (message.date ?? Math.floor(Date.now() / 1000)) * 1000
-      ).toISOString(),
     });
 
     return NextResponse.json({ ok: true });
@@ -72,4 +65,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 }
-
