@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addSupportMessage } from "@/lib/db/support";
+import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ interface TelegramUpdate {
     message_id: number;
     text?: string;
     chat?: {
-      id: number;
+      id: number | string;
       type: string;
     };
     reply_to_message?: {
@@ -21,10 +22,11 @@ interface TelegramUpdate {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: TelegramUpdate = await req.json();
+    const update: TelegramUpdate = await req.json();
+    const message = update.message;
 
-    // Проверяем, что это сообщение с текстом
-    if (!body.message || !body.message.text) {
+    // Проверяем, что это сообщение
+    if (!message) {
       return NextResponse.json({ ok: true });
     }
 
@@ -36,8 +38,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const message = body.message;
-    const chatId = message.chat?.id;
+    const supportChatId = Number(telegramChatId);
+    const chatId = typeof message.chat?.id === "string" 
+      ? Number(message.chat.id) 
+      : message.chat?.id;
     const chatType = message.chat?.type;
 
     // Обработка приватного чата с ботом (/start)
@@ -70,35 +74,45 @@ export async function POST(req: NextRequest) {
     }
 
     // ===== ОБРАБОТКА ОТВЕТА СОТРУДНИКА ПОДДЕРЖКИ =====
+    // Проверяем: сообщение из группы поддержки, является ответом на карточку, имеет текст
     if (
-      message.chat?.id === Number(process.env.TELEGRAM_SUPPORT_CHAT_ID) &&
+      chatId === supportChatId &&
       message.reply_to_message &&
-      message.reply_to_message.text
+      message.reply_to_message.text &&
+      message.text
     ) {
-      const originalText = message.reply_to_message.text;
-      const supportText = message.text?.trim() ?? "";
+      const repliedText = message.reply_to_message.text;
+      const supportText = message.text.trim();
 
-      // Если у сообщения поддержки нет текста – игнорируем.
+      // Если у сообщения поддержки нет текста – игнорируем
       if (!supportText) {
         return NextResponse.json({ ok: true });
       }
 
-      // Извлекаем CID из текста карточки
-      const match = originalText.match(/CID:\s*([a-f0-9-]+)/i);
-      const cid = match?.[1];
-
-      // Если CID не найден — игнорируем (чтобы не ломать вебхук)
-      if (!cid) {
+      // Извлекаем CID из текста карточки (ищем "🧩 CID: <uuid>" или просто "CID: <uuid>")
+      const cidMatch = repliedText.match(/🧩\s*CID:\s*([a-f0-9-]+)/i) || 
+                       repliedText.match(/CID:\s*([a-f0-9-]+)/i);
+      
+      if (!cidMatch || !cidMatch[1]) {
+        // CID не найден, игнорируем (чтобы не ломать вебхук)
         return NextResponse.json({ ok: true });
       }
 
-      await addSupportMessage({
-        id: crypto.randomUUID(),
-        cid,
-        author: "support",
-        text: supportText,
-        createdAt: new Date().toISOString(),
-      });
+      const cid = cidMatch[1];
+
+      // Сохраняем сообщение от саппорта в то же хранилище
+      try {
+        await addSupportMessage({
+          id: randomUUID(),
+          cid,
+          author: "support",
+          text: supportText,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (dbError) {
+        console.error("Error saving support message to database:", dbError);
+        // Не возвращаем ошибку, чтобы не ломать вебхук
+      }
 
       return NextResponse.json({ ok: true });
     }
