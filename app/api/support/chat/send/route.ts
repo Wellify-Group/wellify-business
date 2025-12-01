@@ -1,87 +1,122 @@
 // app/api/support/chat/send/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { saveSupportMessage } from "@/lib/support-chat";
-
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const SUPPORT_CHAT_ID = process.env.TELEGRAM_SUPPORT_CHAT_ID; // ид группы
-
-if (!BOT_TOKEN) {
-  console.warn("TELEGRAM_BOT_TOKEN is not set");
-}
-if (!SUPPORT_CHAT_ID) {
-  console.warn("TELEGRAM_SUPPORT_CHAT_ID is not set");
-}
+import {
+  getSupportStore,
+  getOrCreateSession,
+  appendMessage,
+} from "@/lib/support-store";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { cid, message, name, userId, email } = body as {
-      cid?: string;
-      message?: string;
-      name?: string | null;
-      userId?: string | null;
-      email?: string | null;
-    };
+    const { cid, message, name, userId, email } = await req.json();
 
-    if (!cid || !message) {
+    // Валидация
+    if (!cid) {
       return NextResponse.json(
-        { ok: false, error: "CID_AND_MESSAGE_REQUIRED" },
+        { ok: false, error: "CID_REQUIRED" },
         { status: 400 }
       );
     }
 
-    // Сохраняем сообщение пользователя через общий модуль
-    const saved = await saveSupportMessage({
-      cid,
-      author: "user",
-      text: message,
-      name,
-      userId,
-      email,
-    });
-
-    // Если нет настроенного бота / чата - просто выходим
-    if (!BOT_TOKEN || !SUPPORT_CHAT_ID) {
-      return NextResponse.json({ ok: true, skippedTelegram: true, message: saved });
+    if (!message || !message.trim()) {
+      return NextResponse.json(
+        { ok: false, error: "EMPTY_MESSAGE" },
+        { status: 400 }
+      );
     }
 
-    // Формируем "карточку" в группу
-    const lines = [
-      "💬 WELLIFY business SUPPORT",
-      "",
-      "Новый запрос с сайта",
-      "",
-      `🧑‍💻 Имя: ${name || "Гость сайта"}`,
-      `🆔 ID пользователя: ${userId || "—"}`,
-      `📧 Email: ${email || "—"}`,
-      "",
-      `🧩 CID: ${cid}`,
-      "─────────────",
-      `💬 Сообщение:`,
-      message,
-    ];
+    // Получить настройки Telegram
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_SUPPORT_CHAT_ID; // супергруппа с включёнными темами
 
-    const textToSend = lines.join("\n");
+    if (!token || !chatId) {
+      console.error("Telegram config missing");
+      return NextResponse.json(
+        { ok: false, error: "TELEGRAM_CONFIG_MISSING" },
+        { status: 500 }
+      );
+    }
 
-    const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    await fetch(telegramUrl, {
+    // Получить store и сессию
+    const store = getSupportStore();
+
+    const session = await getOrCreateSession({
+      cid,
+      userName: name,
+      userId,
+      email,
+      topicIdCreator: async () => {
+        const createRes = await fetch(
+          `https://api.telegram.org/bot${token}/createForumTopic`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              name: `👤 ${name || "Гость сайта"} (${cid.slice(0, 6)})`,
+            }),
+          }
+        );
+
+        const createJson = await createRes.json();
+        if (!createRes.ok || !createJson?.result?.message_thread_id) {
+          console.error("Failed to create topic", createJson);
+          throw new Error("CREATE_TOPIC_FAILED");
+        }
+
+        const topicId = createJson.result.message_thread_id as number;
+
+        // Отправляем карточку клиента
+        const cardText =
+          "Новый запрос с сайта\n\n" +
+          `🧑 Имя: ${name || "Гость сайта"}\n` +
+          `🆔 ID пользователя: ${userId || "—"}\n` +
+          `📧 Email: ${email || "—"}\n` +
+          `🧩 CID: ${cid}\n` +
+          "──────────────";
+
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_thread_id: topicId,
+            text: cardText,
+          }),
+        });
+
+        return topicId;
+      },
+    });
+
+    // Отправить текст пользователя в тему
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: SUPPORT_CHAT_ID,
-        text: textToSend,
+        chat_id: chatId,
+        message_thread_id: session.topicId,
+        text: message.trim(),
       }),
     });
 
-    return NextResponse.json({ ok: true, message: saved });
-  } catch (error) {
-    console.error("POST /api/support/chat/send error", error);
+    // Сохранить сообщение у нас
+    appendMessage(cid, {
+      id: crypto.randomUUID(),
+      cid,
+      author: "user",
+      text: message.trim(),
+      createdAt: new Date().toISOString(),
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("POST /api/support/chat/send error", e);
     return NextResponse.json(
       { ok: false, error: "INTERNAL_ERROR" },
       { status: 500 }
     );
   }
 }
-

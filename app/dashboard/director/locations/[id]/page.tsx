@@ -315,7 +315,7 @@ export default function LocationProfilePage() {
             {location.branding?.logo && (
             <button 
               onClick={() => handleFileSelect('logo')}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background hover:bg-primary/90 transition-colors z-10"
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center border-2 border-background hover:bg-primary/90 transition-colors z-10"
               title={t("dashboard.btn_edit")}
             >
               <Camera className="h-4 w-4" />

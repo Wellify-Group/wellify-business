@@ -328,7 +328,7 @@ export default function Home() {
                   className={cn(
                     "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border dark:bg-surface-elevated bg-card px-8 py-6 text-sm font-medium text-card-foreground dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] shadow-lg transition-all duration-200 hover:-translate-y-1 hover:bg-muted hover:shadow-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-2xl border-primary"
+                      ? "bg-primary text-white shadow-2xl border-primary"
                       : ""
                   )}
                 >
@@ -344,7 +344,7 @@ export default function Home() {
                     className={cn(
                       "break-words leading-tight",
                       isActive
-                        ? "text-white dark:text-zinc-900"
+                        ? "text-white"
                         : "text-neutral-900 dark:text-neutral-50"
                     )}
                   >

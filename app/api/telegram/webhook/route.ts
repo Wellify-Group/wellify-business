@@ -1,9 +1,6 @@
 // app/api/telegram/webhook/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { saveSupportMessage } from "@/lib/support-chat";
-
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const SUPPORT_CHAT_ID = process.env.TELEGRAM_SUPPORT_CHAT_ID;
+import { getSupportStore, appendMessage } from "@/lib/support-store";
 
 export const dynamic = "force-dynamic";
 
@@ -11,65 +8,52 @@ export async function POST(req: NextRequest) {
   try {
     const update = await req.json();
 
-    // Нас интересуют только обычные сообщения
-    const message = update.message;
-    if (!message || !message.chat || !message.chat.id) {
+    const message = update?.message;
+    if (!message) {
       return NextResponse.json({ ok: true });
     }
 
-    const chatId = String(message.chat.id);
-
-    // Работаем только с нашей группой поддержки
-    if (!SUPPORT_CHAT_ID || chatId !== String(SUPPORT_CHAT_ID)) {
+    // игнорируем сообщения от бота
+    if (message.from?.is_bot) {
       return NextResponse.json({ ok: true });
     }
 
-    // Нас интересуют только ответы (reply) на "карточку"
-    if (!message.reply_to_message || !message.reply_to_message.text) {
-      // это просто сообщение в группе - игнорируем
+    const chatId = message.chat?.id;
+    const topicId = message.message_thread_id;
+
+    // работаем только с нашей супергруппой и только с сообщениями в темах
+    const supportChatId = Number(process.env.TELEGRAM_SUPPORT_CHAT_ID);
+    if (!supportChatId || chatId !== supportChatId || !topicId) {
       return NextResponse.json({ ok: true });
     }
 
-    const replyToText: string = message.reply_to_message.text;
-    const supportText: string | undefined = message.text;
-
-    // Проверяем, что есть текст ответа
-    if (!supportText || !supportText.trim()) {
+    const text: string | undefined = message.text;
+    if (!text || !text.trim()) {
       return NextResponse.json({ ok: true });
     }
 
-    // Ищем в тексте "🧩 CID: <cid>" или просто "CID: <cid>"
-    const cidMatch = replyToText.match(/CID:\s*([a-f0-9-]+)/i);
-    const cid = cidMatch?.[1];
-
+    const store = getSupportStore();
+    const cid = store.topicsIndex.get(topicId);
     if (!cid) {
-      console.warn("WEBHOOK: CID not found in reply_to_message text:", replyToText.substring(0, 100));
+      // нет привязки topicId -> cid, просто залогировать и вернуть ok
+      console.warn("No cid for topicId", topicId);
       return NextResponse.json({ ok: true });
     }
 
-    // Сохраняем ответ оператора через общий модуль
-    try {
-      await saveSupportMessage({
-        cid,
-        author: "support",
-        text: supportText.trim(),
-        name: message.from?.first_name || message.from?.username || null,
-        userId: message.from?.id ? String(message.from.id) : null,
-        email: null,
-      });
-
-      console.log(`WEBHOOK: Saved support message for CID: ${cid}`);
-    } catch (saveError) {
-      console.error("WEBHOOK: Error saving support message:", saveError);
-      // Не падаем с ошибкой - возвращаем 200 OK
-    }
+    appendMessage(cid, {
+      id: crypto.randomUUID(),
+      cid,
+      author: "support",
+      text: text.trim(),
+      createdAt: new Date(
+        (message.date ?? Math.floor(Date.now() / 1000)) * 1000
+      ).toISOString(),
+    });
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
-    console.error("POST /api/telegram/webhook error", error);
-    // ВАЖНО: вебхук никогда не должен падать с ошибкой
-    // Всегда возвращаем 200 OK, чтобы Telegram не считал запрос неудачным
+  } catch (e) {
+    console.error("Telegram webhook error", e);
+    // Telegram важно получать ok, чтобы он не ретраил бесконечно
     return NextResponse.json({ ok: true });
   }
 }
-

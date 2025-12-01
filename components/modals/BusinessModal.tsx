@@ -118,7 +118,7 @@ export function BusinessModal() {
                         transition={{ delay: 0.15 + index * 0.05 }}
                         className="flex gap-3 items-start text-sm md:text-[15px] leading-snug"
                       >
-                        <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground flex-shrink-0">
+                        <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white flex-shrink-0">
                           <Check className="h-3.5 w-3.5" />
                         </div>
                         <div className="flex-1">

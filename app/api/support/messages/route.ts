@@ -1,36 +1,27 @@
 // app/api/support/messages/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getSupportMessagesByCid } from "@/lib/support-chat";
+import { getSupportStore, getMessages } from "@/lib/support-store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const url = new URL(req.url);
-    const cid = url.searchParams.get("cid");
+    const cid = req.nextUrl.searchParams.get("cid");
 
     if (!cid) {
-      return NextResponse.json(
-        { ok: false, error: "CID_REQUIRED", messages: [] },
-        { status: 400 }
-      );
+      // Нет cid - просто пустой список, чтобы фронт не падал
+      return NextResponse.json({ ok: true, messages: [] });
     }
 
-    const messages = await getSupportMessagesByCid(cid);
+    const store = getSupportStore();
+    const messages = getMessages(cid);
 
-    return NextResponse.json(
-      {
-        ok: true,
-        messages,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("GET /api/support/messages error", error);
+    return NextResponse.json({ ok: true, messages });
+  } catch (e) {
+    console.error("GET /api/support/messages failed", e);
     return NextResponse.json(
       { ok: false, error: "INTERNAL_ERROR", messages: [] },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }
-
