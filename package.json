@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "setup-telegram-webhook": "node scripts/setup-telegram-webhook.js"
+    "lint": "next lint"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

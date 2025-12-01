@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, ChevronDown, ChevronUp } from "lucide-react";
@@ -8,11 +8,9 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/components/language-provider";
 import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 interface SupportMessage {
   id: string;
-  cid: string;
   author: "user" | "support";
   text: string;
   createdAt: string;
@@ -32,200 +30,10 @@ export function SupportWidget() {
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [cid, setCid] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-
-  // Refs для Realtime и polling
-  const realtimeChannelRef = useRef<any>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const useRealtimeRef = useRef(true); // Флаг использования Realtime
 
   const isDashboard = pathname?.startsWith("/dashboard");
-
-  // Инициализация CID
-  useEffect(() => {
-    setMounted(true);
-    let storedCid =
-      typeof window !== "undefined"
-        ? localStorage.getItem("support_cid")
-        : null;
-
-    if (!storedCid) {
-      storedCid = crypto.randomUUID();
-      if (typeof window !== "undefined") {
-        localStorage.setItem("support_cid", storedCid);
-      }
-    }
-
-    setCid(storedCid);
-  }, []);
-
-  // Добавление новых сообщений
-  const addMessages = useCallback(
-    (newMessages: SupportMessage[]) => {
-      if (!cid || newMessages.length === 0) return;
-
-      setMessages((prev) => {
-        // Избегаем дубликатов по id
-        const existingIds = new Set(prev.map((m) => m.id));
-        const unique = newMessages.filter((m) => !existingIds.has(m.id));
-        return [...prev, ...unique];
-      });
-
-      // Проверяем, есть ли сообщения от поддержки
-      const hasSupport = newMessages.some((m) => m.author === "support");
-      if (hasSupport) {
-        setHasRealAgentJoined(true);
-      }
-    },
-    [cid]
-  );
-
-  // Polling для получения новых сообщений (fallback)
-  const startPolling = useCallback(() => {
-    if (!cid || pollingIntervalRef.current) return;
-
-    const poll = async () => {
-      try {
-        const res = await fetch(
-          `/api/support/chat/poll?cid=${encodeURIComponent(cid)}`
-        );
-        if (!res.ok) return;
-
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.messages) && data.messages.length > 0) {
-          addMessages(data.messages);
-        }
-      } catch (e) {
-        console.error("[Support Widget] Polling error:", e);
-      }
-    };
-
-    // Первый запрос сразу
-    poll();
-
-    // Далее каждые 2-3 секунды
-    pollingIntervalRef.current = setInterval(poll, 2500);
-  }, [cid, addMessages]);
-
-  // Остановка polling
-  const stopPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  }, []);
-
-  // Остановка Realtime
-  const stopRealtime = useCallback(() => {
-    if (realtimeChannelRef.current) {
-      try {
-        const supabase = createBrowserSupabaseClient();
-        supabase.removeChannel(realtimeChannelRef.current);
-      } catch (error) {
-        console.error("[Support Widget] Error removing Realtime channel:", error);
-      }
-      realtimeChannelRef.current = null;
-    }
-  }, []);
-
-  // Подключение к Supabase Realtime
-  const startRealtime = useCallback(() => {
-    if (!cid || realtimeChannelRef.current || !useRealtimeRef.current) return;
-
-    // Проверяем наличие переменных окружения Supabase
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.warn("[Support Widget] Supabase env vars not set, using polling only");
-      useRealtimeRef.current = false;
-      startPolling();
-      return;
-    }
-
-    try {
-      const supabase = createBrowserSupabaseClient();
-
-      const channelName = `support_chat:${cid}`;
-      const channel = supabase.channel(channelName, {
-        config: {
-          broadcast: { self: true },
-        },
-      });
-
-      // Таймаут для подключения
-      const connectionTimeout = setTimeout(() => {
-        if (realtimeChannelRef.current === channel) {
-          console.warn(`[Support Widget] Realtime connection timeout for CID: ${cid}, falling back to polling`);
-          useRealtimeRef.current = false;
-          stopRealtime();
-          startPolling();
-        }
-      }, 5000);
-
-      // Подписываемся на новые сообщения
-      channel
-        .on("broadcast", { event: "new_message" }, (payload) => {
-          console.log("[Support Widget] Realtime message received:", payload);
-          const messageData = payload.payload;
-          
-          if (messageData && messageData.sender === "support") {
-            const newMessage: SupportMessage = {
-              id: crypto.randomUUID(),
-              cid,
-              author: "support",
-              text: messageData.text,
-              createdAt: messageData.createdAt || new Date().toISOString(),
-            };
-            addMessages([newMessage]);
-          }
-        })
-        .subscribe((status) => {
-          clearTimeout(connectionTimeout);
-          
-          if (status === "SUBSCRIBED") {
-            console.log(`[Support Widget] ✅ Realtime connected for CID: ${cid}`);
-          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-            console.warn(`[Support Widget] Realtime ${status} for CID: ${cid}, falling back to polling`);
-            useRealtimeRef.current = false;
-            stopRealtime();
-            startPolling();
-          } else {
-            console.log(`[Support Widget] Realtime status: ${status} for CID: ${cid}`);
-          }
-        });
-
-      realtimeChannelRef.current = channel;
-    } catch (error) {
-      console.error("[Support Widget] Failed to start Realtime:", error);
-      useRealtimeRef.current = false;
-      // Не пытаемся использовать Realtime снова в этой сессии
-      startPolling();
-    }
-  }, [cid, addMessages, startPolling, stopRealtime]);
-
-  // Управление Realtime/Polling при изменении cid или isSupportOpen
-  useEffect(() => {
-    if (!cid || !isSupportOpen || isMinimized) {
-      stopRealtime();
-      stopPolling();
-      return;
-    }
-
-    // Пытаемся использовать Realtime, если доступен и еще не было ошибок
-    if (useRealtimeRef.current) {
-      startRealtime();
-      // Если Realtime не подключится за 5 секунд, startRealtime сам переключится на polling
-    } else {
-      // Fallback на polling (если Realtime уже не работает)
-      startPolling();
-    }
-
-    return () => {
-      stopRealtime();
-      stopPolling();
-    };
-  }, [cid, isSupportOpen, isMinimized, startRealtime, stopRealtime, startPolling, stopPolling]);
 
   // Проверка непрочитанных сообщений
   useEffect(() => {
@@ -255,46 +63,40 @@ export function SupportWidget() {
     },
   ];
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     const text = inputMessage.trim();
-    if (!text || !cid) return;
+    if (!text) return;
 
     setInputMessage("");
 
-    // Оптимистичное обновление
-    const optimistic: SupportMessage = {
+    // Добавляем сообщение пользователя локально
+    const userMessage: SupportMessage = {
       id: crypto.randomUUID(),
-      cid,
       author: "user",
       text,
       createdAt: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, optimistic]);
+    setMessages((prev) => [...prev, userMessage]);
 
     if (!hasUserSentMessage) {
       setHasUserSentMessage(true);
     }
 
-    try {
-      const res = await fetch("/api/support/chat/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cid,
-          message: text,
-          name: currentUser?.fullName || currentUser?.name,
-          userId: currentUser?.id,
-          email: currentUser?.email,
-        }),
-      });
-
-      if (!res.ok) {
-        console.error("Failed to send message");
-      }
-    } catch (e) {
-      console.error("Failed to send support message", e);
-    }
+    // Опционально: можно вызвать API для логирования, но не ждем результата
+    // Это не влияет на UI, так как сообщение уже добавлено локально
+    fetch("/api/support/chat/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        name: currentUser?.fullName || currentUser?.name,
+        userId: currentUser?.id,
+        email: currentUser?.email,
+      }),
+    }).catch(() => {
+      // Игнорируем ошибки - виджет работает оффлайн
+    });
   };
 
   const handleLauncherClick = () => {
@@ -565,7 +367,7 @@ export function SupportWidget() {
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || !cid}
+                    disabled={!inputMessage.trim()}
                     className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     style={{
                       background: "var(--color-brand)",

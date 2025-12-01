@@ -55,7 +55,6 @@ class Logger {
 
 // Экспортируем готовые логгеры для разных модулей
 export const supportLogger = new Logger("Support");
-export const telegramLogger = new Logger("Telegram");
 export const sessionLogger = new Logger("Session");
 export const websocketLogger = new Logger("WebSocket");
 
