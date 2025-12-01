@@ -6,6 +6,9 @@ export const dynamic = "force-dynamic";
 interface SendMessageRequest {
   clientId: string;
   text: string;
+  customerName?: string | null;
+  customerId?: string | null;
+  customerEmail?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -24,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Парсинг тела запроса
     const body: SendMessageRequest = await request.json();
-    const { clientId, text } = body;
+    const { clientId, text, customerName, customerId, customerEmail } = body;
 
     // Валидация
     if (!clientId || !text || text.trim().length === 0) {
@@ -34,8 +37,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Используем clientId как conversationId (CID)
+    const conversationId = clientId;
+
+    // Формирование данных пользователя
+    const name = customerName || "Гость сайта";
+    const userId = customerId ? String(customerId) : "—";
+    const email = customerEmail || "—";
+
     // Формирование текста сообщения для Telegram
-    const telegramText = `💬 Новый запрос с сайта\n\nCID: ${clientId}\n──────────────\n${text.trim()}`;
+    const telegramText = [
+      "💬 WELLIFY business SUPPORT",
+      "",
+      "Новый запрос с сайта",
+      "",
+      `👤 Имя: ${name}`,
+      `🆔 ID пользователя: ${userId}`,
+      `📧 Email: ${email}`,
+      "",
+      `🧵 CID: ${conversationId}`,
+      "───────────────",
+      `💭 Сообщение:`,
+      text.trim(),
+    ].join("\n");
 
     // Отправка сообщения в Telegram
     const telegramResponse = await fetch(
@@ -76,7 +100,10 @@ export async function POST(request: NextRequest) {
       // Не возвращаем ошибку, так как сообщение уже отправлено в Telegram
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ 
+      ok: true, 
+      conversationId 
+    });
   } catch (error) {
     console.error("Error in send message route:", error);
     return NextResponse.json(

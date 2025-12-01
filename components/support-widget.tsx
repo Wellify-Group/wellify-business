@@ -49,7 +49,7 @@ export function SupportWidget() {
   const { t } = useLanguage();
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
-  const { isSupportOpen, toggleSupport } = useStore();
+  const { isSupportOpen, toggleSupport, currentUser } = useStore();
 
   // Новые стейты
   const [isMinimized, setIsMinimized] = useState(false);
@@ -171,15 +171,21 @@ export function SupportWidget() {
     }
 
     try {
+      // Формируем payload с данными пользователя
+      const payload = {
+        text,
+        clientId,
+        customerName: currentUser?.fullName || currentUser?.name || "Гость сайта",
+        customerId: currentUser?.id || null,
+        customerEmail: currentUser?.email || null,
+      };
+
       const response = await fetch("/api/support/chat/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          clientId,
-          text,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
