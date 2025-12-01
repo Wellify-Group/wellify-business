@@ -162,7 +162,7 @@
     --input: 217 33% 17%;
 
     --primary: 222 84% 60%;
-    --primary-foreground: 222 47% 11%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 217 33% 15%;
     --secondary-foreground: 210 40% 98%;
@@ -204,7 +204,7 @@
     --color-text-main: #e5e7eb;
     --color-text-muted: #9ca3af;
     --color-text-soft: #6b7280;
-    --color-text-inverse: #050B13;
+    --color-text-inverse: #ffffff;
 
     /* Семантические цвета */
     --color-success: #22c55e;
