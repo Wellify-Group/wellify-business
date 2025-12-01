@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/server";
+import { addSupportMessage } from "@/lib/supportChatStore";
+import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
 interface SendMessageRequest {
-  clientId: string;
-  text: string;
-  customerName?: string | null;
-  customerId?: string | null;
-  customerEmail?: string | null;
+  cid: string;          // conversation id из localStorage
+  message: string;      // текст от пользователя
+  name?: string;        // ФИО, если есть
+  userId?: string;      // внутренний ID пользователя, если есть
+  email?: string;       // email, если есть
 }
 
 export async function POST(request: NextRequest) {
@@ -27,38 +28,36 @@ export async function POST(request: NextRequest) {
 
     // Парсинг тела запроса
     const body: SendMessageRequest = await request.json();
-    const { clientId, text, customerName, customerId, customerEmail } = body;
+    const { cid, message, name, userId, email } = body;
 
     // Валидация
-    if (!clientId || !text || text.trim().length === 0) {
+    if (!cid || !message || message.trim().length === 0) {
       return NextResponse.json(
         { ok: false, error: "INVALID_PAYLOAD" },
         { status: 400 }
       );
     }
 
-    // Используем clientId как conversationId (CID)
-    const conversationId = clientId;
+    // Формирование данных пользователя с дефолтами
+    const safeName = name || "Гость сайта";
+    const safeUserId = userId || "—";
+    const safeEmail = email || "—";
 
-    // Формирование данных пользователя
-    const name = customerName || "Гость сайта";
-    const userId = customerId ? String(customerId) : "—";
-    const email = customerEmail || "—";
-
-    // Формирование текста сообщения для Telegram
+    // Формирование текста сообщения для Telegram (без markdown, обычный текст)
     const telegramText = [
       "💬 WELLIFY business SUPPORT",
+      "👤 WELLIFY business SUPPORT",
       "",
       "Новый запрос с сайта",
       "",
-      `👤 Имя: ${name}`,
-      `🆔 ID пользователя: ${userId}`,
-      `📧 Email: ${email}`,
-      "",
-      `🧵 CID: ${conversationId}`,
-      "───────────────",
-      `💭 Сообщение:`,
-      text.trim(),
+      `🆔 Имя: ${safeName}`,
+      `🪪 ID пользователя: ${safeUserId}`,
+      `✉️ Email: ${safeEmail}`,
+      "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬",
+      `🧩 CID: ${cid}`,
+      "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬",
+      "💭 Сообщение:",
+      message.trim(),
     ].join("\n");
 
     // Отправка сообщения в Telegram
@@ -87,22 +86,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Сохранение сообщения в Supabase
-    const supabase = createAdminSupabaseClient();
-    const { error: dbError } = await supabase.from("support_messages").insert({
-      client_id: clientId,
-      sender: "client",
-      text: text.trim(),
-    });
-
-    if (dbError) {
-      console.error("Database error:", dbError);
+    // Сохранение сообщения в файловое хранилище
+    try {
+      await addSupportMessage({
+        id: randomUUID(),
+        cid,
+        author: "client",
+        text: message.trim(),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (dbError) {
+      console.error("Error saving message to storage:", dbError);
       // Не возвращаем ошибку, так как сообщение уже отправлено в Telegram
     }
 
     return NextResponse.json({ 
-      ok: true, 
-      conversationId 
+      ok: true 
     });
   } catch (error) {
     console.error("Error in send message route:", error);

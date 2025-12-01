@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/server";
-import { sendRealtimeBroadcast } from "@/lib/supabase/realtime";
+import { addSupportMessage } from "@/lib/supportChatStore";
+import { randomUUID } from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,10 @@ interface TelegramUpdate {
   message?: {
     message_id: number;
     text?: string;
+    chat?: {
+      id: number;
+      type: string;
+    };
     reply_to_message?: {
       message_id: number;
       text?: string;
@@ -25,53 +29,89 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Проверяем, что это ответ на сообщение (reply)
-    if (!body.message.reply_to_message || !body.message.reply_to_message.text) {
+    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+    const telegramChatId = process.env.TELEGRAM_SUPPORT_CHAT_ID;
+
+    if (!telegramBotToken || !telegramChatId) {
+      console.error("Missing Telegram environment variables");
       return NextResponse.json({ ok: true });
     }
 
-    const replyText = body.message.reply_to_message.text;
-    const supportText = body.message.text.trim();
+    const message = body.message;
+    const chatId = message.chat?.id;
+    const chatType = message.chat?.type;
 
-    // Извлекаем clientId из текста ответа
-    // Формат: "💬 Новый запрос с сайта\n\nCID: <clientId>\n──────────────\n<text>"
-    const cidMatch = replyText.match(/CID:\s*([^\n]+)/);
-    
-    if (!cidMatch || !cidMatch[1]) {
-      // Если clientId не найден, просто возвращаем успех
+    // Обработка приватного чата с ботом (/start)
+    if (chatType === "private" && message.text === "/start") {
+      const welcomeText = `Привет! 👋 Это служба поддержки WELLIFY business.
+
+Напиши сюда свой вопрос – наша команда увидит его и ответит прямо в этом чате.
+
+Если ты уже оставил сообщение на сайте в виджете поддержки, просто уточни детали здесь.`;
+
+      try {
+        await fetch(
+          `https://api.telegram.org/bot${telegramBotToken}/sendMessage`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: welcomeText,
+            }),
+          }
+        );
+      } catch (error) {
+        console.error("Error sending welcome message:", error);
+      }
+
       return NextResponse.json({ ok: true });
     }
 
-    const clientId = cidMatch[1].trim();
+    // Обработка сообщений в группе поддержки
+    if (chatId && Number(chatId) === Number(telegramChatId)) {
+      // Проверяем, что это ответ на сообщение (reply)
+      if (!message.reply_to_message || !message.reply_to_message.text) {
+        return NextResponse.json({ ok: true });
+      }
 
-    // Сохраняем сообщение в базу данных
-    const supabase = createAdminSupabaseClient();
-    const { error: dbError } = await supabase.from("support_messages").insert({
-      client_id: clientId,
-      sender: "support",
-      text: supportText,
-    });
+      const replyText = message.reply_to_message.text;
+      const supportText = message.text.trim();
 
-    if (dbError) {
-      console.error("Database error in webhook:", dbError);
-      return NextResponse.json(
-        { ok: false, error: "DATABASE_ERROR" },
-        { status: 500 }
-      );
+      // Извлекаем CID из текста ответа
+      // Формат: "🧩 CID: <cid>"
+      const cidMatch = replyText.match(/CID:\s*([a-f0-9-]+)/i);
+
+      if (!cidMatch || !cidMatch[1]) {
+        // Если CID не найден, игнорируем апдейт
+        return NextResponse.json({ ok: true });
+      }
+
+      const cid = cidMatch[1].trim();
+
+      // Сохраняем ответ в хранилище
+      try {
+        await addSupportMessage({
+          id: randomUUID(),
+          cid,
+          author: "support",
+          text: supportText,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (dbError) {
+        console.error("Error saving support message:", dbError);
+        return NextResponse.json(
+          { ok: false, error: "STORAGE_ERROR" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ ok: true });
     }
 
-    // Отправляем событие в Realtime
-    try {
-      await sendRealtimeBroadcast(clientId, {
-        sender: "support",
-        text: supportText,
-        createdAt: new Date().toISOString(),
-      });
-    } catch (realtimeError) {
-      console.error("Realtime broadcast error:", realtimeError);
-      // Не возвращаем ошибку, так как сообщение уже сохранено в БД
-    }
-
+    // Игнорируем все остальные сообщения
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Error in Telegram webhook:", error);

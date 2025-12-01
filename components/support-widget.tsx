@@ -8,7 +8,13 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/components/language-provider";
 import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+
+interface SupportMessage {
+  id: string;
+  text: string;
+  author: "client" | "support";
+  createdAt: string;
+}
 
 interface ChatMessage {
   id: string;
@@ -30,19 +36,19 @@ function generateUUID(): string {
   });
 }
 
-// Получение или создание clientId
-function getOrCreateClientId(): string {
+// Получение или создание CID (conversation id)
+function getOrCreateCid(): string {
   if (typeof window === "undefined") return "";
   
-  const storageKey = "wellify_client_id";
-  let clientId = localStorage.getItem(storageKey);
+  const storageKey = "wellify_support_cid";
+  let cid = localStorage.getItem(storageKey);
   
-  if (!clientId) {
-    clientId = generateUUID();
-    localStorage.setItem(storageKey, clientId);
+  if (!cid) {
+    cid = generateUUID();
+    localStorage.setItem(storageKey, cid);
   }
   
-  return clientId;
+  return cid;
 }
 
 export function SupportWidget() {
@@ -60,11 +66,13 @@ export function SupportWidget() {
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [clientId, setClientId] = useState<string>("");
+  const [cid, setCid] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
+  const [lastTimestamp, setLastTimestamp] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hide floating button on dashboard pages
   const isDashboard = pathname?.startsWith("/dashboard");
@@ -72,48 +80,109 @@ export function SupportWidget() {
   // Монтирование компонента
   useEffect(() => {
     setMounted(true);
-    // Получаем или создаем clientId
-    const id = getOrCreateClientId();
-    setClientId(id);
+    // Получаем или создаем CID
+    const id = getOrCreateCid();
+    setCid(id);
   }, []);
 
-  // Подписка на Supabase Realtime для получения ответов от поддержки
+  // Загрузка сообщений при монтировании
   useEffect(() => {
-    if (!clientId || !mounted) return;
+    if (!cid || !mounted) return;
 
-    const supabase = createBrowserSupabaseClient();
-    const channel = supabase.channel(`support_chat:${clientId}`);
+    const loadMessages = async () => {
+      try {
+        const response = await fetch(`/api/support/messages?cid=${cid}`);
+        const data = await response.json();
 
-    channel
-      .on("broadcast", { event: "new_message" }, (payload) => {
-        const { sender, text, createdAt } = payload.payload as {
-          sender: "client" | "support";
-          text: string;
-          createdAt: string;
-        };
+        if (data.ok && data.messages) {
+          // Конвертируем SupportMessage в ChatMessage
+          const chatMessages: ChatMessage[] = data.messages.map((msg: SupportMessage) => ({
+            id: msg.id,
+            text: msg.text,
+            sender: msg.author,
+            createdAt: msg.createdAt,
+          }));
 
-        if (sender === "support") {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: generateUUID(),
-              sender: "support",
-              text,
-              createdAt,
-            },
-          ]);
+          setMessages(chatMessages);
 
-          setHasRealAgentJoined(true);
-          setHasUnread(!isSupportOpen);
+          // Устанавливаем lastTimestamp как максимальный createdAt
+          if (chatMessages.length > 0) {
+            const timestamps = chatMessages.map((m) => new Date(m.createdAt).getTime());
+            const maxTimestamp = new Date(Math.max(...timestamps)).toISOString();
+            setLastTimestamp(maxTimestamp);
+          }
+
+          // Проверяем, есть ли сообщения от поддержки
+          const hasSupportMessages = chatMessages.some((m) => m.sender === "support");
+          if (hasSupportMessages) {
+            setHasRealAgentJoined(true);
+          }
         }
-      })
-      .subscribe();
+      } catch (error) {
+        console.error("Error loading messages:", error);
+      }
+    };
+
+    loadMessages();
+  }, [cid, mounted]);
+
+  // Пуллинг новых сообщений
+  useEffect(() => {
+    if (!cid || !mounted) return;
+
+    const pollMessages = async () => {
+      try {
+        const url = lastTimestamp
+          ? `/api/support/messages?cid=${cid}&since=${encodeURIComponent(lastTimestamp)}`
+          : `/api/support/messages?cid=${cid}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.ok && data.messages && data.messages.length > 0) {
+          // Конвертируем SupportMessage в ChatMessage
+          const newChatMessages: ChatMessage[] = data.messages.map((msg: SupportMessage) => ({
+            id: msg.id,
+            text: msg.text,
+            sender: msg.author,
+            createdAt: msg.createdAt,
+          }));
+
+          setMessages((prev) => {
+            // Объединяем и убираем дубликаты
+            const existingIds = new Set(prev.map((m) => m.id));
+            const uniqueNew = newChatMessages.filter((m) => !existingIds.has(m.id));
+            return [...prev, ...uniqueNew].sort((a, b) => {
+              return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            });
+          });
+
+          // Обновляем lastTimestamp
+          const timestamps = newChatMessages.map((m) => new Date(m.createdAt).getTime());
+          const maxTimestamp = new Date(Math.max(...timestamps)).toISOString();
+          setLastTimestamp(maxTimestamp);
+
+          // Проверяем, есть ли новые сообщения от поддержки
+          const hasNewSupportMessages = newChatMessages.some((m) => m.sender === "support");
+          if (hasNewSupportMessages) {
+            setHasRealAgentJoined(true);
+            setHasUnread(!isSupportOpen);
+          }
+        }
+      } catch (error) {
+        console.error("Error polling messages:", error);
+      }
+    };
+
+    // Запускаем пуллинг каждые 4 секунды
+    pollingIntervalRef.current = setInterval(pollMessages, 4000);
 
     return () => {
-      channel.unsubscribe();
-      supabase.removeChannel(channel);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
     };
-  }, [clientId, mounted, isSupportOpen]);
+  }, [cid, mounted, lastTimestamp, isSupportOpen]);
 
   // Проверка непрочитанных сообщений от поддержки при свернутой панели
   useEffect(() => {
@@ -149,11 +218,11 @@ export function SupportWidget() {
 
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text || !clientId || isSending) return;
+    if (!text || !cid || isSending) return;
 
     setIsSending(true);
 
-    // Optimistic update
+    // Optimistic update - добавляем сообщение в стейт сразу
     const tempId = generateUUID();
     const userMessage: ChatMessage = {
       id: tempId,
@@ -171,13 +240,13 @@ export function SupportWidget() {
     }
 
     try {
-      // Формируем payload с данными пользователя
+      // Формируем payload в новом формате
       const payload = {
-        text,
-        clientId,
-        customerName: currentUser?.fullName || currentUser?.name || "Гость сайта",
-        customerId: currentUser?.id || null,
-        customerEmail: currentUser?.email || null,
+        cid,
+        message: text,
+        name: currentUser?.fullName || currentUser?.name,
+        userId: currentUser?.id,
+        email: currentUser?.email,
       };
 
       const response = await fetch("/api/support/chat/send", {
@@ -193,6 +262,9 @@ export function SupportWidget() {
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "Failed to send message");
       }
+
+      // Обновляем lastTimestamp после успешной отправки
+      setLastTimestamp(userMessage.createdAt);
     } catch (error) {
       console.error("Error sending message:", error);
       // Можно пометить сообщение как failed, но для простоты оставляем как есть
@@ -443,10 +515,10 @@ export function SupportWidget() {
                           key={msg.id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`flex ${
+                          className={`flex flex-col ${
                             msg.sender === "client"
-                              ? "justify-end"
-                              : "justify-start"
+                              ? "items-end"
+                              : "items-start"
                           }`}
                         >
                           <div
@@ -460,6 +532,13 @@ export function SupportWidget() {
                               {msg.text}
                             </p>
                           </div>
+                          <span
+                            className={`text-[10px] text-muted-foreground mt-1 px-1 ${
+                              msg.sender === "client" ? "text-right" : "text-left"
+                            }`}
+                          >
+                            {msg.sender === "client" ? "Вы" : "Поддержка"}
+                          </span>
                         </motion.div>
                       ))}
                       <div ref={messagesEndRef} />
@@ -484,7 +563,7 @@ export function SupportWidget() {
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isSending || !clientId}
+                    disabled={!inputMessage.trim() || isSending || !cid}
                     className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     style={{
                       background: "var(--color-brand)",
