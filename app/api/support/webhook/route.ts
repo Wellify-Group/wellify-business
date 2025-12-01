@@ -1,5 +1,4 @@
-// app/api/telegram/webhook/route.ts
-// Старый endpoint для обратной совместимости - перенаправляет на новый
+// app/api/support/webhook/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCidByTopicId, addPendingMessage, getSession } from "@/lib/supportSession";
 import { getSupportChatId } from "@/lib/telegram";
@@ -44,9 +43,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Проверяем, что это не первое сообщение (карточка клиента)
+    // Если сессия только что создана и это первое сообщение после карточки - игнорируем
     const session = getSession(cid);
     if (session) {
       // Проверяем, что это не карточка клиента
+      // Карточка содержит "Новый запрос с сайта" или "CID:"
       if (
         text.includes("Новый запрос с сайта") ||
         text.includes("CID:") ||
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("POST /api/telegram/webhook error:", error);
+    console.error("POST /api/support/webhook error:", error);
     // Всегда возвращаем ok, чтобы Telegram не ретраил
     return NextResponse.json({ ok: true });
   }

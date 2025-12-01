@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, ChevronDown, ChevronUp } from "lucide-react";
@@ -17,13 +17,19 @@ interface SupportMessage {
   createdAt: string;
 }
 
+// Формат сообщения с сервера
+interface ServerMessage {
+  text: string;
+  from: "user" | "admin";
+  timestamp: string;
+}
+
 export function SupportWidget() {
   const { t } = useLanguage();
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const { isSupportOpen, toggleSupport, currentUser } = useStore();
 
-  // Новые стейты
   const [isMinimized, setIsMinimized] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [hasUserSentMessage, setHasUserSentMessage] = useState(false);
@@ -33,12 +39,15 @@ export function SupportWidget() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [cid, setCid] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Hide floating button on dashboard pages
+  // Refs для управления соединениями
+  const sseEventSourceRef = useRef<EventSource | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const useSSERef = useRef(true); // Пробуем SSE сначала
+
   const isDashboard = pathname?.startsWith("/dashboard");
 
   // Инициализация CID
@@ -59,50 +68,146 @@ export function SupportWidget() {
     setCid(storedCid);
   }, []);
 
-  // Опрос /api/support/messages и полная замена списка
-  useEffect(() => {
-    let isCancelled = false;
+  // Преобразование ServerMessage в SupportMessage
+  const convertServerMessage = useCallback(
+    (msg: ServerMessage, cid: string): SupportMessage => {
+      return {
+        id: crypto.randomUUID(),
+        cid,
+        author: msg.from === "admin" ? "support" : "user",
+        text: msg.text,
+        createdAt: msg.timestamp,
+      };
+    },
+    []
+  );
 
-    async function loadMessages() {
-      // Гард: если CID ещё нет, не делаем запрос
-      if (!cid) return;
+  // Добавление новых сообщений
+  const addMessages = useCallback(
+    (newMessages: ServerMessage[]) => {
+      if (!cid || newMessages.length === 0) return;
 
+      const converted = newMessages.map((msg) => convertServerMessage(msg, cid));
+
+      setMessages((prev) => {
+        // Избегаем дубликатов по тексту и времени
+        const existingIds = new Set(prev.map((m) => `${m.text}-${m.createdAt}`));
+        const unique = converted.filter(
+          (m) => !existingIds.has(`${m.text}-${m.createdAt}`)
+        );
+        return [...prev, ...unique];
+      });
+
+      // Проверяем, есть ли сообщения от поддержки
+      const hasSupport = newMessages.some((m) => m.from === "admin");
+      if (hasSupport) {
+        setHasRealAgentJoined(true);
+      }
+    },
+    [cid, convertServerMessage]
+  );
+
+  // Polling fallback
+  const startPolling = useCallback(() => {
+    if (!cid || pollingIntervalRef.current) return;
+
+    const poll = async () => {
       try {
         const res = await fetch(
-          `/api/support/messages?cid=${encodeURIComponent(cid)}`
+          `/api/support/poll?cid=${encodeURIComponent(cid)}`
         );
         if (!res.ok) return;
+
         const data = await res.json();
-
-        if (!isCancelled && data.ok && Array.isArray(data.messages)) {
-          setMessages(data.messages);
-
-          // Проверяем, есть ли сообщения от поддержки
-          const hasSupportMessages = data.messages.some(
-            (m: SupportMessage) => m.author === "support"
-          );
-          if (hasSupportMessages) {
-            setHasRealAgentJoined(true);
-          }
+        if (data.ok && Array.isArray(data.messages) && data.messages.length > 0) {
+          addMessages(data.messages);
         }
       } catch (e) {
-        console.error("Failed to load support messages", e);
+        console.error("Polling error:", e);
       }
-    }
+    };
 
     // Первый запрос сразу
-    loadMessages();
+    poll();
 
-    // Далее – polling раз в 3 секунды
-    const interval = setInterval(loadMessages, 3000);
+    // Далее каждую секунду
+    pollingIntervalRef.current = setInterval(poll, 1000);
+  }, [cid, addMessages]);
+
+  // Остановка polling
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // SSE соединение
+  const startSSE = useCallback(() => {
+    if (!cid || sseEventSourceRef.current) return;
+
+    try {
+      const eventSource = new EventSource(
+        `/api/support/ws?cid=${encodeURIComponent(cid)}`
+      );
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.ok && Array.isArray(data.messages)) {
+            addMessages(data.messages);
+          }
+        } catch (e) {
+          console.error("SSE message parse error:", e);
+        }
+      };
+
+      eventSource.onerror = () => {
+        // SSE недоступен - переключаемся на polling
+        eventSource.close();
+        sseEventSourceRef.current = null;
+        useSSERef.current = false;
+        startPolling();
+      };
+
+      sseEventSourceRef.current = eventSource;
+    } catch (e) {
+      console.error("SSE connection error:", e);
+      useSSERef.current = false;
+      startPolling();
+    }
+  }, [cid, addMessages, startPolling]);
+
+  // Остановка SSE
+  const stopSSE = useCallback(() => {
+    if (sseEventSourceRef.current) {
+      sseEventSourceRef.current.close();
+      sseEventSourceRef.current = null;
+    }
+  }, []);
+
+  // Управление соединениями при изменении cid или isSupportOpen
+  useEffect(() => {
+    if (!cid || !isSupportOpen || isMinimized) {
+      stopSSE();
+      stopPolling();
+      return;
+    }
+
+    // Пробуем SSE, если не работает - fallback на polling
+    if (useSSERef.current) {
+      startSSE();
+    } else {
+      startPolling();
+    }
 
     return () => {
-      isCancelled = true;
-      clearInterval(interval);
+      stopSSE();
+      stopPolling();
     };
-  }, [cid]);
+  }, [cid, isSupportOpen, isMinimized, startSSE, startPolling, stopSSE, stopPolling]);
 
-  // Проверка непрочитанных сообщений от поддержки при свернутой панели
+  // Проверка непрочитанных сообщений
   useEffect(() => {
     if (!isSupportOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -130,16 +235,13 @@ export function SupportWidget() {
     },
   ];
 
-  const handleTelegramClick = () => {
-    window.open("https://t.me/wellifybusinesssupport_bot", "_blank");
-  };
-
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
     if (!text || !cid) return;
 
     setInputMessage("");
 
+    // Оптимистичное обновление
     const optimistic: SupportMessage = {
       id: crypto.randomUUID(),
       cid,
@@ -150,13 +252,12 @@ export function SupportWidget() {
 
     setMessages((prev) => [...prev, optimistic]);
 
-    // Устанавливаем флаг, что пользователь отправил сообщение
     if (!hasUserSentMessage) {
       setHasUserSentMessage(true);
     }
 
     try {
-      await fetch("/api/support/chat/send", {
+      const res = await fetch("/api/support/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -167,26 +268,26 @@ export function SupportWidget() {
           email: currentUser?.email,
         }),
       });
+
+      if (!res.ok) {
+        console.error("Failed to send message");
+      }
     } catch (e) {
       console.error("Failed to send support message", e);
-      // Опционально можно пометить сообщение как failed
     }
   };
 
   const handleLauncherClick = () => {
     if (isSupportOpen) {
-      // Если панель открыта - сворачиваем
       setIsMinimized(true);
       toggleSupport();
     } else {
-      // Если панель закрыта - открываем
       setIsMinimized(false);
       setHasUnread(false);
       toggleSupport();
     }
   };
 
-  // Сброс isMinimized при открытии панели
   useEffect(() => {
     if (isSupportOpen) {
       setIsMinimized(false);
@@ -199,14 +300,14 @@ export function SupportWidget() {
     toggleSupport();
   };
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll
   useEffect(() => {
     if (messagesEndRef.current && isSupportOpen && !isMinimized) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isSupportOpen, isMinimized]);
 
-  // Close on ESC key
+  // Close on ESC
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isSupportOpen && !isMinimized) {
@@ -219,7 +320,6 @@ export function SupportWidget() {
     }
   }, [isSupportOpen, isMinimized]);
 
-  // Получение подзаголовка
   const getSubtitle = () => {
     if (hasRealAgentJoined) {
       return "Служба поддержки онлайн";
@@ -229,7 +329,7 @@ export function SupportWidget() {
 
   return (
     <>
-      {/* Launcher Button - Скрывается при открытом окне чата */}
+      {/* Launcher Button */}
       {!isDashboard && !isSupportOpen && (
         <button
           onClick={handleLauncherClick}
@@ -252,7 +352,6 @@ export function SupportWidget() {
             style={{ transform: "none" }}
           />
 
-          {/* Индикатор непрочитанных сообщений */}
           {hasUnread && (
             <div
               className="absolute -top-1 -right-1 h-[10px] w-[10px] rounded-full bg-red-500 border-2 border-card shadow-lg"
@@ -262,11 +361,10 @@ export function SupportWidget() {
         </button>
       )}
 
-      {/* Premium Support Window */}
+      {/* Support Window */}
       <AnimatePresence>
         {isSupportOpen && !isMinimized && (
           <>
-            {/* Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -279,7 +377,6 @@ export function SupportWidget() {
               }}
             />
 
-            {/* Chat Window */}
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -305,7 +402,6 @@ export function SupportWidget() {
                   padding: "24px 32px 16px",
                 }}
               >
-                {/* Close Button */}
                 <button
                   onClick={handleClosePanel}
                   className="absolute top-4 right-4 md:top-5 md:right-5 h-8 w-8 rounded-full flex items-center justify-center bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
@@ -314,7 +410,6 @@ export function SupportWidget() {
                   <X className="h-4 w-4" />
                 </button>
 
-                {/* Title */}
                 <div className="pr-10">
                   <h3
                     className="mb-1 font-semibold"
@@ -342,14 +437,13 @@ export function SupportWidget() {
                 </div>
               </div>
 
-              {/* Scrollable Content Area */}
+              {/* Content */}
               <div
                 className={`flex-1 overflow-y-auto px-5 md:px-6 space-y-4 scrollbar-hide pb-3 md:pb-4 ${
                   hasUserSentMessage ? "pb-4" : ""
                 }`}
                 ref={chatContainerRef}
               >
-                {/* FAQ Section - скрывается после первого сообщения */}
                 <AnimatePresence>
                   {!hasUserSentMessage && (
                     <motion.div
@@ -399,7 +493,6 @@ export function SupportWidget() {
                   )}
                 </AnimatePresence>
 
-                {/* Chat Section */}
                 {messages.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -437,9 +530,8 @@ export function SupportWidget() {
                 )}
               </div>
 
-              {/* Footer - Input and Telegram Button */}
+              {/* Footer */}
               <div className="border-t border-border px-5 py-4 md:px-6 md:py-5 space-y-3 flex-shrink-0">
-                {/* Message Input */}
                 <div className="flex items-center gap-2 rounded-full px-4 py-2 bg-muted/50 border border-border">
                   <input
                     type="text"
@@ -469,7 +561,6 @@ export function SupportWidget() {
                   </button>
                 </div>
 
-                {/* Telegram Button - как primary button, но высота 44px */}
                 <a
                   href="https://t.me/wellifybusinesssupport_bot"
                   target="_blank"
