@@ -1,20 +1,22 @@
 // lib/telegram.ts
+// ⚠️ DEPRECATED: Используйте TelegramService из lib/services/TelegramService.ts
+// Этот файл оставлен для обратной совместимости
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const SUPPORT_CHAT_ID = process.env.TELEGRAM_SUPPORT_CHAT_ID;
 
 if (!BOT_TOKEN) {
-  console.warn("TELEGRAM_BOT_TOKEN is not set");
+  console.warn("[Telegram] TELEGRAM_BOT_TOKEN is not set");
 }
 if (!SUPPORT_CHAT_ID) {
-  console.warn("TELEGRAM_SUPPORT_CHAT_ID is not set");
+  console.warn("[Telegram] TELEGRAM_SUPPORT_CHAT_ID is not set");
 }
 
 export async function createForumTopic(params: {
   name: string;
 }): Promise<number> {
   if (!BOT_TOKEN || !SUPPORT_CHAT_ID) {
-    throw new Error("Telegram config missing");
+    throw new Error("Telegram config missing: BOT_TOKEN or SUPPORT_CHAT_ID not set");
   }
 
   const response = await fetch(
@@ -33,10 +35,13 @@ export async function createForumTopic(params: {
 
   if (!response.ok || !data?.result?.message_thread_id) {
     console.error("Failed to create forum topic:", data);
-    throw new Error(`CREATE_TOPIC_FAILED: ${JSON.stringify(data)}`);
+    const errorMsg = data?.description || JSON.stringify(data);
+    throw new Error(`CREATE_TOPIC_FAILED: ${errorMsg}`);
   }
 
-  return data.result.message_thread_id as number;
+  const topicId = data.result.message_thread_id as number;
+  console.log(`✅ Created forum topic: "${params.name}" (ID: ${topicId})`);
+  return topicId;
 }
 
 export async function sendMessage(params: {
@@ -44,7 +49,7 @@ export async function sendMessage(params: {
   text: string;
 }): Promise<void> {
   if (!BOT_TOKEN || !SUPPORT_CHAT_ID) {
-    throw new Error("Telegram config missing");
+    throw new Error("Telegram config missing: BOT_TOKEN or SUPPORT_CHAT_ID not set");
   }
 
   const response = await fetch(
@@ -62,8 +67,9 @@ export async function sendMessage(params: {
 
   if (!response.ok) {
     const error = await response.json();
-    console.error("Failed to send message:", error);
-    throw new Error(`SEND_MESSAGE_FAILED: ${JSON.stringify(error)}`);
+    console.error("Failed to send message to Telegram:", error);
+    const errorMsg = error?.description || JSON.stringify(error);
+    throw new Error(`SEND_MESSAGE_FAILED: ${errorMsg}`);
   }
 }
 

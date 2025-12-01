@@ -8,6 +8,7 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "@/components/language-provider";
 import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 interface SupportMessage {
   id: string;
@@ -36,8 +37,10 @@ export function SupportWidget() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Ref для polling
+  // Refs для Realtime и polling
+  const realtimeChannelRef = useRef<any>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const useRealtimeRef = useRef(true); // Флаг использования Realtime
 
   const isDashboard = pathname?.startsWith("/dashboard");
 
@@ -80,7 +83,70 @@ export function SupportWidget() {
     [cid]
   );
 
-  // Polling для получения новых сообщений
+  // Подключение к Supabase Realtime
+  const startRealtime = useCallback(() => {
+    if (!cid || realtimeChannelRef.current || !useRealtimeRef.current) return;
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+
+      const channelName = `support_chat:${cid}`;
+      const channel = supabase.channel(channelName, {
+        config: {
+          broadcast: { self: true },
+        },
+      });
+
+      // Подписываемся на новые сообщения
+      channel
+        .on("broadcast", { event: "new_message" }, (payload) => {
+          console.log("[Support Widget] Realtime message received:", payload);
+          const messageData = payload.payload;
+          
+          if (messageData && messageData.sender === "support") {
+            const newMessage: SupportMessage = {
+              id: crypto.randomUUID(),
+              cid,
+              author: "support",
+              text: messageData.text,
+              createdAt: messageData.createdAt || new Date().toISOString(),
+            };
+            addMessages([newMessage]);
+          }
+        })
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            console.log(`[Support Widget] Realtime connected for CID: ${cid}`);
+          } else if (status === "CHANNEL_ERROR") {
+            console.warn(`[Support Widget] Realtime error for CID: ${cid}, falling back to polling`);
+            useRealtimeRef.current = false;
+            stopRealtime();
+            startPolling();
+          }
+        });
+
+      realtimeChannelRef.current = channel;
+    } catch (error) {
+      console.error("[Support Widget] Failed to start Realtime:", error);
+      useRealtimeRef.current = false;
+      startPolling();
+    }
+  }, [cid, addMessages]);
+
+  // Остановка Realtime
+  const stopRealtime = useCallback(() => {
+    if (realtimeChannelRef.current) {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        supabase.removeChannel(realtimeChannelRef.current);
+      } catch (error) {
+        console.error("[Support Widget] Error removing Realtime channel:", error);
+      }
+      realtimeChannelRef.current = null;
+    }
+  }, []);
+
+  // Polling для получения новых сообщений (fallback)
   const startPolling = useCallback(() => {
     if (!cid || pollingIntervalRef.current) return;
 
@@ -96,7 +162,7 @@ export function SupportWidget() {
           addMessages(data.messages);
         }
       } catch (e) {
-        console.error("Polling error:", e);
+        console.error("[Support Widget] Polling error:", e);
       }
     };
 
@@ -115,19 +181,27 @@ export function SupportWidget() {
     }
   }, []);
 
-  // Управление polling при изменении cid или isSupportOpen
+  // Управление Realtime/Polling при изменении cid или isSupportOpen
   useEffect(() => {
     if (!cid || !isSupportOpen || isMinimized) {
+      stopRealtime();
       stopPolling();
       return;
     }
 
-    startPolling();
+    // Пытаемся использовать Realtime, если доступен
+    if (useRealtimeRef.current) {
+      startRealtime();
+    } else {
+      // Fallback на polling
+      startPolling();
+    }
 
     return () => {
+      stopRealtime();
       stopPolling();
     };
-  }, [cid, isSupportOpen, isMinimized, startPolling, stopPolling]);
+  }, [cid, isSupportOpen, isMinimized, startRealtime, stopRealtime, startPolling, stopPolling]);
 
   // Проверка непрочитанных сообщений
   useEffect(() => {

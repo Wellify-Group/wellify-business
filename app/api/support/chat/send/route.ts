@@ -1,14 +1,15 @@
 // app/api/support/chat/send/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getOrCreateSession,
-  updateSessionTopicId,
-  saveSupportMessage,
-} from "@/lib/db-support";
-import { createForumTopic, sendMessage } from "@/lib/telegram";
+import { saveSupportMessage } from "@/lib/db-support";
+import { SessionManager } from "@/lib/services/SessionManager";
+import { TelegramService } from "@/lib/services/TelegramService";
+import { sendRealtimeBroadcast } from "@/lib/supabase/realtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const sessionManager = new SessionManager();
+const telegramService = new TelegramService();
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
 
     // Валидация
     if (!cid) {
+      console.warn("[Support API] Missing CID in request");
       return NextResponse.json(
         { ok: false, error: "CID_REQUIRED" },
         { status: 400 }
@@ -30,14 +32,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (!message || !message.trim()) {
+      console.warn(`[Support API] Empty message from CID: ${cid}`);
       return NextResponse.json(
         { ok: false, error: "EMPTY_MESSAGE" },
         { status: 400 }
       );
     }
 
-    // Получаем или создаём сессию в Supabase
-    let session = await getOrCreateSession({
+    console.log(`[Support API] Processing message from CID: ${cid}`);
+
+    // Получаем или создаём сессию
+    let session = await sessionManager.getOrCreateSession({
       cid,
       user_name: name,
       user_id: userId,
@@ -48,27 +53,24 @@ export async function POST(req: NextRequest) {
     if (!session.topic_id) {
       try {
         const topicName = `👤 ${name || "Гость"} — ${cid.slice(0, 8)}`;
-        const topicId = await createForumTopic({ name: topicName });
+        const topicId = await telegramService.createForumTopic(topicName);
 
         // Сохраняем topic_id в сессию
-        await updateSessionTopicId(cid, topicId);
+        await sessionManager.updateTopicId(cid, topicId);
         session.topic_id = topicId;
 
         // Отправляем карточку клиента в тему
-        const cardText =
-          "Новый запрос с сайта\n\n" +
-          `🧑 Имя: ${name || "Гость сайта"}\n` +
-          `🆔 ID пользователя: ${userId || "—"}\n` +
-          `📧 Email: ${email || "—"}\n` +
-          `🧩 CID: ${cid}\n` +
-          "──────────────";
-
-        await sendMessage({
+        await telegramService.sendClientCard({
           topicId,
-          text: cardText,
+          name,
+          userId,
+          email,
+          cid,
         });
+
+        console.log(`[Support API] Created new Telegram topic ${topicId} for CID: ${cid}`);
       } catch (error) {
-        console.error("Failed to create topic:", error);
+        console.error(`[Support API] Failed to create Telegram topic for CID ${cid}:`, error);
         return NextResponse.json(
           { ok: false, error: "TELEGRAM_ERROR" },
           { status: 500 }
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Сохраняем сообщение пользователя в Supabase
-    await saveSupportMessage({
+    const savedMessage = await saveSupportMessage({
       cid,
       author: "user",
       text: message.trim(),
@@ -85,18 +87,28 @@ export async function POST(req: NextRequest) {
 
     // Отправляем сообщение пользователя в Telegram
     try {
-      await sendMessage({
-        topicId: session.topic_id!,
+      await telegramService.sendUserMessage(session.topic_id!, message.trim());
+      console.log(`[Support API] Sent message to Telegram topic ${session.topic_id} for CID: ${cid}`);
+    } catch (error) {
+      console.error(`[Support API] Failed to send message to Telegram for CID ${cid}:`, error);
+      // Не падаем - сообщение уже сохранено в БД
+    }
+
+    // Отправляем через Realtime для мгновенной доставки (если клиент подключен)
+    try {
+      await sendRealtimeBroadcast(cid, {
+        sender: "client",
         text: message.trim(),
+        createdAt: savedMessage.created_at,
       });
     } catch (error) {
-      console.error("Failed to send message to Telegram:", error);
-      // Не падаем - сообщение уже сохранено в БД
+      // Realtime может быть недоступен - это нормально, будет polling fallback
+      console.log(`[Support API] Realtime broadcast failed for CID ${cid} (will use polling):`, error);
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("POST /api/support/chat/send error:", error);
+    console.error("[Support API] POST /api/support/chat/send error:", error);
     return NextResponse.json(
       { ok: false, error: "INTERNAL_ERROR" },
       { status: 500 }
