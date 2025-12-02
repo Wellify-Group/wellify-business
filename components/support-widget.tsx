@@ -66,7 +66,7 @@ export function SupportWidget() {
       type="button"
       onClick={handleClick}
       aria-label={ariaLabel}
-      className="fixed bottom-6 right-8 z-[9999] flex h-12 items-center justify-center rounded-full border-none outline-none overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-brand)]"
+      className="fixed bottom-6 right-10 z-[9999] flex h-12 items-center justify-center rounded-full border-none outline-none overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-brand)]"
       style={{
         background: "var(--color-brand)",
         boxShadow: "var(--shadow-floating)",
