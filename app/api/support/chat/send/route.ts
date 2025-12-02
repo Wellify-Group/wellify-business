@@ -1,104 +1,195 @@
 // app/api/support/chat/send/route.ts
-import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { sendSupportMessageToTelegram } from '@/lib/telegram/client';
+import { NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+const TELEGRAM_SUPPORT_CHAT_ID = process.env.TELEGRAM_SUPPORT_CHAT_ID
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+type SendBody = {
+  cid?: string
+  text?: string
+  userName?: string | null
+  userEmail?: string | null
+}
+
+async function sendToTelegram(params: {
+  cid: string
+  text: string
+  userName?: string | null
+  userEmail?: string | null
+  replyToMessageId?: number | null
+}) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_SUPPORT_CHAT_ID) {
+    console.error('Telegram env missing')
+    return
+  }
+
+  const { cid, text, userName, userEmail, replyToMessageId } = params
+
+  const messageLines = [
+    '🟦 Новое обращение в поддержку',
+    `CID: ${cid}`,
+    userName ? `Имя: ${userName}` : null,
+    userEmail ? `Email: ${userEmail}` : null,
+    '',
+    text,
+  ].filter(Boolean)
+
+  const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
+
+  const body: any = {
+    chat_id: TELEGRAM_SUPPORT_CHAT_ID,
+    text: messageLines.join('\n'),
+  }
+
+  if (replyToMessageId) {
+    body.reply_to_message_id = replyToMessageId
+  }
+
+  const res = await fetch(telegramUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok || !data?.ok) {
+    console.error('Telegram sendMessage error:', { status: res.status, data })
+    return
+  }
+
+  return data.result as { message_id?: number }
+}
 
 export async function POST(req: Request) {
   try {
-    const { cid, message, name, email } = await req.json();
+    const json = (await req.json().catch(() => ({}))) as SendBody
+    const rawText = json.text ?? ''
+    const text = rawText.trim()
+    const userName = json.userName ?? null
+    const userEmail = json.userEmail ?? null
 
-    if (!cid || !message || !message.trim()) {
+    if (!text) {
       return NextResponse.json(
-        { ok: false, error: 'BAD_REQUEST' },
+        { ok: false, error: 'EMPTY_MESSAGE' },
         { status: 400 },
-      );
+      )
     }
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient()
 
-    // 1. Проверяем, есть ли сессия
-    const { data: session, error: sessionError } = await supabase
-      .from('support_sessions')
-      .select('cid')
-      .eq('cid', cid)
-      .maybeSingle();
+    let cid = json.cid?.trim() || ''
 
-    if (sessionError) {
-      console.error('POST /api/support/chat/send session select error', sessionError);
-      throw sessionError;
-    }
+    // 1) Если cid нет - создаём новую сессию
+    if (!cid) {
+      cid = crypto.randomUUID()
 
-    // 2. Если сессии нет - создаём
-    if (!session) {
-      const { error: insertSessionError } = await supabase
+      const { error: sessionError } = await supabase
         .from('support_sessions')
         .insert({
           cid,
-          user_name: name ?? null,
-          user_email: email ?? null,
+          user_name: userName,
+          user_email: userEmail,
           user_id: null,
-        });
+        })
 
-      if (insertSessionError) {
-        console.error('POST /api/support/chat/send session insert error', insertSessionError);
-        throw insertSessionError;
+      if (sessionError) {
+        console.error('support_sessions insert error:', sessionError)
+        throw sessionError
+      }
+    } else {
+      // Проверяем, что такая сессия вообще существует
+      const { data: existing, error: checkError } = await supabase
+        .from('support_sessions')
+        .select('cid')
+        .eq('cid', cid)
+        .maybeSingle()
+
+      if (checkError) {
+        console.error('support_sessions check error:', checkError)
+        throw checkError
+      }
+
+      if (!existing) {
+        console.error('SESSION_NOT_FOUND for cid:', cid)
+        return NextResponse.json(
+          { ok: false, error: 'SESSION_NOT_FOUND' },
+          { status: 404 },
+        )
       }
     }
 
-    // 3. Сохраняем сообщение пользователя
-    const { error: insertMsgError } = await supabase
-      .from('support_messages')
-      .insert({
-        cid,
-        direction: 'user',
-        text: message,
-      });
+    // 2) Пишем сообщение пользователя в support_messages
+    const { error: messageError } = await supabase.from('support_messages').insert({
+      cid,
+      direction: 'user',
+      text,
+    })
 
-    if (insertMsgError) {
-      console.error('POST /api/support/chat/send message insert error', insertMsgError);
-      throw insertMsgError;
+    if (messageError) {
+      console.error('support_messages insert (user) error:', messageError)
+      throw messageError
     }
 
-    // 4. Отправляем в Telegram и сохраняем связь message_id <-> cid
-    let telegramMessageId: number | null = null;
+    // 3) Пытаемся найти основной telegram-thread для этой сессии
+    let replyToMessageId: number | null = null
 
+    const { data: thread, error: threadError } = await supabase
+      .from('support_telegram_threads')
+      .select('telegram_message_id')
+      .eq('cid', cid)
+      .maybeSingle()
+
+    if (threadError) {
+      console.error('support_telegram_threads select error:', threadError)
+      // не падаем, просто лог
+    } else if (thread?.telegram_message_id) {
+      replyToMessageId = thread.telegram_message_id as number
+    }
+
+    // 4) Шлём в Telegram
     try {
-      const { messageId } = await sendSupportMessageToTelegram({
+      const result = await sendToTelegram({
         cid,
-        text: message,
-        name,
-        email,
-        userId: null,
-      });
+        text,
+        userName,
+        userEmail,
+        replyToMessageId,
+      })
 
-      telegramMessageId = messageId;
+      // если это самое первое сообщение по сессии - сохраняем thread
+      if (!replyToMessageId && result?.message_id) {
+        const { error: threadInsertError } = await supabase
+          .from('support_telegram_threads')
+          .insert({
+            cid,
+            telegram_message_id: result.message_id,
+          })
 
-      const { error: threadError } = await supabase
-        .from('support_telegram_threads')
-        .insert({
-          cid,
-          telegram_message_id: messageId,
-        });
-
-      if (threadError) {
-        // не критично для пользователя, просто логируем
-        console.error('support_telegram_threads insert error:', threadError);
+        if (threadInsertError) {
+          console.error(
+            'support_telegram_threads insert error:',
+            threadInsertError,
+          )
+        }
       }
     } catch (telegramError) {
-      console.error('POST /api/support/chat/send telegram error', telegramError);
-      // пользователю всё равно отвечаем ok, чтобы не ломать UX
-      // сообщение уже сохранено в БД
+      console.error('Telegram send (non-fatal) error:', telegramError)
+      // важно: не кидаем дальше, чтобы не ломать фронт
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, cid })
   } catch (error) {
-    console.error('POST /api/support/chat/send REAL ERROR', error);
+    console.error('POST /api/support/chat/send REAL ERROR:', error)
     return NextResponse.json(
       { ok: false, error: 'INTERNAL_ERROR' },
       { status: 500 },
-    );
+    )
   }
 }
