@@ -10,11 +10,13 @@ import useStore from "@/lib/store";
 import { Collapse } from "@/components/ui/collapse";
 
 interface SupportMessage {
-  id: number;
-  author: "user" | "support";
+  id: string;
+  author: "user" | "support" | "system";
   text: string;
   createdAt: string;
 }
+
+const STORAGE_KEY = 'wellify_support_cid';
 
 export function SupportWidget() {
   const { t } = useLanguage();
@@ -32,88 +34,95 @@ export function SupportWidget() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const isDashboard = pathname?.startsWith("/dashboard");
 
-  // 1. читаем cid из localStorage
+  // загрузка cid из localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("support_cid");
+    const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
       setCid(stored);
     }
   }, []);
 
-  // Вспомогательная функция для создания новой сессии
-  const createSession = useCallback(async (): Promise<string | null> => {
+  // helper: сохранить cid
+  const persistCid = useCallback((newCid: string) => {
+    setCid(newCid);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, newCid);
+    }
+  }, []);
+
+  const clearCid = useCallback(() => {
+    setCid(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  // создание новой сессии
+  const startSession = useCallback(async (): Promise<string | null> => {
     try {
+      const guestHash =
+        typeof window !== "undefined"
+          ? window.navigator.userAgent.slice(0, 128)
+          : null;
+
       const res = await fetch("/api/support/chat/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userName: currentUser?.fullName || currentUser?.name || null,
-          userEmail: currentUser?.email || null,
-          userId: currentUser?.id || null,
-        }),
+        body: JSON.stringify({ guestHash }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-      if (res.ok && data?.ok && data.cid) {
-        const newCid = data.cid;
-        setCid(newCid);
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem("support_cid", newCid);
-        }
-        return newCid;
+      if (data?.ok && data?.cid) {
+        persistCid(data.cid);
+        return data.cid as string;
       }
 
-      console.error("Failed to create session:", data);
+      console.error("startSession failed", data);
+      setErrorText("Не удалось начать чат. Попробуйте ещё раз.");
       return null;
     } catch (e) {
-      console.error("Error creating session:", e);
+      console.error("startSession error", e);
+      setErrorText("Не удалось начать чат. Попробуйте ещё раз.");
       return null;
     }
-  }, [currentUser]);
+  }, [persistCid]);
 
-  // 2. polling сообщений
-  useEffect(() => {
-    // если cid ещё нет - вообще не запускаем polling
-    if (!cid) return;
-
-    let cancelled = false;
-    const currentCid: string = cid; // фиксируем как строку
-
-    async function poll() {
+  // загрузка сообщений
+  const fetchMessages = useCallback(
+    async (currentCid: string) => {
       try {
         const res = await fetch(
-          `/api/support/messages?cid=${encodeURIComponent(currentCid)}`
+          `/api/support/messages?cid=${encodeURIComponent(currentCid)}`,
+          {
+            method: "GET",
+          }
         );
 
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
 
-        // Если получили SESSION_NOT_FOUND - пересоздаём сессию
-        if (!res.ok || (data?.ok === false && data?.error === "SESSION_NOT_FOUND")) {
-          console.log("Session not found in polling, recreating session...");
-          
-          // Удаляем старый cid из localStorage
-          if (typeof window !== "undefined") {
-            window.localStorage.removeItem("support_cid");
-          }
+        if (!data) return;
 
-          // Создаём новую сессию (она сама установит новый cid через setCid)
-          const newCid = await createSession();
-          if (!newCid || cancelled) {
-            return;
+        if (!data.ok && data.error === "SESSION_NOT_FOUND") {
+          console.warn("messages SESSION_NOT_FOUND");
+          // не трогаем пользователя, просто перестаём поллить; cid очистим при следующей отправке
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
           }
-          
-          // Новый polling запустится автоматически благодаря изменению cid в зависимости useEffect
           return;
         }
 
-        if (!cancelled && data?.ok && Array.isArray(data.messages)) {
+        if (data.ok && Array.isArray(data.messages)) {
           setMessages(data.messages);
           // Проверяем, есть ли сообщения от поддержки
           const hasSupportMessages = data.messages.some(
@@ -124,20 +133,40 @@ export function SupportWidget() {
           }
         }
       } catch (e) {
-        console.error("SupportWidget poll error:", e);
-      } finally {
-        if (!cancelled) {
-          setTimeout(poll, 5000);
-        }
+        console.error("fetchMessages error", e);
       }
+    },
+    []
+  );
+
+  // polling при наличии cid
+  useEffect(() => {
+    if (!cid) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      return;
     }
 
-    poll();
+    // первый запрос сразу
+    fetchMessages(cid);
+
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+
+    pollIntervalRef.current = setInterval(() => {
+      fetchMessages(cid);
+    }, 5000);
 
     return () => {
-      cancelled = true;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     };
-  }, [cid, createSession]);
+  }, [cid, fetchMessages]);
 
   // Проверка непрочитанных сообщений
   useEffect(() => {
@@ -167,127 +196,114 @@ export function SupportWidget() {
     },
   ];
 
-  const handleSendMessage = async () => {
-    const text = inputMessage.trim();
-    // Минимум 1 символ для отправки
-    if (!text || text.length < 1 || isSending) return;
+  // отправка сообщения
+  const handleSend = useCallback(
+    async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      setErrorText(null);
 
-    setIsSending(true);
-
-    // Сразу добавляем сообщение пользователя локально для мгновенного отображения
-    const tempMessageId = Date.now();
-    const userMessage: SupportMessage = {
-      id: tempMessageId,
-      author: "user",
-      text,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
-
-    if (!hasUserSentMessage) {
-      setHasUserSentMessage(true);
-    }
-
-    // Функция для отправки сообщения (может быть вызвана повторно при пересоздании сессии)
-    const sendMessage = async (currentCid: string | null, retryCount = 0): Promise<boolean> => {
-      try {
-        // Если cid отсутствует, создаём новую сессию
-        let activeCid = currentCid;
-        if (!activeCid) {
-          activeCid = await createSession();
-          if (!activeCid) {
-            console.error("Failed to create session, removing temp message");
-            setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
-            setInputMessage(text);
-            return false;
-          }
-        }
-
-        const res = await fetch("/api/support/chat/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cid: activeCid,
-            text,
-            userName: currentUser?.fullName || currentUser?.name || null,
-            userEmail: currentUser?.email || null,
-            userId: currentUser?.id || null,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok || !data?.ok) {
-          const error = data?.error;
-
-          // SESSION_NOT_FOUND - пересоздаём сессию и повторяем отправку
-          if (error === "SESSION_NOT_FOUND") {
-            console.log("Session not found, recreating session and retrying...");
-            
-            // Удаляем старый cid из localStorage
-            if (typeof window !== "undefined") {
-              window.localStorage.removeItem("support_cid");
-            }
-
-            // Создаём новую сессию (она сама установит новый cid через setCid)
-            const newCid = await createSession();
-            if (!newCid) {
-              console.error("Failed to recreate session, removing temp message");
-              setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
-              setInputMessage(text);
-              return false;
-            }
-
-            // Повторяем отправку с новым cid (максимум 1 попытка)
-            if (retryCount < 1) {
-              return await sendMessage(newCid, retryCount + 1);
-            } else {
-              console.error("Max retries reached for SESSION_NOT_FOUND");
-              setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
-              setInputMessage(text);
-              return false;
-            }
-          }
-
-          // EMPTY_MESSAGE - повторяем отправку (максимум 1 раз)
-          if (error === "EMPTY_MESSAGE" && retryCount < 1) {
-            console.log("Empty message error, retrying...");
-            return await sendMessage(activeCid, retryCount + 1);
-          }
-
-          // Другие ошибки - удаляем временное сообщение
-          console.error("Send message error:", error);
-          setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
-          setInputMessage(text);
-          return false;
-        }
-
-        // Успешная отправка - сохраняем cid если его ещё нет
-        if (data.cid && activeCid !== data.cid) {
-          setCid(data.cid);
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem("support_cid", data.cid);
-          }
-        }
-
-        // История обновится при следующем poll, временное сообщение заменится реальным
-        return true;
-      } catch (e) {
-        console.error("SupportWidget send error:", e);
-        
-        // При сетевой ошибке тоже удаляем временное сообщение
-        setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
-        setInputMessage(text);
-        return false;
+      const trimmed = inputMessage.trim();
+      if (!trimmed) {
+        return;
       }
-    };
 
-    // Запускаем отправку
-    await sendMessage(cid);
-    
-    setIsSending(false);
-  };
+      setIsSending(true);
+
+      let activeCid = cid;
+      let optimisticMessageId: string | null = null;
+
+      try {
+        // если нет сессии - создаем
+        if (!activeCid) {
+          const newCid = await startSession();
+          if (!newCid) {
+            setIsSending(false);
+            return;
+          }
+          activeCid = newCid;
+        }
+
+        // оптимистично добавляем сообщение
+        optimisticMessageId = `optimistic-${Date.now()}`;
+        const optimisticMessage: SupportMessage = {
+          id: optimisticMessageId,
+          author: "user",
+          text: trimmed,
+          createdAt: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, optimisticMessage]);
+        setInputMessage("");
+
+        if (!hasUserSentMessage) {
+          setHasUserSentMessage(true);
+        }
+
+        const sendOnce = async (targetCid: string) => {
+          const res = await fetch("/api/support/chat/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cid: targetCid, text: trimmed }),
+          });
+
+          const data = await res.json().catch(() => null);
+          return { res, data };
+        };
+
+        let { data } = await sendOnce(activeCid);
+
+        if (!data?.ok && data?.error === "SESSION_NOT_FOUND") {
+          // пересоздаем сессию и пробуем еще раз
+          clearCid();
+          const newCid = await startSession();
+          if (!newCid) {
+            setErrorText("Не удалось отправить сообщение. Попробуйте ещё раз.");
+            if (optimisticMessageId) {
+              setMessages((prev) =>
+                prev.filter((m) => m.id !== optimisticMessageId)
+              );
+            }
+            setInputMessage(trimmed);
+            setIsSending(false);
+            return;
+          }
+          activeCid = newCid;
+          const second = await sendOnce(newCid);
+          data = second.data;
+        }
+
+        if (!data?.ok) {
+          console.error("send failed", data);
+          setErrorText("Не удалось отправить сообщение. Попробуйте ещё раз.");
+          // удаляем оптимистичное сообщение при ошибке
+          if (optimisticMessageId) {
+            setMessages((prev) =>
+              prev.filter((m) => m.id !== optimisticMessageId)
+            );
+          }
+          setInputMessage(trimmed);
+        } else {
+          // после успешной отправки обновим сообщения с сервера, чтобы убрать optimistic-статус
+          if (activeCid) {
+            await fetchMessages(activeCid);
+          }
+        }
+      } catch (err) {
+        console.error("handleSend error", err);
+        setErrorText("Не удалось отправить сообщение. Попробуйте ещё раз.");
+        // удаляем оптимистичное сообщение при ошибке
+        if (optimisticMessageId) {
+          setMessages((prev) =>
+            prev.filter((m) => m.id !== optimisticMessageId)
+          );
+        }
+        setInputMessage(trimmed);
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [cid, clearCid, fetchMessages, inputMessage, startSession, hasUserSentMessage]
+  );
 
   const handleLauncherClick = () => {
     if (isSupportOpen) {
@@ -312,12 +328,11 @@ export function SupportWidget() {
     toggleSupport();
   }, [toggleSupport]);
 
-  // Auto-scroll
+  // скролл вниз по обновлению сообщений
   useEffect(() => {
-    if (messagesEndRef.current && isSupportOpen && !isMinimized) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, isSupportOpen, isMinimized]);
+    if (!messagesEndRef.current) return;
+    messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, isSupportOpen]);
 
   // Close on ESC
   useEffect(() => {
@@ -544,41 +559,36 @@ export function SupportWidget() {
 
               {/* Footer */}
               <div className="border-t border-border px-5 py-4 md:px-6 md:py-5 space-y-3 flex-shrink-0">
-                <div className="flex items-center gap-2 rounded-full px-4 py-2 bg-muted/50 border border-border">
-                  <input
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder={t("support.input_placeholder")}
-                    className="flex-1 bg-transparent text-sm text-popover-foreground placeholder:text-muted-foreground focus:outline-none"
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={
-                      !inputMessage.trim() ||
-                      inputMessage.trim().length < 1 ||
-                      isSending
-                    }
-                    className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                    style={{
-                      background: "var(--color-brand)",
-                      color: "white",
-                      transform: "none",
-                    }}
-                    aria-label={t("support.btn_send")}
-                  >
-                    <Send
-                      className="h-5 w-5 m-0 p-0 pointer-events-none"
-                      style={{ transform: "none" }}
+                <form onSubmit={handleSend} className="space-y-2">
+                  {errorText && (
+                    <div className="text-xs text-red-400">{errorText}</div>
+                  )}
+                  <div className="flex items-center gap-2 rounded-full px-4 py-2 bg-muted/50 border border-border">
+                    <input
+                      type="text"
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      placeholder={t("support.input_placeholder")}
+                      className="flex-1 bg-transparent text-sm text-popover-foreground placeholder:text-muted-foreground focus:outline-none"
                     />
-                  </button>
-                </div>
+                    <button
+                      type="submit"
+                      disabled={isSending || !inputMessage.trim()}
+                      className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      style={{
+                        background: "var(--color-brand)",
+                        color: "white",
+                        transform: "none",
+                      }}
+                      aria-label={t("support.btn_send")}
+                    >
+                      <Send
+                        className="h-5 w-5 m-0 p-0 pointer-events-none"
+                        style={{ transform: "none" }}
+                      />
+                    </button>
+                  </div>
+                </form>
 
                 <a
                   href="https://t.me/wellifybusinesssupport_bot"

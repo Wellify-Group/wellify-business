@@ -1,81 +1,68 @@
 // app/api/support/messages/route.ts
-import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const cid = url.searchParams.get('cid');
-
-  if (!cid) {
-    return NextResponse.json(
-      { ok: false, error: 'NO_CID' },
-      { status: 400 },
-    );
-  }
-
+export async function GET(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createServerSupabaseClient()
+    const { searchParams } = new URL(req.url)
+    const cid = searchParams.get('cid')
 
-    // Проверяем, существует ли сессия
+    // нет cid → считать сессию отсутствующей
+    if (!cid) {
+      return NextResponse.json(
+        { ok: false, error: 'SESSION_NOT_FOUND', messages: [] },
+        { status: 404 }
+      )
+    }
+
+    // проверяем существование сессии по cid
     const { data: session, error: sessionError } = await supabase
       .from('support_sessions')
       .select('cid')
       .eq('cid', cid)
-      .maybeSingle();
+      .maybeSingle()
 
-    if (sessionError) {
-      console.error('GET /api/support/messages session error', sessionError);
-      return NextResponse.json(
-        { ok: false, error: 'INTERNAL_ERROR' },
-        { status: 500 },
-      );
-    }
-
-    // Если сессии нет - возвращаем SESSION_NOT_FOUND
-    if (!session) {
+    if (sessionError || !session) {
       return NextResponse.json(
         { ok: false, error: 'SESSION_NOT_FOUND', messages: [] },
-        { status: 404 },
-      );
+        { status: 404 }
+      )
     }
 
-    // Если сессия есть - получаем сообщения
-    const { data: messages, error: msgError } = await supabase
+    // загружаем сообщения по session_cid
+    const { data: messages, error: messagesError } = await supabase
       .from('support_messages')
-      .select('*')
-      .eq('cid', cid)
-      .order('created_at', { ascending: true });
+      .select('id, author, text, created_at')
+      .eq('session_cid', cid)
+      .order('created_at', { ascending: true })
 
-    if (msgError) {
-      console.error('GET /api/support/messages messages error', msgError);
+    if (messagesError) {
+      console.error('support:messages error', messagesError)
       return NextResponse.json(
-        { ok: false, error: 'INTERNAL_ERROR' },
-        { status: 500 },
-      );
+        { ok: false, error: 'INTERNAL_ERROR', messages: [] },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json(
-      {
-        ok: true,
-        messages: (messages ?? []).map((m) => ({
+    return NextResponse.json({
+      ok: true,
+      messages:
+        messages?.map((m) => ({
           id: m.id,
-          cid: m.cid,
-          author: m.direction === 'user' ? 'user' : 'support',
+          author: m.author,
           text: m.text,
           createdAt: m.created_at,
-        })),
-      },
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error('GET /api/support/messages REAL ERROR', error);
+        })) ?? [],
+    })
+  } catch (e) {
+    console.error('support:messages unexpected', e)
     return NextResponse.json(
-      { ok: false, error: 'INTERNAL_ERROR' },
-      { status: 500 },
-    );
+      { ok: false, error: 'INTERNAL_ERROR', messages: [] },
+      { status: 500 }
+    )
   }
 }
-
