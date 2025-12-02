@@ -38,7 +38,6 @@ export async function sendSupportMessageToTelegram(params: {
     body: JSON.stringify({
       chat_id: TELEGRAM_SUPPORT_CHAT_ID,
       text: messageText,
-      parse_mode: 'HTML',
       disable_web_page_preview: true,
     }),
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, ChevronDown, ChevronUp } from "lucide-react";
@@ -176,10 +176,10 @@ export function SupportWidget() {
     }
   }, [isSupportOpen]);
 
-  const handleClosePanel = () => {
+  const handleClosePanel = useCallback(() => {
     setIsMinimized(true);
     toggleSupport();
-  };
+  }, [toggleSupport]);
 
   // Auto-scroll
   useEffect(() => {
@@ -199,7 +199,7 @@ export function SupportWidget() {
       document.addEventListener("keydown", handleEscape);
       return () => document.removeEventListener("keydown", handleEscape);
     }
-  }, [isSupportOpen, isMinimized]);
+  }, [isSupportOpen, isMinimized, handleClosePanel]);
 
   const getSubtitle = () => {
     if (hasRealAgentJoined) {
