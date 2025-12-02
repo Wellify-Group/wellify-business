@@ -34,12 +34,11 @@ export async function GET(req: Request) {
       );
     }
 
-    // Если сессии нет - возвращаем пустой массив (не ошибка)
-    // Важно: возвращаем 200, а не 404
+    // Если сессии нет - возвращаем SESSION_NOT_FOUND
     if (!session) {
       return NextResponse.json(
-        { ok: true, messages: [] },
-        { status: 200 },
+        { ok: false, error: 'SESSION_NOT_FOUND', messages: [] },
+        { status: 404 },
       );
     }
 

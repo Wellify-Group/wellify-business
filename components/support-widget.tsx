@@ -46,6 +46,38 @@ export function SupportWidget() {
     }
   }, []);
 
+  // Вспомогательная функция для создания новой сессии
+  const createSession = useCallback(async (): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/support/chat/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userName: currentUser?.fullName || currentUser?.name || null,
+          userEmail: currentUser?.email || null,
+          userId: currentUser?.id || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data?.ok && data.cid) {
+        const newCid = data.cid;
+        setCid(newCid);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem("support_cid", newCid);
+        }
+        return newCid;
+      }
+
+      console.error("Failed to create session:", data);
+      return null;
+    } catch (e) {
+      console.error("Error creating session:", e);
+      return null;
+    }
+  }, [currentUser]);
+
   // 2. polling сообщений
   useEffect(() => {
     // если cid ещё нет - вообще не запускаем polling
@@ -60,11 +92,27 @@ export function SupportWidget() {
           `/api/support/messages?cid=${encodeURIComponent(currentCid)}`
         );
 
-        if (!res.ok) {
+        const data = await res.json();
+
+        // Если получили SESSION_NOT_FOUND - пересоздаём сессию
+        if (!res.ok || (data?.ok === false && data?.error === "SESSION_NOT_FOUND")) {
+          console.log("Session not found in polling, recreating session...");
+          
+          // Удаляем старый cid из localStorage
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem("support_cid");
+          }
+
+          // Создаём новую сессию (она сама установит новый cid через setCid)
+          const newCid = await createSession();
+          if (!newCid || cancelled) {
+            return;
+          }
+          
+          // Новый polling запустится автоматически благодаря изменению cid в зависимости useEffect
           return;
         }
 
-        const data = await res.json();
         if (!cancelled && data?.ok && Array.isArray(data.messages)) {
           setMessages(data.messages);
           // Проверяем, есть ли сообщения от поддержки
@@ -89,7 +137,7 @@ export function SupportWidget() {
     return () => {
       cancelled = true;
     };
-  }, [cid]);
+  }, [cid, createSession]);
 
   // Проверка непрочитанных сообщений
   useEffect(() => {
@@ -141,52 +189,104 @@ export function SupportWidget() {
       setHasUserSentMessage(true);
     }
 
-    try {
-      const res = await fetch("/api/support/chat/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cid,
-          // ВАЖНО: сервер ждёт именно `text`, а не `message`
-          text,
-          name: currentUser?.fullName || currentUser?.name || null,
-          userId: currentUser?.id || null,
-          email: currentUser?.email || null,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data?.ok) {
-        // Удаляем временное сообщение при ошибке
-        setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
-
-        const errorMessage = data?.error || "Не удалось отправить сообщение";
-        alert(`Ошибка: ${errorMessage}. Попробуйте ещё раз.`);
-        setInputMessage(text); // Возвращаем текст в поле
-        return;
-      }
-
-      // Сохраняем cid если его ещё нет
-      if (data.cid && !cid) {
-        setCid(data.cid);
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem("support_cid", data.cid);
+    // Функция для отправки сообщения (может быть вызвана повторно при пересоздании сессии)
+    const sendMessage = async (currentCid: string | null, retryCount = 0): Promise<boolean> => {
+      try {
+        // Если cid отсутствует, создаём новую сессию
+        let activeCid = currentCid;
+        if (!activeCid) {
+          activeCid = await createSession();
+          if (!activeCid) {
+            console.error("Failed to create session, removing temp message");
+            setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
+            setInputMessage(text);
+            return false;
+          }
         }
-      }
 
-      // История обновится при следующем poll, временное сообщение заменится реальным
-    } catch (e) {
-      console.error("SupportWidget send error:", e);
-      // Удаляем временное сообщение при ошибке
-      setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
-      alert(
-        "Ошибка при отправке сообщения. Проверьте подключение к интернету и попробуйте ещё раз."
-      );
-      setInputMessage(text); // Возвращаем текст в поле
-    } finally {
-      setIsSending(false);
-    }
+        const res = await fetch("/api/support/chat/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cid: activeCid,
+            text,
+            userName: currentUser?.fullName || currentUser?.name || null,
+            userEmail: currentUser?.email || null,
+            userId: currentUser?.id || null,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data?.ok) {
+          const error = data?.error;
+
+          // SESSION_NOT_FOUND - пересоздаём сессию и повторяем отправку
+          if (error === "SESSION_NOT_FOUND") {
+            console.log("Session not found, recreating session and retrying...");
+            
+            // Удаляем старый cid из localStorage
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem("support_cid");
+            }
+
+            // Создаём новую сессию (она сама установит новый cid через setCid)
+            const newCid = await createSession();
+            if (!newCid) {
+              console.error("Failed to recreate session, removing temp message");
+              setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
+              setInputMessage(text);
+              return false;
+            }
+
+            // Повторяем отправку с новым cid (максимум 1 попытка)
+            if (retryCount < 1) {
+              return await sendMessage(newCid, retryCount + 1);
+            } else {
+              console.error("Max retries reached for SESSION_NOT_FOUND");
+              setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
+              setInputMessage(text);
+              return false;
+            }
+          }
+
+          // EMPTY_MESSAGE - повторяем отправку (максимум 1 раз)
+          if (error === "EMPTY_MESSAGE" && retryCount < 1) {
+            console.log("Empty message error, retrying...");
+            return await sendMessage(activeCid, retryCount + 1);
+          }
+
+          // Другие ошибки - удаляем временное сообщение
+          console.error("Send message error:", error);
+          setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
+          setInputMessage(text);
+          return false;
+        }
+
+        // Успешная отправка - сохраняем cid если его ещё нет
+        if (data.cid && activeCid !== data.cid) {
+          setCid(data.cid);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("support_cid", data.cid);
+          }
+        }
+
+        // История обновится при следующем poll, временное сообщение заменится реальным
+        return true;
+      } catch (e) {
+        console.error("SupportWidget send error:", e);
+        
+        // При сетевой ошибке тоже удаляем временное сообщение
+        setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
+        setInputMessage(text);
+        return false;
+      }
+    };
+
+    // Запускаем отправку
+    await sendMessage(cid);
+    
+    setIsSending(false);
   };
 
   const handleLauncherClick = () => {

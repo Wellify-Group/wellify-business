@@ -13,6 +13,7 @@ type SendBody = {
   text?: string
   userName?: string | null
   userEmail?: string | null
+  userId?: string | null
 }
 
 async function sendToTelegram(params: {
@@ -84,45 +85,37 @@ export async function POST(req: Request) {
 
     const supabase = await createServerSupabaseClient()
 
-    let cid = json.cid?.trim() || ''
+    const cid = json.cid?.trim() || ''
 
-    // 1) Если cid нет - создаём новую сессию
+    // Если cid отсутствует - возвращаем SESSION_NOT_FOUND
     if (!cid) {
-      cid = crypto.randomUUID()
+      return NextResponse.json(
+        { ok: false, error: 'SESSION_NOT_FOUND' },
+        { status: 404 },
+      )
+    }
 
-      const { error: sessionError } = await supabase
-        .from('support_sessions')
-        .insert({
-          cid,
-          user_name: userName,
-          user_email: userEmail,
-          user_id: null,
-        })
+    // Проверяем, что такая сессия существует
+    const { data: existing, error: checkError } = await supabase
+      .from('support_sessions')
+      .select('cid')
+      .eq('cid', cid)
+      .maybeSingle()
 
-      if (sessionError) {
-        console.error('support_sessions insert error:', sessionError)
-        throw sessionError
-      }
-    } else {
-      // Проверяем, что такая сессия вообще существует
-      const { data: existing, error: checkError } = await supabase
-        .from('support_sessions')
-        .select('cid')
-        .eq('cid', cid)
-        .maybeSingle()
+    if (checkError) {
+      console.error('support_sessions check error:', checkError)
+      return NextResponse.json(
+        { ok: false, error: 'INTERNAL_ERROR' },
+        { status: 500 },
+      )
+    }
 
-      if (checkError) {
-        console.error('support_sessions check error:', checkError)
-        throw checkError
-      }
-
-      if (!existing) {
-        console.error('SESSION_NOT_FOUND for cid:', cid)
-        return NextResponse.json(
-          { ok: false, error: 'SESSION_NOT_FOUND' },
-          { status: 404 },
-        )
-      }
+    if (!existing) {
+      console.error('SESSION_NOT_FOUND for cid:', cid)
+      return NextResponse.json(
+        { ok: false, error: 'SESSION_NOT_FOUND' },
+        { status: 404 },
+      )
     }
 
     // 2) Пишем сообщение пользователя в support_messages
