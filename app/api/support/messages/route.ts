@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -59,7 +60,7 @@ export async function GET(req: Request) {
       })),
     });
   } catch (error) {
-    console.error('GET /api/support/messages error:', error);
+    console.error('GET /api/support/messages REAL ERROR:', error);
     return NextResponse.json(
       { ok: false, error: 'INTERNAL_ERROR' },
       { status: 500 },

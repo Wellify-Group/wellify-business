@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { sendSupportMessageToTelegram } from '@/lib/telegram/client';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
       telegramMessageId,
     });
   } catch (error) {
-    console.error('POST /api/support/chat/send error:', error);
+    console.error('POST /api/support/chat/send REAL ERROR:', error);
     return NextResponse.json(
       { ok: false, error: 'INTERNAL_ERROR' },
       { status: 500 },
