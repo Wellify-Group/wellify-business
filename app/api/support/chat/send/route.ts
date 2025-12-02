@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // проверяем существование сессии по cid
+    // находим сессию по cid
     const { data: session, error: sessionError } = await supabase
       .from('support_sessions')
       .select('cid, status')
       .eq('cid', cid)
-      .maybeSingle()
+      .single()
 
     if (sessionError || !session) {
       return NextResponse.json(
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // создаём сообщение, привязка по session_cid
+    // создаем сообщение
     const { error: msgError } = await supabase.from('support_messages').insert({
       session_cid: cid,
       author: 'user',
@@ -63,13 +63,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // если сессия была "new" - помечаем как "in_progress"
-    if (session.status === 'new') {
-      await supabase
-        .from('support_sessions')
-        .update({ status: 'in_progress' })
-        .eq('cid', cid)
-    }
+    // при желании: можно обновить статус сессии (если используешь поле status)
+    // if (session.status === 'new') {
+    //   await supabase
+    //     .from('support_sessions')
+    //     .update({ status: 'in_progress' })
+    //     .eq('cid', cid)
+    // }
 
     return NextResponse.json({ ok: true })
   } catch (e) {
