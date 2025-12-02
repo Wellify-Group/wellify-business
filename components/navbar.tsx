@@ -81,7 +81,10 @@ export function Navbar() {
             {/* Кнопка "Войти" */}
             <Link href="/login">
               <button
-                className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-white"
+                className="hidden sm:inline-flex px-4 py-2 text-sm font-medium transition-colors"
+                style={{
+                  color: isDark ? "var(--color-text-inverse)" : "var(--color-text-main)",
+                }}
               >
                 {nav.login}
               </button>

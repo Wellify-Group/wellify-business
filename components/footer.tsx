@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { welcomeTranslations } from "@/lib/i18n/welcome";
 import { useInterfaceLanguageStore } from "@/lib/store/interfaceLanguageStore";
 
@@ -10,6 +12,14 @@ const t = welcomeTranslations;
 export function AppFooter() {
   const pathname = usePathname();
   const { lang } = useInterfaceLanguageStore();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   // Приветственная и главная
   const isWelcomePage =
@@ -28,41 +38,75 @@ export function AppFooter() {
   // ====== ФУТЕР ДЛЯ ПРИВЕТСТВЕННОЙ И ГЛАВНОЙ ======
   if (isWelcomePage) {
     return (
-      <footer className="border-t border-white/10 bg-[#05070A] text-sm text-white/70">
+      <footer
+        className="border-t text-sm transition-colors"
+        style={{
+          borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "var(--color-border-subtle)",
+          backgroundColor: isDark ? "#05070A" : "var(--color-surface)",
+          color: isDark ? "rgba(255, 255, 255, 0.7)" : "var(--color-text-muted)",
+        }}
+      >
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
             {/* BRAND */}
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-white">
+              <h3
+                className="mb-3 text-sm font-semibold"
+                style={{
+                  color: isDark ? "#ffffff" : "var(--color-text-main)",
+                }}
+              >
                 {t.footerBrandTitle[lang]}
               </h3>
-              <p className="text-xs text-white/60">
+              <p
+                className="text-xs"
+                style={{
+                  color: isDark ? "rgba(255, 255, 255, 0.6)" : "var(--color-text-muted)",
+                }}
+              >
                 {t.footerBrandDescription[lang]}
               </p>
             </div>
 
             {/* LINKS */}
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-white">
+              <h3
+                className="mb-3 text-sm font-semibold"
+                style={{
+                  color: isDark ? "#ffffff" : "var(--color-text-main)",
+                }}
+              >
                 {t.footerLinksTitle[lang]}
               </h3>
               <nav className="flex flex-col gap-2">
                 <Link
                   href="/privacy"
-                  className="text-xs text-white/70 hover:text-white transition-colors"
+                  className={`text-xs transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
                 >
                   {t.footerLinkPrivacy[lang]}
                 </Link>
                 <Link
                   href="/terms"
-                  className="text-xs text-white/70 hover:text-white transition-colors"
+                  className={`text-xs transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
                 >
                   {t.footerLinkTerms[lang]}
                 </Link>
                 <Link
                   href="/support"
-                  className="text-xs text-white/70 hover:text-white transition-colors"
+                  className={`text-xs transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
                 >
                   {t.footerLinkSupport[lang]}
                 </Link>
@@ -71,13 +115,22 @@ export function AppFooter() {
 
             {/* CONTACTS */}
             <div>
-              <h3 className="mb-3 text-sm font-semibold text-white">
+              <h3
+                className="mb-3 text-sm font-semibold"
+                style={{
+                  color: isDark ? "#ffffff" : "var(--color-text-main)",
+                }}
+              >
                 {t.footerContactsTitle[lang]}
               </h3>
-              <div className="space-y-2 text-xs text-white/70">
+              <div className="space-y-2 text-xs">
                 <a
                   href="mailto:support@wellify.business"
-                  className="block hover:text-white transition-colors"
+                  className={`block transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
                 >
                   support@wellify.business
                 </a>
@@ -85,7 +138,11 @@ export function AppFooter() {
                   href="https://t.me/wellify_business_bot"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block hover:text-white transition-colors"
+                  className={`block transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
                 >
                   {t.footerContactTelegram[lang]}
                 </a>
@@ -94,8 +151,18 @@ export function AppFooter() {
           </div>
 
           {/* BOTTOM */}
-          <div className="mt-8 border-t border-white/5 pt-6">
-            <p className="text-center text-xs text-white/40">
+          <div
+            className="mt-8 border-t pt-6"
+            style={{
+              borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "var(--color-border-subtle)",
+            }}
+          >
+            <p
+              className="text-center text-xs"
+              style={{
+                color: isDark ? "rgba(255, 255, 255, 0.4)" : "var(--color-text-soft)",
+              }}
+            >
               {t.footerBottomText[lang].replace(
                 "2025",
                 String(new Date().getFullYear())
