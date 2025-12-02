@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type FormEvent,
+} from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, ChevronDown, ChevronUp } from "lucide-react";
@@ -16,7 +22,7 @@ interface SupportMessage {
   createdAt: string;
 }
 
-const STORAGE_KEY = 'wellify_support_cid';
+const STORAGE_KEY = "wellify_support_cid";
 
 export function SupportWidget() {
   const { t } = useLanguage();
@@ -35,14 +41,16 @@ export function SupportWidget() {
   const [inputMessage, setInputMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isDashboard = pathname?.startsWith("/dashboard");
 
-  // загрузка cid из localStorage
+  // 1. загрузка cid из localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -66,7 +74,7 @@ export function SupportWidget() {
     }
   }, []);
 
-  // создание новой сессии
+  // 2. создание новой сессии
   const startSession = useCallback(async (): Promise<string | null> => {
     try {
       const guestHash =
@@ -83,7 +91,7 @@ export function SupportWidget() {
       const data = await res.json().catch(() => null);
 
       if (data?.ok && data?.cid) {
-        persistCid(data.cid);
+        persistCid(data.cid as string);
         return data.cid as string;
       }
 
@@ -97,49 +105,45 @@ export function SupportWidget() {
     }
   }, [persistCid]);
 
-  // загрузка сообщений
-  const fetchMessages = useCallback(
-    async (currentCid: string) => {
-      try {
-        const res = await fetch(
-          `/api/support/messages?cid=${encodeURIComponent(currentCid)}`,
-          {
-            method: "GET",
-          }
-        );
-
-        const data = await res.json().catch(() => null);
-
-        if (!data) return;
-
-        if (!data.ok && data.error === "SESSION_NOT_FOUND") {
-          console.warn("messages SESSION_NOT_FOUND");
-          // не трогаем пользователя, просто перестаём поллить; cid очистим при следующей отправке
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
-          return;
+  // 3. загрузка сообщений
+  const fetchMessages = useCallback(async (currentCid: string) => {
+    try {
+      const res = await fetch(
+        `/api/support/messages?cid=${encodeURIComponent(currentCid)}`,
+        {
+          method: "GET",
         }
+      );
 
-        if (data.ok && Array.isArray(data.messages)) {
-          setMessages(data.messages);
-          // Проверяем, есть ли сообщения от поддержки
-          const hasSupportMessages = data.messages.some(
-            (m: SupportMessage) => m.author === "support"
-          );
-          if (hasSupportMessages) {
-            setHasRealAgentJoined(true);
-          }
+      const data = await res.json().catch(() => null);
+
+      if (!data) return;
+
+      if (!data.ok && data.error === "SESSION_NOT_FOUND") {
+        console.warn("messages SESSION_NOT_FOUND");
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
         }
-      } catch (e) {
-        console.error("fetchMessages error", e);
+        return;
       }
-    },
-    []
-  );
 
-  // polling при наличии cid
+      if (data.ok && Array.isArray(data.messages)) {
+        setMessages(data.messages);
+
+        const hasSupportMessages = data.messages.some(
+          (m: SupportMessage) => m.author === "support"
+        );
+        if (hasSupportMessages) {
+          setHasRealAgentJoined(true);
+        }
+      }
+    } catch (e) {
+      console.error("fetchMessages error", e);
+    }
+  }, []);
+
+  // 4. polling при наличии cid
   useEffect(() => {
     if (!cid) {
       if (pollIntervalRef.current) {
@@ -149,7 +153,7 @@ export function SupportWidget() {
       return;
     }
 
-    // первый запрос сразу
+    // первый запрос
     fetchMessages(cid);
 
     if (pollIntervalRef.current) {
@@ -168,7 +172,7 @@ export function SupportWidget() {
     };
   }, [cid, fetchMessages]);
 
-  // Проверка непрочитанных сообщений
+  // 5. непрочитанные сообщения
   useEffect(() => {
     if (!isSupportOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -196,9 +200,9 @@ export function SupportWidget() {
     },
   ];
 
-  // отправка сообщения
+  // 6. отправка сообщения
   const handleSend = useCallback(
-    async (e?: React.FormEvent) => {
+    async (e?: FormEvent) => {
       if (e) e.preventDefault();
       setErrorText(null);
 
@@ -223,7 +227,7 @@ export function SupportWidget() {
           activeCid = newCid;
         }
 
-        // оптимистично добавляем сообщение
+        // оптимистичное сообщение
         optimisticMessageId = `optimistic-${Date.now()}`;
         const optimisticMessage: SupportMessage = {
           id: optimisticMessageId,
@@ -240,20 +244,20 @@ export function SupportWidget() {
         }
 
         const sendOnce = async (targetCid: string) => {
-          const res = await fetch("/api/support/chat/send", {
+          const res = await fetch("/api/support/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cid: targetCid, text: trimmed }),
           });
 
           const data = await res.json().catch(() => null);
-          return { res, data };
+          return data;
         };
 
-        let { data } = await sendOnce(activeCid);
+        let data = await sendOnce(activeCid!);
 
         if (!data?.ok && data?.error === "SESSION_NOT_FOUND") {
-          // пересоздаем сессию и пробуем еще раз
+          // сессия на бэке умерла → сбрасываем и пересоздаём
           clearCid();
           const newCid = await startSession();
           if (!newCid) {
@@ -268,30 +272,24 @@ export function SupportWidget() {
             return;
           }
           activeCid = newCid;
-          const second = await sendOnce(newCid);
-          data = second.data;
+          data = await sendOnce(newCid);
         }
 
         if (!data?.ok) {
           console.error("send failed", data);
           setErrorText("Не удалось отправить сообщение. Попробуйте ещё раз.");
-          // удаляем оптимистичное сообщение при ошибке
           if (optimisticMessageId) {
             setMessages((prev) =>
               prev.filter((m) => m.id !== optimisticMessageId)
             );
           }
           setInputMessage(trimmed);
-        } else {
-          // после успешной отправки обновим сообщения с сервера, чтобы убрать optimistic-статус
-          if (activeCid) {
-            await fetchMessages(activeCid);
-          }
+        } else if (activeCid) {
+          await fetchMessages(activeCid);
         }
       } catch (err) {
         console.error("handleSend error", err);
         setErrorText("Не удалось отправить сообщение. Попробуйте ещё раз.");
-        // удаляем оптимистичное сообщение при ошибке
         if (optimisticMessageId) {
           setMessages((prev) =>
             prev.filter((m) => m.id !== optimisticMessageId)
@@ -328,13 +326,13 @@ export function SupportWidget() {
     toggleSupport();
   }, [toggleSupport]);
 
-  // скролл вниз по обновлению сообщений
+  // скролл вниз по сообщениям
   useEffect(() => {
     if (!messagesEndRef.current) return;
     messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length, isSupportOpen]);
 
-  // Close on ESC
+  // закрытие по ESC
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isSupportOpen && !isMinimized) {
@@ -354,10 +352,17 @@ export function SupportWidget() {
     return "Отвечаем в течение нескольких минут";
   };
 
+  // 7. UI
+
+  if (isDashboard) {
+    // на дашборде виджет не показываем
+    return null;
+  }
+
   return (
     <>
       {/* Launcher Button */}
-      {!isDashboard && !isSupportOpen && (
+      {!isSupportOpen && (
         <button
           onClick={handleLauncherClick}
           className="flex h-12 w-12 items-center justify-center rounded-full border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none relative p-0"
@@ -565,6 +570,7 @@ export function SupportWidget() {
                   )}
                   <div className="flex items-center gap-2 rounded-full px-4 py-2 bg-muted/50 border border-border">
                     <input
+                      ref={inputRef}
                       type="text"
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
