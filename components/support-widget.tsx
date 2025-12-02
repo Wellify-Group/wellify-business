@@ -66,11 +66,12 @@ export function SupportWidget() {
       type="button"
       onClick={handleClick}
       aria-label={ariaLabel}
-      className="fixed bottom-6 right-6 z-[9999] flex h-12 items-center justify-center rounded-full border-none outline-none overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-brand)]"
+      className="fixed bottom-6 right-8 z-[9999] flex h-12 items-center justify-center rounded-full border-none outline-none overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--color-brand)]"
       style={{
         background: "var(--color-brand)",
         boxShadow: "var(--shadow-floating)",
         color: "white",
+        transformOrigin: "right center",
       }}
       initial="collapsed"
       whileHover="expanded"
@@ -79,7 +80,8 @@ export function SupportWidget() {
       transition={{
         type: "spring",
         stiffness: 260,
-        damping: 20,
+        damping: 22,
+        mass: 0.8,
       }}
     >
       <div className="relative flex items-center justify-center w-full h-full">
