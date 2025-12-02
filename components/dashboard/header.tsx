@@ -21,7 +21,7 @@ export function DashboardHeader() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, logout, toggleSidebar, toggleSupport, openMessageComposer, locations, isSidebarCollapsed } = useStore();
+  const { currentUser, logout, toggleSidebar, openMessageComposer, locations, isSidebarCollapsed } = useStore();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [languageMenuPosition, setLanguageMenuPosition] = useState<'bottom' | 'top'>('bottom');
