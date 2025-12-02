@@ -1,6 +1,5 @@
 // app/api/support/chat/send/route.ts
 import { NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { sendSupportMessageToTelegram } from '@/lib/telegram/client';
 
@@ -9,71 +8,70 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    let { cid, message, name, email, userId } = body as {
-      cid?: string;
-      message?: string;
-      name?: string;
-      email?: string;
-      userId?: string;
-    };
+    const { cid, message, name, email } = await req.json();
 
-    const text = (message ?? '').trim();
-    if (!text) {
+    if (!cid || !message || !message.trim()) {
       return NextResponse.json(
-        { ok: false, error: 'EMPTY_MESSAGE' },
+        { ok: false, error: 'BAD_REQUEST' },
         { status: 400 },
       );
     }
 
-    if (!cid) {
-      cid = randomUUID();
-    }
-
     const supabase = await createServerSupabaseClient();
 
-    // upsert session
-    const { error: sessionError } = await supabase
+    // 1. Проверяем, есть ли сессия
+    const { data: session, error: sessionError } = await supabase
       .from('support_sessions')
-      .upsert(
-        {
-          cid,
-          user_name: name ?? null,
-          user_email: email ?? null,
-          user_id: userId ?? null,
-        },
-        { onConflict: 'cid' },
-      );
+      .select('cid')
+      .eq('cid', cid)
+      .maybeSingle();
 
     if (sessionError) {
-      console.error('support_sessions upsert error:', sessionError);
+      console.error('POST /api/support/chat/send session select error', sessionError);
       throw sessionError;
     }
 
-    // записываем сообщение пользователя в БД
-    const { error: insertMessageError } = await supabase
+    // 2. Если сессии нет - создаём
+    if (!session) {
+      const { error: insertSessionError } = await supabase
+        .from('support_sessions')
+        .insert({
+          cid,
+          user_name: name ?? null,
+          user_email: email ?? null,
+          user_id: null,
+        });
+
+      if (insertSessionError) {
+        console.error('POST /api/support/chat/send session insert error', insertSessionError);
+        throw insertSessionError;
+      }
+    }
+
+    // 3. Сохраняем сообщение пользователя
+    const { error: insertMsgError } = await supabase
       .from('support_messages')
       .insert({
         cid,
         direction: 'user',
-        text,
+        text: message,
       });
 
-    if (insertMessageError) {
-      console.error('support_messages insert error:', insertMessageError);
-      throw insertMessageError;
+    if (insertMsgError) {
+      console.error('POST /api/support/chat/send message insert error', insertMsgError);
+      throw insertMsgError;
     }
 
-    // отправляем в Telegram и сохраняем связь message_id <-> cid
+    // 4. Отправляем в Telegram и сохраняем связь message_id <-> cid
     let telegramMessageId: number | null = null;
 
     try {
       const { messageId } = await sendSupportMessageToTelegram({
         cid,
-        text,
+        text: message,
         name,
         email,
-        userId,
+        userId: null,
       });
 
       telegramMessageId = messageId;
@@ -90,17 +88,14 @@ export async function POST(req: Request) {
         console.error('support_telegram_threads insert error:', threadError);
       }
     } catch (telegramError) {
-      console.error('Error sending message to Telegram:', telegramError);
+      console.error('POST /api/support/chat/send telegram error', telegramError);
       // пользователю всё равно отвечаем ok, чтобы не ломать UX
+      // сообщение уже сохранено в БД
     }
 
-    return NextResponse.json({
-      ok: true,
-      cid,
-      telegramMessageId,
-    });
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('POST /api/support/chat/send REAL ERROR:', error);
+    console.error('POST /api/support/chat/send REAL ERROR', error);
     return NextResponse.json(
       { ok: false, error: 'INTERNAL_ERROR' },
       { status: 500 },

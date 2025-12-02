@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
   if (!cid) {
     return NextResponse.json(
-      { ok: false, error: 'CID_REQUIRED' },
+      { ok: false, error: 'NO_CID' },
       { status: 400 },
     );
   }
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
 
-    // Проверяем, что сессия существует
+    // Проверяем, существует ли сессия
     const { data: session, error: sessionError } = await supabase
       .from('support_sessions')
       .select('cid')
@@ -27,40 +27,52 @@ export async function GET(req: Request) {
       .maybeSingle();
 
     if (sessionError) {
-      console.error('support_sessions select error:', sessionError);
-      throw sessionError;
-    }
-
-    if (!session) {
+      console.error('GET /api/support/messages session error', sessionError);
       return NextResponse.json(
-        { ok: false, error: 'SESSION_NOT_FOUND' },
-        { status: 404 },
+        { ok: false, error: 'INTERNAL_ERROR' },
+        { status: 500 },
       );
     }
 
-    const { data: messages, error: messagesError } = await supabase
+    // Если сессии нет - возвращаем пустой массив (не ошибка)
+    // Важно: возвращаем 200, а не 404
+    if (!session) {
+      return NextResponse.json(
+        { ok: true, messages: [] },
+        { status: 200 },
+      );
+    }
+
+    // Если сессия есть - получаем сообщения
+    const { data: messages, error: msgError } = await supabase
       .from('support_messages')
-      .select('id, cid, direction, text, created_at')
+      .select('*')
       .eq('cid', cid)
       .order('created_at', { ascending: true });
 
-    if (messagesError) {
-      console.error('support_messages select error:', messagesError);
-      throw messagesError;
+    if (msgError) {
+      console.error('GET /api/support/messages messages error', msgError);
+      return NextResponse.json(
+        { ok: false, error: 'INTERNAL_ERROR' },
+        { status: 500 },
+      );
     }
 
-    return NextResponse.json({
-      ok: true,
-      messages: (messages ?? []).map((m) => ({
-        id: m.id,
-        cid: m.cid,
-        author: m.direction === 'user' ? 'user' : 'support',
-        text: m.text,
-        createdAt: m.created_at,
-      })),
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        messages: (messages ?? []).map((m) => ({
+          id: m.id,
+          cid: m.cid,
+          author: m.direction === 'user' ? 'user' : 'support',
+          text: m.text,
+          createdAt: m.created_at,
+        })),
+      },
+      { status: 200 },
+    );
   } catch (error) {
-    console.error('GET /api/support/messages REAL ERROR:', error);
+    console.error('GET /api/support/messages REAL ERROR', error);
     return NextResponse.json(
       { ok: false, error: 'INTERNAL_ERROR' },
       { status: 500 },
