@@ -119,9 +119,25 @@ export function SupportWidget() {
 
   const handleSendMessage = async () => {
     const text = inputMessage.trim();
-    if (!text || isSending) return;
+    // Минимум 1 символ для отправки
+    if (!text || text.length < 1 || isSending) return;
 
     setIsSending(true);
+
+    // Сразу добавляем сообщение пользователя локально для мгновенного отображения
+    const tempMessageId = Date.now();
+    const userMessage: SupportMessage = {
+      id: tempMessageId,
+      author: 'user',
+      text,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage('');
+    
+    if (!hasUserSentMessage) {
+      setHasUserSentMessage(true);
+    }
 
     try {
       const res = await fetch('/api/support/chat/send', {
@@ -138,21 +154,31 @@ export function SupportWidget() {
 
       const data = await res.json();
 
-      if (data?.ok && data.cid) {
-        if (!cid) {
-          setCid(data.cid);
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('support_cid', data.cid);
-          }
-        }
-        if (!hasUserSentMessage) {
-          setHasUserSentMessage(true);
-        }
-        setInputMessage('');
-        // история подтянется при следующем poll
+      if (!res.ok || !data?.ok) {
+        // Удаляем временное сообщение при ошибке
+        setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
+        
+        const errorMessage = data?.error || 'Не удалось отправить сообщение';
+        alert(`Ошибка: ${errorMessage}. Попробуйте ещё раз.`);
+        setInputMessage(text); // Возвращаем текст в поле
+        return;
       }
+
+      // Сохраняем cid если его ещё нет
+      if (data.cid && !cid) {
+        setCid(data.cid);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('support_cid', data.cid);
+        }
+      }
+
+      // История обновится при следующем poll, временное сообщение заменится реальным
     } catch (e) {
       console.error('SupportWidget send error:', e);
+      // Удаляем временное сообщение при ошибке
+      setMessages((prev) => prev.filter((m) => m.id !== tempMessageId));
+      alert('Ошибка при отправке сообщения. Проверьте подключение к интернету и попробуйте ещё раз.');
+      setInputMessage(text); // Возвращаем текст в поле
     } finally {
       setIsSending(false);
     }
@@ -429,7 +455,7 @@ export function SupportWidget() {
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isSending}
+                    disabled={!inputMessage.trim() || inputMessage.trim().length < 1 || isSending}
                     className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     style={{
                       background: "var(--color-brand)",
