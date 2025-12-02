@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  type FormEvent,
-} from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { FormEvent } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, ChevronDown, ChevronUp } from "lucide-react";
@@ -28,7 +23,7 @@ export function SupportWidget() {
   const { t } = useLanguage();
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
-  const { isSupportOpen, toggleSupport, currentUser } = useStore();
+  const { isSupportOpen, toggleSupport } = useStore();
 
   const [isMinimized, setIsMinimized] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
@@ -44,9 +39,7 @@ export function SupportWidget() {
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const isDashboard = pathname?.startsWith("/dashboard");
 
@@ -59,7 +52,7 @@ export function SupportWidget() {
     }
   }, []);
 
-  // helper: сохранить cid
+  // helper: сохранить/очистить cid
   const persistCid = useCallback((newCid: string) => {
     setCid(newCid);
     if (typeof window !== "undefined") {
@@ -91,7 +84,7 @@ export function SupportWidget() {
       const data = await res.json().catch(() => null);
 
       if (data?.ok && data?.cid) {
-        persistCid(data.cid as string);
+        persistCid(data.cid);
         return data.cid as string;
       }
 
@@ -106,42 +99,43 @@ export function SupportWidget() {
   }, [persistCid]);
 
   // 3. загрузка сообщений
-  const fetchMessages = useCallback(async (currentCid: string) => {
-    try {
-      const res = await fetch(
-        `/api/support/messages?cid=${encodeURIComponent(currentCid)}`,
-        {
-          method: "GET",
-        }
-      );
-
-      const data = await res.json().catch(() => null);
-
-      if (!data) return;
-
-      if (!data.ok && data.error === "SESSION_NOT_FOUND") {
-        console.warn("messages SESSION_NOT_FOUND");
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
-        return;
-      }
-
-      if (data.ok && Array.isArray(data.messages)) {
-        setMessages(data.messages);
-
-        const hasSupportMessages = data.messages.some(
-          (m: SupportMessage) => m.author === "support"
+  const fetchMessages = useCallback(
+    async (currentCid: string) => {
+      try {
+        const res = await fetch(
+          `/api/support/messages?cid=${encodeURIComponent(currentCid)}`,
+          {
+            method: "GET",
+          }
         );
-        if (hasSupportMessages) {
-          setHasRealAgentJoined(true);
+
+        const data = await res.json().catch(() => null);
+        if (!data) return;
+
+        if (!data.ok && data.error === "SESSION_NOT_FOUND") {
+          console.warn("messages SESSION_NOT_FOUND");
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          return;
         }
+
+        if (data.ok && Array.isArray(data.messages)) {
+          setMessages(data.messages as SupportMessage[]);
+          const hasSupportMessages = data.messages.some(
+            (m: SupportMessage) => m.author === "support"
+          );
+          if (hasSupportMessages) {
+            setHasRealAgentJoined(true);
+          }
+        }
+      } catch (e) {
+        console.error("fetchMessages error", e);
       }
-    } catch (e) {
-      console.error("fetchMessages error", e);
-    }
-  }, []);
+    },
+    []
+  );
 
   // 4. polling при наличии cid
   useEffect(() => {
@@ -153,7 +147,7 @@ export function SupportWidget() {
       return;
     }
 
-    // первый запрос
+    // первый запрос сразу
     fetchMessages(cid);
 
     if (pollIntervalRef.current) {
@@ -172,7 +166,7 @@ export function SupportWidget() {
     };
   }, [cid, fetchMessages]);
 
-  // 5. непрочитанные сообщения
+  // 5. непрочитанные
   useEffect(() => {
     if (!isSupportOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -207,9 +201,7 @@ export function SupportWidget() {
       setErrorText(null);
 
       const trimmed = inputMessage.trim();
-      if (!trimmed) {
-        return;
-      }
+      if (!trimmed) return;
 
       setIsSending(true);
 
@@ -217,7 +209,6 @@ export function SupportWidget() {
       let optimisticMessageId: string | null = null;
 
       try {
-        // если нет сессии - создаем
         if (!activeCid) {
           const newCid = await startSession();
           if (!newCid) {
@@ -238,26 +229,22 @@ export function SupportWidget() {
 
         setMessages((prev) => [...prev, optimisticMessage]);
         setInputMessage("");
-
-        if (!hasUserSentMessage) {
-          setHasUserSentMessage(true);
-        }
+        if (!hasUserSentMessage) setHasUserSentMessage(true);
 
         const sendOnce = async (targetCid: string) => {
-          const res = await fetch("/api/support/send", {
+          const res = await fetch("/api/support/chat/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cid: targetCid, text: trimmed }),
           });
 
           const data = await res.json().catch(() => null);
-          return data;
+          return { res, data };
         };
 
-        let data = await sendOnce(activeCid!);
+        let { data } = await sendOnce(activeCid as string);
 
         if (!data?.ok && data?.error === "SESSION_NOT_FOUND") {
-          // сессия на бэке умерла → сбрасываем и пересоздаём
           clearCid();
           const newCid = await startSession();
           if (!newCid) {
@@ -272,7 +259,8 @@ export function SupportWidget() {
             return;
           }
           activeCid = newCid;
-          data = await sendOnce(newCid);
+          const second = await sendOnce(newCid);
+          data = second.data;
         }
 
         if (!data?.ok) {
@@ -300,7 +288,7 @@ export function SupportWidget() {
         setIsSending(false);
       }
     },
-    [cid, clearCid, fetchMessages, inputMessage, startSession, hasUserSentMessage]
+    [cid, clearCid, fetchMessages, hasUserSentMessage, inputMessage, startSession]
   );
 
   const handleLauncherClick = () => {
@@ -326,13 +314,13 @@ export function SupportWidget() {
     toggleSupport();
   }, [toggleSupport]);
 
-  // скролл вниз по сообщениям
+  // автоскролл
   useEffect(() => {
     if (!messagesEndRef.current) return;
     messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length, isSupportOpen]);
 
-  // закрытие по ESC
+  // ESC закрывает
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isSupportOpen && !isMinimized) {
@@ -346,23 +334,14 @@ export function SupportWidget() {
   }, [isSupportOpen, isMinimized, handleClosePanel]);
 
   const getSubtitle = () => {
-    if (hasRealAgentJoined) {
-      return "Служба поддержки онлайн";
-    }
+    if (hasRealAgentJoined) return "Служба поддержки онлайн";
     return "Отвечаем в течение нескольких минут";
   };
 
-  // 7. UI
-
-  if (isDashboard) {
-    // на дашборде виджет не показываем
-    return null;
-  }
-
   return (
     <>
-      {/* Launcher Button */}
-      {!isSupportOpen && (
+      {/* Launcher */}
+      {!isDashboard && !isSupportOpen && (
         <button
           onClick={handleLauncherClick}
           className="flex h-12 w-12 items-center justify-center rounded-full border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none relative p-0"
@@ -370,30 +349,20 @@ export function SupportWidget() {
             position: "fixed",
             bottom: "24px",
             right: "24px",
-            left: "auto",
-            top: "auto",
             zIndex: 9999,
             background: "var(--color-brand)",
             borderColor: "transparent",
             boxShadow: "var(--shadow-floating)",
-            transform: "none",
           }}
         >
-          <Send
-            className="h-5 w-5 text-white m-0 p-0 pointer-events-none"
-            style={{ transform: "none" }}
-          />
+          <Send className="h-5 w-5 text-white m-0 p-0 pointer-events-none" />
 
           {hasUnread && (
-            <div
-              className="absolute -top-1 -right-1 h-[10px] w-[10px] rounded-full bg-red-500 border-2 border-card shadow-lg"
-              style={{ transform: "none" }}
-            />
+            <div className="absolute -top-1 -right-1 h-[10px] w-[10px] rounded-full bg-red-500 border-2 border-card shadow-lg" />
           )}
         </button>
       )}
 
-      {/* Support Window */}
       <AnimatePresence>
         {isSupportOpen && !isMinimized && (
           <>
@@ -404,9 +373,7 @@ export function SupportWidget() {
               transition={{ duration: 0.2 }}
               onClick={handleClosePanel}
               className="fixed inset-0 z-40"
-              style={{
-                backgroundColor: "var(--color-overlay)",
-              }}
+              style={{ backgroundColor: "var(--color-overlay)" }}
             />
 
             <motion.div
@@ -429,14 +396,11 @@ export function SupportWidget() {
               {/* Header */}
               <div
                 className="relative flex-shrink-0"
-                style={{
-                  backgroundColor: "var(--color-surface)",
-                  padding: "24px 32px 16px",
-                }}
+                style={{ padding: "24px 32px 16px" }}
               >
                 <button
                   onClick={handleClosePanel}
-                  className="absolute top-4 right-4 md:top-5 md:right-5 h-8 w-8 rounded-full flex items-center justify-center bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                  className="absolute top-4 right-4 h-8 w-8 rounded-full flex items-center justify-center bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />
@@ -456,13 +420,9 @@ export function SupportWidget() {
                     key={hasRealAgentJoined ? "agent" : "default"}
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 5 }}
                     transition={{ duration: 0.3 }}
-                    className="leading-snug"
-                    style={{
-                      fontSize: "var(--font-size-sm)",
-                      color: "var(--color-text-muted)",
-                    }}
+                    className="leading-snug text-sm"
+                    style={{ color: "var(--color-text-muted)" }}
                   >
                     {getSubtitle()}
                   </motion.p>
@@ -570,7 +530,6 @@ export function SupportWidget() {
                   )}
                   <div className="flex items-center gap-2 rounded-full px-4 py-2 bg-muted/50 border border-border">
                     <input
-                      ref={inputRef}
                       type="text"
                       value={inputMessage}
                       onChange={(e) => setInputMessage(e.target.value)}
@@ -580,18 +539,14 @@ export function SupportWidget() {
                     <button
                       type="submit"
                       disabled={isSending || !inputMessage.trim()}
-                      className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      className="flex h-12 w-12 items-center justify-center rounded-full p-0 border-none outline-none transition-none disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         background: "var(--color-brand)",
                         color: "white",
-                        transform: "none",
                       }}
                       aria-label={t("support.btn_send")}
                     >
-                      <Send
-                        className="h-5 w-5 m-0 p-0 pointer-events-none"
-                        style={{ transform: "none" }}
-                      />
+                      <Send className="h-5 w-5 m-0 p-0 pointer-events-none" />
                     </button>
                   </div>
                 </form>
@@ -607,16 +562,7 @@ export function SupportWidget() {
                     color: "var(--color-text-inverse)",
                     boxShadow: "var(--shadow-floating)",
                     borderRadius: "var(--radius-pill)",
-                    transitionDuration: "var(--transition-base)",
-                    transitionTimingFunction: "var(--ease-soft)",
                     textDecoration: "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background =
-                      "var(--color-brand-strong)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "var(--color-brand)";
                   }}
                 >
                   {t("support.btn_telegram")}
