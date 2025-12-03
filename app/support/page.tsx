@@ -2,14 +2,14 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Mail, MessageCircle, MapPin } from "lucide-react";
+import { ArrowLeft, Mail, MessageCircle } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 
 export default function SupportPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-background">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#050B13]">
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <Link
           href="/"
@@ -32,7 +32,7 @@ export default function SupportPage() {
               {t("support_page.subtitle")}
             </p>
 
-            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
               <motion.div
                 whileHover={{ scale: 1.02, y: -2 }}
                 className="rounded-[20px] bg-white dark:bg-zinc-900 p-6 border border-zinc-200 dark:border-zinc-800 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
@@ -75,24 +75,6 @@ export default function SupportPage() {
                 >
                   {t("support_page.telegram_username")}
                 </a>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.02, y: -2 }}
-                className="rounded-[20px] bg-white dark:bg-zinc-900 p-6 border border-zinc-200 dark:border-zinc-800 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
-              >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <MapPin className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground">
-                  {t("support_page.office_title")}
-                </h3>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  {t("support_page.office_desc")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {t("support_page.office_address")}
-                </p>
               </motion.div>
             </div>
           </div>

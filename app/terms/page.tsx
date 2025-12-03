@@ -22,7 +22,7 @@ export default function TermsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-background">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#050B13]">
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <Link
           href="/"

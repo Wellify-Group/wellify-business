@@ -42,7 +42,7 @@ export function AppFooter() {
         className="border-t text-sm transition-colors"
         style={{
           borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "var(--color-border-subtle)",
-          backgroundColor: isDark ? "#05070A" : "var(--color-surface)",
+          backgroundColor: isDark ? "#050B13" : "var(--color-surface)",
           color: isDark ? "rgba(255, 255, 255, 0.7)" : "var(--color-text-muted)",
         }}
       >
@@ -176,7 +176,7 @@ export function AppFooter() {
 
   // ====== ОБЫЧНЫЙ ФУТЕР ======
   return (
-    <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-background text-sm">
+    <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-[#050B13] text-sm">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <p className="text-center text-xs text-muted-foreground">
           © {new Date().getFullYear()} WELLIFY business. Все права защищены.
