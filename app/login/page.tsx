@@ -191,7 +191,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen w-full items-center justify-center bg-background px-4 py-12">
+    <main className="flex min-h-screen w-full items-center justify-center px-4 py-12" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
