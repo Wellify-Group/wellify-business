@@ -125,14 +125,14 @@ export function AppFooter() {
               </h3>
               <div className="space-y-2 text-xs">
                 <a
-                  href="mailto:support@wellify.business"
+                  href="mailto:wellify_group@proton.me"
                   className={`block transition-colors ${
                     isDark
                       ? "text-white/70 hover:text-white"
                       : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
                   }`}
                 >
-                  support@wellify.business
+                  wellify_group@proton.me
                 </a>
                 <a
                   href="https://t.me/wellify_business_bot"

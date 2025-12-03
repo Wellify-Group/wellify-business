@@ -14,7 +14,7 @@ export default function ContactsPage() {
     {
       icon: Mail,
       title: t("contacts.contact_email_title"),
-      value: "support@shiftflow.com",
+      value: "wellify_group@proton.me",
       description: t("contacts.contact_email_desc"),
     },
     {
