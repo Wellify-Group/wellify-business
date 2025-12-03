@@ -3,8 +3,24 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useLanguage } from "@/components/language-provider";
 
 export default function TermsPage() {
+  const { t, language } = useLanguage();
+
+  const formatDate = (date: Date) => {
+    const locales: Record<string, string> = {
+      en: "en-US",
+      ua: "uk-UA",
+      ru: "ru-RU",
+    };
+    return date.toLocaleDateString(locales[language] || "ru-RU", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-background">
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
@@ -13,7 +29,7 @@ export default function TermsPage() {
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          На главную
+          {t("terms.back_to_home")}
         </Link>
 
         <motion.div
@@ -22,95 +38,110 @@ export default function TermsPage() {
           className="rounded-[20px] bg-white dark:bg-zinc-900 p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
         >
           <h1 className="mb-6 text-4xl font-bold text-foreground">
-            Пользовательское соглашение
+            {t("terms.title")}
           </h1>
           
           <div className="prose prose-zinc dark:prose-invert max-w-none space-y-6">
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">1. Принятие условий</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_1_title")}
+              </h2>
               <p className="text-muted-foreground">
-                Используя сервис WELLIFY business (далее — «Сервис»), вы соглашаетесь с условиями 
-                настоящего Пользовательского соглашения. Если вы не согласны с какими-либо условиями, 
-                пожалуйста, не используйте Сервис.
+                {t("terms.section_1_text")}
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">2. Описание сервиса</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_2_title")}
+              </h2>
               <p className="text-muted-foreground">
-                WELLIFY business — это платформа для управления бизнесом, которая позволяет:
+                {t("terms.section_2_text")}
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>Управлять сменами сотрудников</li>
-                <li>Отслеживать выручку и финансы</li>
-                <li>Анализировать работу точек продаж</li>
-                <li>Управлять персоналом и локациями</li>
-                <li>Получать отчеты и аналитику</li>
+                <li>{t("terms.section_2_item_1")}</li>
+                <li>{t("terms.section_2_item_2")}</li>
+                <li>{t("terms.section_2_item_3")}</li>
+                <li>{t("terms.section_2_item_4")}</li>
+                <li>{t("terms.section_2_item_5")}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">3. Регистрация и аккаунт</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_3_title")}
+              </h2>
               <p className="text-muted-foreground">
-                Для использования Сервиса необходимо создать аккаунт. Вы обязуетесь:
+                {t("terms.section_3_text")}
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>Предоставлять достоверную и актуальную информацию</li>
-                <li>Поддерживать безопасность вашего аккаунта</li>
-                <li>Нести ответственность за все действия, совершенные под вашим аккаунтом</li>
-                <li>Немедленно уведомлять нас о любом несанкционированном использовании</li>
+                <li>{t("terms.section_3_item_1")}</li>
+                <li>{t("terms.section_3_item_2")}</li>
+                <li>{t("terms.section_3_item_3")}</li>
+                <li>{t("terms.section_3_item_4")}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">4. Использование сервиса</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_4_title")}
+              </h2>
               <p className="text-muted-foreground">
-                Вы обязуетесь использовать Сервис только в законных целях и не нарушать права третьих лиц. 
-                Запрещается:
+                {t("terms.section_4_text")}
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>Использовать Сервис для незаконной деятельности</li>
-                <li>Попытки взлома или нарушения безопасности</li>
-                <li>Передача доступа к аккаунту третьим лицам</li>
-                <li>Использование автоматизированных средств для доступа к Сервису</li>
+                <li>{t("terms.section_4_item_1")}</li>
+                <li>{t("terms.section_4_item_2")}</li>
+                <li>{t("terms.section_4_item_3")}</li>
+                <li>{t("terms.section_4_item_4")}</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">5. Интеллектуальная собственность</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_5_title")}
+              </h2>
               <p className="text-muted-foreground">
-                Все материалы Сервиса, включая дизайн, тексты, графику, логотипы и программное обеспечение, 
-                являются собственностью WELLIFY business и защищены законами об интеллектуальной собственности.
+                {t("terms.section_5_text")}
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">6. Ограничение ответственности</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_6_title")}
+              </h2>
               <p className="text-muted-foreground">
-                Сервис предоставляется «как есть». Мы не гарантируем бесперебойную работу Сервиса и не несем 
-                ответственности за любые убытки, возникшие в результате использования или невозможности использования Сервиса.
+                {t("terms.section_6_text")}
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">7. Изменения в соглашении</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_7_title")}
+              </h2>
               <p className="text-muted-foreground">
-                Мы оставляем за собой право изменять настоящее Соглашение в любое время. О существенных изменениях 
-                мы уведомим вас по email или через уведомления в Сервисе.
+                {t("terms.section_7_text")}
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">8. Контакты</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_8_title")}
+              </h2>
               <p className="text-muted-foreground">
-                По всем вопросам, связанным с использованием Сервиса, вы можете обращаться 
-                по адресу: <a href="mailto:support@wellify.business" className="text-primary hover:underline">support@wellify.business</a>
+                {t("terms.section_8_text")}{" "}
+                <a
+                  href={`mailto:${t("terms.section_8_email")}`}
+                  className="text-primary hover:underline"
+                >
+                  {t("terms.section_8_email")}
+                </a>
               </p>
             </section>
 
             <section>
               <p className="text-sm text-muted-foreground mt-8">
-                Последнее обновление: {new Date().toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {t("terms.last_updated")} {formatDate(new Date())}
               </p>
             </section>
           </div>
