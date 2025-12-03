@@ -33,9 +33,10 @@ export default function SupportPage() {
             </p>
 
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
-              <motion.div
+              <motion.a
+                href={`mailto:${t("support_page.email_address")}`}
                 whileHover={{ scale: 1.02, y: -2 }}
-                className="rounded-[20px] bg-card dark:bg-surface-elevated p-6 border border-border dark:border-border shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]"
+                className="block rounded-[20px] bg-card dark:bg-surface-elevated p-6 border border-border dark:border-border shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] cursor-pointer transition-all hover:border-primary/50"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <Mail className="h-6 w-6 text-primary" />
@@ -46,17 +47,17 @@ export default function SupportPage() {
                 <p className="mb-4 text-sm text-muted-foreground">
                   {t("support_page.email_support_desc")}
                 </p>
-                <a
-                  href={`mailto:${t("support_page.email_address")}`}
-                  className="text-sm text-primary hover:underline"
-                >
+                <span className="text-sm text-primary hover:underline">
                   {t("support_page.email_address")}
-                </a>
-              </motion.div>
+                </span>
+              </motion.a>
 
-              <motion.div
+              <motion.a
+                href="https://t.me/wellify_business_bot"
+                target="_blank"
+                rel="noopener noreferrer"
                 whileHover={{ scale: 1.02, y: -2 }}
-                className="rounded-[20px] bg-card dark:bg-surface-elevated p-6 border border-border dark:border-border shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]"
+                className="block rounded-[20px] bg-card dark:bg-surface-elevated p-6 border border-border dark:border-border shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] cursor-pointer transition-all hover:border-primary/50"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <MessageCircle className="h-6 w-6 text-primary" />
@@ -67,15 +68,10 @@ export default function SupportPage() {
                 <p className="mb-4 text-sm text-muted-foreground">
                   {t("support_page.telegram_bot_desc")}
                 </p>
-                <a
-                  href="https://t.me/wellify_business_bot"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline"
-                >
+                <span className="text-sm text-primary hover:underline">
                   {t("support_page.telegram_username")}
-                </a>
-              </motion.div>
+                </span>
+              </motion.a>
             </div>
           </div>
 

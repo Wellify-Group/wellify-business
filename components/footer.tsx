@@ -158,7 +158,7 @@ export function AppFooter() {
             }}
           >
             <p
-              className="text-center text-xs"
+              className="text-center text-xs whitespace-pre-line"
               style={{
                 color: isDark ? "rgba(255, 255, 255, 0.4)" : "var(--color-text-soft)",
               }}
@@ -178,8 +178,8 @@ export function AppFooter() {
   return (
     <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-[#050B13] text-sm">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <p className="text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} WELLIFY business. Все права защищены. WELLIFY Business является продуктом компании WELLIFY Group.
+        <p className="text-center text-xs text-muted-foreground whitespace-pre-line">
+          © {new Date().getFullYear()} WELLIFY business. Все права защищены.{'\n'}WELLIFY Business является продуктом компании WELLIFY Group.
         </p>
       </div>
     </footer>
