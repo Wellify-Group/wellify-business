@@ -256,7 +256,7 @@ export default function LoginPage() {
                     <div className="space-y-4">
                       <div>
                          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500 ml-1">
-                            {t("email_label") || "Email"}
+                            {t("email_label") || "EMAIL"}
                           </label>
                         <input
                           type="email"
@@ -270,7 +270,7 @@ export default function LoginPage() {
                           className={`h-12 w-full bg-card border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all ${
                              isError ? "border-destructive text-destructive focus:ring-destructive" : "border-border"
                           }`}
-                          placeholder="you@example.com"
+                          placeholder={t("email_placeholder") || "you@example.com"}
                         />
                       </div>
 
@@ -333,7 +333,7 @@ export default function LoginPage() {
 
                     <div className="text-center">
                         <p className="text-xs text-zinc-400 font-light">
-                            Если вы сотрудник точки — используйте вкладку «Терминал»
+                            {t("login_terminal_hint") || "Если вы сотрудник точки — используйте вкладку «Терминал»"}
                         </p>
                     </div>
 

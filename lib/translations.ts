@@ -9,10 +9,13 @@ export const TRANSLATIONS = {
     login_office_desc: "Login as Director or Manager",
     login_btn_office: "Office",
     login_btn_terminal: "Terminal",
+    email_label: "EMAIL",
+    email_placeholder: "you@example.com",
     password_label: "PASSWORD",
     login_forgot_password: "Forgot password?",
     btn_login: "Sign In",
     login_or_social: "OR LOGIN WITH",
+    login_terminal_hint: "If you are a point employee — use the \"Terminal\" tab",
     // -----------------------
 
     role_employee: "Employee",
@@ -374,10 +377,13 @@ export const TRANSLATIONS = {
     login_office_desc: "Увійдіть як директор або менеджер",
     login_btn_office: "Офіс",
     login_btn_terminal: "Термінал",
+    email_label: "EMAIL",
+    email_placeholder: "you@example.com",
     password_label: "ПАРОЛЬ",
     login_forgot_password: "Забули пароль?",
     btn_login: "Увійти",
     login_or_social: "АБО УВІЙТИ ЧЕРЕЗ",
+    login_terminal_hint: "Якщо ви співробітник точки — використовуйте вкладку «Термінал»",
     // -----------------------
 
     role_employee: "Співробітник",
@@ -739,10 +745,13 @@ export const TRANSLATIONS = {
     login_office_desc: "Войдите как директор или менеджер",
     login_btn_office: "Офис",
     login_btn_terminal: "Терминал",
+    email_label: "EMAIL",
+    email_placeholder: "you@example.com",
     password_label: "ПАРОЛЬ",
     login_forgot_password: "Забыли пароль?",
     btn_login: "Войти",
     login_or_social: "ИЛИ ВОЙТИ ЧЕРЕЗ",
+    login_terminal_hint: "Если вы сотрудник точки — используйте вкладку «Терминал»",
     // -----------------------
 
     role_employee: "Сотрудник",

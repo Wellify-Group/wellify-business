@@ -10,10 +10,11 @@ export default function AuthPage() {
 
   return (
     <main
-      className="relative min-h-screen flex flex-col items-center pt-36 pb-12 px-4 bg-background"
+      className="relative h-screen flex items-center justify-center px-4 bg-background overflow-hidden"
       style={{
         background: 'radial-gradient(ellipse at top, rgba(99,102,241,0.05), transparent 50%), radial-gradient(rgba(99,102,241,0.08) 1px, transparent 1px)',
-        backgroundSize: '100% 100%, 40px 40px'
+        backgroundSize: '100% 100%, 40px 40px',
+        backgroundColor: 'var(--color-background, #050B13)'
       }}
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
