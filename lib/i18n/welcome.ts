@@ -128,9 +128,9 @@ export const welcomeTranslations: Record<string, Record<WelcomeLanguage, string>
 
   // Низ страницы (простой футер)
   footerText: {
-    uk: '© 2025 Wellify. Усі права захищені.',
-    ru: '© 2025 Wellify. Все права защищены.',
-    en: '© 2025 Wellify. All rights reserved.',
+    uk: '© 2025 Wellify. Усі права захищені. WELLIFY Business є продуктом компанії WELLIFY Group.',
+    ru: '© 2025 Wellify. Все права защищены. WELLIFY Business является продуктом компании WELLIFY Group.',
+    en: '© 2025 Wellify. All rights reserved. WELLIFY Business is a product of WELLIFY Group.',
   },
 
   // Переводы для полного футера
@@ -180,9 +180,9 @@ export const welcomeTranslations: Record<string, Record<WelcomeLanguage, string>
     en: 'Telegram bot',
   },
   footerBottomText: {
-    uk: '© 2025 WELLIFY business. Усі права захищені.',
-    ru: '© 2025 WELLIFY business. Все права защищены.',
-    en: '© 2025 WELLIFY business. All rights reserved.',
+    uk: '© 2025 WELLIFY business. Усі права захищені. WELLIFY Business є продуктом компанії WELLIFY Group.',
+    ru: '© 2025 WELLIFY business. Все права защищены. WELLIFY Business является продуктом компании WELLIFY Group.',
+    en: '© 2025 WELLIFY business. All rights reserved. WELLIFY Business is a product of WELLIFY Group.',
   },
 
   // Переключатель языка

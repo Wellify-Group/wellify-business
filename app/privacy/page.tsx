@@ -6,20 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 
 export default function PrivacyPage() {
-  const { t, language } = useLanguage();
-
-  const formatDate = (date: Date) => {
-    const locales: Record<string, string> = {
-      en: "en-US",
-      ua: "uk-UA",
-      ru: "ru-RU",
-    };
-    return date.toLocaleDateString(locales[language] || "ru-RU", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#050B13]">
@@ -35,97 +22,234 @@ export default function PrivacyPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[20px] bg-white dark:bg-zinc-900 p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
+          className="rounded-[20px] bg-card dark:bg-surface-elevated p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]"
         >
           <h1 className="mb-6 text-4xl font-bold text-foreground">
             {t("privacy.title")}
           </h1>
           
           <div className="prose prose-zinc dark:prose-invert max-w-none space-y-6">
+            {/* Section 1 */}
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">
                 {t("privacy.section_1_title")}
               </h2>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-2">
                 {t("privacy.section_1_text")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_1_item_1")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("privacy.section_1_item_2")}
               </p>
             </section>
 
+            {/* Section 2 */}
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">
                 {t("privacy.section_2_title")}
               </h2>
-              <p className="text-muted-foreground mb-2">
-                {t("privacy.section_2_text")}
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("privacy.section_2_subtitle_1")}
               </p>
-              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
                 <li>{t("privacy.section_2_item_1")}</li>
                 <li>{t("privacy.section_2_item_2")}</li>
                 <li>{t("privacy.section_2_item_3")}</li>
                 <li>{t("privacy.section_2_item_4")}</li>
                 <li>{t("privacy.section_2_item_5")}</li>
               </ul>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("privacy.section_2_subtitle_2")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
+                <li>{t("privacy.section_2_item_6")}</li>
+                <li>{t("privacy.section_2_item_7")}</li>
+                <li>{t("privacy.section_2_item_8")}</li>
+              </ul>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("privacy.section_2_subtitle_3")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                <li>{t("privacy.section_2_item_9")}</li>
+                <li>{t("privacy.section_2_item_10")}</li>
+                <li>{t("privacy.section_2_item_11")}</li>
+                <li>{t("privacy.section_2_item_12")}</li>
+              </ul>
             </section>
 
+            {/* Section 3 */}
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">
                 {t("privacy.section_3_title")}
               </h2>
-              <p className="text-muted-foreground">
-                {t("privacy.section_3_text")}
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("privacy.section_3_subtitle_1")}
               </p>
-              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-4">
                 <li>{t("privacy.section_3_item_1")}</li>
                 <li>{t("privacy.section_3_item_2")}</li>
                 <li>{t("privacy.section_3_item_3")}</li>
                 <li>{t("privacy.section_3_item_4")}</li>
+              </ul>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("privacy.section_3_subtitle_2")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
                 <li>{t("privacy.section_3_item_5")}</li>
+                <li>{t("privacy.section_3_item_6")}</li>
+                <li>{t("privacy.section_3_item_7")}</li>
+                <li>{t("privacy.section_3_item_8")}</li>
+                <li>{t("privacy.section_3_item_9")}</li>
+                <li>{t("privacy.section_3_item_10")}</li>
+                <li>{t("privacy.section_3_item_11")}</li>
               </ul>
             </section>
 
+            {/* Section 4 */}
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">
                 {t("privacy.section_4_title")}
               </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_4_item_1")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                <li>{t("privacy.section_4_item_2")}</li>
+                <li>{t("privacy.section_4_item_3")}</li>
+                <li>{t("privacy.section_4_item_4")}</li>
+              </ul>
               <p className="text-muted-foreground">
-                {t("privacy.section_4_text")}
+                {t("privacy.section_4_item_5")}
               </p>
             </section>
 
+            {/* Section 5 */}
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">
                 {t("privacy.section_5_title")}
               </h2>
-              <p className="text-muted-foreground">
-                {t("privacy.section_5_text")}
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_5_item_1")}
               </p>
-              <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>{t("privacy.section_5_item_1")}</li>
-                <li>{t("privacy.section_5_item_2")}</li>
-                <li>{t("privacy.section_5_item_3")}</li>
-                <li>{t("privacy.section_5_item_4")}</li>
-                <li>{t("privacy.section_5_item_5")}</li>
-              </ul>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_5_item_2")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("privacy.section_5_item_3")}
+              </p>
             </section>
 
+            {/* Section 6 */}
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">
                 {t("privacy.section_6_title")}
               </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_6_text")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                <li>{t("privacy.section_6_item_1")}</li>
+                <li>{t("privacy.section_6_item_2")}</li>
+                <li>{t("privacy.section_6_item_3")}</li>
+                <li>{t("privacy.section_6_item_4")}</li>
+                <li>{t("privacy.section_6_item_5")}</li>
+                <li>{t("privacy.section_6_item_6")}</li>
+                <li>{t("privacy.section_6_item_7")}</li>
+                <li>{t("privacy.section_6_item_8")}</li>
+              </ul>
+            </section>
+
+            {/* Section 7 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("privacy.section_7_title")}
+              </h2>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("privacy.section_7_subtitle_1")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                <li>{t("privacy.section_7_item_1")}</li>
+                <li>{t("privacy.section_7_item_2")}</li>
+                <li>{t("privacy.section_7_item_3")}</li>
+                <li>{t("privacy.section_7_item_4")}</li>
+                <li>{t("privacy.section_7_item_5")}</li>
+                <li>{t("privacy.section_7_item_6")}</li>
+              </ul>
               <p className="text-muted-foreground">
-                {t("privacy.section_6_text")}{" "}
-                <a
-                  href={`mailto:${t("privacy.section_6_email")}`}
-                  className="text-primary hover:underline"
-                >
-                  {t("privacy.section_6_email")}
-                </a>
+                {t("privacy.section_7_item_7")}
               </p>
             </section>
 
+            {/* Section 8 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("privacy.section_8_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_8_text")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                <li>{t("privacy.section_8_item_1")}</li>
+                <li>{t("privacy.section_8_item_2")}</li>
+                <li>{t("privacy.section_8_item_3")}</li>
+                <li>{t("privacy.section_8_item_4")}</li>
+              </ul>
+              <p className="text-muted-foreground">
+                {t("privacy.section_8_item_5")}
+              </p>
+            </section>
+
+            {/* Section 9 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("privacy.section_9_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_9_item_1")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("privacy.section_9_item_2")}
+              </p>
+            </section>
+
+            {/* Section 10 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("privacy.section_10_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_10_item_1")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_10_item_2")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("privacy.section_10_item_3")}
+              </p>
+            </section>
+
+            {/* Section 11 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("privacy.section_11_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("privacy.section_11_text")}
+              </p>
+              <a
+                href={`mailto:${t("privacy.section_11_email")}`}
+                className="text-primary hover:underline"
+              >
+                {t("privacy.section_11_email")}
+              </a>
+            </section>
+
+            {/* Last Updated */}
             <section>
               <p className="text-sm text-muted-foreground mt-8">
-                {t("privacy.last_updated")} {formatDate(new Date())}
+                {t("privacy.last_updated")}
               </p>
             </section>
           </div>
@@ -134,18 +258,3 @@ export default function PrivacyPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

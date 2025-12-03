@@ -179,7 +179,7 @@ export function AppFooter() {
     <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-[#050B13] text-sm">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <p className="text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} WELLIFY business. Все права защищены.
+          © {new Date().getFullYear()} WELLIFY business. Все права защищены. WELLIFY Business является продуктом компании WELLIFY Group.
         </p>
       </div>
     </footer>

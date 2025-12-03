@@ -24,7 +24,7 @@ export default function SupportPage() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          <div className="rounded-[20px] bg-white dark:bg-zinc-900 p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]">
+          <div className="rounded-[20px] bg-card dark:bg-surface-elevated p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]">
             <h1 className="mb-4 text-4xl font-bold text-foreground">
               {t("support_page.title")}
             </h1>
@@ -35,7 +35,7 @@ export default function SupportPage() {
             <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
               <motion.div
                 whileHover={{ scale: 1.02, y: -2 }}
-                className="rounded-[20px] bg-white dark:bg-zinc-900 p-6 border border-zinc-200 dark:border-zinc-800 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
+                className="rounded-[20px] bg-card dark:bg-surface-elevated p-6 border border-border dark:border-border shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <Mail className="h-6 w-6 text-primary" />
@@ -56,7 +56,7 @@ export default function SupportPage() {
 
               <motion.div
                 whileHover={{ scale: 1.02, y: -2 }}
-                className="rounded-[20px] bg-white dark:bg-zinc-900 p-6 border border-zinc-200 dark:border-zinc-800 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
+                className="rounded-[20px] bg-card dark:bg-surface-elevated p-6 border border-border dark:border-border shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <MessageCircle className="h-6 w-6 text-primary" />
@@ -79,7 +79,7 @@ export default function SupportPage() {
             </div>
           </div>
 
-          <div className="rounded-[20px] bg-white dark:bg-zinc-900 p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]">
+          <div className="rounded-[20px] bg-card dark:bg-surface-elevated p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]">
             <h2 className="mb-4 text-2xl font-semibold text-foreground">
               {t("support_page.faq_title")}
             </h2>
