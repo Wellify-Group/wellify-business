@@ -428,8 +428,7 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                  {/* Кнопка Google временно скрыта */}
-                  {/* <div className="relative flex items-center justify-center py-1">
+                  <div className="relative flex items-center justify-center py-1">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t border-border"></span>
                     </div>
@@ -466,7 +465,7 @@ export default function LoginPage() {
                           <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.719 1.233 5.313l4.044-3.045Z"/>
                       </svg>
                       <span className="text-sm font-medium text-white">Google</span>
-                  </button> */}
+                  </button>
                 </motion.div>
               ) : (
                 <motion.div

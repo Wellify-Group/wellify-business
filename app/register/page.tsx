@@ -238,8 +238,7 @@ export default function RegisterPage() {
             </motion.button>
           </motion.form>
 
-          {/* Информационный блок про Google временно скрыт */}
-          {/* <div className="mt-6 mb-4">
+          <div className="mt-6 mb-4">
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {t("register_google_info") || "Регистрация через Google недоступна. Сначала создайте аккаунт через email, затем вы сможете войти через Google."}
@@ -251,7 +250,7 @@ export default function RegisterPage() {
                 {t("register_go_to_login") || "Уже есть аккаунт? Войти через Google"}
               </Link>
             </div>
-          </div> */}
+          </div>
           </div>
         </motion.div>
       </div>
