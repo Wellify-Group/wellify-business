@@ -613,6 +613,7 @@ export const useStore = create<AppState>()(
             return {
               success: false,
               error: data.error || 'Registration failed',
+              errorCode: data.errorCode || null,
             };
           }
 
@@ -752,7 +753,14 @@ export const useStore = create<AppState>()(
           const data = await response.json();
 
           if (!response.ok || !data.success || !data.user) {
-            return false;
+            // Возвращаем объект с errorCode для обработки на фронте
+            // Старый код ожидает boolean, поэтому возвращаем false для совместимости
+            // Но также сохраняем errorCode в объекте результата
+            return {
+              success: false,
+              errorCode: data.errorCode || null,
+              error: data.error || null,
+            } as any;
           }
 
           const user = data.user;

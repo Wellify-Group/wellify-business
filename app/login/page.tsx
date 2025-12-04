@@ -51,10 +51,14 @@ export default function LoginPage() {
     const searchParams = new URLSearchParams(window.location.search);
     const errorParam = searchParams.get("error");
     
-    if (errorParam === "no_account" || errorParam === "user_not_registered") {
-      setError("Пользователь с таким аккаунтом не найден. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.");
+    if (errorParam === "user_not_registered") {
+      setError("Аккаунт с этим Google-адресом не найден в системе WELLIFY business. Сначала зарегистрируйтесь через email.");
       setIsError(true);
       // Clear the error from URL
+      router.replace("/login", { scroll: false });
+    } else if (errorParam === "no_account") {
+      setError("Пользователь с таким аккаунтом не найден в системе WELLIFY business. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.");
+      setIsError(true);
       router.replace("/login", { scroll: false });
     } else if (errorParam === "oauth") {
       const errorDescription = searchParams.get("error_description");
@@ -80,23 +84,71 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      let success = false;
-      success = await login('director', { email, pass: password });
-      if (success) {
+      let result: any = false;
+      result = await login('director', { email, pass: password });
+      
+      // Проверяем, является ли результат объектом с errorCode
+      if (result && typeof result === 'object' && result.success === false) {
+        // Обрабатываем errorCode
+        let errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
+        
+        if (result.errorCode === "INVALID_CREDENTIALS") {
+          errorMessage = "Неверный email или пароль. Проверьте данные и попробуйте ещё раз.";
+        } else if (result.errorCode === "PROFILE_NOT_FOUND") {
+          errorMessage = "Пользователь с таким аккаунтом не найден в системе WELLIFY business. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.";
+        } else if (result.errorCode === "LOGIN_UNKNOWN_ERROR") {
+          errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
+        }
+        
+        setError(errorMessage);
+        setIsError(true);
+        setTimeout(() => setIsError(false), 3000);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Если успешно, редиректим
+      if (result === true) {
         router.push("/dashboard/director");
         return;
       }
-      success = await login('manager', { email, pass: password });
-      if (success) {
+      
+      // Пробуем войти как менеджер
+      result = await login('manager', { email, pass: password });
+      
+      // Проверяем, является ли результат объектом с errorCode
+      if (result && typeof result === 'object' && result.success === false) {
+        // Обрабатываем errorCode
+        let errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
+        
+        if (result.errorCode === "INVALID_CREDENTIALS") {
+          errorMessage = "Неверный email или пароль. Проверьте данные и попробуйте ещё раз.";
+        } else if (result.errorCode === "PROFILE_NOT_FOUND") {
+          errorMessage = "Пользователь с таким аккаунтом не найден в системе WELLIFY business. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.";
+        } else if (result.errorCode === "LOGIN_UNKNOWN_ERROR") {
+          errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
+        }
+        
+        setError(errorMessage);
+        setIsError(true);
+        setTimeout(() => setIsError(false), 3000);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Если успешно, редиректим
+      if (result === true) {
         router.push("/dashboard/manager");
         return;
       }
-      setError(t("error_invalid_credentials") || "Неверный email или пароль");
+      
+      // Если оба логина не удались, показываем общую ошибку
+      setError("Неверный email или пароль. Проверьте данные и попробуйте ещё раз.");
       setIsError(true);
       setTimeout(() => setIsError(false), 3000);
     } catch (error) {
       console.error("Login error:", error);
-      setError(t("error_invalid_credentials") || "Неверный email или пароль");
+      setError("Произошла ошибка при входе. Попробуйте позже.");
       setIsError(true);
       setTimeout(() => setIsError(false), 3000);
     } finally {

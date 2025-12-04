@@ -52,11 +52,32 @@ export async function POST(request: NextRequest) {
       password,
     });
 
+    // Обработка ошибок аутентификации
     if (error || !data.user) {
       console.error('supabase signIn error:', error);
+      
+      // Проверяем, что это ошибка неверных учетных данных
+      if (error?.message?.toLowerCase().includes('invalid login credentials') ||
+          error?.message?.toLowerCase().includes('invalid credentials') ||
+          error?.message?.toLowerCase().includes('email not confirmed')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Invalid email or password',
+            errorCode: 'INVALID_CREDENTIALS'
+          },
+          { status: 401 }
+        );
+      }
+
+      // Другие ошибки аутентификации
       return NextResponse.json(
-        { success: false, error: 'Invalid email or password' },
-        { status: 401 }
+        { 
+          success: false, 
+          error: 'Login failed',
+          errorCode: 'LOGIN_UNKNOWN_ERROR'
+        },
+        { status: 500 }
       );
     }
 
@@ -64,12 +85,42 @@ export async function POST(request: NextRequest) {
     // Важно: русские имена колонок нужно брать в двойные кавычки
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('email, "ФИО", "имя", "роль"')
+      .select('email, "ФИО", "имя", "роль", "бизнес_id"')
       .eq('id', data.user.id)
       .single();
 
-    if (profileError) {
+    // Проверяем наличие профиля и обязательных полей
+    if (profileError || !profile) {
       console.error('Load profile error:', profileError);
+      // Выходим из сессии, если профиль не найден
+      await supabaseAdmin.auth.signOut();
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'User profile not found',
+          errorCode: 'PROFILE_NOT_FOUND'
+        },
+        { status: 403 }
+      );
+    }
+
+    // Проверяем, что профиль полный (есть роль и бизнес_id)
+    const profileRecord = profile as Record<string, any>;
+    const hasRole = profileRecord['роль'];
+    const hasBusinessId = profileRecord['бизнес_id'];
+
+    if (!hasRole || !hasBusinessId) {
+      console.error('Incomplete profile: missing роль or бизнес_id');
+      // Выходим из сессии, если профиль неполный
+      await supabaseAdmin.auth.signOut();
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'User profile incomplete',
+          errorCode: 'PROFILE_NOT_FOUND'
+        },
+        { status: 403 }
+      );
     }
 
     const userPayload = {

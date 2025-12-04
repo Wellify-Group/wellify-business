@@ -34,29 +34,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // === Проверяем, что пользователь с такой почтой уже есть ===
-    const { data: existingUsers, error: listError } =
-      await supabaseAdmin.auth.admin.listUsers();
-
-    if (listError) {
-      console.error('Supabase listUsers error:', listError);
-      return NextResponse.json(
-        { success: false, error: 'Internal auth error' },
-        { status: 500 }
-      );
-    }
-
-    const exists = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
-
-    if (exists) {
-      return NextResponse.json(
-        { success: false, error: 'User with this email already exists' },
-        { status: 409 }
-      );
-    }
-
     // === Генерируем код компании и ID бизнеса ===
     const generateCompanyCode = () => {
       const part = () => Math.floor(1000 + Math.random() * 9000);
@@ -70,24 +47,59 @@ export async function POST(request: NextRequest) {
     const shortName =
       fullName.trim().split(' ')[0] || fullName.trim() || 'Директор';
 
-    // === Создаём пользователя в Supabase Auth ===
-    const { data, error: createError } =
-      await supabaseAdmin.auth.admin.createUser({
-        email: email.toLowerCase().trim(),
-        password,
-        email_confirm: true,
-        user_metadata: {
+    // === Создаём пользователя в Supabase Auth через signUp ===
+    const { data, error: signUpError } = await supabaseAdmin.auth.signUp({
+      email: email.toLowerCase().trim(),
+      password,
+      options: {
+        data: {
           fullName,
           role: 'директор',
           businessId,
           companyCode,
         },
-      });
+      },
+    });
 
-    if (createError || !data?.user) {
-      console.error('Supabase createUser error:', createError);
+    // Обработка ошибок регистрации
+    if (signUpError) {
+      console.error('Supabase signUp error:', signUpError);
+      
+      // Проверяем, что email уже зарегистрирован
+      if (
+        signUpError.message?.toLowerCase().includes('already registered') ||
+        signUpError.message?.toLowerCase().includes('user already registered') ||
+        signUpError.message?.toLowerCase().includes('already exists')
+      ) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'User with this email already exists',
+            errorCode: 'EMAIL_ALREADY_REGISTERED'
+          },
+          { status: 409 }
+        );
+      }
+
+      // Другие ошибки
       return NextResponse.json(
-        { success: false, error: 'Registration failed' },
+        { 
+          success: false, 
+          error: 'Registration failed',
+          errorCode: 'REGISTER_UNKNOWN_ERROR'
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!data?.user) {
+      console.error('No user returned from signUp');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Registration failed',
+          errorCode: 'REGISTER_UNKNOWN_ERROR'
+        },
         { status: 500 }
       );
     }

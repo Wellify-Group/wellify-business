@@ -76,11 +76,11 @@ export async function GET(request: NextRequest) {
       .single();
 
     // Registration rules: User MUST already exist in profiles table
-    // If no profile → sign out + redirect to /auth/login?error=user_not_registered
+    // If no profile → sign out + redirect to /login?error=user_not_registered
     if (profileError || !profile) {
       console.log('OAuth login attempt by unregistered user (no profile):', user.id, profileError);
       await supabase.auth.signOut();
-      const loginUrl = new URL("/auth/login", request.url);
+      const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("error", "user_not_registered");
       return NextResponse.redirect(loginUrl.toString());
     }
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     if (!typedProfile.роль || !typedProfile.бизнес_id) {
       console.log('OAuth login attempt by user with incomplete profile (missing роль or бизнес_id):', user.id);
       await supabase.auth.signOut();
-      const loginUrl = new URL("/auth/login", request.url);
+      const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("error", "user_not_registered");
       return NextResponse.redirect(loginUrl.toString());
     }
@@ -109,8 +109,19 @@ export async function GET(request: NextRequest) {
       })
       .eq("id", user.id);
 
-    // Login allowed → redirect to /dashboard
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Login allowed → redirect to dashboard based on role
+    const userRole = typedProfile.роль;
+    let dashboardPath = "/dashboard";
+    
+    if (userRole === "директор") {
+      dashboardPath = "/dashboard/director";
+    } else if (userRole === "менеджер") {
+      dashboardPath = "/dashboard/manager";
+    } else if (userRole === "сотрудник") {
+      dashboardPath = "/dashboard/employee";
+    }
+    
+    return NextResponse.redirect(new URL(dashboardPath, request.url));
   } catch (err) {
     console.error('Unexpected error in auth callback:', err);
     const loginUrl = new URL("/login", request.url);

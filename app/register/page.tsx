@@ -56,8 +56,19 @@ export default function RegisterPage() {
         // Немедленный редирект на дашборд
         router.push("/dashboard/director");
       } else {
-        // Show error if registration failed
-        setPasswordError(result.error || "Registration failed");
+        // Обрабатываем errorCode и показываем соответствующее сообщение
+        let errorMessage = "Произошла ошибка при регистрации. Попробуйте позже.";
+        
+        if (result.errorCode === "EMAIL_ALREADY_REGISTERED") {
+          errorMessage = "Аккаунт с таким email уже существует. Войдите или восстановите пароль.";
+        } else if (result.errorCode === "REGISTER_UNKNOWN_ERROR") {
+          errorMessage = "Произошла ошибка при регистрации. Попробуйте позже.";
+        } else if (result.error) {
+          // Fallback на старое сообщение, если errorCode нет
+          errorMessage = result.error;
+        }
+        
+        setPasswordError(errorMessage);
         setShowPasswordError(true);
         setShakePassword(true);
         setTimeout(() => setShakePassword(false), 500);
@@ -65,7 +76,7 @@ export default function RegisterPage() {
       }
     } catch (error) {
       console.error("Registration error:", error);
-      setPasswordError("An error occurred. Please try again.");
+      setPasswordError("Произошла ошибка при регистрации. Попробуйте позже.");
       setShowPasswordError(true);
       setShakePassword(true);
       setTimeout(() => setShakePassword(false), 500);
