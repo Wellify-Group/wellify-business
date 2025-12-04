@@ -52,21 +52,22 @@ export interface Profile {
  * Преобразует сырой профиль из БД (с русскими ключами) в типизированный Profile
  */
 export function mapProfileFromDb(raw: ProfileRaw | Record<string, any>): Profile {
+  const rawRecord = raw as Record<string, any>;
   return {
-    id: raw.id,
-    email: raw.email ?? null,
-    fullName: raw['ФИО'] ?? raw.фио ?? null,
-    shortName: raw.имя ?? null,
-    role: raw.роль ?? null,
-    businessId: raw.бизнес_id ?? raw.business_id ?? null,
-    companyCode: raw.код_компании ?? null,
-    jobTitle: raw.должность ?? null,
-    active: raw.активен ?? null,
-    avatarUrl: raw.аватар_url ?? raw.avatar_url ?? null,
-    phone: raw.телефон ?? null,
-    country: raw.страна ?? null,
-    createdAt: raw.created_at ?? null,
-    updatedAt: raw.updated_at ?? null,
+    id: rawRecord.id,
+    email: rawRecord.email ?? null,
+    fullName: rawRecord['ФИО'] ?? rawRecord.фио ?? null,
+    shortName: rawRecord.имя ?? null,
+    role: rawRecord.роль ?? null,
+    businessId: rawRecord.бизнес_id ?? rawRecord.business_id ?? null,
+    companyCode: rawRecord.код_компании ?? null,
+    jobTitle: rawRecord.должность ?? null,
+    active: rawRecord.активен ?? null,
+    avatarUrl: rawRecord.аватар_url ?? rawRecord.avatar_url ?? null,
+    phone: rawRecord.телефон ?? null,
+    country: rawRecord.страна ?? null,
+    createdAt: rawRecord.created_at ?? null,
+    updatedAt: rawRecord.updated_at ?? null,
   };
 }
 
