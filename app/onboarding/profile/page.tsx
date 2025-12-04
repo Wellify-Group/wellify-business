@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -9,7 +9,7 @@ import { PrimaryButton } from "@/components/ui/button";
 import { mapProfileFromDb, mapProfileToDb } from "@/lib/types/profile";
 import { sendPhoneCode, sendEmailCode } from "@/lib/verificationApi";
 
-export default function OnboardingProfilePage() {
+function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromGoogle = searchParams.get("from") === "google";
@@ -322,6 +322,14 @@ export default function OnboardingProfilePage() {
         </motion.div>
       </div>
     </main>
+  );
+}
+
+export default function OnboardingProfilePage() {
+  return (
+    <Suspense fallback={null}>
+      <ProfileContent />
+    </Suspense>
   );
 }
 
