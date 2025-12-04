@@ -7,6 +7,7 @@ import useStore from "@/lib/store";
 import { Trash2, Plus, Edit2, Dices, Save, X, Copy, Eye, EyeOff, Check } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { MonitoringSettings } from "@/components/dashboard/monitoring-settings";
+import { PhoneVerification } from "@/components/dashboard/director/phone-verification";
 
 export default function SettingsPage() {
   const { t } = useLanguage();
@@ -307,6 +308,9 @@ export default function SettingsPage() {
             ))}
         </div>
       </div>
+
+      {/* Phone Verification */}
+      <PhoneVerification />
 
       {/* Monitoring Settings */}
       {currentUser && (

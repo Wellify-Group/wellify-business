@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   // Handle OAuth errors from Supabase
   if (error) {
     console.error('OAuth error:', error, errorDescription);
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("error", "oauth");
     if (errorDescription) {
       loginUrl.searchParams.set("error_description", errorDescription);
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   // No code parameter - redirect to login with error
   if (!code) {
     console.error('Missing code parameter in OAuth callback');
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("error", "missing_code");
     return NextResponse.redirect(loginUrl.toString());
   }
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     if (exchangeError) {
       console.error('Error exchanging code for session:', exchangeError);
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/auth/login", request.url);
       loginUrl.searchParams.set("error", "oauth");
       loginUrl.searchParams.set("error_description", exchangeError.message);
       return NextResponse.redirect(loginUrl.toString());
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     if (!data.session || !data.user) {
       console.error('No session or user after code exchange');
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/auth/login", request.url);
       loginUrl.searchParams.set("error", "oauth");
       return NextResponse.redirect(loginUrl.toString());
     }
@@ -61,11 +61,14 @@ export async function GET(request: NextRequest) {
     // Query profile in table profiles
     const { data: profileRaw, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("phone_verified, phone, first_name, last_name")
+      .select("role, phone_verified, phone, first_name, last_name, full_name")
       .eq("id", user.id)
       .maybeSingle();
 
-    // Если профиля нет - создаём профиль с минимальными данными
+    // Получаем роль из профиля или из user_metadata
+    const role = profileRaw?.role || user.user_metadata?.role;
+
+    // Если профиля нет - создаём профиль с минимальными данными (для OAuth пользователей)
     if (profileError || !profileRaw) {
       console.log('Creating profile for OAuth user:', user.id);
       
@@ -95,7 +98,7 @@ export async function GET(request: NextRequest) {
         console.error('Failed to create profile for OAuth user:', insertError);
         // Выходим из сессии при ошибке создания профиля
         await supabase.auth.signOut();
-        const loginUrl = new URL("/login", request.url);
+        const loginUrl = new URL("/auth/login", request.url);
         loginUrl.searchParams.set("error", "profile_creation_failed");
         return NextResponse.redirect(loginUrl.toString());
       }
@@ -104,7 +107,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/onboarding/profile", request.url));
     }
 
-    // Профиль существует - проверяем верификацию
+    // Для директора: проверяем только email_confirmed_at, телефон можно подтвердить позже
+    if (role === 'director') {
+      if (!emailConfirmed) {
+        // Email еще не подтвержден (не должно произойти, так как мы в callback)
+        return NextResponse.redirect(new URL("/auth/login", request.url));
+      }
+      // Редиректим директора в его дашборд
+      return NextResponse.redirect(new URL("/dashboard/director", request.url));
+    }
+
+    // Для других ролей: проверяем верификацию телефона
     const phoneVerified = profileRaw.phone_verified === true;
 
     // Если email не подтверждён или телефон не верифицирован - редирект на верификацию
@@ -117,11 +130,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/onboarding/profile", request.url));
     }
 
-    // Всё ок - редирект в дашборд
-    return NextResponse.redirect(new URL("/", request.url));
+    // Редиректим в зависимости от роли
+    if (role === 'manager') {
+      return NextResponse.redirect(new URL("/dashboard/manager", request.url));
+    } else if (role === 'employee') {
+      return NextResponse.redirect(new URL("/dashboard/employee", request.url));
+    }
+
+    // Если роль неизвестна - редирект на логин
+    return NextResponse.redirect(new URL("/auth/login", request.url));
   } catch (err) {
     console.error('Unexpected error in auth callback:', err);
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("error", "oauth");
     return NextResponse.redirect(loginUrl.toString());
   }

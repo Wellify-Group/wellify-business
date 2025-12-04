@@ -91,19 +91,38 @@ export async function middleware(request: NextRequest) {
     // Проверяем профиль пользователя
     const { data: profileRaw, error: profileError } = await supabase
       .from('profiles')
-      .select('phone_verified')
+      .select('role, phone_verified')
       .eq('id', session.user.id)
       .maybeSingle()
 
-    // Если профиль не найден - перенаправляем на верификацию телефона
+    // Если профиль не найден - перенаправляем на логин
     if (profileError || !profileRaw) {
-      if (!emailConfirmed) {
-        return NextResponse.redirect(new URL('/onboarding/verify-phone', request.url))
-      }
-      return NextResponse.redirect(new URL('/onboarding/verify-phone', request.url))
+      return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
-    // Проверяем верификацию телефона
+    const role = profileRaw.role || session.user.user_metadata?.role
+
+    // Проверяем доступ к директорским маршрутам
+    if (pathname.startsWith('/dashboard/director')) {
+      if (role !== 'director') {
+        // Если роль не director, редиректим в соответствующий дашборд или на логин
+        if (role === 'manager') {
+          return NextResponse.redirect(new URL('/dashboard/manager', request.url))
+        } else if (role === 'employee') {
+          return NextResponse.redirect(new URL('/dashboard/employee', request.url))
+        } else {
+          return NextResponse.redirect(new URL('/auth/login', request.url))
+        }
+      }
+      // Для директора проверяем только email_confirmed_at
+      if (!emailConfirmed) {
+        return NextResponse.redirect(new URL('/auth/login', request.url))
+      }
+      // Всё ок - разрешаем доступ директору
+      return response
+    }
+
+    // Для других маршрутов dashboard проверяем верификацию телефона (для manager и employee)
     const phoneVerified = profileRaw.phone_verified === true;
 
     // Если email не подтверждён или телефон не верифицирован - перенаправляем на верификацию
