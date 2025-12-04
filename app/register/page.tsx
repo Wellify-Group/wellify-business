@@ -62,6 +62,8 @@ export default function RegisterPage() {
         
         if (result.errorCode === "EMAIL_ALREADY_REGISTERED") {
           errorMessage = "Аккаунт с таким email уже существует. Войдите или восстановите пароль.";
+        } else if (result.errorCode === "PROFILE_CREATION_FAILED") {
+          errorMessage = "Не удалось создать профиль пользователя. Попробуйте позже или обратитесь в поддержку.";
         } else if (result.errorCode === "REGISTER_UNKNOWN_ERROR") {
           errorMessage = "Произошла ошибка при регистрации. Попробуйте позже.";
         } else if (result.error) {

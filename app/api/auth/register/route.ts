@@ -34,6 +34,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // === Проверяем, существует ли пользователь с таким email ===
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Проверяем через admin API, существует ли пользователь
+    const { data: existingUsers, error: listError } = 
+      await supabaseAdmin.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error('Error checking existing users:', listError);
+    } else {
+      const exists = existingUsers?.users?.find(
+        (u) => u.email?.toLowerCase() === normalizedEmail
+      );
+      
+      if (exists) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'User with this email already exists',
+            errorCode: 'EMAIL_ALREADY_REGISTERED'
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // === Генерируем код компании и ID бизнеса ===
     const generateCompanyCode = () => {
       const part = () => Math.floor(1000 + Math.random() * 9000);
@@ -49,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // === Создаём пользователя в Supabase Auth через signUp ===
     const { data, error: signUpError } = await supabaseAdmin.auth.signUp({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password,
       options: {
         data: {
@@ -126,8 +152,38 @@ export async function POST(request: NextRequest) {
 
     if (profileError) {
       console.error('Supabase profile insert error:', profileError);
+      
+      // Если профиль не создался, удаляем пользователя из auth, чтобы избежать "висящих" аккаунтов
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(user.id);
+        console.log('Deleted user from auth due to profile creation failure');
+      } catch (deleteError) {
+        console.error('Failed to delete user from auth:', deleteError);
+      }
+      
+      // Проверяем, может ли это быть ошибка дубликата (пользователь уже существует)
+      if (
+        profileError.message?.toLowerCase().includes('duplicate') ||
+        profileError.message?.toLowerCase().includes('already exists') ||
+        profileError.code === '23505' // PostgreSQL unique violation
+      ) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'User with this email already exists',
+            errorCode: 'EMAIL_ALREADY_REGISTERED'
+          },
+          { status: 409 }
+        );
+      }
+      
       return NextResponse.json(
-        { success: false, error: 'Failed to create user profile' },
+        { 
+          success: false, 
+          error: 'Failed to create user profile',
+          errorCode: 'PROFILE_CREATION_FAILED',
+          details: profileError.message
+        },
         { status: 500 }
       );
     }
