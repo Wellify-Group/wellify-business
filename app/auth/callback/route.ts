@@ -4,6 +4,17 @@ import { NextRequest } from "next/server";
 
 export const runtime = 'nodejs';
 
+// TypeScript interface for profile
+interface Profile {
+  id: string;
+  роль: string | null;
+  бизнес_id: string | null;
+  фио: string | null;
+  аватар_url: string | null;
+  email: string | null;
+  [key: string]: any; // Allow other fields
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -49,79 +60,57 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(loginUrl.toString());
     }
 
-    const userId = data.user.id;
-    const adminSupabase = createAdminSupabaseClient();
+    const user = data.user;
+    const supabaseAdmin = createAdminSupabaseClient();
 
-    // Fetch user profile to check registration status
-    const { data: profile, error: profileError } = await adminSupabase
-      .from('profiles')
-      .select('роль, бизнес_id, "ФИО", имя')
-      .eq('id', userId)
+    // Read Google user metadata
+    const googleFullName = user.user_metadata?.full_name || null;
+    const googleAvatarUrl = user.user_metadata?.avatar_url || null;
+    const userEmail = user.email || null;
+
+    // Query profile in table profiles
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
       .single();
 
-    // Check if user is registered (must have role and business_id)
-    // If profile doesn't exist or is missing required fields, user is not registered
-    const isRegistered = !profileError && profile && profile.роль && profile.бизнес_id;
-
-    if (!isRegistered) {
-      // User is not registered - sign them out and redirect to login with error
-      console.log('OAuth login attempt by unregistered user:', userId, profileError);
+    // Registration rules: User MUST already exist in profiles table
+    // If no profile → sign out + redirect to /auth/login?error=user_not_registered
+    if (profileError || !profile) {
+      console.log('OAuth login attempt by unregistered user (no profile):', user.id, profileError);
       await supabase.auth.signOut();
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("error", "no_account");
+      const loginUrl = new URL("/auth/login", request.url);
+      loginUrl.searchParams.set("error", "user_not_registered");
       return NextResponse.redirect(loginUrl.toString());
     }
 
-    // User is registered - proceed with name population logic
-    let profileName = profile['ФИО'] || profile.имя || null;
-    const needsNameUpdate = !profileName || profileName.trim() === '';
-
-    if (needsNameUpdate) {
-      // Try to get name from Google user_metadata
-      const googleName = 
-        data.user.user_metadata?.full_name ||
-        data.user.user_metadata?.name ||
-        (data.user.user_metadata?.given_name && data.user.user_metadata?.family_name
-          ? `${data.user.user_metadata.given_name} ${data.user.user_metadata.family_name}`
-          : null) ||
-        data.user.user_metadata?.given_name ||
-        null;
-
-      if (googleName && googleName.trim() !== '') {
-        // Update profile with name from Google
-        const shortName = googleName.trim().split(' ')[0] || googleName.trim();
-        const { error: updateError } = await adminSupabase
-          .from('profiles')
-          .update({
-            'ФИО': googleName.trim(),
-            имя: shortName,
-          })
-          .eq('id', userId);
-
-        if (updateError) {
-          console.error('Error updating profile name from Google:', updateError);
-        } else {
-          profileName = googleName.trim();
-        }
-      }
-
-      // If still no name, redirect to profile completion page
-      if (!profileName || profileName.trim() === '') {
-        const completeUrl = new URL("/auth/complete-profile", request.url);
-        return NextResponse.redirect(completeUrl.toString());
-      }
+    // If profile exists but missing роль or бизнес_id → also deny login
+    const typedProfile = profile as Profile;
+    if (!typedProfile.роль || !typedProfile.бизнес_id) {
+      console.log('OAuth login attempt by user with incomplete profile (missing роль or бизнес_id):', user.id);
+      await supabase.auth.signOut();
+      const loginUrl = new URL("/auth/login", request.url);
+      loginUrl.searchParams.set("error", "user_not_registered");
+      return NextResponse.redirect(loginUrl.toString());
     }
 
-    // Determine dashboard path based on role
-    let dashboardPath = "/dashboard/director"; // default to director
-    if (profile.роль === 'менеджер') {
-      dashboardPath = "/dashboard/manager";
-    } else if (profile.роль === 'сотрудник') {
-      dashboardPath = "/dashboard/employee";
-    }
+    // Update user metadata if profile exists
+    // Use фио if exists, otherwise try "ФИО", otherwise use Google full_name
+    const currentFio = typedProfile.фио ?? (typedProfile as any)["ФИО"] ?? null;
+    const currentAvatarUrl = typedProfile.аватар_url ?? null;
+    
+    await supabaseAdmin
+      .from("profiles")
+      .update({
+        фио: currentFio ?? googleFullName ?? null,
+        аватар_url: currentAvatarUrl ?? googleAvatarUrl ?? null,
+        email: userEmail,
+      })
+      .eq("id", user.id);
 
-    // Redirect to appropriate dashboard
-    return NextResponse.redirect(new URL(dashboardPath, request.url));
+    // Login allowed → redirect to /dashboard
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   } catch (err) {
     console.error('Unexpected error in auth callback:', err);
     const loginUrl = new URL("/login", request.url);
@@ -129,20 +118,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl.toString());
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

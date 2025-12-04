@@ -51,7 +51,7 @@ export default function LoginPage() {
     const searchParams = new URLSearchParams(window.location.search);
     const errorParam = searchParams.get("error");
     
-    if (errorParam === "no_account") {
+    if (errorParam === "no_account" || errorParam === "user_not_registered") {
       setError("Пользователь с таким аккаунтом не найден. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.");
       setIsError(true);
       // Clear the error from URL
