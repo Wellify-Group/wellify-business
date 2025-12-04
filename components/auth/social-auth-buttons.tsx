@@ -30,6 +30,10 @@ export function SocialAuthButtons() {
     }
   };
 
+  // Google Auth Button - скрыто
+  return null;
+  
+  /* 
   return (
     <div className="space-y-2">
       {error && (
@@ -55,6 +59,7 @@ export function SocialAuthButtons() {
       </button>
     </div>
   );
+  */
 }
 
 

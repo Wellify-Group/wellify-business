@@ -40,6 +40,7 @@ export default function AuthPage() {
 
           <AuthForm mode={mode} onModeChange={setMode} />
 
+          {/* Social Auth Buttons - скрыто
           <div className="relative flex items-center gap-4 py-4 w-full mt-4">
             <span className="h-px bg-white/10 flex-1" />
             <span className="text-xs text-zinc-500 uppercase tracking-wider whitespace-nowrap">
@@ -49,6 +50,7 @@ export default function AuthPage() {
           </div>
 
           <SocialAuthButtons />
+          */}
         </div>
       </motion.div>
     </main>

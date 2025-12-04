@@ -314,6 +314,7 @@ export default function RegisterPage() {
               </motion.button>
             </motion.form>
 
+            {/* Google Auth Button - скрыто
             <div className="relative flex items-center justify-center py-1 mt-4">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border"></span>
@@ -334,6 +335,7 @@ export default function RegisterPage() {
               </svg>
               <span className="text-sm font-medium text-white">Продолжить с Google</span>
             </GoogleAuthButton>
+            */}
           </div>
         </motion.div>
       </div>

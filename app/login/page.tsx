@@ -276,7 +276,7 @@ export default function LoginPage() {
           <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
           <div className="flex flex-col gap-6">
             {/* Tabs */}
-            <div className="grid w-full grid-cols-2 gap-1 p-1 bg-muted rounded-xl">
+            <div className="grid w-full grid-cols-2 gap-1 p-1 bg-muted border border-border rounded-[10px]">
               <button
                 onClick={() => handleTabChange("office")}
                 className={`relative flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 h-9 rounded-[10px] ${
@@ -412,6 +412,7 @@ export default function LoginPage() {
                         </p>
                     </div>
 
+                  {/* Google Auth Button - скрыто
                   <div className="relative flex items-center justify-center py-1">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t border-border"></span>
@@ -432,6 +433,7 @@ export default function LoginPage() {
                       </svg>
                       <span className="text-sm font-medium text-white">Google</span>
                   </GoogleAuthButton>
+                  */}
 
                   <div className="text-center">
                     <p className="text-xs text-zinc-400 font-light">
