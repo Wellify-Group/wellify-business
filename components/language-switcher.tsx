@@ -3,8 +3,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { Language } from "@/lib/translations";
 import { useLanguage } from "@/components/language-provider";
+import { useInterfaceLanguageStore } from "@/lib/store/interfaceLanguageStore";
 import { cn } from "@/lib/utils";
 
 const languages: { code: Language; label: string }[] = [
@@ -13,12 +15,21 @@ const languages: { code: Language; label: string }[] = [
   { code: "ru", label: "RU" },
 ];
 
+// Маппинг между старым типом Language и интерфейсным языком
+const languageToInterfaceLang: Record<Language, "en" | "ru" | "uk"> = {
+  en: "en",
+  ua: "uk",
+  ru: "ru",
+};
+
 interface LanguageSwitcherProps {
   variant?: "default" | "compact";
 }
 
 export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps) {
   const { language, setLanguage } = useLanguage();
+  const { setLang: setInterfaceLang } = useInterfaceLanguageStore();
+  const { resolvedTheme } = useTheme();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,9 +48,22 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const currentLang = languages.find((lang) => lang.code === language);
+  // При первом рендере тоже синхронизируем стор интерфейсного языка
+  useEffect(() => {
+    setInterfaceLang(languageToInterfaceLang[language]);
+  }, [language, setInterfaceLang]);
 
+  const currentLang = languages.find((lang) => lang.code === language);
   const isCompact = variant === "compact";
+
+  const handleChangeLanguage = (code: Language) => {
+    if (language !== code) {
+      setLanguage(code); // старый провайдер
+      setInterfaceLang(languageToInterfaceLang[code]); // стор welcome/футера
+      router.refresh();
+    }
+    setIsOpen(false);
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -50,13 +74,13 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
         className={cn(
           "flex items-center transition-colors",
           isCompact
-            ? "h-8 w-8 flex items-center justify-center p-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:opacity-70 transition-opacity"
+            ? "h-8 w-8 flex items-center justify-center p-1.5 text-xs font-medium text-zinc-500 dark:text-[#c7d2fe] hover:opacity-70 transition-opacity"
             : "h-9 gap-2 rounded-lg border border-border bg-card/80 px-3 backdrop-blur-sm hover:bg-muted"
         )}
         aria-label="Change language"
       >
         {isCompact ? (
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+          <span className="text-xs font-medium text-slate-700 dark:text-[#c7d2fe]">
             {currentLang?.label}
           </span>
         ) : (
@@ -73,7 +97,23 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 top-12 z-[70] min-w-[140px] rounded-2xl border border-border/70 bg-card p-2 shadow-2xl ring-1 ring-black/5"
+            className="absolute right-0 top-12 z-[70] min-w-[140px] rounded-2xl p-2 shadow-2xl ring-1 ring-black/5 dark:ring-white/10"
+            style={{
+              background:
+                resolvedTheme === "dark"
+                  ? "rgba(15, 23, 42, 0.7)"
+                  : "rgba(255, 255, 255, 0.7)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              border:
+                resolvedTheme === "dark"
+                  ? "1px solid rgba(255, 255, 255, 0.1)"
+                  : "1px solid rgba(255, 255, 255, 0.3)",
+              boxShadow:
+                resolvedTheme === "dark"
+                  ? "0 8px 32px 0 rgba(0, 0, 0, 0.3)"
+                  : "0 8px 32px 0 rgba(0, 0, 0, 0.1)",
+            }}
           >
             {languages.map((lang) => (
               <motion.button
@@ -83,17 +123,16 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (language !== lang.code) {
-                    setLanguage(lang.code);
-                    // Force page refresh to update all translations
-                    router.refresh();
-                  }
-                  setIsOpen(false);
+                  handleChangeLanguage(lang.code);
                 }}
-                className={`w-full rounded-xl px-4 py-2 text-left text-sm font-medium transition-colors ${
+                className={`w-full rounded-xl px-4 py-2 text-left text-sm font-medium transition-all ${
                   language === lang.code
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    ? resolvedTheme === "dark"
+                      ? "bg-white/10 text-foreground backdrop-blur-sm"
+                      : "bg-white/60 text-foreground backdrop-blur-sm"
+                    : resolvedTheme === "dark"
+                    ? "text-muted-foreground hover:bg-white/5 hover:text-foreground backdrop-blur-sm"
+                    : "text-muted-foreground hover:bg-white/40 hover:text-foreground backdrop-blur-sm"
                 }`}
               >
                 {lang.label}
@@ -105,6 +144,3 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
     </div>
   );
 }
-
-
-

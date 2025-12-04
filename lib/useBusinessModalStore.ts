@@ -1,12 +1,16 @@
 import { create } from 'zustand';
 import { LucideIcon } from 'lucide-react';
+import { BusinessBenefit } from '@/data/businessModalConfig';
 
 export interface BusinessModalData {
   id: string;
   title: string;
+  format?: string;
   description: string;
-  features: string[];
-  functions: string[];
+  benefits?: BusinessBenefit[];
+  howToStart?: string;
+  features?: string[];
+  functions?: string[];
   icon?: React.ReactNode; // Иконка ниши
 }
 

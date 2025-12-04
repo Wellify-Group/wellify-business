@@ -64,7 +64,7 @@ export function OrderForm({ order, onClose, onSubmit }: OrderFormProps) {
         onClick={(e) => e.stopPropagation()}
         className="fixed inset-0 z-[99999] h-screen w-screen flex items-center justify-center p-4"
       >
-        <div className="w-full max-w-md bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-white/10 rounded-2xl shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="w-full max-w-md bg-white dark:bg-surface-elevated border border-zinc-200 dark:border-white/10 rounded-2xl dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">

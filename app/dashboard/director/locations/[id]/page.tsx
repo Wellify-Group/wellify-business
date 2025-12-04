@@ -315,7 +315,7 @@ export default function LocationProfilePage() {
             {location.branding?.logo && (
             <button 
               onClick={() => handleFileSelect('logo')}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center border-2 border-background hover:bg-primary/90 transition-colors z-10"
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center border-2 border-background hover:bg-primary/90 transition-colors z-10"
               title={t("dashboard.btn_edit")}
             >
               <Camera className="h-4 w-4" />
@@ -846,7 +846,7 @@ function TeamTab({ location, manager, staff, employees, users, onAssignManager, 
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-card-foreground">Выберите менеджера</h3>
-              <button onClick={() => setShowManagerModal(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setShowManagerModal(false)} className="text-white hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -905,7 +905,7 @@ function TeamTab({ location, manager, staff, employees, users, onAssignManager, 
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-card-foreground">Выберите сотрудника</h3>
-              <button onClick={() => setShowStaffModal(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setShowStaffModal(false)} className="text-white hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>

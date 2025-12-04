@@ -74,7 +74,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+    <main className="flex h-screen items-center justify-center bg-background px-4 overflow-hidden" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
       <div className="w-full max-w-md">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -124,7 +124,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="h-12 w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 focus:border-transparent focus:ring-primary transition-all"
-                placeholder="you@example.com"
+                placeholder={t("email_placeholder") || "you@example.com"}
               />
             </div>
 
@@ -203,7 +203,7 @@ export default function RegisterPage() {
               disabled={isCreating || !fullName.trim() || password !== confirmPassword || password.length < 6}
               whileHover={isCreating ? undefined : { scale: 1.01 }}
               whileTap={isCreating ? undefined : { scale: 0.99 }}
-              className="h-12 w-full flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-base font-semibold text-primary-foreground transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
+              className="h-12 w-full flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-base font-semibold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
             >
               {isCreating ? (
                 <>

@@ -4,118 +4,278 @@
 
 @layer base {
   /* ============================================
-     UNIFIED DESIGN SYSTEM - Light Theme (Default)
+     PREMIUM COLOR SYSTEM - Light Theme (Default)
+     Премиальный светлый SaaS стиль (Linear, Notion)
      ============================================ */
   :root {
-    /* Background colors */
-    --bg-primary: #F5F5F7;
-    --bg-secondary: #FFFFFF;
-    --bg-tertiary: #F0F0F3;
+    /* Основные цвета в формате HSL (H S L без hsl()) */
+    --background: 210 40% 98.4%;      /* общий фон страницы: #F8FAFC */
+    --foreground: 222 47% 11%;         /* основной текст */
+
+    --card: 0 0% 100%;                 /* карточки, модалки, блоки */
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --border: 214 32% 91%;             /* границы карточек / инпутов */
+    --input: 214 32% 91%;
+
+    /* основной брендовый синий (синхронизировать с логотипом WELLIFY) */
+    --primary: 222 84% 56%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --accent: 222 84% 60%;             /* можно использовать для hover/outline */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 222 84% 56%;
+    --radius: 1rem;
+
+    /* ============================================
+       WELLIFY DESIGN TOKENS - Light Theme
+       ============================================ */
     
-    /* Surface colors (cards, panels) */
-    --surface-1: #FFFFFF;
-    --surface-2: #F8F8FB;
-    --surface-3: #F1F1F5;
-    
-    /* Border colors */
-    --border-color: rgba(7, 7, 16, 0.06);
-    --border-strong: rgba(7, 7, 16, 0.12);
-    
-    /* Text colors */
-    --text-primary: #070710;
-    --text-secondary: rgba(7, 7, 16, 0.7);
-    --text-tertiary: rgba(7, 7, 16, 0.45);
-    
-    /* Accent colors */
-    --accent-primary: #3B5BFF;
-    --accent-hover: #5673FF;
-    
-    /* Status colors */
-    --success: #1AB36F;
-    --error: #E53939;
-    --warning: #E59B2F;
-    
-    /* Sidebar specific */
-    --sidebar-bg: var(--surface-1);
-    
-    /* Legacy variables (for compatibility) */
-    --background: var(--bg-primary);
-    --foreground: var(--text-primary);
-    --card: var(--surface-1);
-    --card-foreground: var(--text-primary);
-    --popover: var(--surface-1);
-    --popover-foreground: var(--text-primary);
-    --primary: var(--accent-primary);
-    --primary-foreground: #FFFFFF;
-    --secondary: var(--surface-2);
-    --secondary-foreground: var(--text-primary);
-    --muted: var(--surface-3);
-    --muted-foreground: var(--text-secondary);
-    --accent: var(--surface-2);
-    --accent-foreground: var(--text-primary);
-    --destructive: var(--error);
-    --destructive-foreground: #FFFFFF;
-    --border: var(--border-color);
-    --input: var(--border-color);
-    --ring: var(--accent-primary);
-    --radius: 0.75rem;
+    /* Брендовые цвета */
+    --color-brand: #2563eb;
+    --color-brand-soft: #3b82f6;
+    --color-brand-strong: #1d4ed8;
+
+    /* Фоны и поверхности */
+    --color-background: #F8FAFC; /* основной фон */
+    --color-surface: #FFFFFF; /* фон карточек, панелей и навбара */
+    --color-navbar: #FFFFFF; /* фон навбара */
+    --color-card: #FFFFFF; /* фон карточек и лёгких контейнеров */
+    /* Legacy для обратной совместимости */
+    --color-bg: #F8FAFC;
+    --color-surface-soft: #F8FAFC;
+
+    /* Границы */
+    --color-border-subtle: #e5e7eb;
+    --color-border-strong: #d1d5db;
+
+    /* Текст */
+    --color-text-main: #0f172a;
+    --color-text-muted: #6b7280;
+    --color-text-soft: #9ca3af;
+    --color-text-inverse: #f9fafb;
+
+    /* Семантические цвета */
+    --color-success: #22c55e;
+    --color-warning: #f97316;
+    --color-danger: #ef4444;
+
+    /* Оверлей */
+    --color-overlay: rgba(15, 23, 42, 0.55);
+
+    /* Радиусы */
+    --radius-xs: 0.25rem;  /* 4px */
+    --radius-sm: 0.5rem;   /* 8px */
+    --radius-md: 0.75rem;  /* 12px */
+    --radius-lg: 1rem;     /* 16px */
+    --radius-xl: 1.5rem;   /* 24px */
+    --radius-pill: 9999px;
+
+    /* Тени */
+    --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.10);
+    --shadow-navbar: 0 12px 40px rgba(15, 23, 42, 0.35);
+    --shadow-modal: 0 24px 80px rgba(15, 23, 42, 0.45);
+    --shadow-floating: 0 16px 50px rgba(15, 23, 42, 0.35);
+
+    /* Типографика */
+    --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    --font-size-xs: 0.75rem;  /* 12px */
+    --font-size-sm: 0.875rem; /* 14px */
+    --font-size-base: 1rem;   /* 16px */
+    --font-size-lg: 1.125rem; /* 18px */
+    --font-size-xl: 1.25rem;  /* 20px */
+    --font-size-2xl: 1.5rem;  /* 24px */
+    --font-size-3xl: 1.875rem;/* 30px */
+    --font-size-4xl: 2.25rem; /* 36px */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Интервалы и анимации */
+    --transition-fast: 150ms;
+    --transition-base: 220ms;
+    --transition-slow: 320ms;
+    --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Спейсинг */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
+    /* Legacy variables (для обратной совместимости) */
+    --bg-primary: hsl(210 40% 98.4%);
+    --bg-secondary: hsl(0 0% 100%);
+    --bg-tertiary: hsl(210 40% 98.4%);
+    --surface-1: hsl(0 0% 100%);
+    --surface-2: hsl(210 40% 98.4%);
+    --surface-3: hsl(210 40% 94%);
+    --border-color: hsl(214 32% 91%);
+    --border-strong: hsl(214 32% 85%);
+    --text-primary: hsl(222 47% 11%);
+    --text-secondary: hsl(215 16% 47%);
+    --text-tertiary: hsl(215 16% 65%);
+    --accent-primary: hsl(222 84% 56%);
+    --accent-hover: hsl(222 84% 60%);
+    --success: hsl(142 71% 45%);
+    --error: hsl(0 84% 60%);
+    --warning: hsl(38 92% 50%);
+    --sidebar-bg: hsl(0 0% 100%);
   }
 
   /* ============================================
-     UNIFIED DESIGN SYSTEM - Dark Theme
+     PREMIUM COLOR SYSTEM - Dark Theme
+     Глубокий дорогой графит/слейт (как карточка входа в офис)
      ============================================ */
   .dark {
-    /* Background colors */
-    --bg-primary: #0D0D0F;
-    --bg-secondary: #141416;
-    --bg-tertiary: #1B1B1D;
+    /* Основные цвета в формате HSL (H S L без hsl()) */
+    --background: 215 50% 4%;          /* общий фон страницы: #050B13 */
+    --foreground: 213 31% 91%;         /* основной текст */
+
+    --card: 215 50% 7%;                /* карточки / модалки / блоки: #0B1320 */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+
+    --primary: 222 84% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 15%;
+    --secondary-foreground: 210 40% 98%;
+
+    --accent: 217 33% 20%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 222 84% 60%;
+
+    /* Единая палитра для тёмной темы */
+    --color-background: #050B13; /* основной фон */
+    --color-surface: #0B1320; /* фон карточек и панелей */
+    --color-navbar: #0B1320; /* фон навбара */
+    --color-card: #0B1320; /* немного светлее поверхности для 3D-объёмных элементов */
+    --color-surface-elevated: #0B1320; /* приподнятые поверхности (navbar, карточки, модалки) */
+    /* Legacy для обратной совместимости */
+    --color-bg: #050B13;
+
+    /* ============================================
+       WELLIFY DESIGN TOKENS - Dark Theme
+       ============================================ */
     
-    /* Surface colors (cards, panels) */
-    --surface-1: #111113;
-    --surface-2: #19191B;
-    --surface-3: #202023;
-    
-    /* Border colors */
-    --border-color: rgba(255, 255, 255, 0.06);
-    --border-strong: rgba(255, 255, 255, 0.12);
-    
-    /* Text colors */
-    --text-primary: #FFFFFF;
-    --text-secondary: rgba(255, 255, 255, 0.6);
-    --text-tertiary: rgba(255, 255, 255, 0.35);
-    
-    /* Accent colors */
-    --accent-primary: #3B5BFF;
-    --accent-hover: #5673FF;
-    
-    /* Status colors */
-    --success: #24D38C;
-    --error: #FF4D4D;
-    --warning: #FFB84D;
-    
-    /* Sidebar specific */
-    --sidebar-bg: var(--surface-1);
-    
-    /* Legacy variables (for compatibility) */
-    --background: var(--bg-primary);
-    --foreground: var(--text-primary);
-    --card: var(--surface-1);
-    --card-foreground: var(--text-primary);
-    --popover: var(--surface-2);
-    --popover-foreground: var(--text-primary);
-    --primary: var(--accent-primary);
-    --primary-foreground: #FFFFFF;
-    --secondary: var(--surface-2);
-    --secondary-foreground: var(--text-primary);
-    --muted: var(--surface-3);
-    --muted-foreground: var(--text-secondary);
-    --accent: var(--surface-2);
-    --accent-foreground: var(--text-primary);
-    --destructive: var(--error);
-    --destructive-foreground: #FFFFFF;
-    --border: var(--border-color);
-    --input: var(--border-color);
-    --ring: var(--accent-primary);
+    /* Брендовые цвета */
+    --color-brand: #2563eb;
+    --color-brand-soft: #3b82f6;
+    --color-brand-strong: #1d4ed8;
+
+    /* Фоны и поверхности */
+    --color-surface-soft: #0B1320;
+
+    /* Границы */
+    --color-border-subtle: rgba(148, 163, 184, 0.24);
+    --color-border-strong: rgba(148, 163, 184, 0.40);
+
+    /* Текст */
+    --color-text-main: #e5e7eb;
+    --color-text-muted: #9ca3af;
+    --color-text-soft: #6b7280;
+    --color-text-inverse: #ffffff;
+
+    /* Семантические цвета */
+    --color-success: #22c55e;
+    --color-warning: #f97316;
+    --color-danger: #ef4444;
+
+    /* Оверлей */
+    --color-overlay: rgba(15, 23, 42, 0.70);
+
+    /* Радиусы */
+    --radius-xs: 0.25rem;  /* 4px */
+    --radius-sm: 0.5rem;   /* 8px */
+    --radius-md: 0.75rem;  /* 12px */
+    --radius-lg: 1rem;     /* 16px */
+    --radius-xl: 1.5rem;   /* 24px */
+    --radius-pill: 9999px;
+
+    /* Тени */
+    --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.45);
+    --shadow-card: 0 26px 60px rgba(0, 0, 0, 0.55);
+    --shadow-navbar: 0 18px 60px rgba(0, 0, 0, 0.75);
+    --shadow-modal: 0 30px 95px rgba(0, 0, 0, 0.85);
+    --shadow-floating: 0 22px 80px rgba(0, 0, 0, 0.75);
+
+    /* Типографика */
+    --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    --font-size-xs: 0.75rem;  /* 12px */
+    --font-size-sm: 0.875rem; /* 14px */
+    --font-size-base: 1rem;   /* 16px */
+    --font-size-lg: 1.125rem; /* 18px */
+    --font-size-xl: 1.25rem;  /* 20px */
+    --font-size-2xl: 1.5rem;  /* 24px */
+    --font-size-3xl: 1.875rem;/* 30px */
+    --font-size-4xl: 2.25rem; /* 36px */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Интервалы и анимации */
+    --transition-fast: 150ms;
+    --transition-base: 220ms;
+    --transition-slow: 320ms;
+    --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Спейсинг */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
+    /* Legacy variables (для обратной совместимости) */
+    --bg-primary: hsl(215 50% 4%);
+    --bg-secondary: hsl(215 50% 7%);
+    --bg-tertiary: hsl(215 50% 7%);
+    --surface-1: hsl(215 50% 7%);
+    --surface-2: hsl(215 50% 7%);
+    --surface-3: hsl(217 33% 15%);
+    --border-color: hsl(217 33% 17%);
+    --border-strong: hsl(217 33% 25%);
+    --text-primary: hsl(213 31% 91%);
+    --text-secondary: hsl(215 20% 65%);
+    --text-tertiary: hsl(215 20% 50%);
+    --accent-primary: hsl(222 84% 60%);
+    --accent-hover: hsl(222 84% 65%);
+    --success: hsl(142 71% 55%);
+    --error: hsl(0 62% 55%);
+    --warning: hsl(38 92% 60%);
+    --sidebar-bg: hsl(215 50% 7%);
   }
 }
 
@@ -125,11 +285,14 @@
   }
   
   body {
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+    @apply bg-background text-foreground;
     font-family: var(--font-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  
+  .dark body {
+    background-color: var(--color-background, #050B13);
   }
 }
 
@@ -169,8 +332,7 @@
 
 /* Glass effect for cards */
 .glass-card {
-  background-color: var(--surface-1);
-  border: 1px solid var(--border-color);
+  @apply bg-card border border-border;
   backdrop-filter: blur(12px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }

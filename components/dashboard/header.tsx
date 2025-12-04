@@ -21,7 +21,7 @@ export function DashboardHeader() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, logout, toggleSidebar, toggleSupport, openMessageComposer, locations, isSidebarCollapsed } = useStore();
+  const { currentUser, logout, toggleSidebar, openMessageComposer, locations, isSidebarCollapsed } = useStore();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [languageMenuPosition, setLanguageMenuPosition] = useState<'bottom' | 'top'>('bottom');
@@ -214,7 +214,7 @@ export function DashboardHeader() {
     <header 
       id="dashboard-header" 
       data-tour="header" 
-      className="bg-[var(--surface-1)] border-b border-[var(--border-color)]"
+      className="bg-[var(--surface-1)] border-b border-[var(--border-color)] h-14 flex-shrink-0"
     >
       <div 
         className="flex items-center justify-between h-full"
@@ -468,15 +468,37 @@ export function DashboardHeader() {
                 top: `${languageMenuCoords.top}px`,
                 left: `${languageMenuCoords.left}px`,
                 width: `${languageMenuCoords.width}px`,
+                background:
+                  resolvedTheme === "dark"
+                    ? "rgba(15, 23, 42, 0.7)"
+                    : "rgba(255, 255, 255, 0.7)",
+                backdropFilter: "blur(20px) saturate(180%)",
+                WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                border:
+                  resolvedTheme === "dark"
+                    ? "1px solid rgba(255, 255, 255, 0.1)"
+                    : "1px solid rgba(255, 255, 255, 0.3)",
+                boxShadow:
+                  resolvedTheme === "dark"
+                    ? "0 8px 32px 0 rgba(0, 0, 0, 0.3)"
+                    : "0 8px 32px 0 rgba(0, 0, 0, 0.1)",
               }}
-              className="pointer-events-auto bg-[var(--surface-1)] border border-[var(--border-color)] rounded-lg shadow-xl max-h-[200px] overflow-y-auto custom-scroll"
+              className="pointer-events-auto rounded-lg max-h-[200px] overflow-y-auto custom-scroll"
               onClick={(e) => e.stopPropagation()}
             >
               {languages.map((lang) => (
                 <button
                   key={lang.code}
                   onClick={() => handleLanguageChange(lang.code)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-[var(--surface-2)] transition-colors"
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-all rounded-lg mx-1 my-0.5 ${
+                    language === lang.code
+                      ? resolvedTheme === "dark"
+                        ? "bg-white/10 text-[var(--text-primary)] backdrop-blur-sm"
+                        : "bg-white/60 text-[var(--text-primary)] backdrop-blur-sm"
+                      : resolvedTheme === "dark"
+                      ? "text-[var(--text-secondary)] hover:bg-white/5 backdrop-blur-sm"
+                      : "text-[var(--text-secondary)] hover:bg-white/40 backdrop-blur-sm"
+                  }`}
                 >
                   <span className={language === lang.code ? "font-medium text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}>
                     {lang.fullLabel}

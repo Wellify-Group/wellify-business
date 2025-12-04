@@ -275,7 +275,7 @@ export function StaffPassportModal({ employee, onClose }: StaffPassportModalProp
                 <div className="flex gap-3">
                   <button
                     onClick={() => setMode('view')}
-                    className="flex-1 px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-300 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors font-medium"
+                    className="flex-1 px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors font-medium"
                   >
                     {t("dashboard.btn_cancel") || "Отмена"}
                   </button>
@@ -631,7 +631,7 @@ function ViewMode({
         <div className="flex items-center justify-between">
           <button
             onClick={onClose}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-200 dark:bg-zinc-800/50 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 border-[var(--border-color)] rounded text-sm text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-200 dark:bg-zinc-800/50 hover:bg-zinc-300 dark:hover:bg-zinc-800 border border-zinc-300 border-[var(--border-color)] rounded text-sm text-zinc-700 dark:text-white hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             <div className="flex items-center gap-1.5 px-2 py-1 bg-[var(--surface-1)] border border-zinc-300 border-[var(--border-color)] rounded text-xs font-mono text-zinc-700 dark:text-zinc-300">
               <Keyboard className="h-3 w-3" />
@@ -749,7 +749,7 @@ function EditMode({
               )}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-300 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2 border border-zinc-300 dark:border-zinc-700 hover:border-indigo-500 dark:hover:border-indigo-500"
+                className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2 border border-zinc-300 dark:border-zinc-700 hover:border-indigo-500 dark:hover:border-indigo-500"
               >
                 <Camera className="h-4 w-4" />
                 <span>{t("dashboard.pass_upload") || "Upload New Photo"}</span>

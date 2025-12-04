@@ -1,21 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveUser, findUserByEmail } from '@/lib/db';
-import { User } from '@/lib/store';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-/**
- * POST /api/auth/register
- * Register a new director
- * 
- * Body: { email, password, fullName }
- */
+// Функция для создания админ-клиента Supabase
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const body = await request.json();
     const { email, password, fullName } = body;
 
-    // Validation
+    // === Валидация ===
     if (!email || !password || !fullName) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
@@ -23,56 +34,108 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = await findUserByEmail('director', email);
-    if (existingUser) {
+    // === Проверяем, что пользователь с такой почтой уже есть ===
+    const { data: existingUsers, error: listError } =
+      await supabaseAdmin.auth.admin.listUsers();
+
+    if (listError) {
+      console.error('Supabase listUsers error:', listError);
+      return NextResponse.json(
+        { success: false, error: 'Internal auth error' },
+        { status: 500 }
+      );
+    }
+
+    const exists = existingUsers?.users?.find(
+      (u) => u.email?.toLowerCase() === email.toLowerCase()
+    );
+
+    if (exists) {
       return NextResponse.json(
         { success: false, error: 'User with this email already exists' },
         { status: 409 }
       );
     }
 
-    // Generate random 16-digit company code (4 blocks of 4)
+    // === Генерируем код компании и ID бизнеса ===
     const generateCompanyCode = () => {
-      const part1 = Math.floor(1000 + Math.random() * 9000);
-      const part2 = Math.floor(1000 + Math.random() * 9000);
-      const part3 = Math.floor(1000 + Math.random() * 9000);
-      const part4 = Math.floor(1000 + Math.random() * 9000);
-      return `${part1}-${part2}-${part3}-${part4}`;
+      const part = () => Math.floor(1000 + Math.random() * 9000);
+      return `${part()}-${part()}-${part()}-${part()}`;
     };
 
     const companyCode = generateCompanyCode();
+    const businessId = `biz-${Date.now()}`;
 
-    // Generate unique ID
-    const userId = `dir-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const businessId = `${Date.now()}-biz`;
+    // Короткое имя для профиля
+    const shortName =
+      fullName.trim().split(' ')[0] || fullName.trim() || 'Директор';
 
-    // Create new user object
-    const newUser: User = {
-      id: userId,
-      name: email.split('@')[0], // Use email prefix as default name
-      fullName: fullName.trim(),
-      role: 'director',
-      email: email.toLowerCase().trim(),
-      password: password, // Save password for authentication
-      businessId: businessId,
-      companyCode: companyCode, // Save company code to user object
-      status: 'active',
-      // Initialize empty arrays for shifts and locations
+    // === Создаём пользователя в Supabase Auth ===
+    const { data, error: createError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: email.toLowerCase().trim(),
+        password,
+        email_confirm: true,
+        user_metadata: {
+          fullName,
+          role: 'директор',
+          businessId,
+          companyCode,
+        },
+      });
+
+    if (createError || !data?.user) {
+      console.error('Supabase createUser error:', createError);
+      return NextResponse.json(
+        { success: false, error: 'Registration failed' },
+        { status: 500 }
+      );
+    }
+
+    const user = data.user;
+
+    // === Создаём профиль в public.profiles ===
+    const profileData: any = {
+      id: user.id,                 // обязательно = auth.users.id
+      email: user.email,
+      ['ФИО']: fullName,
+      ['имя']: shortName,
+      роль: 'директор',
+      бизнес_id: businessId,
+      код_компании: companyCode,
+      должность: 'владелец',
+      активен: true,
+      // остальные поля (телефон, страна и т.п.) пока null
     };
 
-    // Save user to file system
-    await saveUser(newUser);
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert(profileData);
 
-    // Return user data (without password for security)
-    const { password: _, ...userWithoutPassword } = newUser;
+    if (profileError) {
+      console.error('Supabase profile insert error:', profileError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to create user profile' },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json({
-      success: true,
-      user: userWithoutPassword,
-      companyCode: companyCode, // Return company code separately
-    }, { status: 201 });
-
+    // === Ответ клиенту ===
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName,
+          role: 'director',
+          businessId,
+          companyCode,
+        },
+        companyCode,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
@@ -81,4 +144,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

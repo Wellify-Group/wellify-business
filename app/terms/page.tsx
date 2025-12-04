@@ -3,114 +3,259 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useLanguage } from "@/components/language-provider";
 
 export default function TermsPage() {
+  const { t } = useLanguage();
+
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-background">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#050B13]">
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <Link
           href="/"
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          На главную
+          {t("terms.back_to_home")}
         </Link>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[20px] bg-white dark:bg-zinc-900 p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
+          className="rounded-[20px] bg-card dark:bg-surface-elevated p-8 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_0_20px_rgba(0,0,0,0.45)]"
         >
           <h1 className="mb-6 text-4xl font-bold text-foreground">
-            Пользовательское соглашение
+            {t("terms.title")}
           </h1>
           
           <div className="prose prose-zinc dark:prose-invert max-w-none space-y-6">
+            {/* Section 1 */}
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">1. Принятие условий</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_1_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_1_item_1")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_1_item_2")}
+              </p>
               <p className="text-muted-foreground">
-                Используя сервис WELLIFY business (далее — «Сервис»), вы соглашаетесь с условиями 
-                настоящего Пользовательского соглашения. Если вы не согласны с какими-либо условиями, 
-                пожалуйста, не используйте Сервис.
+                {t("terms.section_1_item_3")}
               </p>
             </section>
 
+            {/* Section 2 */}
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">2. Описание сервиса</h2>
-              <p className="text-muted-foreground">
-                WELLIFY business — это платформа для управления бизнесом, которая позволяет:
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_2_title")}
+              </h2>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("terms.section_2_subtitle_1")}
               </p>
-              <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>Управлять сменами сотрудников</li>
-                <li>Отслеживать выручку и финансы</li>
-                <li>Анализировать работу точек продаж</li>
-                <li>Управлять персоналом и локациями</li>
-                <li>Получать отчеты и аналитику</li>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                <li>{t("terms.section_2_item_1")}</li>
+                <li>{t("terms.section_2_item_2")}</li>
+                <li>{t("terms.section_2_item_3")}</li>
+                <li>{t("terms.section_2_item_4")}</li>
+                <li>{t("terms.section_2_item_5")}</li>
               </ul>
+              <p className="text-muted-foreground">
+                {t("terms.section_2_item_6")}
+              </p>
             </section>
 
+            {/* Section 3 */}
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">3. Регистрация и аккаунт</h2>
-              <p className="text-muted-foreground">
-                Для использования Сервиса необходимо создать аккаунт. Вы обязуетесь:
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_3_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_3_item_1")}
               </p>
-              <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>Предоставлять достоверную и актуальную информацию</li>
-                <li>Поддерживать безопасность вашего аккаунта</li>
-                <li>Нести ответственность за все действия, совершенные под вашим аккаунтом</li>
-                <li>Немедленно уведомлять нас о любом несанкционированном использовании</li>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_3_item_2")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_3_item_3")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("terms.section_3_item_4")}
+              </p>
+            </section>
+
+            {/* Section 4 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_4_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_4_item_1")}
+              </p>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("terms.section_4_subtitle_1")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                <li>{t("terms.section_4_item_2")}</li>
+                <li>{t("terms.section_4_item_3")}</li>
+                <li>{t("terms.section_4_item_4")}</li>
+                <li>{t("terms.section_4_item_5")}</li>
+                <li>{t("terms.section_4_item_6")}</li>
               </ul>
+              <p className="text-muted-foreground">
+                {t("terms.section_4_item_7")}
+              </p>
             </section>
 
+            {/* Section 5 */}
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">4. Использование сервиса</h2>
-              <p className="text-muted-foreground">
-                Вы обязуетесь использовать Сервис только в законных целях и не нарушать права третьих лиц. 
-                Запрещается:
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_5_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_5_item_1")}
               </p>
-              <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>Использовать Сервис для незаконной деятельности</li>
-                <li>Попытки взлома или нарушения безопасности</li>
-                <li>Передача доступа к аккаунту третьим лицам</li>
-                <li>Использование автоматизированных средств для доступа к Сервису</li>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_5_item_2")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_5_item_3")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("terms.section_5_item_4")}
+              </p>
+            </section>
+
+            {/* Section 6 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_6_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_6_item_1")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_6_item_2")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("terms.section_6_item_3")}
+              </p>
+            </section>
+
+            {/* Section 7 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_7_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_7_item_1")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_7_item_2")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_7_item_3")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("terms.section_7_item_4")}
+              </p>
+            </section>
+
+            {/* Section 8 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_8_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_8_item_1")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_8_item_2")}
+              </p>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("terms.section_8_subtitle_1")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                <li>{t("terms.section_8_item_3")}</li>
+                <li>{t("terms.section_8_item_4")}</li>
+                <li>{t("terms.section_8_item_5")}</li>
               </ul>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">5. Интеллектуальная собственность</h2>
               <p className="text-muted-foreground">
-                Все материалы Сервиса, включая дизайн, тексты, графику, логотипы и программное обеспечение, 
-                являются собственностью WELLIFY business и защищены законами об интеллектуальной собственности.
+                {t("terms.section_8_item_6")}
               </p>
             </section>
 
+            {/* Section 9 */}
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">6. Ограничение ответственности</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_9_title")}
+              </h2>
+              <p className="text-muted-foreground font-medium mb-2">
+                {t("terms.section_9_subtitle_1")}
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 mb-2">
+                <li>{t("terms.section_9_item_1")}</li>
+                <li>{t("terms.section_9_item_2")}</li>
+                <li>{t("terms.section_9_item_3")}</li>
+                <li>{t("terms.section_9_item_4")}</li>
+              </ul>
               <p className="text-muted-foreground">
-                Сервис предоставляется «как есть». Мы не гарантируем бесперебойную работу Сервиса и не несем 
-                ответственности за любые убытки, возникшие в результате использования или невозможности использования Сервиса.
+                {t("terms.section_9_item_5")}
               </p>
             </section>
 
+            {/* Section 10 */}
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">7. Изменения в соглашении</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_10_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_10_item_1")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_10_item_2")}
+              </p>
               <p className="text-muted-foreground">
-                Мы оставляем за собой право изменять настоящее Соглашение в любое время. О существенных изменениях 
-                мы уведомим вас по email или через уведомления в Сервисе.
+                {t("terms.section_10_item_3")}
               </p>
             </section>
 
+            {/* Section 11 */}
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">8. Контакты</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_11_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_11_item_1")}
+              </p>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_11_item_2")}
+              </p>
               <p className="text-muted-foreground">
-                По всем вопросам, связанным с использованием Сервиса, вы можете обращаться 
-                по адресу: <a href="mailto:support@wellify.business" className="text-primary hover:underline">support@wellify.business</a>
+                {t("terms.section_11_item_3")}
               </p>
             </section>
 
+            {/* Section 12 */}
+            <section>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                {t("terms.section_12_title")}
+              </h2>
+              <p className="text-muted-foreground mb-2">
+                {t("terms.section_12_text")}
+              </p>
+              <a
+                href={`mailto:${t("terms.section_12_email")}`}
+                className="text-primary hover:underline"
+              >
+                {t("terms.section_12_email")}
+              </a>
+            </section>
+
+            {/* Last Updated */}
             <section>
               <p className="text-sm text-muted-foreground mt-8">
-                Последнее обновление: {new Date().toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {t("terms.last_updated")}
               </p>
             </section>
           </div>
@@ -119,18 +264,3 @@ export default function TermsPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

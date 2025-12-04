@@ -2,75 +2,188 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLanguage } from "@/components/language-provider";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
+import { welcomeTranslations } from "@/lib/i18n/welcome";
+import { useInterfaceLanguageStore } from "@/lib/store/interfaceLanguageStore";
+
+const t = welcomeTranslations;
 
 export function AppFooter() {
   const pathname = usePathname();
-  const { t } = useLanguage();
-  const isDashboard = pathname?.startsWith('/dashboard');
-  const hideFooterOn = ['/register', '/login'];
-  
-  // Скрываем футер в дашборде и на страницах регистрации/входа
-  if (isDashboard || (pathname && hideFooterOn.includes(pathname))) return null;
+  const { lang } = useInterfaceLanguageStore();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">WELLIFY business</h3>
-            <p className="text-xs text-muted-foreground">
-              Вся выручка, смены и сотрудники в одном кабинете.
-            </p>
-          </div>
-          
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Ссылки</h3>
-            <nav className="flex flex-col gap-2">
-              <Link
-                href="/privacy"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === "dark";
+
+  // Приветственная и главная
+  const isWelcomePage =
+    pathname === "/" ||
+    pathname === "/welcome" ||
+    pathname?.startsWith("/welcome");
+
+  const isDashboard = pathname?.startsWith("/dashboard");
+  const hideFooterOn = ["/login", "/register"];
+
+  // Полное отключение футера
+  if (isDashboard || hideFooterOn.includes(pathname)) {
+    return null;
+  }
+
+  // ====== ФУТЕР ДЛЯ ПРИВЕТСТВЕННОЙ И ГЛАВНОЙ ======
+  if (isWelcomePage) {
+    return (
+      <footer
+        className="border-t text-sm transition-colors"
+        style={{
+          borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "var(--color-border-subtle)",
+          backgroundColor: isDark ? "#050B13" : "var(--color-surface)",
+          color: isDark ? "rgba(255, 255, 255, 0.7)" : "var(--color-text-muted)",
+        }}
+      >
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+            {/* BRAND */}
+            <div>
+              <h3
+                className="mb-3 text-sm font-semibold"
+                style={{
+                  color: isDark ? "#ffffff" : "var(--color-text-main)",
+                }}
               >
-                Политика конфиденциальности
-              </Link>
-              <Link
-                href="/terms"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                {t.footerBrandTitle[lang]}
+              </h3>
+              <p
+                className="text-xs"
+                style={{
+                  color: isDark ? "rgba(255, 255, 255, 0.6)" : "var(--color-text-muted)",
+                }}
               >
-                Пользовательское соглашение
-              </Link>
-              <Link
-                href="/support"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                {t.footerBrandDescription[lang]}
+              </p>
+            </div>
+
+            {/* LINKS */}
+            <div>
+              <h3
+                className="mb-3 text-sm font-semibold"
+                style={{
+                  color: isDark ? "#ffffff" : "var(--color-text-main)",
+                }}
               >
-                Поддержка
-              </Link>
-            </nav>
-          </div>
-          
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Контакты</h3>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <a href="mailto:support@wellify.business" className="block hover:text-foreground transition-colors">
-                support@wellify.business
-              </a>
-              <a href="https://t.me/wellify_business_bot" target="_blank" rel="noopener noreferrer" className="block hover:text-foreground transition-colors">
-                Telegram бот
-              </a>
+                {t.footerLinksTitle[lang]}
+              </h3>
+              <nav className="flex flex-col gap-2">
+                <Link
+                  href="/privacy"
+                  className={`text-xs transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
+                >
+                  {t.footerLinkPrivacy[lang]}
+                </Link>
+                <Link
+                  href="/terms"
+                  className={`text-xs transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
+                >
+                  {t.footerLinkTerms[lang]}
+                </Link>
+                <Link
+                  href="/support"
+                  className={`text-xs transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
+                >
+                  {t.footerLinkSupport[lang]}
+                </Link>
+              </nav>
+            </div>
+
+            {/* CONTACTS */}
+            <div>
+              <h3
+                className="mb-3 text-sm font-semibold"
+                style={{
+                  color: isDark ? "#ffffff" : "var(--color-text-main)",
+                }}
+              >
+                {t.footerContactsTitle[lang]}
+              </h3>
+              <div className="space-y-2 text-xs">
+                <a
+                  href="mailto:wellify_group@proton.me"
+                  className={`block transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
+                >
+                  wellify_group@proton.me
+                </a>
+                <a
+                  href="https://t.me/wellify_business_bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                  }`}
+                >
+                  {t.footerContactTelegram[lang]}
+                </a>
+              </div>
             </div>
           </div>
+
+          {/* BOTTOM */}
+          <div
+            className="mt-8 border-t pt-6"
+            style={{
+              borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "var(--color-border-subtle)",
+            }}
+          >
+            <p
+              className="text-center text-xs whitespace-pre-line"
+              style={{
+                color: isDark ? "rgba(255, 255, 255, 0.4)" : "var(--color-text-soft)",
+              }}
+            >
+              {t.footerBottomText[lang].replace(
+                "2025",
+                String(new Date().getFullYear())
+              )}
+            </p>
+          </div>
         </div>
-        
-        <div className="mt-8 border-t border-zinc-100/50 dark:border-zinc-800/50 pt-6">
-          <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} WELLIFY business. Все права защищены.
-          </p>
-        </div>
+      </footer>
+    );
+  }
+
+  // ====== ОБЫЧНЫЙ ФУТЕР ======
+  return (
+    <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-[#050B13] text-sm">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <p className="text-center text-xs text-muted-foreground whitespace-pre-line">
+          © {new Date().getFullYear()} WELLIFY business. Все права защищены.{'\n'}WELLIFY Business является продуктом компании WELLIFY Group.
+        </p>
       </div>
     </footer>
   );
 }
 
-// Экспорт для обратной совместимости
 export const Footer = AppFooter;
-

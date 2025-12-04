@@ -442,7 +442,7 @@ function LocationsContent() {
                             className={cn(
                               "aspect-square flex flex-col items-center justify-center rounded-xl border cursor-pointer transition-all snap-start p-2",
                               selectedIndustry === ind.slug
-                                ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black shadow-md ring-1 ring-black dark:ring-white"
+                                ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-white shadow-md ring-1 ring-black dark:ring-white"
                                 : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
                             )}
                           >

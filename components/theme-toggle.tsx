@@ -47,7 +47,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={handleToggle}
-      className="relative h-8 w-8 flex items-center justify-center p-1.5 hover:opacity-70 transition-opacity text-zinc-500 dark:text-zinc-400"
+      className="relative h-8 w-8 flex items-center justify-center p-1.5 hover:opacity-70 transition-opacity text-zinc-500 dark:text-[#c7d2fe]"
       aria-label={isDark ? "Переключить на светлую тему" : "Переключить на темную тему"}
     >
       <Sun className="absolute h-[17px] w-[17px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 stroke-[1.5]" />

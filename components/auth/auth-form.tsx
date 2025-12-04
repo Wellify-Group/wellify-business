@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/components/language-provider";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -12,6 +13,7 @@ interface AuthFormProps {
 }
 
 export function AuthForm({ mode, onModeChange }: AuthFormProps) {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -67,7 +69,7 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Email
+          {t("email_label") || "EMAIL"}
         </label>
         <input
           type="email"
@@ -78,7 +80,7 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
           }}
           required
           className="h-12 w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 focus:border-transparent focus:ring-primary transition-all"
-          placeholder="you@example.com"
+          placeholder={t("email_placeholder") || "you@example.com"}
         />
       </div>
 
@@ -116,7 +118,7 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
         disabled={loading}
         whileHover={{ scale: loading ? 1 : 1.01 }}
         whileTap={{ scale: loading ? 1 : 0.99 }}
-        className="h-12 w-full rounded-xl bg-primary px-4 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="h-12 w-full rounded-xl bg-primary px-4 text-base font-semibold text-white transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? "Загрузка..." : mode === "login" ? "Войти" : "Зарегистрироваться"}
       </motion.button>

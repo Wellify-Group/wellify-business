@@ -73,9 +73,9 @@ export function ShiftMessagesCard({ shiftId, onNewMessage }: ShiftMessagesCardPr
         <button 
           onClick={handleSend}
           disabled={!newMessage.trim()}
-          className="p-2 bg-[var(--accent-primary)] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[40px]"
+          className="w-12 h-12 rounded-full bg-[var(--accent-primary)] text-white p-0 border-none outline-none transition-none hover:transition-none active:transition-none focus:transition-none motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0"
         >
-          <Send size={16} />
+          <Send size={20} className="m-0 p-0 pointer-events-none" style={{ transform: "none" }} />
         </button>
       </div>
     </div>

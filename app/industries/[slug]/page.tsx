@@ -411,7 +411,7 @@ export default function IndustryPage() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="rounded-xl bg-white px-8 py-4 text-lg font-bold text-black transition-all hover:bg-gray-100 shadow-lg"
+                  className="rounded-xl bg-white px-8 py-4 text-lg font-bold text-black dark:text-white transition-all hover:bg-gray-100 dark:hover:bg-gray-800 shadow-lg"
                 >
                   <span>{t("btn_optimize")}</span>
                   <ArrowRight className="ml-2 inline h-5 w-5" />

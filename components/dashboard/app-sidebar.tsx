@@ -7,7 +7,7 @@ import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { 
   LayoutDashboard, MapPin, Users, FileText, Settings, 
-  Maximize, Minimize, MessageCircleQuestion, Package
+  Maximize, Minimize, Package
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,7 +17,7 @@ import { SIDEBAR_EXPANDED, SIDEBAR_COLLAPSED } from "@/lib/constants";
 export function AppSidebar() {
   const { t } = useLanguage();
   const pathname = usePathname();
-  const { isSidebarCollapsed, toggleSidebar, toggleSupport, currentUser } = useStore();
+  const { isSidebarCollapsed, toggleSidebar, currentUser } = useStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Check fullscreen state
@@ -170,24 +170,6 @@ export function AppSidebar() {
           {!isSidebarCollapsed && (
             <span className="sidebar-item__label text-sm font-medium whitespace-nowrap overflow-hidden">
               {t("dashboard.btn_fullscreen")}
-            </span>
-          )}
-        </button>
-        
-        <button 
-          onClick={toggleSupport}
-          className={cn(
-            "sidebar-item flex items-center transition-all duration-150",
-            isSidebarCollapsed 
-              ? "h-12 w-full justify-center rounded-lg" 
-              : "h-12 px-3 rounded-lg gap-3 w-full"
-          )}
-          title={isSidebarCollapsed ? t("support.title") : undefined}
-        >
-          <MessageCircleQuestion className="flex-shrink-0 w-6 h-6" />
-          {!isSidebarCollapsed && (
-            <span className="sidebar-item__label text-sm font-medium whitespace-nowrap overflow-hidden">
-              {t("support.title")}
             </span>
           )}
         </button>
