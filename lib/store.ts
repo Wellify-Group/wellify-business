@@ -299,8 +299,8 @@ export interface AppState {
   };
   
   // Actions
-  registerDirector: (email: string, pass: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
-  login: (role: Role, creds: { email?: string; pass?: string; pin?: string; businessId?: string }) => Promise<boolean>;
+  registerDirector: (email: string, pass: string, fullName: string) => Promise<{ success: boolean; error?: string; errorCode?: string }>;
+  login: (role: Role, creds: { email?: string; pass?: string; pin?: string; businessId?: string }) => Promise<boolean | { success: false; errorCode?: string; error?: string }>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => Promise<boolean>;
   verifyCompanyCode: (code: string) => Promise<boolean>;
