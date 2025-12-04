@@ -1,0 +1,105 @@
+/**
+ * Типы для профиля пользователя в Supabase
+ * Маппинг русских названий полей на английские для типобезопасности
+ */
+
+import { z } from 'zod';
+
+/**
+ * Схема валидации профиля с русскими названиями полей (как в БД)
+ */
+export const ProfileSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email().nullable(),
+  'ФИО': z.string().nullable().optional(),
+  имя: z.string().nullable().optional(),
+  роль: z.enum(['директор', 'менеджер', 'сотрудник']).nullable(),
+  бизнес_id: z.string().nullable(),
+  код_компании: z.string().nullable().optional(),
+  должность: z.string().nullable().optional(),
+  активен: z.boolean().nullable().optional(),
+  аватар_url: z.string().nullable().optional(),
+  телефон: z.string().nullable().optional(),
+  страна: z.string().nullable().optional(),
+  created_at: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional(),
+});
+
+export type ProfileRaw = z.infer<typeof ProfileSchema>;
+
+/**
+ * Типизированный интерфейс профиля с английскими названиями полей
+ * Используется в коде для типобезопасности
+ */
+export interface Profile {
+  id: string;
+  email: string | null;
+  fullName: string | null; // Маппинг 'ФИО'
+  shortName: string | null; // Маппинг 'имя'
+  role: 'директор' | 'менеджер' | 'сотрудник' | null; // Маппинг 'роль'
+  businessId: string | null; // Маппинг 'бизнес_id'
+  companyCode: string | null; // Маппинг 'код_компании'
+  jobTitle: string | null; // Маппинг 'должность'
+  active: boolean | null; // Маппинг 'активен'
+  avatarUrl: string | null; // Маппинг 'аватар_url'
+  phone: string | null; // Маппинг 'телефон'
+  country: string | null; // Маппинг 'страна'
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+/**
+ * Преобразует сырой профиль из БД (с русскими ключами) в типизированный Profile
+ */
+export function mapProfileFromDb(raw: ProfileRaw | Record<string, any>): Profile {
+  return {
+    id: raw.id,
+    email: raw.email ?? null,
+    fullName: raw['ФИО'] ?? raw.фио ?? null,
+    shortName: raw.имя ?? null,
+    role: raw.роль ?? null,
+    businessId: raw.бизнес_id ?? raw.business_id ?? null,
+    companyCode: raw.код_компании ?? null,
+    jobTitle: raw.должность ?? null,
+    active: raw.активен ?? null,
+    avatarUrl: raw.аватар_url ?? raw.avatar_url ?? null,
+    phone: raw.телефон ?? null,
+    country: raw.страна ?? null,
+    createdAt: raw.created_at ?? null,
+    updatedAt: raw.updated_at ?? null,
+  };
+}
+
+/**
+ * Преобразует типизированный Profile в объект для записи в БД (с русскими ключами)
+ */
+export function mapProfileToDb(profile: Partial<Profile>): Record<string, any> {
+  const dbProfile: Record<string, any> = {};
+  
+  if (profile.id !== undefined) dbProfile.id = profile.id;
+  if (profile.email !== undefined) dbProfile.email = profile.email;
+  if (profile.fullName !== undefined) dbProfile['ФИО'] = profile.fullName;
+  if (profile.shortName !== undefined) dbProfile.имя = profile.shortName;
+  if (profile.role !== undefined) dbProfile.роль = profile.role;
+  if (profile.businessId !== undefined) dbProfile.бизнес_id = profile.businessId;
+  if (profile.companyCode !== undefined) dbProfile.код_компании = profile.companyCode;
+  if (profile.jobTitle !== undefined) dbProfile.должность = profile.jobTitle;
+  if (profile.active !== undefined) dbProfile.активен = profile.active;
+  if (profile.avatarUrl !== undefined) dbProfile.аватар_url = profile.avatarUrl;
+  if (profile.phone !== undefined) dbProfile.телефон = profile.phone;
+  if (profile.country !== undefined) dbProfile.страна = profile.country;
+  
+  return dbProfile;
+}
+
+/**
+ * Проверяет, является ли профиль полным (имеет все обязательные поля)
+ */
+export function isProfileComplete(profile: Profile): boolean {
+  return !!(
+    profile.fullName &&
+    profile.role &&
+    profile.businessId
+  );
+}
+

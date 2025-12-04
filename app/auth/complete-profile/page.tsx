@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { AlertCircle } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/button";
+import { mapProfileFromDb, mapProfileToDb, isProfileComplete, type Profile } from "@/lib/types/profile";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -26,19 +27,36 @@ export default function CompleteProfilePage() {
         return;
       }
 
-      // Check if profile already has a name
-      const { data: profile } = await supabase
+      // Check if profile already has required fields
+      const { data: profileRaw, error: profileError } = await supabase
         .from('profiles')
-        .select('"ФИО", имя')
+        .select('*')
         .eq('id', session.user.id)
         .single();
 
-      const p = profile as Record<string, any>;
-
-      if (p && (p["ФИО"] || p.имя)) {
-        // Profile already has a name, redirect to dashboard
-        router.push("/dashboard/director");
+      if (profileError || !profileRaw) {
+        console.error('Error loading profile:', profileError);
+        setIsChecking(false);
         return;
+      }
+
+      const profile = mapProfileFromDb(profileRaw);
+
+      // Если профиль полный - перенаправляем на dashboard
+      if (isProfileComplete(profile)) {
+        let dashboardPath = "/dashboard/director";
+        if (profile.role === "менеджер") {
+          dashboardPath = "/dashboard/manager";
+        } else if (profile.role === "сотрудник") {
+          dashboardPath = "/dashboard/employee";
+        }
+        router.push(dashboardPath);
+        return;
+      }
+
+      // Если есть имя, заполняем его в поле
+      if (profile.fullName) {
+        setFullName(profile.fullName);
       }
 
       setIsChecking(false);
@@ -72,13 +90,15 @@ export default function CompleteProfilePage() {
 
       const shortName = fullName.trim().split(' ')[0] || fullName.trim();
 
-      // Update profile with name
+      // Update profile with name using typed mapping
+      const updateData = mapProfileToDb({
+        fullName: fullName.trim(),
+        shortName: shortName,
+      });
+
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({
-          'ФИО': fullName.trim(),
-          имя: shortName,
-        })
+        .update(updateData)
         .eq('id', session.user.id);
 
       if (updateError) {
@@ -90,9 +110,34 @@ export default function CompleteProfilePage() {
         return;
       }
 
-      // Redirect to dashboard
-      router.push("/dashboard/director");
-    } catch (err: any) {
+      // Проверяем, нужно ли перенаправлять на dashboard или остаться на странице
+      // Если у пользователя уже есть role и businessId, перенаправляем
+      const { data: profileRaw } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileRaw) {
+        const profile = mapProfileFromDb(profileRaw);
+        if (isProfileComplete(profile)) {
+          let dashboardPath = "/dashboard/director";
+          if (profile.role === "менеджер") {
+            dashboardPath = "/dashboard/manager";
+          } else if (profile.role === "сотрудник") {
+            dashboardPath = "/dashboard/employee";
+          }
+          router.push(dashboardPath);
+          return;
+        }
+      }
+
+      // Если профиль все еще неполный, остаемся на странице
+      setError("Профиль сохранен, но требуется дополнительная информация. Обратитесь к администратору.");
+      setIsError(true);
+      setIsLoading(false);
+      setTimeout(() => setIsError(false), 5000);
+    } catch (err) {
       console.error("Profile completion error:", err);
       setError("Произошла ошибка. Попробуйте еще раз.");
       setIsError(true);
@@ -110,7 +155,7 @@ export default function CompleteProfilePage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
+    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '80px' }}>
       <div className="flex-1 flex items-center justify-center px-4 py-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

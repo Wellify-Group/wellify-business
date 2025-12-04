@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { mapProfileToDb } from '@/lib/types/profile';
 
 export const runtime = 'nodejs';
 
@@ -133,18 +134,18 @@ export async function POST(request: NextRequest) {
     const user = data.user;
 
     // === Создаём профиль в public.profiles ===
-    const profileData: any = {
-      id: user.id,                 // обязательно = auth.users.id
+    // Используем типизированный маппинг для создания профиля
+    const profileData = mapProfileToDb({
+      id: user.id,
       email: user.email,
-      ['ФИО']: fullName,
-      ['имя']: shortName,
-      роль: 'директор',
-      бизнес_id: businessId,
-      код_компании: companyCode,
-      должность: 'владелец',
-      активен: true,
-      // остальные поля (телефон, страна и т.п.) пока null
-    };
+      fullName: fullName,
+      shortName: shortName,
+      role: 'директор',
+      businessId: businessId,
+      companyCode: companyCode,
+      jobTitle: 'владелец',
+      active: true,
+    });
 
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Failed to create user profile',
+          error: 'Не удалось создать профиль пользователя. Попробуйте позже или обратитесь в поддержку.',
           errorCode: 'PROFILE_CREATION_FAILED',
           details: profileError.message
         },

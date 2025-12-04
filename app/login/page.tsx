@@ -92,10 +92,20 @@ export default function LoginPage() {
         // Обрабатываем errorCode
         let errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
         
-        if (result.errorCode === "INVALID_CREDENTIALS") {
+        if (result.errorCode === "USER_NOT_FOUND") {
+          errorMessage = "Пользователь с таким email не зарегистрирован.";
+        } else if (result.errorCode === "INVALID_PASSWORD") {
+          errorMessage = "Неверный пароль.";
+        } else if (result.errorCode === "INVALID_CREDENTIALS") {
           errorMessage = "Неверный email или пароль. Проверьте данные и попробуйте ещё раз.";
+        } else if (result.errorCode === "EMAIL_NOT_CONFIRMED") {
+          errorMessage = result.error || "Email не подтвержден. Проверьте вашу почту.";
         } else if (result.errorCode === "PROFILE_NOT_FOUND") {
-          errorMessage = "Пользователь с таким аккаунтом не найден в системе WELLIFY business. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.";
+          errorMessage = "Профиль пользователя не найден. Обратитесь в поддержку.";
+        } else if (result.errorCode === "PROFILE_INCOMPLETE") {
+          // Перенаправляем на завершение профиля
+          router.push("/auth/complete-profile");
+          return;
         } else if (result.errorCode === "LOGIN_UNKNOWN_ERROR") {
           errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
         }
@@ -121,10 +131,20 @@ export default function LoginPage() {
         // Обрабатываем errorCode
         let errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
         
-        if (result.errorCode === "INVALID_CREDENTIALS") {
+        if (result.errorCode === "USER_NOT_FOUND") {
+          errorMessage = "Пользователь с таким email не зарегистрирован.";
+        } else if (result.errorCode === "INVALID_PASSWORD") {
+          errorMessage = "Неверный пароль.";
+        } else if (result.errorCode === "INVALID_CREDENTIALS") {
           errorMessage = "Неверный email или пароль. Проверьте данные и попробуйте ещё раз.";
+        } else if (result.errorCode === "EMAIL_NOT_CONFIRMED") {
+          errorMessage = result.error || "Email не подтвержден. Проверьте вашу почту.";
         } else if (result.errorCode === "PROFILE_NOT_FOUND") {
-          errorMessage = "Пользователь с таким аккаунтом не найден в системе WELLIFY business. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.";
+          errorMessage = "Профиль пользователя не найден. Обратитесь в поддержку.";
+        } else if (result.errorCode === "PROFILE_INCOMPLETE") {
+          // Перенаправляем на завершение профиля
+          router.push("/auth/complete-profile");
+          return;
         } else if (result.errorCode === "LOGIN_UNKNOWN_ERROR") {
           errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
         }
@@ -261,7 +281,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
+    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '80px' }}>
       <div className="flex-1 flex items-center justify-center px-4 py-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -428,10 +448,12 @@ export default function LoginPage() {
                               options: { redirectTo: `${window.location.origin}/auth/callback` },
                               });
                               if (error) throw error;
-                          } catch (err: any) {
+                          } catch (err: unknown) {
                               console.error(err);
-                              setError(err.message || "Ошибка");
+                              const errorMessage = err instanceof Error ? err.message : "Ошибка при входе через Google";
+                              setError(errorMessage);
                               setIsError(true);
+                              setTimeout(() => setIsError(false), 3000);
                           }
                       }}
                       className="w-full h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white"

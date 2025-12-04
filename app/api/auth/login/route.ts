@@ -46,6 +46,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // === Проверяем, существует ли пользователь с таким email ===
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const userExists = existingUsers?.users?.find(
+      (u) => u.email?.toLowerCase() === email
+    );
+
+    if (!userExists) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Пользователь с таким email не зарегистрирован.',
+          errorCode: 'USER_NOT_FOUND'
+        },
+        { status: 404 }
+      );
+    }
+
     // === ЛОГИН В SUPABASE ===
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email,
@@ -56,17 +73,28 @@ export async function POST(request: NextRequest) {
     if (error || !data.user) {
       console.error('supabase signIn error:', error);
       
-      // Проверяем, что это ошибка неверных учетных данных
+      // Проверяем, что это ошибка неверного пароля
       if (error?.message?.toLowerCase().includes('invalid login credentials') ||
-          error?.message?.toLowerCase().includes('invalid credentials') ||
-          error?.message?.toLowerCase().includes('email not confirmed')) {
+          error?.message?.toLowerCase().includes('invalid credentials')) {
         return NextResponse.json(
           { 
             success: false, 
-            error: 'Invalid email or password',
-            errorCode: 'INVALID_CREDENTIALS'
+            error: 'Неверный пароль.',
+            errorCode: 'INVALID_PASSWORD'
           },
           { status: 401 }
+        );
+      }
+
+      // Email не подтвержден
+      if (error?.message?.toLowerCase().includes('email not confirmed')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Email не подтвержден. Проверьте вашу почту.',
+            errorCode: 'EMAIL_NOT_CONFIRMED'
+          },
+          { status: 403 }
         );
       }
 
@@ -74,7 +102,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Login failed',
+          error: 'Произошла ошибка при входе. Попробуйте позже.',
           errorCode: 'LOGIN_UNKNOWN_ERROR'
         },
         { status: 500 }
@@ -82,42 +110,40 @@ export async function POST(request: NextRequest) {
     }
 
     // === ПОДТЯГИВАЕМ ПРОФИЛЬ ИЗ ТАБЛИЦЫ profiles ===
-    // Важно: русские имена колонок нужно брать в двойные кавычки
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profileRaw, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('email, "ФИО", "имя", "роль", "бизнес_id"')
+      .select('*')
       .eq('id', data.user.id)
       .single();
 
-    // Проверяем наличие профиля и обязательных полей
-    if (profileError || !profile) {
+    // Проверяем наличие профиля
+    if (profileError || !profileRaw) {
       console.error('Load profile error:', profileError);
       // Выходим из сессии, если профиль не найден
       await supabaseAdmin.auth.signOut();
       return NextResponse.json(
         { 
           success: false, 
-          error: 'User profile not found',
+          error: 'Профиль пользователя не найден. Обратитесь в поддержку.',
           errorCode: 'PROFILE_NOT_FOUND'
         },
         { status: 403 }
       );
     }
 
-    // Проверяем, что профиль полный (есть роль и бизнес_id)
-    const profileRecord = profile as Record<string, any>;
-    const hasRole = profileRecord['роль'];
-    const hasBusinessId = profileRecord['бизнес_id'];
+    // Преобразуем профиль в типизированный формат
+    const profile = mapProfileFromDb(profileRaw);
 
-    if (!hasRole || !hasBusinessId) {
-      console.error('Incomplete profile: missing роль or бизнес_id');
-      // Выходим из сессии, если профиль неполный
-      await supabaseAdmin.auth.signOut();
+    // Проверяем, что профиль полный (есть роль и бизнес_id)
+    if (!isProfileComplete(profile)) {
+      console.error('Incomplete profile: missing role or businessId');
+      // Не выходим из сессии, но перенаправляем на завершение профиля
+      // Это обрабатывается на клиенте
       return NextResponse.json(
         { 
           success: false, 
-          error: 'User profile incomplete',
-          errorCode: 'PROFILE_NOT_FOUND'
+          error: 'Профиль неполный. Требуется завершение регистрации.',
+          errorCode: 'PROFILE_INCOMPLETE'
         },
         { status: 403 }
       );
@@ -126,9 +152,9 @@ export async function POST(request: NextRequest) {
     const userPayload = {
       id: data.user.id,
       email: data.user.email,
-      fullName: profile?.['ФИО'] ?? null,
-      shortName: profile?.['имя'] ?? null,
-      role: profile?.['роль'] ?? 'директор',
+      fullName: profile.fullName ?? null,
+      shortName: profile.shortName ?? null,
+      role: profile.role ?? 'директор',
     };
 
     return NextResponse.json(
