@@ -141,28 +141,29 @@ export default function RegisterPage() {
 
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '80px' }}>
-      <div className="flex-1 flex items-center justify-center px-4 py-6">
+    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '104px' }}>
+      <div className="flex-1 flex items-center justify-center px-4 py-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="w-full max-w-[500px] relative z-10"
+          style={{ maxWidth: '520px' }}
         >
-          <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
+          <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-6">
             {/* Title */}
-            <div className="mb-6 text-center">
-              <h1 className="mb-2 text-2xl font-bold tracking-tight text-foreground">
+            <div className="mb-4 text-center">
+              <h1 className="mb-1 text-xl font-bold tracking-tight text-foreground">
                 {t("register_title") || "Создать аккаунт"}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {t("register_subtitle") || "Заполните форму для регистрации"}
               </p>
             </div>
 
             {/* Link to login */}
-            <div className="mb-4 text-center">
-              <p className="text-sm text-muted-foreground">
+            <div className="mb-3 text-center">
+              <p className="text-xs text-muted-foreground">
                 Уже есть аккаунт?{" "}
                 <Link href="/login" className="text-primary hover:underline font-medium">
                   Войти
@@ -176,11 +177,11 @@ export default function RegisterPage() {
               animate={shakeForm ? { x: [-10, 10, -10, 10, 0], opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
               transition={shakeForm ? { duration: 0.5 } : { type: "spring", stiffness: 260, damping: 20 }}
               onSubmit={handleSubmit}
-              className="space-y-4"
+              className="space-y-3"
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
                     Имя *
                   </label>
                   <input
@@ -188,12 +189,11 @@ export default function RegisterPage() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
-                    className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                    placeholder="Иван"
+                    className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
                     Фамилия *
                   </label>
                   <input
@@ -201,27 +201,25 @@ export default function RegisterPage() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     required
-                    className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                    placeholder="Иванов"
+                    className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Отчество
                 </label>
                 <input
                   type="text"
                   value={middleName}
                   onChange={(e) => setMiddleName(e.target.value)}
-                  className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                  placeholder="Иванович"
+                  className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Email *
                 </label>
                 <input
@@ -229,13 +227,15 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                  placeholder="you@example.com"
+                  className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Мы отправим на этот адрес подтверждение
+                </p>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Телефон *
                 </label>
                 <input
@@ -243,13 +243,12 @@ export default function RegisterPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
-                  className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                  placeholder="+7 (999) 123-45-67"
+                  className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Пароль *
                 </label>
                 <input
@@ -258,13 +257,15 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                  placeholder="••••••••"
+                  className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                 />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Минимум 6 символов
+                </p>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
                   Подтвердите пароль *
                 </label>
                 <input
@@ -273,8 +274,7 @@ export default function RegisterPage() {
                   onChange={(e) => setPasswordConfirmation(e.target.value)}
                   required
                   minLength={6}
-                  className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                  placeholder="••••••••"
+                  className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                 />
               </div>
 
@@ -294,7 +294,7 @@ export default function RegisterPage() {
                 disabled={isCreating}
                 whileHover={isCreating ? undefined : { scale: 1.01 }}
                 whileTap={isCreating ? undefined : { scale: 0.99 }}
-                className="h-12 w-full flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-base font-semibold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
+                className="h-11 w-full flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-sm font-semibold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90 mt-1"
               >
                 {isCreating ? (
                   <>
