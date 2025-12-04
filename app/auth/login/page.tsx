@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 /**
  * Redirect page for /auth/login
  * Redirects to /login with error parameter if present
  */
-export default function AuthLoginPage() {
+function AuthLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -27,5 +27,13 @@ export default function AuthLoginPage() {
   }, [router, searchParams]);
 
   return null;
+}
+
+export default function AuthLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <AuthLoginContent />
+    </Suspense>
+  );
 }
 
