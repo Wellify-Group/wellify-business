@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 
 export default function RegisterPage() {
   const { t } = useLanguage();
@@ -26,18 +27,20 @@ export default function RegisterPage() {
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 
-  // Check for error query parameter
+  // Check if user is already logged in
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const checkAuth = async () => {
+      const supabase = createBrowserSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // User is already logged in - redirect to appropriate page
+        router.replace("/onboarding/profile");
+        return;
+      }
+    };
     
-    const searchParams = new URLSearchParams(window.location.search);
-    const errorParam = searchParams.get("error");
-    
-    if (errorParam === "need_signup") {
-      setError("Сначала зарегистрируйтесь через форму ниже или используйте Google.");
-      setShowError(true);
-      router.replace("/register", { scroll: false });
-    }
+    checkAuth();
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,28 +139,6 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleSignUp = async () => {
-    try {
-      const supabase = createBrowserSupabaseClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${SITE_URL}/auth/callback?mode=signup`,
-        },
-      });
-      if (error) throw error;
-    } catch (err: unknown) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Ошибка при входе через Google";
-      setError(errorMessage);
-      setShowError(true);
-      setShakeForm(true);
-      setTimeout(() => {
-        setShakeForm(false);
-        setShowError(false);
-      }, 3000);
-    }
-  };
 
   return (
     <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '80px' }}>
@@ -342,9 +323,7 @@ export default function RegisterPage() {
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleGoogleSignUp}
+            <GoogleAuthButton
               className="w-full h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white mt-4"
             >
               <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
@@ -354,7 +333,7 @@ export default function RegisterPage() {
                 <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.719 1.233 5.313l4.044-3.045Z"/>
               </svg>
               <span className="text-sm font-medium text-white">Продолжить с Google</span>
-            </button>
+            </GoogleAuthButton>
           </div>
         </motion.div>
       </div>

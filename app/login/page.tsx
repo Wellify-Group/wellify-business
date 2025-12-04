@@ -8,6 +8,7 @@ import { Building2, Store, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PrimaryButton } from "@/components/ui/button";
+import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 
 const MAX_BLOCKS = 4;
 const BLOCK_LENGTH = 4;
@@ -47,6 +48,22 @@ export default function LoginPage() {
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createBrowserSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // User is already logged in - redirect to appropriate page
+        router.replace("/onboarding/profile");
+        return;
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
+
   // Check for error query parameter
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -54,15 +71,15 @@ export default function LoginPage() {
     const searchParams = new URLSearchParams(window.location.search);
     const errorParam = searchParams.get("error");
     
-    if (errorParam === "need_signup") {
-      setError("Аккаунт с этим Google-адресом не найден. Пожалуйста, зарегистрируйтесь.");
-      setIsError(true);
-      router.replace("/login", { scroll: false });
-    } else if (errorParam === "oauth") {
+    if (errorParam === "oauth") {
       const errorDescription = searchParams.get("error_description");
       setError(errorDescription || "Ошибка при входе через Google. Попробуйте еще раз.");
       setIsError(true);
-      router.replace("/login", { scroll: false });
+      // Очищаем query параметры без редиректа
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete("error");
+      newUrl.searchParams.delete("error_description");
+      window.history.replaceState({}, "", newUrl.toString());
     }
   }, [router]);
 
@@ -145,24 +162,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const supabase = createBrowserSupabaseClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${SITE_URL}/auth/callback?mode=login`,
-        },
-      });
-      if (error) throw error;
-    } catch (err: unknown) {
-      console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Ошибка при входе через Google";
-      setError(errorMessage);
-      setIsError(true);
-      setTimeout(() => setIsError(false), 3000);
-    }
-  };
 
   function getFullCompanyId() {
     return companyIdBlocks.join("-");
@@ -422,9 +421,7 @@ export default function LoginPage() {
                     </span>
                   </div>
 
-                  <button
-                      type="button"
-                      onClick={handleGoogleSignIn}
+                  <GoogleAuthButton
                       className="w-full h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white"
                   >
                       <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
@@ -434,7 +431,7 @@ export default function LoginPage() {
                           <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.719 1.233 5.313l4.044-3.045Z"/>
                       </svg>
                       <span className="text-sm font-medium text-white">Google</span>
-                  </button>
+                  </GoogleAuthButton>
 
                   <div className="text-center">
                     <p className="text-xs text-zinc-400 font-light">

@@ -14,7 +14,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // Публичные маршруты, не требующие авторизации
-  const publicRoutes = ['/login', '/register', '/onboarding/verify-phone', '/auth/callback', '/forgot-password', '/welcome', '/about', '/contacts', '/support', '/privacy', '/terms'];
+  const publicRoutes = [
+    '/login', 
+    '/register', 
+    '/onboarding/verify-phone', 
+    '/onboarding/profile',
+    '/auth/callback', 
+    '/auth/login',
+    '/auth/register',
+    '/forgot-password', 
+    '/welcome', 
+    '/about', 
+    '/contacts', 
+    '/support', 
+    '/privacy', 
+    '/terms'
+  ];
   
   // Если это публичный маршрут - пропускаем проверку
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
