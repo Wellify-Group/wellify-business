@@ -33,7 +33,9 @@ export default function CompleteProfilePage() {
         .eq('id', session.user.id)
         .single();
 
-      if (profile && (profile['ФИО'] || profile.имя)) {
+      const p = profile as Record<string, any>;
+
+      if (p && (p["ФИО"] || p.имя)) {
         // Profile already has a name, redirect to dashboard
         router.push("/dashboard/director");
         return;
