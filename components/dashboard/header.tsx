@@ -117,23 +117,18 @@ export function DashboardHeader() {
           .single();
 
         if (profile) {
-          const profileName = profile['ФИО'] || profile.имя;
+          type UserProfile = {
+            'ФИО'?: string;
+            имя?: string;
+          };
+
+          const typedProfile = profile as UserProfile;
+
+          const profileName = typedProfile['ФИО'] || typedProfile.имя || '';
+
           if (profileName && profileName.trim() !== '') {
             setUserName(profileName.trim());
-            setUserInitial(profileName.trim()[0]?.toUpperCase() || "U");
-            
-            // Update currentUser in store if it exists
-            if (currentUser) {
-              const updatedUser = {
-                ...currentUser,
-                fullName: profile['ФИО'] || currentUser.fullName,
-                name: profile.имя || currentUser.name || profileName.trim().split(' ')[0],
-              };
-              // Note: We can't directly update store here, but the name will be displayed correctly
-            }
-          } else {
-            setUserName("Пользователь");
-            setUserInitial("П");
+            setUserInitial(profileName.trim()[0]?.toUpperCase() || 'U');
           }
         }
       } catch (error) {
