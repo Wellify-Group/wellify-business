@@ -21,6 +21,8 @@ export const ProfileSchema = z.object({
   аватар_url: z.string().nullable().optional(),
   телефон: z.string().nullable().optional(),
   страна: z.string().nullable().optional(),
+  email_verified: z.boolean().nullable().optional(),
+  phone_verified: z.boolean().nullable().optional(),
   created_at: z.string().nullable().optional(),
   updated_at: z.string().nullable().optional(),
 });
@@ -44,6 +46,8 @@ export interface Profile {
   avatarUrl: string | null; // Маппинг 'аватар_url'
   phone: string | null; // Маппинг 'телефон'
   country: string | null; // Маппинг 'страна'
+  emailVerified: boolean | null; // Маппинг 'email_verified'
+  phoneVerified: boolean | null; // Маппинг 'phone_verified'
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -66,6 +70,8 @@ export function mapProfileFromDb(raw: ProfileRaw | Record<string, any>): Profile
     avatarUrl: rawRecord.аватар_url ?? rawRecord.avatar_url ?? null,
     phone: rawRecord.телефон ?? null,
     country: rawRecord.страна ?? null,
+    emailVerified: rawRecord.email_verified ?? false,
+    phoneVerified: rawRecord.phone_verified ?? false,
     createdAt: rawRecord.created_at ?? null,
     updatedAt: rawRecord.updated_at ?? null,
   };
@@ -89,6 +95,8 @@ export function mapProfileToDb(profile: Partial<Profile>): Record<string, any> {
   if (profile.avatarUrl !== undefined) dbProfile.аватар_url = profile.avatarUrl;
   if (profile.phone !== undefined) dbProfile.телефон = profile.phone;
   if (profile.country !== undefined) dbProfile.страна = profile.country;
+  if (profile.emailVerified !== undefined) dbProfile.email_verified = profile.emailVerified;
+  if (profile.phoneVerified !== undefined) dbProfile.phone_verified = profile.phoneVerified;
   
   return dbProfile;
 }

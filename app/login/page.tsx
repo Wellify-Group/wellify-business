@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
-import { Building2, Store, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Building2, Store, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import useStore from "@/lib/store";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { mapProfileFromDb } from "@/lib/types/profile";
 import { PrimaryButton } from "@/components/ui/button";
 
 const MAX_BLOCKS = 4;
@@ -29,7 +30,6 @@ function splitToBlocks(id: string): string[] {
 export default function LoginPage() {
   const { t } = useLanguage();
   const router = useRouter();
-  const { login } = useStore();
   
   const [activeTab, setActiveTab] = useState<"office" | "terminal">("office");
   
@@ -37,7 +37,7 @@ export default function LoginPage() {
   const [terminalStep, setTerminalStep] = useState<1 | 2>(1);
   const [companyId, setCompanyId] = useState("");
   const [companyIdBlocks, setCompanyIdBlocks] = useState(["", "", "", ""]);
-  const [pin, setPin] = useState(["", "", "", ""]); // 4 digits
+  const [pin, setPin] = useState(["", "", "", ""]);
 
   // Office Login State
   const [email, setEmail] = useState("");
@@ -46,18 +46,17 @@ export default function LoginPage() {
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+
   // Check for error query parameter
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const searchParams = new URLSearchParams(window.location.search);
     const errorParam = searchParams.get("error");
     
-    if (errorParam === "user_not_registered") {
-      setError("Аккаунт с этим Google-адресом не найден в системе WELLIFY business. Сначала зарегистрируйтесь через email.");
-      setIsError(true);
-      // Clear the error from URL
-      router.replace("/login", { scroll: false });
-    } else if (errorParam === "no_account") {
-      setError("Пользователь с таким аккаунтом не найден в системе WELLIFY business. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.");
+    if (errorParam === "need_signup") {
+      setError("Аккаунт с этим Google-адресом не найден. Пожалуйста, зарегистрируйтесь.");
       setIsError(true);
       router.replace("/login", { scroll: false });
     } else if (errorParam === "oauth") {
@@ -84,95 +83,91 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      let result: any = false;
-      result = await login('director', { email, pass: password });
-      
-      // Проверяем, является ли результат объектом с errorCode
-      if (result && typeof result === 'object' && result.success === false) {
-        // Обрабатываем errorCode
-        let errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
-        
-        if (result.errorCode === "USER_NOT_FOUND") {
-          errorMessage = "Пользователь с таким email не зарегистрирован.";
-        } else if (result.errorCode === "INVALID_PASSWORD") {
-          errorMessage = "Неверный пароль.";
-        } else if (result.errorCode === "INVALID_CREDENTIALS") {
-          errorMessage = "Неверный email или пароль. Проверьте данные и попробуйте ещё раз.";
-        } else if (result.errorCode === "EMAIL_NOT_CONFIRMED") {
-          errorMessage = result.error || "Email не подтвержден. Проверьте вашу почту.";
-        } else if (result.errorCode === "PROFILE_NOT_FOUND") {
-          errorMessage = "Профиль пользователя не найден. Обратитесь в поддержку.";
-        } else if (result.errorCode === "PROFILE_INCOMPLETE") {
-          // Перенаправляем на завершение профиля
-          router.push("/auth/complete-profile");
-          return;
-        } else if (result.errorCode === "LOGIN_UNKNOWN_ERROR") {
-          errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
+      const supabase = createBrowserSupabaseClient();
+
+      // Вход через Supabase
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        // Обработка ошибок
+        if (signInError.message?.includes("Invalid login credentials") || 
+            signInError.message?.includes("User not found")) {
+          setError("Неверная почта или пароль. Если у вас нет аккаунта, зарегистрируйтесь на странице регистрации.");
+        } else {
+          setError(signInError.message || "Произошла ошибка при входе");
         }
-        
-        setError(errorMessage);
         setIsError(true);
-        setTimeout(() => setIsError(false), 3000);
         setIsLoading(false);
         return;
       }
-      
-      // Если успешно, редиректим
-      if (result === true) {
+
+      if (!signInData.user) {
+        setError("Не удалось войти. Попробуйте позже.");
+        setIsError(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Проверяем профиль и верификацию
+      const { data: profileRaw, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", signInData.user.id)
+        .single();
+
+      if (profileError || !profileRaw) {
+        // Профиль не найден - редирект на онбординг
+        router.push("/onboarding/profile");
+        return;
+      }
+
+      const profile = mapProfileFromDb(profileRaw);
+
+      // Проверяем верификацию
+      if (!profile.emailVerified || !profile.phoneVerified) {
+        router.push("/onboarding/verify");
+        return;
+      }
+
+      // Всё ок - редирект в дашборд
+      // Определяем роль и редиректим
+      if (profile.role === "директор") {
         router.push("/dashboard/director");
-        return;
-      }
-      
-      // Пробуем войти как менеджер
-      result = await login('manager', { email, pass: password });
-      
-      // Проверяем, является ли результат объектом с errorCode
-      if (result && typeof result === 'object' && result.success === false) {
-        // Обрабатываем errorCode
-        let errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
-        
-        if (result.errorCode === "USER_NOT_FOUND") {
-          errorMessage = "Пользователь с таким email не зарегистрирован.";
-        } else if (result.errorCode === "INVALID_PASSWORD") {
-          errorMessage = "Неверный пароль.";
-        } else if (result.errorCode === "INVALID_CREDENTIALS") {
-          errorMessage = "Неверный email или пароль. Проверьте данные и попробуйте ещё раз.";
-        } else if (result.errorCode === "EMAIL_NOT_CONFIRMED") {
-          errorMessage = result.error || "Email не подтвержден. Проверьте вашу почту.";
-        } else if (result.errorCode === "PROFILE_NOT_FOUND") {
-          errorMessage = "Профиль пользователя не найден. Обратитесь в поддержку.";
-        } else if (result.errorCode === "PROFILE_INCOMPLETE") {
-          // Перенаправляем на завершение профиля
-          router.push("/auth/complete-profile");
-          return;
-        } else if (result.errorCode === "LOGIN_UNKNOWN_ERROR") {
-          errorMessage = "Произошла ошибка при входе. Попробуйте позже.";
-        }
-        
-        setError(errorMessage);
-        setIsError(true);
-        setTimeout(() => setIsError(false), 3000);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Если успешно, редиректим
-      if (result === true) {
+      } else if (profile.role === "менеджер") {
         router.push("/dashboard/manager");
-        return;
+      } else if (profile.role === "сотрудник") {
+        router.push("/dashboard/employee");
+      } else {
+        router.push("/dashboard");
       }
-      
-      // Если оба логина не удались, показываем общую ошибку
-      setError("Неверный email или пароль. Проверьте данные и попробуйте ещё раз.");
-      setIsError(true);
-      setTimeout(() => setIsError(false), 3000);
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (err) {
+      console.error("Login error:", err);
       setError("Произошла ошибка при входе. Попробуйте позже.");
       setIsError(true);
-      setTimeout(() => setIsError(false), 3000);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${SITE_URL}/auth/callback?mode=login`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: unknown) {
+      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "Ошибка при входе через Google";
+      setError(errorMessage);
+      setIsError(true);
+      setTimeout(() => setIsError(false), 3000);
     }
   };
 
@@ -262,12 +257,9 @@ export default function LoginPage() {
     }
     setIsLoading(true);
     try {
-      const success = await login('employee', { businessId: companyId, pin: pinCode });
-      if (success) {
-        router.push("/dashboard/employee");
-        return;
-      }
-      setError("Неверный ID компании или пин-код");
+      // Здесь должна быть логика входа для терминала
+      // Пока оставляем как есть, так как это отдельная система
+      setError("Функция входа через терминал временно недоступна");
       setIsError(true);
       setTimeout(() => setIsError(false), 3000);
     } catch (error) {
@@ -439,23 +431,7 @@ export default function LoginPage() {
 
                   <button
                       type="button"
-                      onClick={async () => {
-                          try {
-                              const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
-                              const supabase = createBrowserSupabaseClient();
-                              const { error } = await supabase.auth.signInWithOAuth({
-                              provider: "google",
-                              options: { redirectTo: `${window.location.origin}/auth/callback` },
-                              });
-                              if (error) throw error;
-                          } catch (err: unknown) {
-                              console.error(err);
-                              const errorMessage = err instanceof Error ? err.message : "Ошибка при входе через Google";
-                              setError(errorMessage);
-                              setIsError(true);
-                              setTimeout(() => setIsError(false), 3000);
-                          }
-                      }}
+                      onClick={handleGoogleSignIn}
                       className="w-full h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white"
                   >
                       <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
@@ -466,6 +442,15 @@ export default function LoginPage() {
                       </svg>
                       <span className="text-sm font-medium text-white">Google</span>
                   </button>
+
+                  <div className="text-center">
+                    <p className="text-xs text-zinc-400 font-light">
+                      Нет аккаунта?{" "}
+                      <Link href="/register" className="text-primary hover:underline font-medium">
+                        Зарегистрироваться
+                      </Link>
+                    </p>
+                  </div>
                 </motion.div>
               ) : (
                 <motion.div

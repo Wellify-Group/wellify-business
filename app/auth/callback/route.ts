@@ -1,7 +1,7 @@
 import { createServerSupabaseClient, createAdminSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
-import { mapProfileFromDb, mapProfileToDb, isProfileComplete, type Profile } from "@/lib/types/profile";
+import { mapProfileFromDb, mapProfileToDb, type Profile } from "@/lib/types/profile";
 
 export const runtime = 'nodejs';
 
@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const error = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
+  const mode = requestUrl.searchParams.get("mode") || "signup"; // По умолчанию signup
 
   // Handle OAuth errors from Supabase
   if (error) {
@@ -65,70 +66,106 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    // Если профиль отсутствует - создаём его автоматически
-    if (profileError || !profileRaw) {
-      console.log('Creating profile for OAuth user:', user.id);
-      
-      const newProfile = mapProfileToDb({
-        id: user.id,
-        email: userEmail,
-        fullName: googleFullName,
-        avatarUrl: googleAvatarUrl,
-        role: null,
-        businessId: null,
-      });
-
-      const { error: insertError } = await supabaseAdmin
-        .from("profiles")
-        .insert(newProfile);
-
-      if (insertError) {
-        console.error('Failed to create profile for OAuth user:', insertError);
+    // Если mode=login
+    if (mode === "login") {
+      // Если профиль отсутствует - это новый пользователь, который пытается войти
+      // Нужно отправить его на регистрацию
+      if (profileError || !profileRaw) {
+        console.log('New user trying to login via Google, redirecting to register');
+        // Выходим из сессии для чистоты
         await supabase.auth.signOut();
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("error", "profile_creation_failed");
-        return NextResponse.redirect(loginUrl.toString());
+        const registerUrl = new URL("/register", request.url);
+        registerUrl.searchParams.set("error", "need_signup");
+        return NextResponse.redirect(registerUrl.toString());
       }
 
-      // Перенаправляем на завершение профиля
-      return NextResponse.redirect(new URL("/auth/complete-profile", request.url));
+      // Профиль существует - проверяем верификацию
+      const profile = mapProfileFromDb(profileRaw);
+
+      // Если email или телефон не подтверждены - редирект на верификацию
+      if (!profile.emailVerified || !profile.phoneVerified) {
+        return NextResponse.redirect(new URL("/onboarding/verify", request.url));
+      }
+
+      // Если профиль неполный (нет ФИО или телефона) - редирект на дозаполнение
+      if (!profile.fullName || !profile.phone) {
+        return NextResponse.redirect(new URL("/onboarding/profile", request.url));
+      }
+
+      // Всё ок - редирект в дашборд
+      let dashboardPath = "/dashboard";
+      if (profile.role === "директор") {
+        dashboardPath = "/dashboard/director";
+      } else if (profile.role === "менеджер") {
+        dashboardPath = "/dashboard/manager";
+      } else if (profile.role === "сотрудник") {
+        dashboardPath = "/dashboard/employee";
+      }
+      return NextResponse.redirect(new URL(dashboardPath, request.url));
     }
 
-    // Преобразуем профиль в типизированный формат
-    const profile = mapProfileFromDb(profileRaw);
+    // Если mode=signup
+    if (mode === "signup") {
+      // Если профиля нет - создаём пустой профиль и редирект на дозаполнение
+      if (profileError || !profileRaw) {
+        console.log('Creating profile for OAuth user:', user.id);
+        
+        const newProfile = mapProfileToDb({
+          id: user.id,
+          email: userEmail,
+          fullName: googleFullName,
+          avatarUrl: googleAvatarUrl,
+          emailVerified: false,
+          phoneVerified: false,
+        });
 
-    // Если профиль неполный (нет role или businessId) - перенаправляем на завершение
-    if (!isProfileComplete(profile)) {
-      console.log('OAuth user with incomplete profile, redirecting to complete-profile:', user.id);
-      return NextResponse.redirect(new URL("/auth/complete-profile", request.url));
+        const { error: insertError } = await supabaseAdmin
+          .from("profiles")
+          .insert(newProfile);
+
+        if (insertError) {
+          console.error('Failed to create profile for OAuth user:', insertError);
+          await supabase.auth.signOut();
+          const loginUrl = new URL("/login", request.url);
+          loginUrl.searchParams.set("error", "profile_creation_failed");
+          return NextResponse.redirect(loginUrl.toString());
+        }
+
+        // Редирект на дозаполнение профиля
+        const profileUrl = new URL("/onboarding/profile", request.url);
+        profileUrl.searchParams.set("from", "google");
+        return NextResponse.redirect(profileUrl.toString());
+      }
+
+      // Профиль уже существует - проверяем верификацию
+      const profile = mapProfileFromDb(profileRaw);
+
+      // Если email или телефон не подтверждены - редирект на верификацию
+      if (!profile.emailVerified || !profile.phoneVerified) {
+        return NextResponse.redirect(new URL("/onboarding/verify", request.url));
+      }
+
+      // Если профиль неполный - редирект на дозаполнение
+      if (!profile.fullName || !profile.phone) {
+        return NextResponse.redirect(new URL("/onboarding/profile", request.url));
+      }
+
+      // Всё ок - редирект в дашборд
+      let dashboardPath = "/dashboard";
+      if (profile.role === "директор") {
+        dashboardPath = "/dashboard/director";
+      } else if (profile.role === "менеджер") {
+        dashboardPath = "/dashboard/manager";
+      } else if (profile.role === "сотрудник") {
+        dashboardPath = "/dashboard/employee";
+      }
+      return NextResponse.redirect(new URL(dashboardPath, request.url));
     }
 
-    // Обновляем метаданные профиля из Google (если они есть и их нет в профиле)
-    const updateData = mapProfileToDb({
-      email: userEmail,
-      fullName: profile.fullName || googleFullName,
-      avatarUrl: profile.avatarUrl || googleAvatarUrl,
-    });
-
-    if (Object.keys(updateData).length > 1) { // Больше чем только email
-      await supabaseAdmin
-        .from("profiles")
-        .update(updateData)
-        .eq("id", user.id);
-    }
-
-    // Профиль полный - перенаправляем на dashboard в зависимости от роли
-    let dashboardPath = "/dashboard";
-    
-    if (profile.role === "директор") {
-      dashboardPath = "/dashboard/director";
-    } else if (profile.role === "менеджер") {
-      dashboardPath = "/dashboard/manager";
-    } else if (profile.role === "сотрудник") {
-      dashboardPath = "/dashboard/employee";
-    }
-    
-    return NextResponse.redirect(new URL(dashboardPath, request.url));
+    // Если mode не распознан - редирект на логин
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("error", "invalid_mode");
+    return NextResponse.redirect(loginUrl.toString());
   } catch (err) {
     console.error('Unexpected error in auth callback:', err);
     const loginUrl = new URL("/login", request.url);
