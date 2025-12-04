@@ -102,25 +102,49 @@ export default function RegisterPage() {
 
       const userId = signUpData.user.id;
 
-      // Создаём или обновляем профиль с полями first_name, last_name, middle_name, phone
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert({
-          id: userId,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          middle_name: middleName.trim() || null,
-          phone: phone.trim(),
-          phone_verified: false,
-        }, { onConflict: "id" });
-
-      if (profileError) {
-        console.error("Profile creation error:", profileError);
-        throw new Error("Не удалось создать профиль. Попробуйте позже.");
+      // Проверяем наличие активной сессии после signUp
+      // Если email требует подтверждения, сессия может быть не активна
+      let session = signUpData.session;
+      
+      if (!session) {
+        // Пытаемся получить сессию
+        const { data: sessionData } = await supabase.auth.getSession();
+        session = sessionData?.session || null;
       }
 
-      // Редирект на страницу верификации телефона
-      router.push("/onboarding/verify-phone");
+      // Если сессия есть - создаём профиль через авторизованный клиент
+      if (session) {
+        // Используем тот же клиент, который использовался для signUp
+        // Он уже имеет access_token в сессии
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .upsert({
+            id: userId,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            middle_name: middleName.trim() || null,
+            phone: phone.trim(),
+            phone_verified: false,
+          }, { onConflict: "id" });
+
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          // Если это RLS ошибка, даём более понятное сообщение
+          if (profileError.message?.includes("row-level security") || profileError.code === "42501") {
+            throw new Error("Ошибка доступа. Пожалуйста, обновите страницу и попробуйте снова.");
+          }
+          throw new Error("Не удалось создать профиль. Попробуйте позже.");
+        }
+
+        // Редирект на страницу верификации телефона
+        router.push("/onboarding/verify-phone");
+      } else {
+        // Если сессии нет (требуется подтверждение email), 
+        // профиль будет создан автоматически через trigger handle_new_user
+        // или при следующем входе после подтверждения email
+        // Редиректим на страницу с сообщением о необходимости подтверждения
+        router.push("/onboarding/verify-phone");
+      }
     } catch (err: any) {
       console.error("Registration error:", err);
       let errorMessage = "Произошла ошибка при регистрации. Попробуйте позже.";

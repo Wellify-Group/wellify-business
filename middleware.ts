@@ -15,6 +15,7 @@ export async function middleware(request: NextRequest) {
 
   // Публичные маршруты, не требующие авторизации
   const publicRoutes = [
+    '/', // Главная страница (приветственная)
     '/login', 
     '/register', 
     '/onboarding/verify-phone', 
@@ -36,8 +37,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Проверяем доступ только для защищённых маршрутов (dashboard и другие)
-  if (!pathname.startsWith('/dashboard') && pathname !== '/') {
+  // Проверяем доступ только для защищённых маршрутов (dashboard)
+  if (!pathname.startsWith('/dashboard')) {
     return NextResponse.next()
   }
 
