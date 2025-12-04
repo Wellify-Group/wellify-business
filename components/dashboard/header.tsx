@@ -14,6 +14,7 @@ import Link from "next/link";
 import { SIDEBAR_EXPANDED, SIDEBAR_COLLAPSED } from "@/lib/constants";
 import { createPortal } from "react-dom";
 import { useClickOutside } from "@/lib/hooks/use-click-outside";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export function DashboardHeader() {
@@ -85,8 +86,63 @@ export function DashboardHeader() {
 
   const breadcrumbs = buildBreadcrumbs();
   const pathDepth = breadcrumbs.length;
-  const userName = getFormalName(currentUser);
-  const userInitial = userName[0]?.toUpperCase() || "U";
+  const [userName, setUserName] = useState(getFormalName(currentUser));
+  const [userInitial, setUserInitial] = useState(userName[0]?.toUpperCase() || "U");
+
+  // Load user name from Supabase profile if not available in currentUser
+  useEffect(() => {
+    async function loadUserName() {
+      const name = getFormalName(currentUser);
+      
+      // If currentUser has a name, use it
+      if (name && name !== "User") {
+        setUserName(name);
+        setUserInitial(name[0]?.toUpperCase() || "U");
+        return;
+      }
+
+      // Otherwise, try to load from Supabase profiles
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session?.user) {
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('"ФИО", имя')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          const profileName = profile['ФИО'] || profile.имя;
+          if (profileName && profileName.trim() !== '') {
+            setUserName(profileName.trim());
+            setUserInitial(profileName.trim()[0]?.toUpperCase() || "U");
+            
+            // Update currentUser in store if it exists
+            if (currentUser) {
+              const updatedUser = {
+                ...currentUser,
+                fullName: profile['ФИО'] || currentUser.fullName,
+                name: profile.имя || currentUser.name || profileName.trim().split(' ')[0],
+              };
+              // Note: We can't directly update store here, but the name will be displayed correctly
+            }
+          } else {
+            setUserName("Пользователь");
+            setUserInitial("П");
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user name from profile:', error);
+      }
+    }
+
+    loadUserName();
+  }, [currentUser]);
 
   // Get role label
   const getRoleLabel = () => {

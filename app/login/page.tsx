@@ -46,6 +46,24 @@ export default function LoginPage() {
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Check for error query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const errorParam = searchParams.get("error");
+    
+    if (errorParam === "no_account") {
+      setError("Пользователь с таким аккаунтом не найден. Пожалуйста, зарегистрируйтесь или войдите под другим аккаунтом.");
+      setIsError(true);
+      // Clear the error from URL
+      router.replace("/login", { scroll: false });
+    } else if (errorParam === "oauth") {
+      const errorDescription = searchParams.get("error_description");
+      setError(errorDescription || "Ошибка при входе через Google. Попробуйте еще раз.");
+      setIsError(true);
+      router.replace("/login", { scroll: false });
+    }
+  }, [router]);
+
   const handleTabChange = (tab: "office" | "terminal") => {
     setActiveTab(tab);
     setError("");
