@@ -191,14 +191,15 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex h-screen w-full items-center justify-center px-4" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="w-full max-w-[400px] relative z-10"
-      >
-        <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
+    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
+      <div className="flex-1 flex items-center justify-center px-4 py-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          className="w-full max-w-[400px] relative z-10"
+        >
+          <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
           <div className="flex flex-col gap-6">
             {/* Tabs */}
             <div className="grid w-full grid-cols-2 gap-1 p-1 bg-muted rounded-xl">
@@ -492,7 +493,8 @@ export default function LoginPage() {
             </AnimatePresence>
           </div>
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </main>
   );
 }

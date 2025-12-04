@@ -74,14 +74,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="flex h-screen items-center justify-center bg-background px-4 overflow-hidden" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
-      <div className="w-full max-w-md">
+    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
+      <div className="flex-1 flex items-center justify-center px-4 py-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="w-full rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10"
+          className="w-full max-w-[400px] relative z-10"
         >
+          <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
           {/* Title */}
           <div className="mb-6 text-center">
             <h1 className="mb-2 text-2xl font-bold tracking-tight text-foreground">
@@ -109,7 +110,7 @@ export default function RegisterPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                className="h-12 w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 focus:border-transparent focus:ring-primary transition-all"
+                className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                 placeholder={t("reg_name_placeholder") || "Ваше имя"}
               />
             </div>
@@ -123,7 +124,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-12 w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 focus:border-transparent focus:ring-primary transition-all"
+                className="h-12 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                 placeholder={t("email_placeholder") || "you@example.com"}
               />
             </div>
@@ -148,10 +149,10 @@ export default function RegisterPage() {
                   }}
                   required
                   minLength={6}
-                  className={`h-12 w-full bg-white dark:bg-zinc-900 border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 focus:border-transparent transition-all ${
+                  className={`h-12 w-full bg-card border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent transition-all ${
                     showPasswordError
-                      ? "border-red-500 focus:ring-red-500 text-red-500"
-                      : "border-zinc-200 dark:border-zinc-700 focus:ring-primary"
+                      ? "border-destructive text-destructive focus:ring-destructive"
+                      : "border-border focus:ring-ring"
                   }`}
                   placeholder="••••••••"
                 />
@@ -178,10 +179,10 @@ export default function RegisterPage() {
                   }}
                   required
                   minLength={6}
-                  className={`h-12 w-full bg-white dark:bg-zinc-900 border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 focus:border-transparent transition-all ${
+                  className={`h-12 w-full bg-card border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent transition-all ${
                     showPasswordError
-                      ? "border-red-500 focus:ring-red-500 text-red-500"
-                      : "border-zinc-200 dark:border-zinc-700 focus:ring-primary"
+                      ? "border-destructive text-destructive focus:ring-destructive"
+                      : "border-border focus:ring-ring"
                   }`}
                   placeholder="••••••••"
                 />
@@ -223,86 +224,54 @@ export default function RegisterPage() {
             </motion.button>
           </motion.form>
 
-          <p className="mt-6 mb-4 text-center text-xs font-medium text-zinc-400 dark:text-zinc-500">
-            {t("register_or_social") || "ИЛИ ПРОДОЛЖИТЬ ЧЕРЕЗ"}
-          </p>
+          <div className="relative flex items-center justify-center py-1 mt-6 mb-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border"></span>
+            </div>
+            <span className="relative px-3 bg-card text-[10px] uppercase tracking-wider text-muted-foreground">
+              {t("register_or_social") || "ИЛИ ПРОДОЛЖИТЬ ЧЕРЕЗ"}
+            </span>
+          </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
-                  const supabase = createBrowserSupabaseClient();
-                  
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: "google",
-                    options: {
-                      redirectTo: `${window.location.origin}/auth/callback`,
-                    },
-                  });
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
+                const supabase = createBrowserSupabaseClient();
+                
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                  },
+                });
 
-                  if (error) {
-                    console.error('Google OAuth error:', error);
-                    setPasswordError(error.message || "Ошибка при регистрации через Google");
-                    setShowPasswordError(true);
-                    setShakePassword(true);
-                    setTimeout(() => setShakePassword(false), 500);
-                  }
-                } catch (error: any) {
+                if (error) {
                   console.error('Google OAuth error:', error);
                   setPasswordError(error.message || "Ошибка при регистрации через Google");
                   setShowPasswordError(true);
                   setShakePassword(true);
                   setTimeout(() => setShakePassword(false), 500);
                 }
-              }}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-6 py-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            >
-              <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
-                <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.065 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/>
-                <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"/>
-                <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/>
-                <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.719 1.233 5.313l4.044-3.045Z"/>
-              </svg>
-              Google
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
-                  const supabase = createBrowserSupabaseClient();
-                  
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: "apple",
-                    options: {
-                      redirectTo: `${window.location.origin}/auth/callback`,
-                    },
-                  });
-
-                  if (error) {
-                    console.error('Apple OAuth error:', error);
-                    setPasswordError(error.message || "Ошибка при регистрации через Apple");
-                    setShowPasswordError(true);
-                    setShakePassword(true);
-                    setTimeout(() => setShakePassword(false), 500);
-                  }
-                } catch (error: any) {
-                  console.error('Apple OAuth error:', error);
-                  setPasswordError(error.message || "Ошибка при регистрации через Apple");
-                  setShowPasswordError(true);
-                  setShakePassword(true);
-                  setTimeout(() => setShakePassword(false), 500);
-                }
-              }}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-6 py-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-zinc-800 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-            >
-              <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="h-5 w-5">
-                <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.127 3.675-.552 9.12 1.519 12.12 1.014 1.454 2.227 3.09 3.82 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702z"/>
-              </svg>
-              Apple
-            </button>
+              } catch (error: any) {
+                console.error('Google OAuth error:', error);
+                setPasswordError(error.message || "Ошибка при регистрации через Google");
+                setShowPasswordError(true);
+                setShakePassword(true);
+                setTimeout(() => setShakePassword(false), 500);
+              }
+            }}
+            className="w-full h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white"
+          >
+            <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
+              <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.065 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/>
+              <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"/>
+              <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/>
+              <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.719 1.233 5.313l4.044-3.045Z"/>
+            </svg>
+            <span className="text-sm font-medium text-white">Google</span>
+          </button>
           </div>
         </motion.div>
       </div>
