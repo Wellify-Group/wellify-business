@@ -1,7 +1,6 @@
 import { createServerSupabaseClient, createAdminSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
-import { mapProfileFromDb, mapProfileToDb, type Profile } from "@/lib/types/profile";
 
 export const runtime = 'nodejs';
 
@@ -56,15 +55,17 @@ export async function GET(request: NextRequest) {
 
     // Read Google user metadata
     const googleFullName = user.user_metadata?.full_name || null;
-    const googleAvatarUrl = user.user_metadata?.avatar_url || null;
     const userEmail = user.email || null;
+
+    // Проверяем email_confirmed_at
+    const emailConfirmed = user.email_confirmed_at !== null;
 
     // Query profile in table profiles
     const { data: profileRaw, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("*")
+      .select("phone_verified, phone, first_name, last_name")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     // Если mode=login
     if (mode === "login") {
@@ -80,48 +81,44 @@ export async function GET(request: NextRequest) {
       }
 
       // Профиль существует - проверяем верификацию
-      const profile = mapProfileFromDb(profileRaw);
+      const phoneVerified = profileRaw.phone_verified === true;
 
-      // Если email или телефон не подтверждены - редирект на верификацию
-      if (!profile.emailVerified || !profile.phoneVerified) {
-        return NextResponse.redirect(new URL("/onboarding/verify", request.url));
-      }
-
-      // Если профиль неполный (нет ФИО или телефона) - редирект на дозаполнение
-      if (!profile.fullName || !profile.phone) {
-        return NextResponse.redirect(new URL("/onboarding/profile", request.url));
+      // Если email не подтверждён или телефон не верифицирован - редирект на верификацию
+      if (!emailConfirmed || !phoneVerified) {
+        return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
       }
 
       // Всё ок - редирект в дашборд
-      let dashboardPath = "/dashboard";
-      if (profile.role === "директор") {
-        dashboardPath = "/dashboard/director";
-      } else if (profile.role === "менеджер") {
-        dashboardPath = "/dashboard/manager";
-      } else if (profile.role === "сотрудник") {
-        dashboardPath = "/dashboard/employee";
-      }
-      return NextResponse.redirect(new URL(dashboardPath, request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
 
     // Если mode=signup
     if (mode === "signup") {
-      // Если профиля нет - создаём пустой профиль и редирект на дозаполнение
+      // Если профиля нет - создаём профиль с минимальными данными
       if (profileError || !profileRaw) {
         console.log('Creating profile for OAuth user:', user.id);
         
-        const newProfile = mapProfileToDb({
-          id: user.id,
-          email: userEmail,
-          fullName: googleFullName,
-          avatarUrl: googleAvatarUrl,
-          emailVerified: false,
-          phoneVerified: false,
-        });
+        // Пытаемся извлечь имя из full_name
+        let firstName = null;
+        let lastName = null;
+        if (googleFullName) {
+          const nameParts = googleFullName.split(" ");
+          if (nameParts.length >= 2) {
+            lastName = nameParts[0];
+            firstName = nameParts.slice(1).join(" ");
+          } else if (nameParts.length === 1) {
+            firstName = nameParts[0];
+          }
+        }
 
         const { error: insertError } = await supabaseAdmin
           .from("profiles")
-          .insert(newProfile);
+          .insert({
+            id: user.id,
+            first_name: firstName,
+            last_name: lastName,
+            phone_verified: false,
+          });
 
         if (insertError) {
           console.error('Failed to create profile for OAuth user:', insertError);
@@ -131,35 +128,20 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(loginUrl.toString());
         }
 
-        // Редирект на дозаполнение профиля
-        const profileUrl = new URL("/onboarding/profile", request.url);
-        profileUrl.searchParams.set("from", "google");
-        return NextResponse.redirect(profileUrl.toString());
+        // Редирект на верификацию телефона
+        return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
       }
 
       // Профиль уже существует - проверяем верификацию
-      const profile = mapProfileFromDb(profileRaw);
+      const phoneVerified = profileRaw.phone_verified === true;
 
-      // Если email или телефон не подтверждены - редирект на верификацию
-      if (!profile.emailVerified || !profile.phoneVerified) {
-        return NextResponse.redirect(new URL("/onboarding/verify", request.url));
-      }
-
-      // Если профиль неполный - редирект на дозаполнение
-      if (!profile.fullName || !profile.phone) {
-        return NextResponse.redirect(new URL("/onboarding/profile", request.url));
+      // Если email не подтверждён или телефон не верифицирован - редирект на верификацию
+      if (!emailConfirmed || !phoneVerified) {
+        return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
       }
 
       // Всё ок - редирект в дашборд
-      let dashboardPath = "/dashboard";
-      if (profile.role === "директор") {
-        dashboardPath = "/dashboard/director";
-      } else if (profile.role === "менеджер") {
-        dashboardPath = "/dashboard/manager";
-      } else if (profile.role === "сотрудник") {
-        dashboardPath = "/dashboard/employee";
-      }
-      return NextResponse.redirect(new URL(dashboardPath, request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
 
     // Если mode не распознан - редирект на логин

@@ -1,14 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { mapProfileFromDb, isProfileComplete } from './lib/types/profile'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-
-  // Проверяем доступ только для dashboard маршрутов
-  if (!pathname.startsWith('/dashboard')) {
-    return NextResponse.next()
-  }
 
   // Игнорируем статические файлы и API маршруты
   if (
@@ -16,6 +10,19 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api') ||
     pathname.includes('.')
   ) {
+    return NextResponse.next()
+  }
+
+  // Публичные маршруты, не требующие авторизации
+  const publicRoutes = ['/login', '/register', '/onboarding/verify-phone', '/auth/callback', '/forgot-password', '/welcome', '/about', '/contacts', '/support', '/privacy', '/terms'];
+  
+  // Если это публичный маршрут - пропускаем проверку
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
+
+  // Проверяем доступ только для защищённых маршрутов (dashboard и другие)
+  if (!pathname.startsWith('/dashboard') && pathname !== '/') {
     return NextResponse.next()
   }
 
@@ -62,28 +69,33 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
+    // Проверяем email_confirmed_at
+    const emailConfirmed = session.user.email_confirmed_at !== null;
+
     // Проверяем профиль пользователя
     const { data: profileRaw, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('phone_verified')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
 
-    // Если профиль не найден или ошибка - перенаправляем на завершение профиля
+    // Если профиль не найден - перенаправляем на верификацию телефона
     if (profileError || !profileRaw) {
-      console.error('Profile not found in middleware:', profileError)
-      return NextResponse.redirect(new URL('/auth/complete-profile', request.url))
+      if (!emailConfirmed) {
+        return NextResponse.redirect(new URL('/onboarding/verify-phone', request.url))
+      }
+      return NextResponse.redirect(new URL('/onboarding/verify-phone', request.url))
     }
 
-    // Преобразуем профиль в типизированный формат
-    const profile = mapProfileFromDb(profileRaw)
+    // Проверяем верификацию телефона
+    const phoneVerified = profileRaw.phone_verified === true;
 
-    // Если профиль неполный - перенаправляем на завершение профиля
-    if (!isProfileComplete(profile)) {
-      return NextResponse.redirect(new URL('/auth/complete-profile', request.url))
+    // Если email не подтверждён или телефон не верифицирован - перенаправляем на верификацию
+    if (!emailConfirmed || !phoneVerified) {
+      return NextResponse.redirect(new URL('/onboarding/verify-phone', request.url))
     }
 
-    // Профиль полный - разрешаем доступ
+    // Всё ок - разрешаем доступ
     return response
   } catch (error) {
     console.error('Middleware error:', error)

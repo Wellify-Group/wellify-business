@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { mapProfileToDb } from "@/lib/types/profile";
-import { sendEmailCode, sendPhoneCode } from "@/lib/verificationApi";
 
 export default function RegisterPage() {
   const { t } = useLanguage();
@@ -27,6 +25,20 @@ export default function RegisterPage() {
   const [shakeForm, setShakeForm] = useState(false);
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+
+  // Check for error query parameter
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    const errorParam = searchParams.get("error");
+    
+    if (errorParam === "need_signup") {
+      setError("Сначала зарегистрируйтесь через форму ниже или используйте Google.");
+      setShowError(true);
+      router.replace("/register", { scroll: false });
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,43 +99,25 @@ export default function RegisterPage() {
 
       const userId = signUpData.user.id;
 
-      // Получаем полное ФИО
-      const fullName = [lastName, firstName, middleName].filter(Boolean).join(" ");
-
-      // Создаём или обновляем профиль
-      const profileData = mapProfileToDb({
-        id: userId,
-        email: email,
-        fullName: fullName,
-        phone: phone.trim(),
-        emailVerified: false,
-        phoneVerified: false,
-      });
-
+      // Создаём или обновляем профиль с полями first_name, last_name, middle_name, phone
       const { error: profileError } = await supabase
         .from("profiles")
-        .upsert(profileData, { onConflict: "id" });
+        .upsert({
+          id: userId,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          middle_name: middleName.trim() || null,
+          phone: phone.trim(),
+          phone_verified: false,
+        }, { onConflict: "id" });
 
       if (profileError) {
         console.error("Profile creation error:", profileError);
         throw new Error("Не удалось создать профиль. Попробуйте позже.");
       }
 
-      // Отправляем коды верификации
-      const emailResult = await sendEmailCode(userId, email);
-      if (!emailResult.success) {
-        console.error("Failed to send email code:", emailResult.error);
-        // Не прерываем процесс, но логируем ошибку
-      }
-
-      const phoneResult = await sendPhoneCode(userId, phone.trim());
-      if (!phoneResult.success) {
-        console.error("Failed to send phone code:", phoneResult.error);
-        // Не прерываем процесс, но логируем ошибку
-      }
-
-      // Редирект на страницу верификации
-      router.push("/onboarding/verify");
+      // Редирект на страницу верификации телефона
+      router.push("/onboarding/verify-phone");
     } catch (err: any) {
       console.error("Registration error:", err);
       let errorMessage = "Произошла ошибка при регистрации. Попробуйте позже.";

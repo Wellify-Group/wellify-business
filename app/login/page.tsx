@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { Building2, Store, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { mapProfileFromDb } from "@/lib/types/profile";
 import { PrimaryButton } from "@/components/ui/button";
 
 const MAX_BLOCKS = 4;
@@ -111,38 +110,32 @@ export default function LoginPage() {
         return;
       }
 
-      // Проверяем профиль и верификацию
+      // Проверяем email_confirmed_at из Supabase
+      const emailConfirmed = signInData.user.email_confirmed_at !== null;
+
+      // Проверяем профиль и верификацию телефона
       const { data: profileRaw, error: profileError } = await supabase
         .from("profiles")
-        .select("*")
+        .select("phone_verified")
         .eq("id", signInData.user.id)
-        .single();
+        .maybeSingle();
 
+      // Если профиль не найден - редирект на онбординг
       if (profileError || !profileRaw) {
-        // Профиль не найден - редирект на онбординг
-        router.push("/onboarding/profile");
+        router.push("/onboarding/verify-phone");
         return;
       }
 
-      const profile = mapProfileFromDb(profileRaw);
+      const phoneVerified = profileRaw.phone_verified === true;
 
-      // Проверяем верификацию
-      if (!profile.emailVerified || !profile.phoneVerified) {
-        router.push("/onboarding/verify");
+      // Если email не подтверждён или телефон не верифицирован - редирект на верификацию
+      if (!emailConfirmed || !phoneVerified) {
+        router.push("/onboarding/verify-phone");
         return;
       }
 
       // Всё ок - редирект в дашборд
-      // Определяем роль и редиректим
-      if (profile.role === "директор") {
-        router.push("/dashboard/director");
-      } else if (profile.role === "менеджер") {
-        router.push("/dashboard/manager");
-      } else if (profile.role === "сотрудник") {
-        router.push("/dashboard/employee");
-      } else {
-        router.push("/dashboard");
-      }
+      router.push("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
       setError("Произошла ошибка при входе. Попробуйте позже.");
