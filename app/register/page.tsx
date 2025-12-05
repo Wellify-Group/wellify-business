@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -11,37 +11,26 @@ import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 export default function RegisterPage() {
   const { t } = useLanguage();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
 
   // Шаг 1
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [middleName, setMiddleName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
 
   // Шаг 2
   const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
-
-  // Шаг 3
-  const [phone, setPhone] = useState("");
-  const [phoneCode, setPhoneCode] = useState("");
-  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
 
   // Общие
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shakeForm, setShakeForm] = useState(false);
-
-  const SITE_URL =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "");
 
   // Проверяем, авторизован ли уже пользователь
   useEffect(() => {
@@ -76,49 +65,6 @@ export default function RegisterPage() {
     checkAuth();
   }, [router, supabase]);
 
-  // При открытии с emailRedirectTo на шаг 3
-  useEffect(() => {
-    const stepFromUrl = searchParams?.get("step");
-    if (stepFromUrl === "3") {
-      setStep(3);
-    }
-  }, [searchParams]);
-
-  // Проверка сессии на шаге 3 и восстановление данных из localStorage
-  useEffect(() => {
-    if (step === 3) {
-      const checkSession = async () => {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session) {
-          setError(
-            "Сначала подтвердите e-mail. Перейдите по ссылке из письма, которое мы отправили."
-          );
-        } else {
-          // Восстанавливаем данные шага 1 из localStorage
-          if (typeof window !== "undefined") {
-            const savedData = localStorage.getItem("register_step1_data");
-            if (savedData) {
-              try {
-                const data = JSON.parse(savedData);
-                setFirstName(data.firstName || "");
-                setLastName(data.lastName || "");
-                setMiddleName(data.middleName || "");
-                setBirthDate(data.birthDate || "");
-              } catch (e) {
-                console.error("Failed to restore step 1 data:", e);
-              }
-            }
-          }
-        }
-      };
-
-      checkSession();
-    }
-  }, [step, supabase]);
-
   const triggerShake = () => {
     setShakeForm(true);
     setTimeout(() => setShakeForm(false), 500);
@@ -134,8 +80,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!birthDate) {
-      setError("Пожалуйста, укажите дату рождения");
+    if (!phone.trim()) {
+      setError("Пожалуйста, укажите номер телефона");
       triggerShake();
       return;
     }
@@ -152,25 +98,11 @@ export default function RegisterPage() {
       return;
     }
 
-    // Сохраняем данные шага 1 в localStorage для использования на шаге 3
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "register_step1_data",
-        JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          middleName: middleName.trim() || null,
-          birthDate,
-          password,
-        })
-      );
-    }
-
     setStep(2);
   };
 
-  // Шаг 2: Отправка письма подтверждения
-  const handleStep2SendEmail = async () => {
+  // Шаг 2: Регистрация (signUp + создание профиля)
+  const handleSubmit = async () => {
     setError(null);
 
     if (!email.trim()) {
@@ -189,163 +121,90 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
+      // Шаг 1: Создание пользователя в Supabase Auth
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
+        email: email.trim().toLowerCase(),
         password,
-        options: {
-          emailRedirectTo: `${SITE_URL}/register?step=3`,
-          data: {
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            middle_name: middleName.trim() || null,
-            birth_date: birthDate || null,
-            phone: phone || null,
-            role: "director",
-          },
-        },
       });
 
       if (signUpError) {
+        console.error("SignUp error:", signUpError);
+        let errorMessage = "Не удалось создать аккаунт. Попробуйте позже.";
+
         if (
           signUpError.message?.includes("User already registered") ||
-          signUpError.message?.includes("already exists")
+          signUpError.message?.includes("already exists") ||
+          signUpError.message?.includes("already registered")
         ) {
-          throw new Error(
-            "Аккаунт с таким email уже существует. Войдите или восстановите пароль."
-          );
+          errorMessage = "Аккаунт с таким email уже существует. Войдите или восстановите пароль.";
+        } else if (signUpError.message) {
+          errorMessage = signUpError.message;
         }
-        throw signUpError;
+
+        setError(errorMessage);
+        triggerShake();
+        setIsLoading(false);
+        return;
       }
 
-      if (!data.user) {
-        throw new Error("Не удалось создать пользователя");
+      // Получаем user из результата signUp
+      let user = data?.user;
+
+      // Если user отсутствует в data, пытаемся получить через getUser
+      if (!user) {
+        const { data: userData, error: getUserError } = await supabase.auth.getUser();
+        if (getUserError || !userData?.user) {
+          console.error("GetUser error:", getUserError);
+          setError("Не удалось получить данные пользователя. Попробуйте позже.");
+          triggerShake();
+          setIsLoading(false);
+          return;
+        }
+        user = userData.user;
       }
 
-      setEmailSent(true);
+      if (!user || !user.id) {
+        setError("Не удалось создать пользователя");
+        triggerShake();
+        setIsLoading(false);
+        return;
+      }
+
+      const userId = user.id;
+
+      // Шаг 2: Создание/обновление профиля в profiles
+      // Учитываем RLS: пользователь может работать только со своей строкой (id = auth.uid())
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            middle_name: middleName.trim() || null,
+            phone: phone.trim(),
+            role: "director",
+            phone_verified: false,
+          },
+          { onConflict: "id" }
+        );
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        setError(
+          `Не удалось создать профиль: ${profileError.message || "Неизвестная ошибка"}`
+        );
+        triggerShake();
+        setIsLoading(false);
+        return;
+      }
+
+      // Успешная регистрация – редирект в дашборд директора
+      router.push("/dashboard/director");
     } catch (err: any) {
       console.error("Registration error:", err);
       setError(err.message || "Произошла ошибка при регистрации. Попробуйте позже.");
       triggerShake();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Шаг 3: Отправка кода на телефон
-  const handleSendPhoneCode = async () => {
-    setError(null);
-
-    if (!phone.trim()) {
-      setError("Пожалуйста, укажите номер телефона");
-      triggerShake();
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      if (!backendUrl) {
-        throw new Error("Backend URL не настроен");
-      }
-
-      const res = await fetch(`${backendUrl}/auth/send-phone-code`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(
-          errorData?.message || "Не удалось отправить код. Попробуйте позже."
-        );
-      }
-
-      setPhoneCodeSent(true);
-    } catch (e: any) {
-      console.error("Send phone code error:", e);
-      setError(e.message || "Ошибка при отправке кода");
-      triggerShake();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Шаг 3: Проверка кода и завершение регистрации
-  const handleVerifyPhone = async () => {
-    setError(null);
-
-    if (!phoneCode.trim()) {
-      setError("Пожалуйста, введите код подтверждения");
-      triggerShake();
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      if (!backendUrl) {
-        throw new Error("Backend URL не настроен");
-      }
-
-      const res = await fetch(`${backendUrl}/auth/verify-phone-code`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone, code: phoneCode }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.message || "Неверный код подтверждения");
-      }
-
-      // Успешная верификация – обновляем профиль в Supabase
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-
-      if (userId) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: userId,
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-              middle_name: middleName.trim() || null,
-              birth_date: birthDate || null,
-              phone,
-              phone_verified: true,
-              role: "director",
-            },
-            { onConflict: "id" }
-          );
-
-        if (profileError) {
-          console.error("Profile update error:", profileError);
-          throw profileError;
-        }
-      }
-
-      // Очищаем сохраненные данные
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("register_step1_data");
-      }
-
-      // Редирект в дашборд директора
-      router.replace("/dashboard/director");
-    } catch (e: any) {
-      console.error("Verify phone error:", e);
-      setError(e.message || "Ошибка при подтверждении телефона");
-      triggerShake();
-    } finally {
       setIsLoading(false);
     }
   };
@@ -366,7 +225,7 @@ export default function RegisterPage() {
             {/* Прогресс-бар */}
             <div className="mb-6">
               <div className="flex gap-2">
-                {[1, 2, 3].map((stepNum) => (
+                {[1, 2].map((stepNum) => (
                   <div
                     key={stepNum}
                     className={`flex-1 h-1.5 rounded-full transition-all ${
@@ -378,7 +237,7 @@ export default function RegisterPage() {
                 ))}
               </div>
               <p className="mt-2 text-xs text-center text-muted-foreground">
-                Шаг {step} из 3
+                Шаг {step} из 2
               </p>
             </div>
 
@@ -387,16 +246,12 @@ export default function RegisterPage() {
               <h1 className="mb-1 text-xl font-bold tracking-tight text-foreground">
                 {step === 1
                   ? t("register_title") || "Создать аккаунт"
-                  : step === 2
-                  ? "Подтверждение e-mail"
-                  : "Подтверждение телефона"}
+                  : "Подтверждение e-mail"}
               </h1>
               <p className="text-xs text-muted-foreground">
                 {step === 1
                   ? t("register_subtitle") || "Заполните форму для регистрации"
-                  : step === 2
-                  ? "Введите ваш e-mail для подтверждения"
-                  : "Введите код подтверждения из Telegram"}
+                  : "Введите ваш e-mail для завершения регистрации"}
               </p>
             </div>
 
@@ -429,12 +284,11 @@ export default function RegisterPage() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (step === 1) handleStep1Next();
-                else if (step === 2 && !emailSent) handleStep2SendEmail();
-                else if (step === 3 && phoneCodeSent) handleVerifyPhone();
+                else if (step === 2) handleSubmit();
               }}
               className="space-y-3"
             >
-              {/* Шаг 1: ФИО, дата рождения, пароль */}
+              {/* Шаг 1: ФИО, телефон, пароль */}
               {step === 1 && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
@@ -478,14 +332,13 @@ export default function RegisterPage() {
 
                   <div>
                     <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                      Дата рождения *
+                      Телефон *
                     </label>
                     <input
-                      type="date"
-                      value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       required
-                      max={new Date().toISOString().split("T")[0]}
                       className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                     />
                   </div>
@@ -525,84 +378,21 @@ export default function RegisterPage() {
 
               {/* Шаг 2: E-mail */}
               {step === 2 && (
-                <>
-                  {emailSent ? (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/50 rounded-xl p-4 text-sm text-green-600 dark:text-green-400">
-                      <p className="mb-2 font-medium">
-                        Письмо отправлено на {email}
-                      </p>
-                      <p className="text-xs">
-                        Мы отправили ссылку на e-mail, перейдите по ней, затем
-                        вернитесь, чтобы подтвердить телефон.
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Мы отправим на этот адрес подтверждение
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Шаг 3: Телефон и код */}
-              {step === 3 && (
-                <>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                      Телефон *
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        required
-                        disabled={phoneCodeSent}
-                        className="h-11 flex-1 bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all disabled:opacity-50"
-                      />
-                      {!phoneCodeSent && (
-                        <motion.button
-                          type="button"
-                          onClick={handleSendPhoneCode}
-                          disabled={isLoading}
-                          whileHover={isLoading ? undefined : { scale: 1.02 }}
-                          whileTap={isLoading ? undefined : { scale: 0.98 }}
-                          className="h-11 px-4 rounded-[20px] bg-primary text-sm font-semibold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10"
-                        >
-                          {isLoading ? "..." : "Отправить"}
-                        </motion.button>
-                      )}
-                    </div>
-                  </div>
-
-                  {phoneCodeSent && (
-                    <div>
-                      <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                        Код подтверждения *
-                      </label>
-                      <input
-                        type="text"
-                        value={phoneCode}
-                        onChange={(e) => setPhoneCode(e.target.value)}
-                        required
-                        placeholder="Введите код из Telegram"
-                        className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      />
-                    </div>
-                  )}
-                </>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Мы используем этот адрес для входа в систему
+                  </p>
+                </div>
               )}
 
               {error && (
@@ -618,10 +408,10 @@ export default function RegisterPage() {
 
               {/* Кнопки навигации */}
               <div className="flex gap-3 pt-2">
-                {step > 1 && step !== 3 && (
+                {step > 1 && (
                   <motion.button
                     type="button"
-                    onClick={() => setStep((step - 1) as 1 | 2 | 3)}
+                    onClick={() => setStep((step - 1) as 1 | 2)}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     className="h-11 px-4 rounded-[20px] border border-border bg-card text-sm font-semibold text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2"
@@ -643,7 +433,7 @@ export default function RegisterPage() {
                   </motion.button>
                 )}
 
-                {step === 2 && !emailSent && (
+                {step === 2 && (
                   <motion.button
                     type="submit"
                     disabled={isLoading}
@@ -662,42 +452,12 @@ export default function RegisterPage() {
                             ease: "linear",
                           }}
                         />
-                        Отправка...
+                        Регистрация...
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4" />
-                        Отправить письмо
-                      </>
-                    )}
-                  </motion.button>
-                )}
-
-                {step === 3 && phoneCodeSent && (
-                  <motion.button
-                    type="submit"
-                    disabled={isLoading}
-                    whileHover={isLoading ? undefined : { scale: 1.01 }}
-                    whileTap={isLoading ? undefined : { scale: 0.99 }}
-                    className="h-11 flex-1 flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-sm font-semibold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
-                  >
-                    {isLoading ? (
-                      <>
-                        <motion.div
-                          className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white dark:border-black/30 dark:border-t-black"
-                          animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
-                        />
-                        Проверка...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Подтвердить телефон
+                        Зарегистрироваться
                       </>
                     )}
                   </motion.button>
