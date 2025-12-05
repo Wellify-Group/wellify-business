@@ -147,30 +147,12 @@ export default function RegisterPage() {
         return;
       }
 
-      // Получаем user из результата signUp
-      let user = data?.user;
+      // Получаем userId из результата signUp
+      const userId = data?.user?.id;
 
-      // Если user отсутствует в data, пытаемся получить через getUser
-      if (!user) {
-        const { data: userData, error: getUserError } = await supabase.auth.getUser();
-        if (getUserError || !userData?.user) {
-          console.error("GetUser error:", getUserError);
-          setError("Не удалось получить данные пользователя. Попробуйте позже.");
-          triggerShake();
-          setIsLoading(false);
-          return;
-        }
-        user = userData.user;
+      if (!userId) {
+        throw new Error("Не удалось получить id пользователя после регистрации");
       }
-
-      if (!user || !user.id) {
-        setError("Не удалось создать пользователя");
-        triggerShake();
-        setIsLoading(false);
-        return;
-      }
-
-      const userId = user.id;
 
       // Шаг 2: Создание/обновление профиля в profiles
       // Учитываем RLS: пользователь может работать только со своей строкой (id = auth.uid())
