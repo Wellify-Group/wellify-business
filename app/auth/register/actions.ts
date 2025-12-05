@@ -110,8 +110,9 @@ export async function registerDirector(
     // В production Supabase должен автоматически отправить email при создании пользователя
     // если в настройках проекта включена отправка email
     // Для тестирования можно использовать generateLink
+    // Используем тип 'invite' для генерации ссылки подтверждения email для уже созданного пользователя
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
+      type: 'invite',
       email: normalizedEmail,
       options: {
         redirectTo: `${siteUrl}/auth/callback`
