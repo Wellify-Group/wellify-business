@@ -31,6 +31,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shakeForm, setShakeForm] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   // Проверяем, авторизован ли уже пользователь
   useEffect(() => {
@@ -101,7 +102,9 @@ export default function RegisterPage() {
     setStep(2);
   };
 
-  // Шаг 2: Регистрация (signUp + создание профиля)
+  // Шаг 2: Регистрация (signUp)
+  // Профиль создаётся автоматически триггером Supabase.
+  // Дополнительные поля профиля (имя, телефон и т.д.) будут заполняться после первого входа в систему.
   const handleSubmit = async () => {
     setError(null);
 
@@ -121,7 +124,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // Шаг 1: Создание пользователя в Supabase Auth
+      // Создание пользователя в Supabase Auth
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -147,40 +150,12 @@ export default function RegisterPage() {
         return;
       }
 
-      // Получаем userId из auth.uid() после успешного signUp
-      // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
-      const { data: userData, error: getUserError } = await supabase.auth.getUser();
-
-      if (getUserError || !userData?.user?.id) {
-        throw new Error("Не удалось получить id пользователя после регистрации");
-      }
-
-      const userId = userData.user.id;
-
-      // Шаг 2: Обновление профиля в profiles (профиль уже создан автоматически триггером)
-      // Учитываем RLS: пользователь может работать только со своей строкой (id = auth.uid())
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          first_name: firstName || null,
-          last_name: lastName || null,
-          middle_name: middleName || null,
-          phone: phone || null,
-        })
-        .eq("id", userId);
-
-      if (profileError) {
-        console.error("Profile update error:", profileError);
-        setError(
-          `Не удалось обновить профиль: ${profileError.message || "Неизвестная ошибка"}`
-        );
-        triggerShake();
-        setIsLoading(false);
-        return;
-      }
-
-      // Успешная регистрация – редирект в дашборд директора
-      router.push("/dashboard/director");
+      // Успешная регистрация - показываем сообщение о проверке почты
+      // Профиль создаётся автоматически триггером Supabase при создании пользователя.
+      // Не нужно вызывать getUser() или обращаться к таблице profiles здесь,
+      // так как при включенном подтверждении email сессии ещё нет.
+      setEmailSent(true);
+      setIsLoading(false);
     } catch (err: any) {
       console.error("Registration error:", err);
       setError(err.message || "Произошла ошибка при регистрации. Попробуйте позже.");
@@ -358,21 +333,39 @@ export default function RegisterPage() {
 
               {/* Шаг 2: E-mail */}
               {step === 2 && (
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Мы используем этот адрес для входа в систему
-                  </p>
-                </div>
+                <>
+                  {emailSent ? (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/50 rounded-xl p-4 text-sm text-green-600 dark:text-green-400">
+                      <p className="mb-2 font-medium">
+                        Письмо отправлено на {email}
+                      </p>
+                      <p className="text-xs">
+                        Мы отправили ссылку для подтверждения e-mail на указанный адрес.
+                        Перейдите по ссылке из письма, чтобы завершить регистрацию.
+                      </p>
+                      <p className="mt-2 text-xs">
+                        После подтверждения e-mail вы сможете войти в систему и заполнить
+                        дополнительные данные профиля (имя, телефон и т.д.).
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                        Email *
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Мы используем этот адрес для входа в систему
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {error && (
@@ -413,7 +406,7 @@ export default function RegisterPage() {
                   </motion.button>
                 )}
 
-                {step === 2 && (
+                {step === 2 && !emailSent && (
                   <motion.button
                     type="submit"
                     disabled={isLoading}
