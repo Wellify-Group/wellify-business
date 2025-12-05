@@ -128,9 +128,12 @@ export default function LoginPage() {
 
       if (signInError) {
         // Обработка ошибок
-        if (signInError.message?.includes("Invalid login credentials") || 
+        if (signInError.message?.includes("Email not confirmed") || 
+            signInError.message?.includes("email_not_confirmed")) {
+          setError("E-mail не подтверждён. Проверьте почту и перейдите по ссылке из письма.");
+        } else if (signInError.message?.includes("Invalid login credentials") || 
             signInError.message?.includes("User not found")) {
-          setError("Неверная почта или пароль. Если у вас нет аккаунта, зарегистрируйтесь на странице регистрации.");
+          setError("Неверный e-mail или пароль.");
         } else {
           setError(signInError.message || "Произошла ошибка при входе");
         }
@@ -146,26 +149,34 @@ export default function LoginPage() {
         return;
       }
 
-      // Проверяем email_confirmed_at из Supabase
-      const emailConfirmed = signInData.user.email_confirmed_at !== null;
-
       // Проверяем профиль и верификацию телефона
-      const { data: profileRaw, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("phone_verified")
+        .select("phone_verified, role")
         .eq("id", signInData.user.id)
         .maybeSingle();
 
-      // Если профиль не найден - редирект в дашборд
-      if (profileError || !profileRaw) {
-        router.push("/dashboard/director");
+      // Если профиль не найден - редирект в дашборд директора
+      if (profileError || !profile) {
+        router.replace("/dashboard/director");
         return;
       }
 
-      // Редирект в дашборд независимо от статуса верификации
+      // Если телефон не подтверждён - редирект на шаг 3 регистрации
+      if (profile.phone_verified !== true) {
+        router.replace("/register?step=3");
+        return;
+      }
 
-      // Всё ок - редирект в дашборд
-      router.push("/dashboard");
+      // Всё ок - редирект в дашборд в зависимости от роли
+      const role = profile.role || signInData.user.user_metadata?.role || "director";
+      if (role === "director") {
+        router.replace("/dashboard/director");
+      } else if (role === "manager") {
+        router.replace("/dashboard/manager");
+      } else {
+        router.replace("/dashboard/employee");
+      }
     } catch (err) {
       console.error("Login error:", err);
       setError("Произошла ошибка при входе. Попробуйте позже.");
