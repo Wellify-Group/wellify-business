@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useToastStore } from '@/components/ui/toast';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 export type Role = 'director' | 'manager' | 'employee';
 
@@ -301,7 +302,7 @@ export interface AppState {
   // Actions
   registerDirector: (email: string, pass: string, fullName: string) => Promise<{ success: boolean; error?: string; errorCode?: string }>;
   login: (role: Role, creds: { email?: string; pass?: string; pin?: string; businessId?: string }) => Promise<boolean | { success: false; errorCode?: string; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<boolean>;
   verifyCompanyCode: (code: string) => Promise<boolean>;
   joinBusiness: (code: string) => boolean;
@@ -808,7 +809,7 @@ export const useStore = create<AppState>()(
         }
       },
 
-      logout: () => {
+      logout: async () => {
         const currentUser = get().currentUser;
         
         // Set isOnline = false before clearing user
@@ -826,6 +827,14 @@ export const useStore = create<AppState>()(
               )
             }));
           }
+        }
+        
+        // Sign out from Supabase
+        try {
+          const supabase = createBrowserSupabaseClient();
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error('Error signing out from Supabase:', error);
         }
         
         set({ 

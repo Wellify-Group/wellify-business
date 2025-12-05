@@ -477,8 +477,8 @@ export function DashboardHeader() {
 
                         {/* Logout */}
                         <button
-                          onClick={() => {
-                            logout();
+                          onClick={async () => {
+                            await logout();
                             setIsProfileOpen(false);
                             router.push("/login");
                           }}

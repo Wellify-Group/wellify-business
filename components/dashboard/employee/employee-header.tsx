@@ -269,7 +269,7 @@ export function EmployeeHeader({ onCloseShift, onStartShift, locationName }: Emp
   );
 
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Check if shift is active - prevent logout if needed
     if (shiftStatus === 'active') {
       // Option a: Prevent logout with active shift
@@ -278,7 +278,7 @@ export function EmployeeHeader({ onCloseShift, onStartShift, locationName }: Emp
       return;
     }
     
-    logout();
+    await logout();
     router.push("/login");
   };
 
