@@ -103,8 +103,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(loginUrl.toString());
       }
 
-      // Новый пользователь - редирект на онбординг профиля
-      return NextResponse.redirect(new URL("/onboarding/profile", request.url));
+      // Новый пользователь - редирект на верификацию телефона
+      return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
     }
 
     // Для директора: проверяем только email_confirmed_at, телефон можно подтвердить позже
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
 
     // Проверяем, заполнен ли профиль (есть ли телефон)
     if (!profileRaw.phone) {
-      return NextResponse.redirect(new URL("/onboarding/profile", request.url));
+      return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
     }
 
     // Редиректим в зависимости от роли

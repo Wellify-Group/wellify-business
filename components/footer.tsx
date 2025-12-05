@@ -28,7 +28,7 @@ export function AppFooter() {
     pathname?.startsWith("/welcome");
 
   const isDashboard = pathname?.startsWith("/dashboard");
-  const hideFooterOn = ["/login", "/register", "/onboarding/profile"];
+  const hideFooterOn = ["/login", "/register"];
 
   // Полное отключение футера
   if (isDashboard || hideFooterOn.includes(pathname)) {

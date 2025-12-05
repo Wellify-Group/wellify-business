@@ -49,7 +49,7 @@ export default function OnboardingVerifyPage() {
 
       if (profileError || !profileRaw) {
         console.error('Error loading profile:', profileError);
-        router.push("/onboarding/profile");
+        router.push("/onboarding/verify-phone");
         return;
       }
 

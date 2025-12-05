@@ -19,7 +19,6 @@ export async function middleware(request: NextRequest) {
     '/login', 
     '/register', 
     '/onboarding/verify-phone', 
-    '/onboarding/profile',
     '/auth/callback', 
     '/auth/login',
     '/auth/register',

@@ -52,8 +52,8 @@ export default function RegisterPage() {
             router.replace("/dashboard/employee");
           }
         } else {
-          // Если профиль не заполнен - отправляем в онбординг
-          router.replace("/onboarding/profile");
+          // Если профиль не заполнен - отправляем на верификацию телефона
+          router.replace("/onboarding/verify-phone");
         }
         return;
       }
