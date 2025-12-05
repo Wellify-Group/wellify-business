@@ -124,10 +124,16 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
+      // Получаем origin для emailRedirectTo
+      const origin = process.env.NEXT_PUBLIC_SITE_URL ?? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+      
       // Создание пользователя в Supabase Auth
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
+        options: {
+          emailRedirectTo: `${origin}/auth/confirm?next=/dashboard/director`,
+        },
       });
 
       if (signUpError) {
