@@ -18,7 +18,6 @@ export async function middleware(request: NextRequest) {
     '/', // Главная страница (приветственная)
     '/login', 
     '/register', 
-    '/onboarding/verify-phone', 
     '/auth/callback', 
     '/auth/login',
     '/auth/register',
@@ -121,12 +120,9 @@ export async function middleware(request: NextRequest) {
       return response
     }
 
-    // Для других маршрутов dashboard проверяем верификацию телефона (для manager и employee)
-    const phoneVerified = profileRaw.phone_verified === true;
-
-    // Если email не подтверждён или телефон не верифицирован - перенаправляем на верификацию
-    if (!emailConfirmed || !phoneVerified) {
-      return NextResponse.redirect(new URL('/onboarding/verify-phone', request.url))
+    // Для других маршрутов dashboard проверяем только email_confirmed_at
+    if (!emailConfirmed) {
+      return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
     // Всё ок - разрешаем доступ

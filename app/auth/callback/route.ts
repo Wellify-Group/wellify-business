@@ -103,8 +103,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(loginUrl.toString());
       }
 
-      // Новый пользователь - редирект на верификацию телефона
-      return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
+      // Новый пользователь - редирект в дашборд
+      return NextResponse.redirect(new URL("/dashboard/director", request.url));
     }
 
     // Для директора: проверяем только email_confirmed_at, телефон можно подтвердить позже
@@ -117,18 +117,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/dashboard/director", request.url));
     }
 
-    // Для других ролей: проверяем верификацию телефона
-    const phoneVerified = profileRaw.phone_verified === true;
-
-    // Если email не подтверждён или телефон не верифицирован - редирект на верификацию
-    if (!emailConfirmed || !phoneVerified) {
-      return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
-    }
-
-    // Проверяем, заполнен ли профиль (есть ли телефон)
-    if (!profileRaw.phone) {
-      return NextResponse.redirect(new URL("/onboarding/verify-phone", request.url));
-    }
+    // Для других ролей: редиректим в соответствующий дашборд
 
     // Редиректим в зависимости от роли
     if (role === 'manager') {

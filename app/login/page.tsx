@@ -73,8 +73,8 @@ export default function LoginPage() {
             router.replace("/dashboard/employee");
           }
         } else {
-          // Если профиль не заполнен - отправляем на верификацию телефона
-          router.replace("/onboarding/verify-phone");
+          // Если профиль не заполнен - отправляем в дашборд
+          router.replace("/dashboard/director");
         }
         return;
       }
@@ -156,19 +156,13 @@ export default function LoginPage() {
         .eq("id", signInData.user.id)
         .maybeSingle();
 
-      // Если профиль не найден - редирект на онбординг
+      // Если профиль не найден - редирект в дашборд
       if (profileError || !profileRaw) {
-        router.push("/onboarding/verify-phone");
+        router.push("/dashboard/director");
         return;
       }
 
-      const phoneVerified = profileRaw.phone_verified === true;
-
-      // Если email не подтверждён или телефон не верифицирован - редирект на верификацию
-      if (!emailConfirmed || !phoneVerified) {
-        router.push("/onboarding/verify-phone");
-        return;
-      }
+      // Редирект в дашборд независимо от статуса верификации
 
       // Всё ок - редирект в дашборд
       router.push("/dashboard");

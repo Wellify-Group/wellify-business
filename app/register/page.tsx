@@ -52,8 +52,8 @@ export default function RegisterPage() {
             router.replace("/dashboard/employee");
           }
         } else {
-          // Если профиль не заполнен - отправляем на верификацию телефона
-          router.replace("/onboarding/verify-phone");
+          // Если профиль не заполнен - отправляем в дашборд
+          router.replace("/dashboard/director");
         }
         return;
       }
@@ -159,10 +159,10 @@ export default function RegisterPage() {
           throw new Error("Не удалось создать профиль. Попробуйте позже.");
         }
 
-        router.push("/onboarding/verify-phone");
+        router.push("/dashboard/director");
       } else {
         // Если сессии нет (нужно подтверждение email) – профиль создастся через триггер или при следующем входе
-        router.push("/onboarding/verify-phone");
+        router.push("/login");
       }
     } catch (err: any) {
       console.error("Registration error:", err);
