@@ -40,21 +40,31 @@ export async function registerDirector(formData: FormData) {
     return { error: error.message };
   }
 
-  // На всякий случай явно создаём запись в public.profiles
+  // Получаем userId из auth.uid() после успешного signUp
+  // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
   if (data.user) {
+    const { data: userData, error: getUserError } = await supabase.auth.getUser();
+    
+    if (getUserError || !userData?.user?.id) {
+      console.error('Failed to get user after signUp:', getUserError);
+      return { error: 'Не удалось получить данные пользователя после регистрации' };
+    }
+
+    const userId = userData.user.id;
+
+    // Обновляем профиль в public.profiles (профиль уже создан автоматически триггером)
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert({
-        id: data.user.id,
+      .update({
         email,
         full_name,
         role: 'director',
-        email_verified: false,
         phone_verified: false,
-      });
+      })
+      .eq('id', userId);
 
     if (profileError) {
-      console.error('Profile create error', profileError);
+      console.error('Profile update error', profileError);
       // пользователю можно не показывать, достаточно логировать
     }
   }

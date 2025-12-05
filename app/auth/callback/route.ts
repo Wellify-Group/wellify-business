@@ -85,21 +85,23 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const { error: insertError } = await supabaseAdmin
+      // Обновляем профиль в таблице profiles
+      // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
+      const { error: updateError } = await supabaseAdmin
         .from("profiles")
-        .insert({
-          id: user.id,
+        .update({
           first_name: firstName,
           last_name: lastName,
           phone_verified: false,
-        });
+        })
+        .eq("id", user.id);
 
-      if (insertError) {
-        console.error('Failed to create profile for OAuth user:', insertError);
-        // Выходим из сессии при ошибке создания профиля
+      if (updateError) {
+        console.error('Failed to update profile for OAuth user:', updateError);
+        // Выходим из сессии при ошибке обновления профиля
         await supabase.auth.signOut();
         const loginUrl = new URL("/auth/login", request.url);
-        loginUrl.searchParams.set("error", "profile_creation_failed");
+        loginUrl.searchParams.set("error", "profile_update_failed");
         return NextResponse.redirect(loginUrl.toString());
       }
 

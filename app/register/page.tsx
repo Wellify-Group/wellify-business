@@ -147,33 +147,32 @@ export default function RegisterPage() {
         return;
       }
 
-      // Получаем userId из результата signUp
-      const userId = data?.user?.id;
+      // Получаем userId из auth.uid() после успешного signUp
+      // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
+      const { data: userData, error: getUserError } = await supabase.auth.getUser();
 
-      if (!userId) {
+      if (getUserError || !userData?.user?.id) {
         throw new Error("Не удалось получить id пользователя после регистрации");
       }
 
-      // Шаг 2: Создание/обновление профиля в profiles
+      const userId = userData.user.id;
+
+      // Шаг 2: Обновление профиля в profiles (профиль уже создан автоматически триггером)
       // Учитываем RLS: пользователь может работать только со своей строкой (id = auth.uid())
       const { error: profileError } = await supabase
         .from("profiles")
-        .upsert(
-          {
-            id: userId,
-            first_name: firstName || null,
-            last_name: lastName || null,
-            middle_name: middleName || null,
-            phone: null,
-            phone_verified: false,
-          },
-          { onConflict: "id" }
-        );
+        .update({
+          first_name: firstName || null,
+          last_name: lastName || null,
+          middle_name: middleName || null,
+          phone: phone || null,
+        })
+        .eq("id", userId);
 
       if (profileError) {
-        console.error("Profile creation error:", profileError);
+        console.error("Profile update error:", profileError);
         setError(
-          `Не удалось создать профиль: ${profileError.message || "Неизвестная ошибка"}`
+          `Не удалось обновить профиль: ${profileError.message || "Неизвестная ошибка"}`
         );
         triggerShake();
         setIsLoading(false);

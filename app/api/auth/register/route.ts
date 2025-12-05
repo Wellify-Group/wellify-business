@@ -133,8 +133,9 @@ export async function POST(request: NextRequest) {
 
     const user = data.user;
 
-    // === Создаём профиль в public.profiles ===
-    // Используем типизированный маппинг для создания профиля
+    // === Обновляем профиль в public.profiles ===
+    // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
+    // Используем типизированный маппинг для обновления профиля
     const profileData = mapProfileToDb({
       id: user.id,
       email: user.email,
@@ -147,26 +148,30 @@ export async function POST(request: NextRequest) {
       active: true,
     });
 
+    // Удаляем id из данных для UPDATE (id используется только в .eq())
+    const { id, ...updateData } = profileData;
+
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert(profileData);
+      .update(updateData)
+      .eq('id', user.id);
 
     if (profileError) {
-      console.error('Supabase profile insert error:', profileError);
+      console.error('Supabase profile update error:', profileError);
       
-      // Если профиль не создался, удаляем пользователя из auth, чтобы избежать "висящих" аккаунтов
+      // Если профиль не обновился, удаляем пользователя из auth, чтобы избежать "висящих" аккаунтов
       try {
         await supabaseAdmin.auth.admin.deleteUser(user.id);
-        console.log('Deleted user from auth due to profile creation failure');
+        console.log('Deleted user from auth due to profile update failure');
       } catch (deleteError) {
         console.error('Failed to delete user from auth:', deleteError);
       }
       
-      // Проверяем, может ли это быть ошибка дубликата (пользователь уже существует)
+      // Проверяем, может ли это быть ошибка (профиль не найден)
       if (
-        profileError.message?.toLowerCase().includes('duplicate') ||
-        profileError.message?.toLowerCase().includes('already exists') ||
-        profileError.code === '23505' // PostgreSQL unique violation
+        profileError.message?.toLowerCase().includes('not found') ||
+        profileError.message?.toLowerCase().includes('no rows') ||
+        profileError.code === 'PGRST116' // PostgREST no rows returned
       ) {
         return NextResponse.json(
           { 

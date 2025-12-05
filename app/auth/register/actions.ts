@@ -85,24 +85,25 @@ export async function registerDirector(
       }
     }
 
-    // Создаем профиль в таблице profiles
+    // Обновляем профиль в таблице profiles
+    // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: signUpData.user.id,
+      .update({
         full_name: fullName,
         role: 'director',
         phone: phone || null,
         phone_verified: false
       })
+      .eq('id', signUpData.user.id)
 
     if (profileError) {
-      console.error('Profile creation error:', profileError)
-      // Пытаемся удалить пользователя, если создание профиля не удалось
+      console.error('Profile update error:', profileError)
+      // Пытаемся удалить пользователя, если обновление профиля не удалось
       await supabaseAdmin.auth.admin.deleteUser(signUpData.user.id)
       return {
         success: false,
-        error: 'Ошибка при создании профиля'
+        error: 'Ошибка при обновлении профиля'
       }
     }
 
