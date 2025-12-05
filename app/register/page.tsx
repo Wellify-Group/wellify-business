@@ -165,14 +165,13 @@ export default function RegisterPage() {
 
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '104px' }}>
-      <div className="flex-1 flex items-center justify-center px-4 py-4">
+    <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '104px' }}>
+      <div className="w-full max-w-[520px] px-4 py-4 mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="w-full max-w-[500px] relative z-10"
-          style={{ maxWidth: '520px' }}
+          className="w-full relative z-10"
         >
           <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-6">
             {/* Title */}
