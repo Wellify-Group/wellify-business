@@ -34,9 +34,35 @@ export async function login(
 
     if (error || !data.user) {
       console.error('Login error:', error)
+      
+      // Обработка конкретных ошибок
+      if (error?.message?.toLowerCase().includes('email not confirmed') || 
+          error?.message?.toLowerCase().includes('email_not_confirmed')) {
+        return {
+          success: false,
+          error: 'Email не подтвержден. Проверьте вашу почту и перейдите по ссылке для подтверждения.'
+        }
+      }
+      
+      if (error?.message?.toLowerCase().includes('invalid login credentials') ||
+          error?.message?.toLowerCase().includes('invalid credentials')) {
+        return {
+          success: false,
+          error: 'Неверный email или пароль'
+        }
+      }
+      
       return {
         success: false,
         error: error?.message || 'Неверный email или пароль'
+      }
+    }
+    
+    // Проверяем, подтвержден ли email
+    if (data.user && !data.user.email_confirmed_at) {
+      return {
+        success: false,
+        error: 'Email не подтвержден. Проверьте вашу почту и перейдите по ссылке для подтверждения.'
       }
     }
 
