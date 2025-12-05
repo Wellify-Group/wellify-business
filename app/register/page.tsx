@@ -161,11 +161,10 @@ export default function RegisterPage() {
         .upsert(
           {
             id: userId,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            middle_name: middleName.trim() || null,
-            phone: phone.trim(),
-            role: "director",
+            first_name: firstName || null,
+            last_name: lastName || null,
+            middle_name: middleName || null,
+            phone: null,
             phone_verified: false,
           },
           { onConflict: "id" }
