@@ -25,21 +25,21 @@ export default function RegisterPage() {
   const [showError, setShowError] = useState(false);
   const [shakeForm, setShakeForm] = useState(false);
 
-  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-
-  // Check if user is already logged in
+  // Проверяем, авторизован ли уже пользователь
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createBrowserSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (session?.user) {
-        // User is already logged in - redirect to appropriate page
+        // Пользователь уже залогинен – отправляем в онбординг
         router.replace("/onboarding/profile");
         return;
       }
     };
-    
+
     checkAuth();
   }, [router]);
 
@@ -87,10 +87,11 @@ export default function RegisterPage() {
       const supabase = createBrowserSupabaseClient();
 
       // Регистрация через Supabase
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email,
+          password,
+        });
 
       if (signUpError) {
         throw signUpError;
@@ -103,54 +104,58 @@ export default function RegisterPage() {
       const userId = signUpData.user.id;
 
       // Проверяем наличие активной сессии после signUp
-      // Если email требует подтверждения, сессия может быть не активна
       let session = signUpData.session;
-      
+
       if (!session) {
-        // Пытаемся получить сессию
         const { data: sessionData } = await supabase.auth.getSession();
         session = sessionData?.session || null;
       }
 
       // Если сессия есть - создаём профиль через авторизованный клиент
       if (session) {
-        // Используем тот же клиент, который использовался для signUp
-        // Он уже имеет access_token в сессии
         const { error: profileError } = await supabase
           .from("profiles")
-          .upsert({
-            id: userId,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            middle_name: middleName.trim() || null,
-            phone: phone.trim(),
-            phone_verified: false,
-          }, { onConflict: "id" });
+          .upsert(
+            {
+              id: userId,
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              middle_name: middleName.trim() || null,
+              phone: phone.trim(),
+              phone_verified: false,
+            },
+            { onConflict: "id" }
+          );
 
         if (profileError) {
           console.error("Profile creation error:", profileError);
-          // Если это RLS ошибка, даём более понятное сообщение
-          if (profileError.message?.includes("row-level security") || profileError.code === "42501") {
-            throw new Error("Ошибка доступа. Пожалуйста, обновите страницу и попробуйте снова.");
+          if (
+            profileError.message?.includes("row-level security") ||
+            profileError.code === "42501"
+          ) {
+            throw new Error(
+              "Ошибка доступа. Пожалуйста, обновите страницу и попробуйте снова."
+            );
           }
           throw new Error("Не удалось создать профиль. Попробуйте позже.");
         }
 
-        // Редирект на страницу верификации телефона
         router.push("/onboarding/verify-phone");
       } else {
-        // Если сессии нет (требуется подтверждение email), 
-        // профиль будет создан автоматически через trigger handle_new_user
-        // или при следующем входе после подтверждения email
-        // Редиректим на страницу с сообщением о необходимости подтверждения
+        // Если сессии нет (нужно подтверждение email) – профиль создастся через триггер или при следующем входе
         router.push("/onboarding/verify-phone");
       }
     } catch (err: any) {
       console.error("Registration error:", err);
-      let errorMessage = "Произошла ошибка при регистрации. Попробуйте позже.";
+      let errorMessage =
+        "Произошла ошибка при регистрации. Попробуйте позже.";
 
-      if (err.message?.includes("User already registered") || err.message?.includes("already exists")) {
-        errorMessage = "Аккаунт с таким email уже существует. Войдите или восстановите пароль.";
+      if (
+        err.message?.includes("User already registered") ||
+        err.message?.includes("already exists")
+      ) {
+        errorMessage =
+          "Аккаунт с таким email уже существует. Войдите или восстановите пароль.";
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -163,9 +168,14 @@ export default function RegisterPage() {
     }
   };
 
-
   return (
-    <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '104px' }}>
+    <main
+      className="min-h-screen flex items-center justify-center"
+      style={{
+        backgroundColor: "var(--color-background, #050B13)",
+        paddingTop: "104px",
+      }}
+    >
       <div className="w-full max-w-[520px] px-4 py-4 mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -188,7 +198,10 @@ export default function RegisterPage() {
             <div className="mb-3 text-center">
               <p className="text-xs text-muted-foreground">
                 Уже есть аккаунт?{" "}
-                <Link href="/login" className="text-primary hover:underline font-medium">
+                <Link
+                  href="/login"
+                  className="text-primary hover:underline font-medium"
+                >
                   Войти
                 </Link>
               </p>
@@ -197,8 +210,16 @@ export default function RegisterPage() {
             {/* Form */}
             <motion.form
               initial={{ opacity: 0, y: 20 }}
-              animate={shakeForm ? { x: [-10, 10, -10, 10, 0], opacity: 1, y: 0 } : { opacity: 1, y: 0 }}
-              transition={shakeForm ? { duration: 0.5 } : { type: "spring", stiffness: 260, damping: 20 }}
+              animate={
+                shakeForm
+                  ? { x: [-10, 10, -10, 10, 0], opacity: 1, y: 0 }
+                  : { opacity: 1, y: 0 }
+              }
+              transition={
+                shakeForm
+                  ? { duration: 0.5 }
+                  : { type: "spring", stiffness: 260, damping: 20 }
+              }
               onSubmit={handleSubmit}
               className="space-y-3"
             >
@@ -324,7 +345,11 @@ export default function RegisterPage() {
                     <motion.div
                       className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white dark:border-black/30 dark:border-t-black"
                       animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
                     />
                     {t("register.creating") || "Создаем..."}
                   </>
@@ -350,13 +375,7 @@ export default function RegisterPage() {
             <GoogleAuthButton
               className="w-full h-11 flex items-center justify-center gap-2 rounded-full border border-border bg-card hover:bg-muted transition-all text-white mt-4"
             >
-              <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5">
-                <path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.065 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"/>
-                <path fill="#34A853" d="M16.04 18.013c-1.09.703-2.474 1.078-4.04 1.078a7.077 7.077 0 0 1-6.723-4.823l-4.04 3.067A11.965 11.965 0 0 0 12 24c2.933 0 5.735-1.043 7.834-3l-3.793-2.987Z"/>
-                <path fill="#4A90E2" d="M19.834 21c2.195-2.048 3.62-5.096 3.62-9 0-.71-.109-1.473-.272-2.182H12v4.637h6.436c-.317 1.559-1.17 2.766-2.395 3.558L19.834 21Z"/>
-                <path fill="#FBBC05" d="M5.277 14.268A7.12 7.12 0 0 1 4.909 12c0-.782.125-1.533.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.719 1.233 5.313l4.044-3.045Z"/>
-              </svg>
-              <span className="text-sm font-medium text-white">Продолжить с Google</span>
+              ...
             </GoogleAuthButton>
             */}
           </div>
