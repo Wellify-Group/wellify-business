@@ -52,10 +52,34 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
           password,
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          // Улучшенная обработка ошибок
+          if (signInError.message?.toLowerCase().includes('email not confirmed') || 
+              signInError.message?.toLowerCase().includes('email_not_confirmed')) {
+            throw new Error('Email не подтвержден. Проверьте вашу почту и перейдите по ссылке для подтверждения.');
+          }
+          throw signInError;
+        }
 
         if (data.user) {
-          router.push("/dashboard");
+          // Проверяем роль и редиректим
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.user.id)
+            .maybeSingle();
+
+          const role = profile?.role || data.user.user_metadata?.role;
+
+          if (role === 'director') {
+            router.push('/dashboard/director');
+          } else if (role === 'manager') {
+            router.push('/dashboard/manager');
+          } else if (role === 'employee') {
+            router.push('/dashboard/employee');
+          } else {
+            router.push('/dashboard');
+          }
         }
       }
     } catch (err: any) {
