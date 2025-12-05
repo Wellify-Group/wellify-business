@@ -34,8 +34,27 @@ export default function RegisterPage() {
       } = await supabase.auth.getSession();
 
       if (session?.user) {
-        // Пользователь уже залогинен – отправляем в онбординг
-        router.replace("/onboarding/profile");
+        // Проверяем профиль пользователя
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, phone_verified, first_name, last_name")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        // Если профиль заполнен - редиректим в дашборд
+        if (profile && profile.first_name && profile.last_name) {
+          const role = profile.role || session.user.user_metadata?.role || "director";
+          if (role === "director") {
+            router.replace("/dashboard/director");
+          } else if (role === "manager") {
+            router.replace("/dashboard/manager");
+          } else {
+            router.replace("/dashboard/employee");
+          }
+        } else {
+          // Если профиль не заполнен - отправляем в онбординг
+          router.replace("/onboarding/profile");
+        }
         return;
       }
     };
@@ -170,13 +189,12 @@ export default function RegisterPage() {
 
   return (
     <main
-      className="min-h-screen flex items-center justify-center"
-      style={{
-        backgroundColor: "var(--color-background, #050B13)",
-        paddingTop: "104px",
-      }}
+      className="min-h-screen bg-[color:var(--color-background,#050B13)] pt-[104px]"
     >
-      <div className="w-full max-w-[520px] px-4 py-4 mx-auto">
+      <div 
+        className="max-w-[520px] mx-auto flex items-center justify-center px-4"
+        style={{ minHeight: "calc(100vh - 104px)" }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

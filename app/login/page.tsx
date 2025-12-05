@@ -55,8 +55,27 @@ export default function LoginPage() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        // User is already logged in - redirect to appropriate page
-        router.replace("/onboarding/profile");
+        // Проверяем профиль пользователя
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role, phone_verified, first_name, last_name")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        // Если профиль заполнен - редиректим в дашборд
+        if (profile && profile.first_name && profile.last_name) {
+          const role = profile.role || session.user.user_metadata?.role || "director";
+          if (role === "director") {
+            router.replace("/dashboard/director");
+          } else if (role === "manager") {
+            router.replace("/dashboard/manager");
+          } else {
+            router.replace("/dashboard/employee");
+          }
+        } else {
+          // Если профиль не заполнен - отправляем в онбординг
+          router.replace("/onboarding/profile");
+        }
         return;
       }
     };
@@ -265,13 +284,16 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '80px' }}>
-      <div className="flex-1 flex items-center justify-center px-4 py-6">
+    <main className="min-h-screen bg-[color:var(--color-background,#050B13)] pt-[104px]">
+      <div 
+        className="max-w-[520px] mx-auto flex items-center justify-center px-4"
+        style={{ minHeight: "calc(100vh - 104px)" }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="w-full max-w-[400px] relative z-10"
+          className="w-full relative z-10"
         >
           <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
           <div className="flex flex-col gap-6">
