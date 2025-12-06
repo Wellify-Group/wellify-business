@@ -1,242 +1,89 @@
 'use server'
 
-import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 
-export interface RegisterDirectorResult {
-  success: boolean
-  error?: string
-  message?: string
-}
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-export interface CreateDirectorProfileResult {
-  success: boolean
-  error?: string
-}
+const registerSchema = z.object({
+  firstName: z.string().min(1, 'Укажите имя'),
+  lastName: z.string().min(1, 'Укажите фамилию'),
+  middleName: z.string().optional(),
+  birthDate: z.string().min(1, 'Укажите дату рождения'),
+  email: z.string().email('Некорректный e-mail'),
+  password: z.string().min(6, 'Минимум 6 символов'),
+  phone: z.string().optional()
+})
 
-export async function registerDirector(
-  formData: FormData
-): Promise<RegisterDirectorResult> {
+export async function registerDirector(formData: FormData) {
   try {
-    const fullName = formData.get('full_name') as string
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirm_password') as string
-    const phone = formData.get('phone') as string | null
-    const businessName = formData.get('business_name') as string | null
+    const rawData = {
+      firstName: String(formData.get('firstName') || ''),
+      lastName: String(formData.get('lastName') || ''),
+      middleName: formData.get('middleName')
+        ? String(formData.get('middleName'))
+        : undefined,
+      birthDate: String(formData.get('birthDate') || ''),
+      email: String(formData.get('email') || ''),
+      password: String(formData.get('password') || ''),
+      phone: formData.get('phone') ? String(formData.get('phone')) : undefined
+    }
 
-    // Валидация
-    if (!fullName || !email || !password) {
+    const parsed = registerSchema.safeParse(rawData)
+
+    if (!parsed.success) {
+      const message =
+        parsed.error.errors[0]?.message || 'Проверьте корректность данных'
       return {
-        success: false,
-        error: 'Заполните все обязательные поля'
+        success: false as const,
+        error: message
       }
     }
 
-    if (password.length < 8) {
-      return {
-        success: false,
-        error: 'Пароль должен содержать минимум 8 символов'
-      }
-    }
-
-    if (password !== confirmPassword) {
-      return {
-        success: false,
-        error: 'Пароли не совпадают'
-      }
-    }
-
-    const normalizedEmail = email.toLowerCase().trim()
-
-    // Используем admin client для проверки существующего пользователя
-    const supabaseAdmin = createAdminSupabaseClient()
-
-    // Проверяем, существует ли пользователь
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-    const userExists = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    )
-
-    if (userExists) {
-      return {
-        success: false,
-        error: 'Пользователь с таким email уже зарегистрирован'
-      }
-    }
-
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    
-    // Создаем пользователя через admin API с email_confirm = false
-    // Это создаст пользователя, но не отправит email автоматически
-    const { data: signUpData, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
-      email: normalizedEmail,
-      password,
-      email_confirm: false, // Требуем подтверждение email
-      user_metadata: {
-        role: 'director',
-        full_name: fullName,
-        phone: phone || null,
-        business_name: businessName || null
-      }
-    })
-
-    if (signUpError || !signUpData.user) {
-      console.error('Sign up error:', signUpError)
-      return {
-        success: false,
-        error: signUpError?.message || 'Ошибка при регистрации'
-      }
-    }
-
-    // Обновляем профиль в таблице profiles
-    // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        full_name: fullName,
-        role: 'director',
-        phone: phone || null,
-        phone_verified: false
-      })
-      .eq('id', signUpData.user.id)
-
-    if (profileError) {
-      console.error('Profile update error:', profileError)
-      // Пытаемся удалить пользователя, если обновление профиля не удалось
-      await supabaseAdmin.auth.admin.deleteUser(signUpData.user.id)
-      return {
-        success: false,
-        error: 'Ошибка при обновлении профиля'
-      }
-    }
-
-    // Генерируем ссылку для подтверждения email
-    // В production Supabase должен автоматически отправить email при создании пользователя
-    // если в настройках проекта включена отправка email
-    // Для тестирования можно использовать generateLink
-    // Используем тип 'invite' для генерации ссылки подтверждения email для уже созданного пользователя
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'invite',
-      email: normalizedEmail,
-      options: {
-        redirectTo: `${siteUrl}/auth/callback`
-      }
-    })
-
-    if (linkError) {
-      console.error('Link generation error:', linkError)
-    } else if (linkData?.properties?.action_link) {
-      // В development режиме можно логировать ссылку для тестирования
-      // В production Supabase отправит email автоматически
-      console.log('[DEV] Email confirmation link:', linkData.properties.action_link)
-    }
-
-    return {
-      success: true,
-      message: 'Регистрация успешна! Проверьте вашу почту для подтверждения email.'
-    }
-  } catch (error: any) {
-    console.error('Register director error:', error)
-    return {
-      success: false,
-      error: error.message || 'Произошла ошибка при регистрации'
-    }
-  }
-}
-
-export async function createDirectorProfile(
-  formData: FormData
-): Promise<CreateDirectorProfileResult> {
-  try {
-    const email = formData.get('email') as string
-    const first_name = formData.get('first_name') as string
-    const last_name = formData.get('last_name') as string
-    const middle_name = formData.get('middle_name') as string
-    const birth_date = formData.get('birth_date') as string
-    const phone = formData.get('phone') as string
-
-    if (!email || !first_name || !last_name || !birth_date || !phone) {
-      return {
-        success: false,
-        error: 'Заполните все обязательные поля'
-      }
-    }
+    const { firstName, lastName, middleName, birthDate, email, password, phone } =
+      parsed.data
 
     const supabase = await createServerSupabaseClient()
 
-    // Получаем текущего пользователя из сессии
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const redirectBase =
+      process.env.NEXT_PUBLIC_SITE_URL || 'https://dev.wellifyglobal.com'
 
-    if (userError || !user) {
-      return {
-        success: false,
-        error: 'Не найдена активная сессия. Убедитесь, что вы подтвердили e-mail.'
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${redirectBase}/auth/confirm`,
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          middle_name: middleName,
+          birth_date: birthDate,
+          phone,
+          role: 'director'
+        }
       }
-    }
-
-    // Проверяем, что email подтвержден
-    if (!user.email_confirmed_at) {
-      return {
-        success: false,
-        error: 'E-mail не подтвержден. Вернитесь на шаг 2 и подтвердите e-mail.'
-      }
-    }
-
-    const userId = user.id
-    const userEmail = user.email ?? email.toLowerCase().trim()
-
-    // Обновляем профиль в таблице profiles с кириллическими названиями полей
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert(
-        {
-          uuid: userId,
-          email: userEmail,
-          имя: first_name.trim(),
-          фамилия: last_name.trim(),
-          отчество: middle_name.trim() || null,
-          дата_рождения: birth_date.trim(),
-          телефон: phone.trim(),
-        },
-        { onConflict: 'uuid' },
-      )
-
-    if (profileError) {
-      console.error('Profile upsert error:', profileError)
-      return {
-        success: false,
-        error: 'Не удалось сохранить профиль. Попробуйте ещё раз.'
-      }
-    }
-
-    // Обновляем метаданные пользователя
-    const { error: metadataError } = await supabase.auth.updateUser({
-      data: {
-        first_name,
-        last_name,
-        middle_name: middle_name || null,
-        birth_date,
-        phone,
-        role: 'director',
-      },
     })
 
-    if (metadataError) {
-      console.error('Metadata update error:', metadataError)
-      // Не критично, продолжаем
+    if (error) {
+      console.error('Supabase signUp error:', error)
+      return {
+        success: false as const,
+        error:
+          error.message ||
+          'Не удалось отправить письмо. Попробуйте ещё раз или позже.'
+      }
     }
 
+    // Сам факт вызова auth.signUp с включённым шаблоном Confirm sign up
+    // в Supabase запускает отправку письма.
     return {
-      success: true,
+      success: true as const,
+      message: `Письмо с подтверждением отправлено на ${email}. Перейдите по ссылке в письме.`
     }
-  } catch (error: any) {
-    console.error('Create director profile error:', error)
+  } catch (err) {
+    console.error('registerDirector unexpected error:', err)
     return {
-      success: false,
-      error: error.message || 'Произошла ошибка при создании профиля'
+      success: false as const,
+      error: 'Произошла ошибка при регистрации. Попробуйте ещё раз.'
     }
   }
 }
-

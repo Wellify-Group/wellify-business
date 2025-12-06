@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { registerDirector } from './actions';
 
 type Step = 1 | 2 | 3;
 
@@ -39,6 +40,7 @@ export default function RegisterDirectorPage() {
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [emailConfirmed, setEmailConfirmed] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // сбрасываем текст ошибок при смене шага
   useEffect(() => {
@@ -63,8 +65,8 @@ export default function RegisterDirectorPage() {
       setFormError('Укажите дату рождения.');
       return false;
     }
-    if (!form.password || form.password.length < 8) {
-      setFormError('Пароль должен содержать минимум 8 символов.');
+    if (!form.password || form.password.length < 6) {
+      setFormError('Пароль должен содержать минимум 6 символов.');
       return false;
     }
     if (form.password !== form.passwordConfirm) {
@@ -115,34 +117,31 @@ export default function RegisterDirectorPage() {
 
     setIsLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email.trim(),
-      password: form.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        data: {
-          first_name: form.firstName.trim(),
-          last_name: form.lastName.trim(),
-          middle_name: form.middleName.trim() || null,
-          birth_date: form.birthDate.trim(),
-        },
-      },
-    });
+    const formData = new FormData();
+    formData.append('firstName', form.firstName.trim());
+    formData.append('lastName', form.lastName.trim());
+    if (form.middleName.trim()) {
+      formData.append('middleName', form.middleName.trim());
+    }
+    formData.append('birthDate', form.birthDate.trim());
+    formData.append('email', form.email.trim());
+    formData.append('password', form.password);
+    if (form.phone.trim()) {
+      formData.append('phone', form.phone.trim());
+    }
+
+    const result = await registerDirector(formData);
 
     setIsLoading(false);
 
-    if (error) {
-      if ((error as any).code === 'user_already_exists') {
-        setFormError('Аккаунт с таким e-mail уже существует. Попробуйте войти.');
-      } else {
-        setFormError('Не удалось отправить письмо. Попробуйте ещё раз.');
-      }
+    if (!result.success) {
+      setFormError(result.error || 'Не удалось отправить письмо. Попробуйте ещё раз.');
       return;
     }
 
     setEmailSent(true);
     setFormSuccess(
-      `Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме, затем вернитесь и нажмите кнопку «Я подтвердил e-mail».`,
+      result.message || `Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме, затем вернитесь и нажмите кнопку «Я подтвердил e-mail».`,
     );
   };
 
@@ -273,81 +272,118 @@ export default function RegisterDirectorPage() {
 
   const renderStep1 = () => (
     <form onSubmit={handleNextFromStep1} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Имя <span className="text-destructive">*</span>
-          </label>
-          <input
-            value={form.firstName}
-            onChange={handleChange('firstName')}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="Иван"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Фамилия <span className="text-destructive">*</span>
-          </label>
-          <input
-            value={form.lastName}
-            onChange={handleChange('lastName')}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="Иванов"
-          />
-        </div>
-      </div>
+      <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Имя <span className="text-destructive">*</span>
+              </label>
+              <input
+                name="firstName"
+                type="text"
+                required
+                className="w-full h-11 bg-card border border-border rounded-full px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-card transition-all"
+                placeholder="Имя"
+                value={form.firstName}
+                onChange={handleChange('firstName')}
+              />
+            </div>
 
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">Отчество</label>
-        <input
-          value={form.middleName}
-          onChange={handleChange('middleName')}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-          placeholder="Иванович"
-        />
-      </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Фамилия <span className="text-destructive">*</span>
+              </label>
+              <input
+                name="lastName"
+                type="text"
+                required
+                className="w-full h-11 bg-card border border-border rounded-full px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-card transition-all"
+                placeholder="Фамилия"
+                value={form.lastName}
+                onChange={handleChange('lastName')}
+              />
+            </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Дата рождения <span className="text-destructive">*</span>
-          </label>
-          <input
-            value={form.birthDate}
-            onChange={handleChange('birthDate')}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="ДД.ММ.ГГГГ"
-          />
-        </div>
-      </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1.5">Отчество</label>
+              <input
+                name="middleName"
+                type="text"
+                className="w-full h-11 bg-card border border-border rounded-full px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-card transition-all"
+                placeholder="Отчество (необязательно)"
+                value={form.middleName}
+                onChange={handleChange('middleName')}
+              />
+            </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Пароль <span className="text-destructive">*</span>
-          </label>
-          <input
-            type="password"
-            value={form.password}
-            onChange={handleChange('password')}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="Минимум 8 символов"
-          />
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Дата рождения <span className="text-destructive">*</span>
+              </label>
+              <input
+                name="birthDate"
+                type="date"
+                required
+                className="w-full h-11 bg-card border border-border rounded-full px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-card transition-all"
+                value={form.birthDate}
+                onChange={handleChange('birthDate')}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Формат: ДД.ММ.ГГГГ
+              </p>
+            </div>
+
+            {/* Пароль + подтверждение с одним глазиком */}
+            <div className="space-y-4 md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    Пароль <span className="text-destructive">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      className="w-full h-11 bg-card border border-border rounded-full px-4 pr-10 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-card transition-all"
+                      placeholder="Минимум 6 символов"
+                      value={form.password}
+                      onChange={handleChange('password')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(prev => !prev)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    Подтвердите пароль <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    name="confirmPassword"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    className="w-full h-11 bg-card border border-border rounded-full px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-card transition-all"
+                    placeholder="Повторите пароль"
+                    value={form.passwordConfirm}
+                    onChange={handleChange('passwordConfirm')}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Подтвердите пароль <span className="text-destructive">*</span>
-          </label>
-          <input
-            type="password"
-            value={form.passwordConfirm}
-            onChange={handleChange('passwordConfirm')}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="Повторите пароль"
-          />
-        </div>
-      </div>
 
       {renderErrorsAndSuccess()}
 
