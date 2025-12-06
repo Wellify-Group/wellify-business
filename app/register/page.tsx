@@ -429,7 +429,7 @@ export default function RegisterDirectorPage() {
   );
 
   return (
-    <main className="flex h-[calc(100vh-72px)] pt-[72px] items-center justify-center px-4">
+    <main className="flex mt-[72px] min-h-[calc(100vh-72px)] items-center justify-center px-4">
       <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <CardHeader className="pb-4">
           {renderStepHeader()}
