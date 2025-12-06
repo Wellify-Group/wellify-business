@@ -150,7 +150,6 @@ export async function createDirectorProfile(
   formData: FormData
 ): Promise<CreateDirectorProfileResult> {
   try {
-    const authUserId = formData.get('auth_user_id') as string
     const email = formData.get('email') as string
     const first_name = formData.get('first_name') as string
     const last_name = formData.get('last_name') as string
@@ -158,7 +157,7 @@ export async function createDirectorProfile(
     const birth_date = formData.get('birth_date') as string
     const phone = formData.get('phone') as string
 
-    if (!authUserId || !email || !first_name || !last_name || !birth_date || !phone) {
+    if (!email || !first_name || !last_name || !birth_date || !phone) {
       return {
         success: false,
         error: 'Заполните все обязательные поля'
@@ -167,38 +166,52 @@ export async function createDirectorProfile(
 
     const supabase = await createServerSupabaseClient()
 
+    // Получаем текущего пользователя из сессии
     const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    if (userError || !user || user.id !== authUserId) {
+    if (userError || !user) {
       return {
         success: false,
-        error: 'Не найдена активная сессия'
+        error: 'Не найдена активная сессия. Убедитесь, что вы подтвердили e-mail.'
       }
     }
 
-    const full_name = [last_name, first_name, middle_name].filter(Boolean).join(' ')
+    // Проверяем, что email подтвержден
+    if (!user.email_confirmed_at) {
+      return {
+        success: false,
+        error: 'E-mail не подтвержден. Вернитесь на шаг 2 и подтвердите e-mail.'
+      }
+    }
 
+    const userId = user.id
+    const userEmail = user.email ?? email.toLowerCase().trim()
+
+    // Обновляем профиль в таблице profiles с кириллическими названиями полей
     const { error: profileError } = await supabase
       .from('profiles')
       .upsert(
         {
-          id: authUserId,
-          email: email.toLowerCase().trim(),
-          full_name: full_name.trim(),
+          uuid: userId,
+          email: userEmail,
+          имя: first_name.trim(),
+          фамилия: last_name.trim(),
+          отчество: middle_name.trim() || null,
+          дата_рождения: birth_date.trim(),
+          телефон: phone.trim(),
         },
-        {
-          onConflict: 'id',
-        }
+        { onConflict: 'uuid' },
       )
 
     if (profileError) {
       console.error('Profile upsert error:', profileError)
       return {
         success: false,
-        error: 'Ошибка при создании профиля'
+        error: 'Не удалось сохранить профиль. Попробуйте ещё раз.'
       }
     }
 
+    // Обновляем метаданные пользователя
     const { error: metadataError } = await supabase.auth.updateUser({
       data: {
         first_name,
@@ -212,6 +225,7 @@ export async function createDirectorProfile(
 
     if (metadataError) {
       console.error('Metadata update error:', metadataError)
+      // Не критично, продолжаем
     }
 
     return {

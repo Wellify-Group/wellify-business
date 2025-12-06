@@ -52,8 +52,7 @@ export default function ConfirmEmailInner() {
             </div>
             <h1 className="mb-2 text-xl font-semibold">E-mail подтверждён</h1>
             <p className="text-sm text-muted-foreground">
-              Ваш адрес e-mail успешно подтверждён. Это окно можно закрыть и вернуться к регистрации WELLIFY
-              business.
+              E-mail подтвержден. Вы можете закрыть это окно и вернуться на страницу регистрации.
             </p>
           </>
         )}
