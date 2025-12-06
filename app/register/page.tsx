@@ -269,21 +269,22 @@ export default function RegisterDirectorPage() {
     }
 
     setIsLoading(true);
+    setFormError(null);
 
-    const formData = new FormData();
-    formData.append('email', form.email.trim());
-    formData.append('first_name', form.firstName.trim());
-    formData.append('last_name', form.lastName.trim());
-    formData.append('middle_name', form.middleName.trim() || '');
-    formData.append('birth_date', form.birthDate.trim());
-    formData.append('phone', form.phone.trim());
-
-    const result = await createDirectorProfile(formData);
+    const result = await createDirectorProfile({
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      middleName: form.middleName?.trim() || undefined,
+      birthDate: form.birthDate,            // уже в нужном формате ДД.ММ.ГГГГ
+      email: form.email.trim(),
+      password: form.password,
+      phone: form.phone?.trim() || undefined,
+    });
 
     setIsLoading(false);
 
     if (!result.success) {
-      setFormError(result.error || 'Не удалось сохранить профиль. Попробуйте ещё раз.');
+      setFormError(result.error ?? 'Проверьте корректность данных');
       return;
     }
 
