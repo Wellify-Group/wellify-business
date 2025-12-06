@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -10,9 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import CenteredLayout from '@/components/CenteredLayout'
+import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createDirectorProfile } from './actions'
 
 type Step = 1 | 2 | 3
 
@@ -32,8 +34,9 @@ export default function RegisterDirectorPage() {
 
   const [step, setStep] = useState<Step>(1)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [emailInfo, setEmailInfo] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailConfirmed, setEmailConfirmed] = useState(false)
 
   const [form, setForm] = useState<FormState>({
     first_name: '',
@@ -46,42 +49,45 @@ export default function RegisterDirectorPage() {
     phone: '',
   })
 
-  // ---------- helpers ----------
+  useEffect(() => {
+    setFormError(null)
+  }, [step])
 
   const handleChange =
     (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setForm(prev => ({ ...prev, [field]: e.target.value }))
-      setError(null)
+      setFormError(null)
     }
 
   const validateStep1 = () => {
     if (!form.first_name.trim() || !form.last_name.trim()) {
-      setError('Укажите имя и фамилию')
+      setFormError('Укажите имя и фамилию')
       return false
     }
     if (!form.birth_date) {
-      setError('Укажите дату рождения')
+      setFormError('Укажите дату рождения')
       return false
     }
-    if (!form.password || form.password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов')
+    if (!form.password || form.password.length < 8) {
+      setFormError('Пароль должен содержать минимум 8 символов')
       return false
     }
     if (form.password !== form.confirm_password) {
-      setError('Пароли не совпадают')
+      setFormError('Пароли не совпадают')
       return false
     }
     return true
   }
 
   const validateStep2 = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!form.email.trim()) {
-      setError('Укажите e-mail')
+      setFormError('Укажите e-mail')
       return false
     }
-    if (!form.email.includes('@')) {
-      setError('Введите корректный e-mail')
+    if (!emailRegex.test(form.email)) {
+      setFormError('Введите корректный e-mail')
       return false
     }
     return true
@@ -89,32 +95,140 @@ export default function RegisterDirectorPage() {
 
   const validateStep3 = () => {
     if (!form.phone.trim()) {
-      setError('Укажите телефон')
+      setFormError('Укажите телефон')
       return false
     }
     return true
   }
 
   const handleStep1Next = () => {
-    setError(null)
+    setFormError(null)
     if (!validateStep1()) return
     setStep(2)
   }
 
-  const handleStep2Next = () => {
-    setError(null)
-    setEmailInfo(null)
+  const handleStep2Submit = async () => {
+    setFormError(null)
     if (!validateStep2()) return
 
-    setEmailInfo(
-      'Мы отправили письмо с подтверждением на указанный e-mail. Перейдите по ссылке из письма, чтобы подтвердить адрес.'
-    )
-    setStep(3)
+    setIsLoading(true)
+    setFormError(null)
+
+    try {
+      const supabase = createBrowserSupabaseClient()
+
+      const { data, error } = await supabase.auth.signUp({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          data: {
+            first_name: form.first_name,
+            last_name: form.last_name,
+            middle_name: form.middle_name || null,
+            birth_date: form.birth_date,
+          },
+        },
+      })
+
+      if (error) {
+        if (error.message.includes('already registered') || error.message.includes('already exists')) {
+          setFormError('Аккаунт с таким e-mail уже существует. Попробуйте войти.')
+        } else {
+          setFormError('Не удалось отправить письмо. Попробуйте ещё раз.')
+        }
+        setIsLoading(false)
+        return
+      }
+
+      setEmailSent(true)
+      setEmailConfirmed(false)
+    } catch (err: any) {
+      setFormError('Произошла ошибка. Попробуйте ещё раз.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEmailConfirmed = async () => {
+    setFormError(null)
+    setIsLoading(true)
+
+    try {
+      const supabase = createBrowserSupabaseClient()
+      const { data: { user }, error } = await supabase.auth.getUser()
+
+      if (error || !user) {
+        setFormError('Не найдена активная сессия. Обновите страницу.')
+        setIsLoading(false)
+        return
+      }
+
+      if (!user.email_confirmed_at || user.email !== form.email.trim().toLowerCase()) {
+        setFormError('Мы не видим подтверждённый e-mail. Убедитесь, что вы перешли по ссылке в письме и попробуйте ещё раз.')
+        setIsLoading(false)
+        return
+      }
+
+      setEmailConfirmed(true)
+      setFormError(null)
+      setStep(3)
+    } catch (err: any) {
+      setFormError('Произошла ошибка. Попробуйте ещё раз.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleStep3Submit = async () => {
+    setFormError(null)
+    if (!validateStep3()) return
+
+    setIsLoading(true)
+    setFormError(null)
+
+    try {
+      const supabase = createBrowserSupabaseClient()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        setFormError('Не найдена активная сессия. Обновите страницу и убедитесь, что e-mail подтверждён.')
+        setIsLoading(false)
+        return
+      }
+
+      if (!user.email_confirmed_at) {
+        setFormError('E-mail не подтверждён. Вернитесь на шаг 2 и подтвердите e-mail.')
+        setIsLoading(false)
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('auth_user_id', user.id)
+      formData.append('email', user.email || form.email)
+      formData.append('first_name', form.first_name)
+      formData.append('last_name', form.last_name)
+      formData.append('middle_name', form.middle_name || '')
+      formData.append('birth_date', form.birth_date)
+      formData.append('phone', form.phone)
+
+      const result = await createDirectorProfile(formData)
+
+      if (result.error) {
+        setFormError(result.error)
+        setIsLoading(false)
+        return
+      }
+
+      router.push('/dashboard/director')
+    } catch (err: any) {
+      setFormError('Произошла ошибка при завершении регистрации')
+      setIsLoading(false)
+    }
   }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    setError(null)
 
     if (step === 1) {
       handleStep1Next()
@@ -122,28 +236,15 @@ export default function RegisterDirectorPage() {
     }
 
     if (step === 2) {
-      handleStep2Next()
+      await handleStep2Submit()
       return
     }
 
-    // step === 3
-    if (!validateStep3()) return
-
-    try {
-      setIsLoading(true)
-
-      // TODO: здесь будет реальный вызов registerDirector / supabase.auth.signUp
-      await new Promise(res => setTimeout(res, 800))
-
-      router.push('/dashboard/director')
-    } catch (err: any) {
-      setError(err.message || 'Произошла ошибка при регистрации')
-    } finally {
-      setIsLoading(false)
+    if (step === 3) {
+      await handleStep3Submit()
+      return
     }
   }
-
-  // ---------- UI ----------
 
   const renderStepIndicator = () => {
     const items = [
@@ -176,30 +277,48 @@ export default function RegisterDirectorPage() {
             </div>
           ))}
         </div>
-        <div className="mt-3 text-xs text-center text-slate-500">
-          Шаг {step} из 3
-        </div>
       </div>
     )
   }
 
   const renderError = () => (
     <div className="min-h-[24px] mb-2">
-      {error && (
+      {formError && (
         <div className="flex items-center gap-2 text-sm text-red-400 bg-red-900/10 border border-red-900/40 rounded-xl px-3 py-2">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          <span>{error}</span>
+          <span>{formError}</span>
         </div>
       )}
     </div>
   )
 
-  const renderEmailInfo = () =>
-    step >= 2 && emailInfo ? (
-      <div className="mt-2 mb-4 rounded-xl border border-emerald-900/40 bg-emerald-900/15 px-3 py-2 text-xs text-emerald-300">
-        {emailInfo}
-      </div>
-    ) : null
+  const renderEmailSuccess = () => {
+    if (step === 2 && emailSent) {
+      return (
+        <div className="mt-2 mb-4 rounded-xl border border-emerald-900/40 bg-emerald-900/15 px-3 py-2 text-xs text-emerald-300">
+          <p className="mb-2">
+            Письмо отправлено на <strong>{form.email}</strong>. Перейдите по ссылке в письме, чтобы подтвердить e-mail. После подтверждения вернитесь к этой странице и нажмите кнопку «Я подтвердил e-mail».
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full mt-2 rounded-xl border-emerald-700 bg-emerald-900/20 text-emerald-300 hover:bg-emerald-900/30"
+            onClick={handleEmailConfirmed}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Проверка...' : 'Я подтвердил e-mail'}
+          </Button>
+          {emailConfirmed && (
+            <div className="mt-2 flex items-center gap-2 text-emerald-300">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="text-xs">E-mail подтверждён</span>
+            </div>
+          )}
+        </div>
+      )
+    }
+    return null
+  }
 
   const renderStepFields = () => {
     if (step === 1) {
@@ -263,7 +382,7 @@ export default function RegisterDirectorPage() {
                 className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
                 value={form.password}
                 onChange={handleChange('password')}
-                placeholder="Минимум 6 символов"
+                placeholder="Минимум 8 символов"
               />
             </div>
             <div>
@@ -295,13 +414,16 @@ export default function RegisterDirectorPage() {
               value={form.email}
               onChange={handleChange('email')}
               placeholder="you@example.com"
+              disabled={emailSent}
             />
           </div>
-          {renderEmailInfo()}
-          <p className="text-xs text-slate-500">
-            На этом шаге мы отправим письмо с подтверждением на указанный
-            адрес. После подтверждения вы сможете завершить регистрацию.
-          </p>
+          {renderEmailSuccess()}
+          {!emailSent && (
+            <p className="text-xs text-slate-500">
+              На этом шаге мы отправим письмо с подтверждением на указанный
+              адрес. После подтверждения вы сможете завершить регистрацию.
+            </p>
+          )}
         </>
       )
     }
@@ -362,7 +484,7 @@ export default function RegisterDirectorPage() {
                 variant="outline"
                 className="w-28 rounded-xl border-slate-700 bg-slate-900/60"
                 onClick={() => {
-                  setError(null)
+                  setFormError(null)
                   if (step > 1) setStep(prev => (prev - 1) as Step)
                   else router.push('/auth/login')
                 }}
@@ -373,12 +495,14 @@ export default function RegisterDirectorPage() {
               <Button
                 type="submit"
                 className="flex-1 rounded-xl"
-                disabled={isLoading}
+                disabled={isLoading || (step === 2 && emailSent && !emailConfirmed)}
               >
                 {isLoading
-                  ? 'Регистрация...'
+                  ? 'Обработка...'
                   : step === 3
                   ? 'Завершить регистрацию'
+                  : step === 2 && emailSent
+                  ? 'Ожидание подтверждения...'
                   : 'Дальше'}
               </Button>
             </div>

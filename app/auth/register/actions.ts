@@ -10,6 +10,11 @@ export interface RegisterDirectorResult {
   message?: string
 }
 
+export interface CreateDirectorProfileResult {
+  success: boolean
+  error?: string
+}
+
 export async function registerDirector(
   formData: FormData
 ): Promise<RegisterDirectorResult> {
@@ -137,6 +142,86 @@ export async function registerDirector(
     return {
       success: false,
       error: error.message || 'Произошла ошибка при регистрации'
+    }
+  }
+}
+
+export async function createDirectorProfile(
+  formData: FormData
+): Promise<CreateDirectorProfileResult> {
+  try {
+    const authUserId = formData.get('auth_user_id') as string
+    const email = formData.get('email') as string
+    const first_name = formData.get('first_name') as string
+    const last_name = formData.get('last_name') as string
+    const middle_name = formData.get('middle_name') as string
+    const birth_date = formData.get('birth_date') as string
+    const phone = formData.get('phone') as string
+
+    if (!authUserId || !email || !first_name || !last_name || !birth_date || !phone) {
+      return {
+        success: false,
+        error: 'Заполните все обязательные поля'
+      }
+    }
+
+    const supabase = await createServerSupabaseClient()
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user || user.id !== authUserId) {
+      return {
+        success: false,
+        error: 'Не найдена активная сессия'
+      }
+    }
+
+    const full_name = [last_name, first_name, middle_name].filter(Boolean).join(' ')
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: authUserId,
+          email: email.toLowerCase().trim(),
+          full_name: full_name.trim(),
+        },
+        {
+          onConflict: 'id',
+        }
+      )
+
+    if (profileError) {
+      console.error('Profile upsert error:', profileError)
+      return {
+        success: false,
+        error: 'Ошибка при создании профиля'
+      }
+    }
+
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: {
+        first_name,
+        last_name,
+        middle_name: middle_name || null,
+        birth_date,
+        phone,
+        role: 'director',
+      },
+    })
+
+    if (metadataError) {
+      console.error('Metadata update error:', metadataError)
+    }
+
+    return {
+      success: true,
+    }
+  } catch (error: any) {
+    console.error('Create director profile error:', error)
+    return {
+      success: false,
+      error: error.message || 'Произошла ошибка при создании профиля'
     }
   }
 }
