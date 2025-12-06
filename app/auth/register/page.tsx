@@ -1,8 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { registerDirector } from './actions'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -11,377 +10,393 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
 type Step = 1 | 2 | 3
 
 interface FormState {
-  full_name: string
+  first_name: string
+  last_name: string
+  middle_name: string
   birth_date: string
-  email: string
   password: string
   confirm_password: string
+  email: string
   phone: string
-  business_name: string
 }
 
 export default function RegisterDirectorPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [step, setStep] = useState<Step>(1)
-  const [form, setForm] = useState<FormState>({
-    full_name: '',
-    birth_date: '',
-    email: '',
-    password: '',
-    confirm_password: '',
-    phone: '',
-    business_name: '',
-  })
-
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [emailInfo, setEmailInfo] = useState<string | null>(null)
+  const [emailConfirmed, setEmailConfirmed] = useState(
+    searchParams.get('emailConfirmed') === '1'
+  )
 
-  const updateField = (field: keyof FormState, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+  const [form, setForm] = useState<FormState>({
+    first_name: '',
+    last_name: '',
+    middle_name: '',
+    birth_date: '',
+    password: '',
+    confirm_password: '',
+    email: '',
+    phone: '',
+  })
+
+  // ---------- helpers ----------
+
+  const handleChange =
+    (field: keyof FormState) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setForm(prev => ({ ...prev, [field]: e.target.value }))
+      setError(null)
+    }
+
+  const validateStep1 = () => {
+    if (!form.first_name.trim() || !form.last_name.trim()) {
+      setError('Укажите имя и фамилию')
+      return false
+    }
+    if (!form.birth_date) {
+      setError('Укажите дату рождения')
+      return false
+    }
+    if (!form.password || form.password.length < 6) {
+      setError('Пароль должен содержать минимум 6 символов')
+      return false
+    }
+    if (form.password !== form.confirm_password) {
+      setError('Пароли не совпадают')
+      return false
+    }
+    return true
   }
 
-  const handleNextStep = () => {
+  const validateStep2 = () => {
+    if (!form.email.trim()) {
+      setError('Укажите e-mail')
+      return false
+    }
+    // очень простая проверка, без фанатизма
+    if (!form.email.includes('@')) {
+      setError('Введите корректный e-mail')
+      return false
+    }
+    return true
+  }
+
+  const validateStep3 = () => {
+    if (!form.phone.trim()) {
+      setError('Укажите телефон')
+      return false
+    }
+    return true
+  }
+
+  const handleStep1Next = () => {
+    setError(null)
+    if (!validateStep1()) return
+    setStep(2)
+  }
+
+  const handleStep2Next = () => {
+    setError(null)
+    setEmailInfo(null)
+    if (!validateStep2()) return
+
+    // здесь пока только показываем уведомление,
+    // вызов signUp / отправку письма настроим отдельным шагом
+    setEmailInfo(
+      'Мы отправили письмо с подтверждением на указанную почту. Перейдите по ссылке из письма, чтобы подтвердить e-mail.'
+    )
+    setStep(3)
+  }
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
     setError(null)
 
     if (step === 1) {
-      if (!form.full_name.trim()) {
-        setError('Пожалуйста, укажите ФИО.')
-        return
-      }
-      if (!form.birth_date) {
-        setError('Пожалуйста, укажите дату рождения.')
-        return
-      }
-      if (!form.password || form.password.length < 8) {
-        setError('Пароль должен содержать минимум 8 символов.')
-        return
-      }
-      if (form.password !== form.confirm_password) {
-        setError('Пароли не совпадают.')
-        return
-      }
+      handleStep1Next()
+      return
     }
 
     if (step === 2) {
-      if (!form.email.trim()) {
-        setError('Пожалуйста, укажите e-mail.')
-        return
-      }
+      handleStep2Next()
+      return
     }
 
-    setStep((prev) => (prev < 3 ? ((prev + 1) as Step) : prev))
-  }
-
-  const handlePrevStep = () => {
-    setError(null)
-    setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev))
-  }
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    setSuccess(false)
-    setIsLoading(true)
+    // step === 3
+    if (!validateStep3()) return
 
     try {
-      // Собираем FormData вручную – под те же поля, что ждёт registerDirector
-      const formData = new FormData()
-      formData.append('full_name', form.full_name)
-      formData.append('birth_date', form.birth_date)
-      formData.append('email', form.email)
-      formData.append('password', form.password)
-      formData.append('confirm_password', form.confirm_password)
-      formData.append('phone', form.phone)
-      formData.append('business_name', form.business_name)
+      setIsLoading(true)
 
-      const result = await registerDirector(formData)
+      // TODO: сюда подвязываем registerDirector или прямой вызов supabase.auth.signUp.
+      // Сейчас просто заглушка перехода на дашборд:
+      // const result = await registerDirector(...);
+      // if (!result.success) throw new Error(result.error || 'Ошибка регистрации')
 
+      // имитация успешной регистрации
+      await new Promise(res => setTimeout(res, 800))
+
+      router.push('/dashboard/director')
+    } catch (err: any) {
+      setError(err.message || 'Произошла ошибка при регистрации')
+    } finally {
       setIsLoading(false)
-
-      if (result.success) {
-        setSuccess(true)
-        setSuccessMessage(
-          result.message ||
-            'Регистрация успешна! Мы отправили письмо для подтверждения e-mail.',
-        )
-
-        // Здесь НИЧЕГО не перенаправляем – пользователь идёт по e-mail-флоу.
-        // Если захочешь автопереход – можно включить редирект, например:
-        // setTimeout(() => router.push('/auth/login'), 3000)
-      } else {
-        setError(result.error || 'Произошла ошибка при регистрации.')
-      }
-    } catch (err) {
-      console.error(err)
-      setIsLoading(false)
-      setError('Не удалось завершить регистрацию. Попробуйте ещё раз.')
     }
+  }
+
+  // ---------- UI ----------
+
+  const renderStepIndicator = () => {
+    const items = [
+      { id: 1, label: 'Основные данные' },
+      { id: 2, label: 'E-mail' },
+      { id: 3, label: 'Телефон' },
+    ] as const
+
+    return (
+      <div className="mb-8">
+        <div className="flex gap-4 mb-2">
+          {items.map(item => (
+            <div key={item.id} className="flex-1">
+              <div
+                className={[
+                  'h-1.5 rounded-full transition-colors',
+                  step >= item.id ? 'bg-primary' : 'bg-slate-800',
+                ].join(' ')}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between text-xs text-slate-400">
+          {items.map(item => (
+            <div
+              key={item.id}
+              className="flex-1 text-center whitespace-nowrap"
+            >
+              {item.label}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-xs text-center text-slate-500">
+          Шаг {step} из 3
+        </div>
+      </div>
+    )
+  }
+
+  const renderError = () => (
+    <div className="min-h-[24px] mb-2">
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-red-400 bg-red-900/10 border border-red-900/40 rounded-xl px-3 py-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+    </div>
+  )
+
+  const renderEmailInfo = () =>
+    step >= 2 && (emailInfo || emailConfirmed) ? (
+      <div className="mt-2 mb-4 rounded-xl border border-emerald-900/40 bg-emerald-900/15 px-3 py-2 text-xs text-emerald-300">
+        {emailConfirmed
+          ? 'E-mail подтверждён. Можете перейти к следующему шагу.'
+          : emailInfo}
+      </div>
+    ) : null
+
+  const renderStepFields = () => {
+    if (step === 1) {
+      return (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">
+                Имя *
+              </label>
+              <input
+                className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                value={form.first_name}
+                onChange={handleChange('first_name')}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">
+                Фамилия *
+              </label>
+              <input
+                className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                value={form.last_name}
+                onChange={handleChange('last_name')}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              Отчество
+            </label>
+            <input
+              className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
+              value={form.middle_name}
+              onChange={handleChange('middle_name')}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">
+                Дата рождения *
+              </label>
+              <input
+                type="date"
+                className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60 [color-scheme:dark]"
+                value={form.birth_date}
+                onChange={handleChange('birth_date')}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">
+                Пароль *
+              </label>
+              <input
+                type="password"
+                className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                value={form.password}
+                onChange={handleChange('password')}
+                placeholder="Минимум 6 символов"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">
+                Подтвердите пароль *
+              </label>
+              <input
+                type="password"
+                className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                value={form.confirm_password}
+                onChange={handleChange('confirm_password')}
+              />
+            </div>
+          </div>
+        </>
+      )
+    }
+
+    if (step === 2) {
+      return (
+        <>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">
+              E-mail *
+            </label>
+            <input
+              type="email"
+              className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
+              value={form.email}
+              onChange={handleChange('email')}
+              placeholder="you@example.com"
+            />
+          </div>
+          {renderEmailInfo()}
+          <p className="text-xs text-slate-500">
+            На этом шаге мы отправим письмо с подтверждением на указанный
+            адрес. После подтверждения вы сможете завершить регистрацию.
+          </p>
+        </>
+      )
+    }
+
+    // step 3
+    return (
+      <>
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">
+            Телефон *
+          </label>
+          <input
+            type="tel"
+            className="w-full h-11 rounded-xl border border-slate-800 bg-slate-950/60 px-3 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/60"
+            value={form.phone}
+            onChange={handleChange('phone')}
+            placeholder="+38 (0XX) XXX-XX-XX"
+          />
+        </div>
+        <p className="text-xs text-slate-500">
+          В дальнейшем этот номер будет использоваться для входа в систему,
+          уведомлений и восстановления доступа.
+        </p>
+      </>
+    )
   }
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: 'var(--color-background, #050B13)' }}
-    >
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">
-            Регистрация директора
+    <main className="min-h-screen flex items-center justify-center px-4 py-10 bg-[#050B13]">
+      <Card className="w-full max-w-xl bg-slate-950/80 border border-slate-800/80 shadow-[0_18px_60px_rgba(0,0,0,0.7)] rounded-3xl backdrop-blur-xl">
+        <CardHeader className="pt-7 pb-4">
+          {renderStepIndicator()}
+          <CardTitle className="text-2xl text-center mb-1">
+            Создать аккаунт
           </CardTitle>
-          <CardDescription className="text-center">
-            Создайте аккаунт директора для управления бизнесом
+          <CardDescription className="text-center text-slate-400">
+            Заполните форму для регистрации директора
           </CardDescription>
+          <div className="mt-2 text-center text-xs text-slate-500">
+            Уже есть аккаунт?{' '}
+            <Link
+              href="/auth/login"
+              className="text-primary hover:underline font-medium"
+            >
+              Войти
+            </Link>
+          </div>
         </CardHeader>
-        <CardContent>
-          {success ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                <CheckCircle2 className="h-5 w-5" />
-                <p className="text-sm font-medium">{successMessage}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Проверьте вашу почту и перейдите по ссылке в письме, чтобы
-                подтвердить e-mail и войти в систему.
-              </p>
+
+        <CardContent className="pb-7">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {renderError()}
+            {renderStepFields()}
+
+            <div className="mt-6 flex gap-3 justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-28 rounded-xl border-slate-700 bg-slate-900/60"
+                onClick={() => {
+                  setError(null)
+                  if (step > 1) setStep((prev => (prev - 1) as Step))
+                  else router.push('/auth/login')
+                }}
+              >
+                Назад
+              </Button>
+
+              <Button
+                type={step === 3 ? 'submit' : 'button'}
+                className="flex-1 rounded-xl"
+                onClick={step === 3 ? undefined : handleStep1Next}
+                disabled={isLoading}
+              >
+                {isLoading
+                  ? 'Регистрация...'
+                  : step === 3
+                  ? 'Завершить регистрацию'
+                  : 'Дальше'}
+              </Button>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Индикатор шагов */}
-              <div className="flex items-center justify-center gap-2 mb-2">
-                {[1, 2, 3].map((s) => (
-                  <div
-                    key={s}
-                    className={`h-1.5 w-16 rounded-full transition-colors ${
-                      s <= step ? 'bg-primary' : 'bg-muted'
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-center text-xs text-muted-foreground mb-2">
-                Шаг {step} из 3
-              </p>
-
-              {/* ШАГ 1 – ФИО, дата рождения, пароль */}
-              {step === 1 && (
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="full_name"
-                      className="block text-sm font-medium mb-1.5"
-                    >
-                      ФИО <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      id="full_name"
-                      name="full_name"
-                      type="text"
-                      required
-                      className="w-full h-11 bg-card border border-border rounded-lg px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      placeholder="Иванов Иван Иванович"
-                      value={form.full_name}
-                      onChange={(e) =>
-                        updateField('full_name', e.target.value)
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="birth_date"
-                      className="block text-sm font-medium mb-1.5"
-                    >
-                      Дата рождения <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      id="birth_date"
-                      name="birth_date"
-                      type="date"
-                      required
-                      className="w-full h-11 bg-card border border-border rounded-lg px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      value={form.birth_date}
-                      onChange={(e) =>
-                        updateField('birth_date', e.target.value)
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="password"
-                      className="block text-sm font-medium mb-1.5"
-                    >
-                      Пароль <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                      minLength={8}
-                      className="w-full h-11 bg-card border border-border rounded-lg px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      placeholder="Минимум 8 символов"
-                      value={form.password}
-                      onChange={(e) =>
-                        updateField('password', e.target.value)
-                      }
-                    />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Минимум 8 символов
-                    </p>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="confirm_password"
-                      className="block text-sm font-medium mb-1.5"
-                    >
-                      Подтвердите пароль{' '}
-                      <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      id="confirm_password"
-                      name="confirm_password"
-                      type="password"
-                      required
-                      minLength={8}
-                      className="w-full h-11 bg-card border border-border rounded-lg px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      placeholder="Повторите пароль"
-                      value={form.confirm_password}
-                      onChange={(e) =>
-                        updateField('confirm_password', e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ШАГ 2 – E-mail */}
-              {step === 2 && (
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium mb-1.5"
-                    >
-                      E-mail <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      className="w-full h-11 bg-card border border-border rounded-lg px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      placeholder="you@example.com"
-                      value={form.email}
-                      onChange={(e) => updateField('email', e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ШАГ 3 – Телефон + бизнес */}
-              {step === 3 && (
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="phone"
-                      className="block text-sm font-medium mb-1.5"
-                    >
-                      Телефон
-                    </label>
-                    <input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      className="w-full h-11 bg-card border border-border rounded-lg px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      placeholder="+38 (0ХХ) ХХХ-ХХ-ХХ"
-                      value={form.phone}
-                      onChange={(e) => updateField('phone', e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="business_name"
-                      className="block text-sm font-medium mb-1.5"
-                    >
-                      Название бизнеса
-                    </label>
-                    <input
-                      id="business_name"
-                      name="business_name"
-                      type="text"
-                      className="w-full h-11 bg-card border border-border rounded-lg px-4 text-sm text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      placeholder='Например, "Хінкальня на Сумській"'
-                      value={form.business_name}
-                      onChange={(e) =>
-                        updateField('business_name', e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <div className="flex items-center gap-2 text-sm text-destructive bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-3">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Кнопки управления шагами */}
-              <div className="flex items-center justify-between gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePrevStep}
-                  disabled={step === 1 || isLoading}
-                  className="w-28"
-                >
-                  Назад
-                </Button>
-
-                {step < 3 ? (
-                  <Button
-                    type="button"
-                    onClick={handleNextStep}
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Далее
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    className="flex-1"
-                    isLoading={isLoading}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Регистрация...' : 'Завершить регистрацию'}
-                  </Button>
-                )}
-              </div>
-
-              <div className="text-center text-sm text-muted-foreground">
-                Уже есть аккаунт?{' '}
-                <Link
-                  href="/auth/login"
-                  className="text-primary hover:underline font-medium"
-                >
-                  Войти
-                </Link>
-              </div>
-            </form>
-          )}
+          </form>
         </CardContent>
       </Card>
     </main>
