@@ -31,8 +31,11 @@ export async function registerDirector(formData: FormData) {
     const parsed = registerSchema.safeParse(rawData)
 
     if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0]
+
       const message =
-        parsed.error.errors[0]?.message || 'Проверьте корректность данных'
+        firstIssue?.message || 'Проверьте корректность данных'
+
       return {
         success: false as const,
         error: message
