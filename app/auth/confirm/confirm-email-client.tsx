@@ -62,7 +62,7 @@ export function ConfirmEmailClient() {
 
     const timeout = setTimeout(() => {
 
-      router.replace("/auth/login");
+      router.replace("/auth/login?confirmed=1");
 
     }, 2000);
 
@@ -148,13 +148,13 @@ export function ConfirmEmailClient() {
 
           <button
 
-            onClick={() => router.replace("/auth/register")}
+            onClick={() => router.push("/auth/login")}
 
             className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-500 transition-colors"
 
           >
 
-            Вернуться к регистрации
+            Перейти на страницу входа
 
           </button>
 
@@ -198,7 +198,7 @@ export function ConfirmEmailClient() {
 
         <button
 
-          onClick={() => router.replace("/auth/login")}
+          onClick={() => router.replace("/auth/login?confirmed=1")}
 
           className="inline-flex items-center justify-center rounded-full bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-500 transition-colors"
 
