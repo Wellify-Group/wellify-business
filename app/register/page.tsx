@@ -1,448 +1,347 @@
-"use client";
+'use client'
 
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { useLanguage } from "@/components/language-provider";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import Link from "next/link";
-import { CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
+import { useState, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 
-export default function RegisterPage() {
-  const { t } = useLanguage();
-  const router = useRouter();
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+// если actions.ts лежит в другом месте - поправь путь
+import { registerDirector } from '@/app/auth/register/actions'
 
-  const [step, setStep] = useState<1 | 2>(1);
+type Step = 1 | 2 | 3
 
-  // Шаг 1
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [middleName, setMiddleName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+export default function RegisterDirectorPage() {
+  const router = useRouter()
 
-  // Шаг 2
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<Step>(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
-  // Общие
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [shakeForm, setShakeForm] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  // поля шага 1
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [middleName, setMiddleName] = useState('')
+  const [birthDate, setBirthDate] = useState('')
 
-  // Проверяем, авторизован ли уже пользователь
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, phone_verified, first_name, last_name")
-          .eq("id", session.user.id)
-          .maybeSingle();
+  // шаг 2
+  const [email, setEmail] = useState('')
 
-        if (profile && profile.first_name && profile.last_name) {
-          const role = profile.role || session.user.user_metadata?.role || "director";
-          if (role === "director") {
-            router.replace("/dashboard/director");
-          } else if (role === "manager") {
-            router.replace("/dashboard/manager");
-          } else {
-            router.replace("/dashboard/employee");
-          }
-        } else {
-          router.replace("/dashboard/director");
-        }
-        return;
-      }
-    };
+  // шаг 3
+  const [phone, setPhone] = useState('')
+  const [businessName, setBusinessName] = useState('')
 
-    checkAuth();
-  }, [router, supabase]);
-
-  const triggerShake = () => {
-    setShakeForm(true);
-    setTimeout(() => setShakeForm(false), 500);
-  };
-
-  // Шаг 1: Валидация и переход на шаг 2
-  const handleStep1Next = () => {
-    setError(null);
-
+  const validateStep1 = () => {
     if (!firstName.trim() || !lastName.trim()) {
-      setError("Пожалуйста, заполните имя и фамилию");
-      triggerShake();
-      return;
+      setError('Укажите имя и фамилию')
+      return false
     }
-
-    if (!phone.trim()) {
-      setError("Пожалуйста, укажите номер телефона");
-      triggerShake();
-      return;
+    if (!birthDate) {
+      setError('Укажите дату рождения')
+      return false
     }
-
     if (password.length < 6) {
-      setError("Пароль должен содержать минимум 6 символов");
-      triggerShake();
-      return;
+      setError('Пароль должен содержать минимум 6 символов')
+      return false
     }
-
-    if (password !== passwordConfirmation) {
-      setError("Пароли не совпадают");
-      triggerShake();
-      return;
+    if (password !== confirmPassword) {
+      setError('Пароли не совпадают')
+      return false
     }
+    return true
+  }
 
-    setStep(2);
-  };
-
-  // Шаг 2: Регистрация (signUp)
-  // Профиль создаётся автоматически триггером Supabase.
-  // Дополнительные поля профиля (имя, телефон и т.д.) будут заполняться после первого входа в систему.
-  const handleSubmit = async () => {
-    setError(null);
-
+  const validateStep2 = () => {
     if (!email.trim()) {
-      setError("Пожалуйста, укажите e-mail");
-      triggerShake();
-      return;
+      setError('Укажите e-mail')
+      return false
     }
+    return true
+  }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Пожалуйста, укажите корректный e-mail");
-      triggerShake();
-      return;
+  const validateStep3 = () => {
+    if (!phone.trim()) {
+      setError('Укажите телефон')
+      return false
     }
+    return true
+  }
 
-    setIsLoading(true);
+  const handleNext = () => {
+    setError(null)
+
+    if (step === 1 && !validateStep1()) return
+    if (step === 2 && !validateStep2()) return
+
+    if (step < 3) {
+      setStep((prev) => (prev + 1) as Step)
+    }
+  }
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (!validateStep3()) return
+
+    setIsLoading(true)
 
     try {
-      // Создание пользователя в Supabase Auth
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        },
-      });
+      const formData = new FormData()
 
-      if (signUpError) {
-        console.error("SignUp error:", signUpError);
-        let errorMessage = "Не удалось создать аккаунт. Попробуйте позже.";
+      const fullName = `${lastName.trim()} ${firstName.trim()} ${middleName.trim()}`
+        .replace(/\s+/g, ' ')
+        .trim()
 
-        if (
-          signUpError.message?.includes("User already registered") ||
-          signUpError.message?.includes("already exists") ||
-          signUpError.message?.includes("already registered")
-        ) {
-          errorMessage = "Аккаунт с таким email уже существует. Войдите или восстановите пароль.";
-        } else if (signUpError.message) {
-          errorMessage = signUpError.message;
-        }
+      formData.append('full_name', fullName)
+      formData.append('birth_date', birthDate) // если нужно - используй в actions
+      formData.append('email', email.trim())
+      formData.append('password', password)
+      formData.append('phone', phone.trim())
+      formData.append('business_name', businessName.trim())
 
-        setError(errorMessage);
-        triggerShake();
-        setIsLoading(false);
-        return;
+      const result = await registerDirector(formData)
+
+      if (result.success) {
+        setSuccess(true)
+        // даём человеку auto-login flow дальше по твоей логике
+        setTimeout(() => {
+          router.push('/auth/login')
+        }, 3000)
+      } else {
+        setError(result.error || 'Произошла ошибка при регистрации')
       }
-
-      // Успешная регистрация - показываем сообщение о проверке почты
-      // Профиль создаётся автоматически триггером Supabase при создании пользователя.
-      // Не нужно вызывать getUser() или обращаться к таблице profiles здесь,
-      // так как при включенном подтверждении email сессии ещё нет.
-      setEmailSent(true);
-      setIsLoading(false);
-    } catch (err: any) {
-      console.error("Registration error:", err);
-      setError(err.message || "Произошла ошибка при регистрации. Попробуйте позже.");
-      triggerShake();
-      setIsLoading(false);
+    } catch (err) {
+      console.error(err)
+      setError('Не удалось завершить регистрацию. Попробуйте ещё раз.')
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
+
+  const isLastStep = step === 3
 
   return (
-    <main className="min-h-screen bg-[color:var(--color-background,#050B13)] pt-[104px]">
-      <div
-        className="max-w-[520px] mx-auto flex items-center justify-center px-4"
-        style={{ minHeight: "calc(100vh - 104px)" }}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="w-full relative z-10"
-        >
-          <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-6">
-            {/* Прогресс-бар */}
-            <div className="mb-6">
-              <div className="flex gap-2">
-                {[1, 2].map((stepNum) => (
-                  <div
-                    key={stepNum}
-                    className={`flex-1 h-1.5 rounded-full transition-all ${
-                      step >= stepNum
-                        ? "bg-primary"
-                        : "bg-muted"
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-center text-muted-foreground">
-                Шаг {step} из 2
-              </p>
-            </div>
+    <main className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-4">
+          {/* Прогресс-бар 3 шага */}
+          <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{ width: `${(step / 3) * 100}%` }}
+            />
+          </div>
 
-            {/* Title */}
-            <div className="mb-4 text-center">
-              <h1 className="mb-1 text-xl font-bold tracking-tight text-foreground">
-                {step === 1
-                  ? t("register_title") || "Создать аккаунт"
-                  : "Подтверждение e-mail"}
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                {step === 1
-                  ? t("register_subtitle") || "Заполните форму для регистрации"
-                  : "Введите ваш e-mail для завершения регистрации"}
-              </p>
-            </div>
+          <div className="space-y-1 text-center">
+            <p className="text-xs text-muted-foreground">Шаг {step} из 3</p>
+            <CardTitle className="text-2xl">Создать аккаунт</CardTitle>
+            <CardDescription>
+              Заполните форму для регистрации директора
+            </CardDescription>
+          </div>
 
-            {/* Link to login */}
-            <div className="mb-3 text-center">
-              <p className="text-xs text-muted-foreground">
-                Уже есть аккаунт?{" "}
-                <Link
-                  href="/login"
-                  className="text-primary hover:underline font-medium"
-                >
-                  Войти
-                </Link>
-              </p>
-            </div>
-
-            {/* Form */}
-            <motion.form
-              initial={{ opacity: 0, y: 20 }}
-              animate={
-                shakeForm
-                  ? { x: [-10, 10, -10, 10, 0], opacity: 1, y: 0 }
-                  : { opacity: 1, y: 0 }
-              }
-              transition={
-                shakeForm
-                  ? { duration: 0.5 }
-                  : { type: "spring", stiffness: 260, damping: 20 }
-              }
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (step === 1) handleStep1Next();
-                else if (step === 2) handleSubmit();
-              }}
-              className="space-y-3"
+          <p className="text-center text-sm text-muted-foreground">
+            Уже есть аккаунт?{' '}
+            <Link
+              href="/auth/login"
+              className="font-medium text-primary hover:underline"
             >
-              {/* Шаг 1: ФИО, телефон, пароль */}
+              Войти
+            </Link>
+          </p>
+        </CardHeader>
+
+        <CardContent>
+          {success ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                <CheckCircle2 className="h-5 w-5" />
+                <p className="text-sm font-medium">
+                  Регистрация завершена. Проверьте почту для подтверждения e-mail.
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                После подтверждения мы перенаправим вас к входу.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* ШАГ 1 */}
               {step === 1 && (
-                <>
+                <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                      <label className="block text-sm font-medium mb-1.5">
                         Имя *
                       </label>
                       <input
                         type="text"
+                        className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        required
-                        className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                      <label className="block text-sm font-medium mb-1.5">
                         Фамилия *
                       </label>
                       <input
                         type="text"
+                        className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        required
-                        className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    <label className="block text-sm font-medium mb-1.5">
                       Отчество
                     </label>
                     <input
                       type="text"
+                      className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
                       value={middleName}
                       onChange={(e) => setMiddleName(e.target.value)}
-                      className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                      Телефон *
+                    <label className="block text-sm font-medium mb-1.5">
+                      Дата рождения *
                     </label>
                     <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                      className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
+                      type="date"
+                      className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    <label className="block text-sm font-medium mb-1.5">
                       Пароль *
                     </label>
                     <input
                       type="password"
+                      className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      required
                       minLength={6}
-                      className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
+                      placeholder="Минимум 6 символов"
                     />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Минимум 6 символов
-                    </p>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    <label className="block text-sm font-medium mb-1.5">
                       Подтвердите пароль *
                     </label>
                     <input
                       type="password"
-                      value={passwordConfirmation}
-                      onChange={(e) => setPasswordConfirmation(e.target.value)}
-                      required
+                      className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       minLength={6}
-                      className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
                     />
                   </div>
-                </>
+                </div>
               )}
 
-              {/* Шаг 2: E-mail */}
+              {/* ШАГ 2 */}
               {step === 2 && (
-                <>
-                  {emailSent ? (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/50 rounded-xl p-4 text-sm text-green-600 dark:text-green-400">
-                      <p className="mb-2 font-medium">
-                        Письмо отправлено на {email}
-                      </p>
-                      <p className="text-xs">
-                        Мы отправили ссылку для подтверждения e-mail на указанный адрес.
-                        Перейдите по ссылке из письма, чтобы завершить регистрацию.
-                      </p>
-                      <p className="mt-2 text-xs">
-                        После подтверждения e-mail вы сможете войти в систему и заполнить
-                        дополнительные данные профиля (имя, телефон и т.д.).
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-11 w-full bg-card border border-border rounded-[20px] px-4 text-base text-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all"
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Мы используем этот адрес для входа в систему
-                      </p>
-                    </div>
-                  )}
-                </>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">
+                      E-mail *
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ШАГ 3 */}
+              {step === 3 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">
+                      Телефон *
+                    </label>
+                    <input
+                      type="tel"
+                      className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+38 (0XX) XXX-XX-XX"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">
+                      Название бизнеса
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full h-10 rounded-lg border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="Кофейня на Сумской"
+                    />
+                  </div>
+                </div>
               )}
 
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-xl p-3 text-xs text-red-600 dark:text-red-400 flex items-center gap-2"
-                >
-                  <AlertCircle className="h-4 w-4" />
-                  {error}
-                </motion.div>
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
               )}
 
-              {/* Кнопки навигации */}
-              <div className="flex gap-3 pt-2">
-                {step > 1 && (
-                  <motion.button
-                    type="button"
-                    onClick={() => setStep((step - 1) as 1 | 2)}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    className="h-11 px-4 rounded-[20px] border border-border bg-card text-sm font-semibold text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Назад
-                  </motion.button>
-                )}
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={step === 1 || isLoading}
+                  onClick={() =>
+                    setStep((prev) => (prev > 1 ? (prev - 1) as Step : prev))
+                  }
+                >
+                  Назад
+                </Button>
 
-                {step === 1 && (
-                  <motion.button
-                    type="submit"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    className="h-11 flex-1 flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-sm font-semibold text-white transition-all border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
+                {isLastStep ? (
+                  <Button type="submit" disabled={isLoading} isLoading={isLoading}>
+                    Завершить регистрацию
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleNext} disabled={isLoading}>
                     Дальше
-                  </motion.button>
-                )}
-
-                {step === 2 && !emailSent && (
-                  <motion.button
-                    type="submit"
-                    disabled={isLoading}
-                    whileHover={isLoading ? undefined : { scale: 1.01 }}
-                    whileTap={isLoading ? undefined : { scale: 0.99 }}
-                    className="h-11 flex-1 flex items-center justify-center gap-2 rounded-[20px] bg-primary px-4 text-sm font-semibold text-white transition-all disabled:opacity-70 disabled:cursor-not-allowed border border-black/15 dark:border-white/10 shadow-md shadow-black/10 dark:shadow-black/40 shadow-[inset_0_0_8px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_0_8px_rgba(255,255,255,0.04)] hover:opacity-90"
-                  >
-                    {isLoading ? (
-                      <>
-                        <motion.div
-                          className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white dark:border-black/30 dark:border-t-black"
-                          animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
-                        />
-                        Регистрация...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Зарегистрироваться
-                      </>
-                    )}
-                  </motion.button>
+                  </Button>
                 )}
               </div>
-            </motion.form>
-          </div>
-        </motion.div>
-      </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
     </main>
-  );
+  )
 }
