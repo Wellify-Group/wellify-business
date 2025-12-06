@@ -1,398 +1,455 @@
-'use client'
+'use client';
 
-import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { registerDirector } from '@/app/auth/register/actions'
-import CenteredLayout from '@/components/CenteredLayout'
+type Step = 1 | 2 | 3;
 
-type Step = 1 | 2 | 3
+interface FormState {
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  birthDate: string;
+  password: string;
+  passwordConfirm: string;
+  email: string;
+  phone: string;
+}
 
 export default function RegisterDirectorPage() {
-  const router = useRouter()
+  const router = useRouter();
+  const [step, setStep] = useState<Step>(1);
+  const [form, setForm] = useState<FormState>({
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    birthDate: '',
+    password: '',
+    passwordConfirm: '',
+    email: '',
+    phone: '',
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
-  const [step, setStep] = useState<Step>(1)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const supabase = createBrowserSupabaseClient();
 
-  // шаг 1
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [middleName, setMiddleName] = useState('')
-  const [birthDate, setBirthDate] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  useEffect(() => {
+    setFormError(null);
+    setFormSuccess(null);
+  }, [step]);
 
-  // шаг 2
-  const [email, setEmail] = useState('')
-
-  // шаг 3
-  const [phone, setPhone] = useState('')
-  const [businessName, setBusinessName] = useState('')
+  const handleChange =
+    (field: keyof FormState) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setForm(prev => ({ ...prev, [field]: e.target.value }));
+    };
 
   const validateStep1 = () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      setError('Укажите имя и фамилию')
-      return false
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setFormError('Укажите имя и фамилию.');
+      return false;
     }
-    if (!birthDate) {
-      setError('Укажите дату рождения')
-      return false
+    if (!form.birthDate.trim()) {
+      setFormError('Укажите дату рождения.');
+      return false;
     }
-    if (password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов')
-      return false
+    if (!form.password || form.password.length < 8) {
+      setFormError('Пароль должен содержать минимум 8 символов.');
+      return false;
     }
-    if (password !== confirmPassword) {
-      setError('Пароли не совпадают')
-      return false
+    if (form.password !== form.passwordConfirm) {
+      setFormError('Пароль и подтверждение пароля не совпадают.');
+      return false;
     }
-    return true
-  }
+    return true;
+  };
 
-  const validateStep2 = () => {
-    if (!email.trim()) {
-      setError('Укажите e-mail')
-      return false
+  const validateEmail = () => {
+    if (!form.email.trim()) {
+      setFormError('Укажите e-mail.');
+      return false;
     }
-    return true
-  }
-
-  const validateStep3 = () => {
-    if (!phone.trim()) {
-      setError('Укажите телефон')
-      return false
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setFormError('Укажите корректный e-mail.');
+      return false;
     }
-    return true
-  }
+    return true;
+  };
 
-  const handleNext = () => {
-    setError(null)
+  const validatePhone = () => {
+    if (!form.phone.trim()) {
+      setFormError('Укажите телефон.');
+      return false;
+    }
+    if (form.phone.replace(/\D/g, '').length < 10) {
+      setFormError('Укажите корректный телефон.');
+      return false;
+    }
+    return true;
+  };
 
-    if (step === 1 && !validateStep1()) return
-    if (step === 2 && !validateStep2()) return
+  const handleNextFromStep1 = (e: FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    if (!validateStep1()) return;
+    setStep(2);
+  };
 
-    if (step < 3) setStep((prev) => (prev + 1) as Step)
-  }
+  const handleSendEmail = async (e: FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    if (!validateEmail()) return;
 
-    if (!validateStep3()) return
+    setIsLoading(true);
 
-    setIsLoading(true)
+    const { error } = await supabase.auth.signUp({
+      email: form.email.trim(),
+      password: form.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        data: {
+          first_name: form.firstName.trim(),
+          last_name: form.lastName.trim(),
+          middle_name: form.middleName.trim() || null,
+          birth_date: form.birthDate.trim(),
+        },
+      },
+    });
 
-    try {
-      const formData = new FormData()
+    setIsLoading(false);
 
-      const fullName = `${lastName.trim()} ${firstName.trim()} ${middleName.trim()}`
-        .replace(/\s+/g, ' ')
-        .trim()
-
-      formData.append('full_name', fullName)
-      formData.append('birth_date', birthDate)
-      formData.append('email', email.trim())
-      formData.append('password', password)
-      formData.append('phone', phone.trim())
-      formData.append('business_name', businessName.trim())
-
-      const result = await registerDirector(formData)
-
-      if (result.success) {
-        setSuccess(true)
-        setTimeout(() => {
-          router.push('/auth/login')
-        }, 3000)
+    if (error) {
+      if ((error as any).code === 'user_already_exists') {
+        setFormError('Аккаунт с таким e-mail уже существует. Попробуйте войти.');
       } else {
-        setError(result.error || 'Произошла ошибка при регистрации')
+        setFormError('Не удалось отправить письмо. Попробуйте ещё раз.');
       }
-    } catch (err) {
-      console.error(err)
-      setError('Не удалось завершить регистрацию. Попробуйте ещё раз.')
-    } finally {
-      setIsLoading(false)
+      return;
     }
-  }
 
-  const segments = [1, 2, 3] as Step[]
+    setEmailSent(true);
+    setFormSuccess(
+      `Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке, затем вернитесь и нажмите «Я подтвердил e-mail».`,
+    );
+  };
 
-  const isLastStep = step === 3
+  const handleCheckEmailConfirmed = async () => {
+    setFormError(null);
+    setFormSuccess(null);
+    setIsLoading(true);
+
+    const { data, error } = await supabase.auth.getUser();
+
+    setIsLoading(false);
+
+    if (error || !data.user) {
+      setFormError('Не удалось получить данные пользователя. Обновите страницу и попробуйте ещё раз.');
+      return;
+    }
+
+    if (!data.user.email_confirmed_at) {
+      setFormError('Мы не видим подтверждение e-mail. Убедитесь, что вы перешли по ссылке в письме.');
+      return;
+    }
+
+    setFormSuccess('E-mail подтверждён. Можно переходить к следующему шагу.');
+    setStep(3);
+  };
+
+  const handleFinish = async (e: FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+
+    if (!validatePhone()) return;
+
+    setIsLoading(true);
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) {
+      setIsLoading(false);
+      setFormError('Не найдена активная сессия. Убедитесь, что вы подтвердили e-mail.');
+      return;
+    }
+
+    const userId = userData.user.id;
+    const email = userData.user.email ?? form.email.trim();
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          uuid: userId,
+          email,
+          имя: form.firstName.trim(),
+          фамилия: form.lastName.trim(),
+          отчество: form.middleName.trim() || null,
+          дата_рождения: form.birthDate.trim(),
+          телефон: form.phone.trim(),
+        },
+        { onConflict: 'uuid' },
+      );
+
+    setIsLoading(false);
+
+    if (profileError) {
+      setFormError('Не удалось сохранить профиль. Попробуйте ещё раз.');
+      return;
+    }
+
+    router.push('/dashboard/director');
+  };
+
+  const steps = [
+    { id: 1, label: 'Основные данные' },
+    { id: 2, label: 'E-mail' },
+    { id: 3, label: 'Телефон' },
+  ];
+
+  const renderStepHeader = () => (
+    <div className="mb-6">
+      <div className="mb-2 flex items-center gap-4">
+        {steps.map(s => (
+          <div key={s.id} className="flex-1">
+            <div
+              className={`h-1.5 rounded-full transition-all ${
+                step >= s.id ? 'bg-primary' : 'bg-zinc-800'
+              }`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between text-[11px] text-zinc-400">
+        {steps.map(s => (
+          <div key={s.id} className="flex-1 text-center">
+            {s.label}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 text-center text-xs text-zinc-500">Шаг {step} из 3</div>
+    </div>
+  );
+
+  const renderAlerts = () => (
+    <div className="space-y-2">
+      {formError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span>{formError}</span>
+        </div>
+      )}
+      {formSuccess && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
+          <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+          <span>{formSuccess}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderStep1 = () => (
+    <form onSubmit={handleNextFromStep1} className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Имя <span className="text-destructive">*</span>
+          </label>
+          <input
+            value={form.firstName}
+            onChange={handleChange('firstName')}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Иван"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Фамилия <span className="text-destructive">*</span>
+          </label>
+          <input
+            value={form.lastName}
+            onChange={handleChange('lastName')}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Иванов"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">Отчество</label>
+        <input
+          value={form.middleName}
+          onChange={handleChange('middleName')}
+          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+          placeholder="Иванович"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Дата рождения <span className="text-destructive">*</span>
+          </label>
+          <input
+            value={form.birthDate}
+            onChange={handleChange('birthDate')}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="ДД.ММ.ГГГГ"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Пароль <span className="text-destructive">*</span>
+          </label>
+          <input
+            type="password"
+            value={form.password}
+            onChange={handleChange('password')}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Минимум 8 символов"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Подтвердите пароль <span className="text-destructive">*</span>
+          </label>
+          <input
+            type="password"
+            value={form.passwordConfirm}
+            onChange={handleChange('passwordConfirm')}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Повторите пароль"
+          />
+        </div>
+      </div>
+
+      {renderAlerts()}
+
+      <div className="mt-4 flex justify-end">
+        <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
+          {isLoading ? 'Загрузка...' : 'Дальше'}
+        </Button>
+      </div>
+    </form>
+  );
+
+  const renderStep2 = () => (
+    <form onSubmit={handleSendEmail} className="space-y-4">
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">
+          E-mail <span className="text-destructive">*</span>
+        </label>
+        <input
+          type="email"
+          value={form.email}
+          onChange={handleChange('email')}
+          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+          placeholder="you@example.com"
+        />
+      </div>
+
+      {renderAlerts()}
+
+      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full md:w-auto"
+            disabled={isLoading}
+            onClick={() => setStep(1)}
+          >
+            Назад
+          </Button>
+          <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
+            {isLoading ? 'Отправляем...' : emailSent ? 'Отправить ещё раз' : 'Отправить письмо'}
+          </Button>
+        </div>
+
+        {emailSent && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-center text-xs text-zinc-300 underline md:w-auto"
+            disabled={isLoading}
+            onClick={handleCheckEmailConfirmed}
+          >
+            Я подтвердил e-mail
+          </Button>
+        )}
+      </div>
+    </form>
+  );
+
+  const renderStep3 = () => (
+    <form onSubmit={handleFinish} className="space-y-4">
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">
+          Телефон <span className="text-destructive">*</span>
+        </label>
+        <input
+          value={form.phone}
+          onChange={handleChange('phone')}
+          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+          placeholder="+38 (0XX) XXX-XX-XX"
+        />
+      </div>
+
+      {renderAlerts()}
+
+      <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full md:w-auto"
+          disabled={isLoading}
+          onClick={() => setStep(2)}
+        >
+          Назад
+        </Button>
+        <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
+          {isLoading ? 'Завершаем...' : 'Завершить регистрацию'}
+        </Button>
+      </div>
+    </form>
+  );
 
   return (
-    <CenteredLayout>
-      <div className="w-full max-w-xl">
-        <Card
-          className="
-            w-full
-            rounded-[32px]
-            border border-border/70
-            bg-gradient-to-b from-[#081021] via-[#050B13] to-[#030712]
-            shadow-[0_24px_80px_rgba(0,0,0,0.85)]
-            overflow-hidden
-          "
-        >
-          <CardHeader className="pb-4 pt-6 px-6 sm:px-8">
-            {/* полоски – индикатор шагов */}
-            <div className="space-y-2">
-              <div className="flex gap-1.5">
-                {segments.map((s) => (
-                  <div
-                    key={s}
-                    className={`
-                      flex-1 h-1.5 rounded-full transition-colors
-                      ${
-                        step >= s
-                          ? 'bg-primary'
-                          : 'bg-white/5 dark:bg-white/7'
-                      }
-                    `}
-                  />
-                ))}
-              </div>
-
-              <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span className={step === 1 ? 'text-primary font-medium' : ''}>
-                  Основные данные
-                </span>
-                <span className={step === 2 ? 'text-primary font-medium' : ''}>
-                  E-mail
-                </span>
-                <span className={step === 3 ? 'text-primary font-medium' : ''}>
-                  Телефон
-                </span>
-              </div>
-
-              <p className="text-center text-[11px] text-muted-foreground/80">
-                Шаг {step} из 3
-              </p>
-            </div>
-
-            <div className="mt-4 space-y-1 text-center">
-              <CardTitle className="text-[22px] sm:text-[24px] font-semibold tracking-tight">
-                Создать аккаунт
-              </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Заполните форму для регистрации директора
-              </CardDescription>
-            </div>
-
-            <p className="mt-3 text-center text-xs sm:text-sm text-muted-foreground">
-              Уже есть аккаунт?{' '}
-              <Link
-                href="/auth/login"
-                className="font-medium text-primary hover:underline"
-              >
-                Войти
-              </Link>
-            </p>
-          </CardHeader>
-
-          <CardContent className="px-6 sm:px-8 pb-6 sm:pb-7">
-            {success ? (
-              <div className="space-y-4 text-center py-4">
-                <div className="flex items-center justify-center gap-2 text-emerald-400">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <p className="text-sm font-medium">
-                    Регистрация завершена. Проверьте почту для подтверждения
-                    e-mail.
-                  </p>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  После подтверждения мы перенаправим вас к входу.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* ШАГ 1 */}
-                {step === 1 && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                          Имя *
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                          Фамилия *
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                        Отчество
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                        value={middleName}
-                        onChange={(e) => setMiddleName(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                        Дата рождения *
-                      </label>
-                      <input
-                        type="date"
-                        className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                        value={birthDate}
-                        onChange={(e) => setBirthDate(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                          Пароль *
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          minLength={6}
-                          placeholder="Минимум 6 символов"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                          Подтвердите пароль *
-                        </label>
-                        <input
-                          type="password"
-                          className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          minLength={6}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ШАГ 2 */}
-                {step === 2 && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                        E-mail *
-                      </label>
-                      <input
-                        type="email"
-                        className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* ШАГ 3 */}
-                {step === 3 && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                        Телефон *
-                      </label>
-                      <input
-                        type="tel"
-                        className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+38 (0XX) XXX-XX-XX"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5 text-muted-foreground">
-                        Название бизнеса
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full h-10 rounded-xl border border-white/7 bg-black/20 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/70 focus:border-transparent"
-                        value={businessName}
-                        onChange={(e) => setBusinessName(e.target.value)}
-                        placeholder="Кофейня на Сумской"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {error && (
-                  <div className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs sm:text-sm text-destructive">
-                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={step === 1 || isLoading}
-                    onClick={() =>
-                      setStep((prev) =>
-                        prev > 1 ? ((prev - 1) as Step) : prev,
-                      )
-                    }
-                    className="min-w-[96px] border-white/20 bg-transparent hover:bg-white/5"
-                  >
-                    Назад
-                  </Button>
-
-                  {isLastStep ? (
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      isLoading={isLoading}
-                      className="flex-1"
-                    >
-                      Завершить регистрацию
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={handleNext}
-                      disabled={isLoading}
-                      className="flex-1"
-                    >
-                      Дальше
-                    </Button>
-                  )}
-                </div>
-              </form>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </CenteredLayout>
-  )
+    <main className="flex min-h-[calc(100vh-80px)] items-center justify-center px-4 py-10">
+      <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
+        <CardHeader className="pb-4">
+          {renderStepHeader()}
+          <CardTitle className="text-center text-2xl font-semibold">Создать аккаунт</CardTitle>
+          <CardDescription className="mt-1 text-center text-sm">
+            Заполните форму для регистрации директора
+          </CardDescription>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Уже есть аккаунт?{' '}
+            <Link href="/auth/login" className="font-medium text-primary hover:underline">
+              Войти
+            </Link>
+          </p>
+        </CardHeader>
+        <CardContent>
+          {step === 1 && renderStep1()}
+          {step === 2 && renderStep2()}
+          {step === 3 && renderStep3()}
+        </CardContent>
+      </Card>
+    </main>
+  );
 }
