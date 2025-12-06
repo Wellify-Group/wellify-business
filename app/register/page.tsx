@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { registerDirector } from '@/app/auth/register/actions'
+import CenteredLayout from '@/components/CenteredLayout'
 
 type Step = 1 | 2 | 3
 
@@ -130,7 +131,7 @@ export default function RegisterDirectorPage() {
   const isLastStep = step === 3
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-10 bg-background">
+    <CenteredLayout>
       <div className="w-full max-w-xl">
         <Card
           className="
@@ -392,6 +393,6 @@ export default function RegisterDirectorPage() {
           </CardContent>
         </Card>
       </div>
-    </main>
+    </CenteredLayout>
   )
 }

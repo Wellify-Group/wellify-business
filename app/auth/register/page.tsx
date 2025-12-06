@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/card'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import CenteredLayout from '@/components/CenteredLayout'
 
 type Step = 1 | 2 | 3
 
@@ -329,7 +330,7 @@ export default function RegisterDirectorPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-10 bg-[#050B13]">
+    <CenteredLayout>
       <Card className="w-full max-w-xl bg-slate-950/80 border border-slate-800/80 shadow-[0_18px_60px_rgba(0,0,0,0.7)] rounded-3xl backdrop-blur-xl">
         <CardHeader className="pt-7 pb-4">
           {renderStepIndicator()}
@@ -384,6 +385,6 @@ export default function RegisterDirectorPage() {
           </form>
         </CardContent>
       </Card>
-    </main>
+    </CenteredLayout>
   )
 }

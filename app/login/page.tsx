@@ -9,6 +9,7 @@ import Link from "next/link";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PrimaryButton } from "@/components/ui/button";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
+import CenteredLayout from "@/components/CenteredLayout";
 
 const MAX_BLOCKS = 4;
 const BLOCK_LENGTH = 4;
@@ -289,11 +290,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[color:var(--color-background,#050B13)] pt-[104px]">
-      <div 
-        className="max-w-[520px] mx-auto flex items-center justify-center px-4"
-        style={{ minHeight: "calc(100vh - 104px)" }}
-      >
+    <CenteredLayout>
+      <div className="w-full max-w-[520px]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -591,6 +589,6 @@ export default function LoginPage() {
         </div>
         </motion.div>
       </div>
-    </main>
+    </CenteredLayout>
   );
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import CenteredLayout from '@/components/CenteredLayout'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -30,7 +31,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-12" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
+    <CenteredLayout>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl text-center">Вход в систему</CardTitle>
@@ -93,6 +94,6 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
-    </main>
+    </CenteredLayout>
   )
 }

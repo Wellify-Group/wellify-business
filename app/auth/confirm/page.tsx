@@ -6,6 +6,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import CenteredLayout from "@/components/CenteredLayout";
 
 function ConfirmEmailContent() {
   const searchParams = useSearchParams();
@@ -143,13 +144,8 @@ function ConfirmEmailContent() {
 
 export default function ConfirmEmailPage() {
   return (
-    <main
-      className="min-h-screen bg-[color:var(--color-background,#050B13)] pt-[104px]"
-    >
-      <div 
-        className="max-w-[520px] mx-auto flex items-center justify-center px-4"
-        style={{ minHeight: "calc(100vh - 104px)" }}
-      >
+    <CenteredLayout>
+      <div className="w-full max-w-md">
         <Suspense
           fallback={
             <Card className="w-full max-w-md">
@@ -167,6 +163,6 @@ export default function ConfirmEmailPage() {
           <ConfirmEmailContent />
         </Suspense>
       </div>
-    </main>
+    </CenteredLayout>
   );
 }

@@ -6,6 +6,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import CenteredLayout from "@/components/CenteredLayout";
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage();
@@ -50,7 +51,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-96px)] items-center justify-center py-12 px-4">
+    <CenteredLayout>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -181,7 +182,7 @@ export default function ForgotPasswordPage() {
           )}
         </div>
       </motion.div>
-    </div>
+    </CenteredLayout>
   );
 }
 

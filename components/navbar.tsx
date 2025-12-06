@@ -32,6 +32,7 @@ export function Navbar() {
     <header
       className="fixed top-0 left-0 right-0 z-30 pt-5 px-4 md:px-6"
       style={{
+        height: 'var(--navbar-height)',
         paddingTop: "max(1.25rem, 1.25rem)",
         paddingLeft: "max(1.5rem, 5vw)",
         paddingRight: "max(1.5rem, 5vw)",
