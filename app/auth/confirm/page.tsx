@@ -144,25 +144,29 @@ function ConfirmEmailContent() {
 export default function ConfirmEmailPage() {
   return (
     <main
-      className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "var(--color-background, #050B13)" }}
+      className="min-h-screen bg-[color:var(--color-background,#050B13)] pt-[104px]"
     >
-      <Suspense
-        fallback={
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">Загрузка...</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center py-8">
-                <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-              </div>
-            </CardContent>
-          </Card>
-        }
+      <div 
+        className="max-w-[520px] mx-auto flex items-center justify-center px-4"
+        style={{ minHeight: "calc(100vh - 104px)" }}
       >
-        <ConfirmEmailContent />
-      </Suspense>
+        <Suspense
+          fallback={
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="text-2xl text-center">Загрузка...</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-center py-8">
+                  <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
+              </CardContent>
+            </Card>
+          }
+        >
+          <ConfirmEmailContent />
+        </Suspense>
+      </div>
     </main>
   );
 }
