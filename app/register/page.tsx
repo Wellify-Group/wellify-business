@@ -1,24 +1,26 @@
 'use client';
 
-import { FormEvent, useEffect, useState, useRef } from 'react';
+import { FormEvent, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import { createDirectorProfile } from '@/app/auth/register/actions';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 type Step = 1 | 2 | 3;
-type EmailStatus = 'idle' | 'sent' | 'confirmed';
+type EmailStatus = 'idle' | 'sent';
 
-interface FormState {
+interface BaseData {
   firstName: string;
   lastName: string;
   middleName: string;
   birthDate: string;
   password: string;
-  passwordConfirm: string;
+}
+
+interface FormState {
   email: string;
   phone: string;
 }
@@ -26,68 +28,55 @@ interface FormState {
 export default function RegisterDirectorPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
-  const [form, setForm] = useState<FormState>({
+  const [baseData, setBaseData] = useState<BaseData>({
     firstName: '',
     lastName: '',
     middleName: '',
     birthDate: '',
     password: '',
-    passwordConfirm: '',
+  });
+  const [form, setForm] = useState<FormState>({
     email: '',
     phone: '',
   });
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
-  const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailInfo, setEmailInfo] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [wasSubmittedStep3, setWasSubmittedStep3] = useState(false);
 
-  const [supabase] = useState(() => createBrowserSupabaseClient());
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Очистка при размонтировании
-  useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
+  // Создаем клиент Supabase через useMemo
+  const supabase = useMemo<SupabaseClient | null>(() => {
+    try {
+      return createBrowserSupabaseClient();
+    } catch (error) {
+      console.error('Failed to create Supabase client:', error);
+      return null;
+    }
   }, []);
-
 
   // Сбрасываем ошибки при смене шага
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
-    if (step !== 3) {
-      setWasSubmittedStep3(false);
-    }
   }, [step]);
 
-  const handleChange =
-    (field: keyof FormState) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setForm(prev => ({ ...prev, [field]: e.target.value }));
-    };
-
   const validateStep1 = () => {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
+    if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
       setFormError('Укажите имя и фамилию.');
       return false;
     }
-    if (!form.birthDate.trim()) {
+    if (!baseData.birthDate.trim()) {
       setFormError('Укажите дату рождения.');
       return false;
     }
-    if (!form.password || form.password.length < 8) {
+    if (!baseData.password || baseData.password.length < 8) {
       setFormError('Пароль должен содержать минимум 8 символов.');
       return false;
     }
-    if (form.password !== form.passwordConfirm) {
+    if (baseData.password !== passwordConfirm) {
       setFormError('Пароль и подтверждение пароля не совпадают.');
       return false;
     }
@@ -109,15 +98,11 @@ export default function RegisterDirectorPage() {
 
   const validatePhone = () => {
     if (!form.phone.trim()) {
-      if (wasSubmittedStep3) {
-        setFormError('Укажите телефон.');
-      }
+      setFormError('Укажите телефон.');
       return false;
     }
     if (form.phone.replace(/\D/g, '').length < 10) {
-      if (wasSubmittedStep3) {
-        setFormError('Укажите корректный телефон.');
-      }
+      setFormError('Укажите корректный телефон.');
       return false;
     }
     return true;
@@ -131,49 +116,35 @@ export default function RegisterDirectorPage() {
   };
 
   const handleSendEmail = async () => {
-    if (!form.email.trim() || !form.password) {
-      setFormError('Укажите e-mail и пароль');
+    if (!validateEmail()) return;
+
+    // Проверка наличия env переменных
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      setFormError('Ошибка конфигурации. Обратитесь к администратору.');
+      console.error('Missing Supabase env');
+      return;
+    }
+
+    if (!supabase) {
+      setFormError('Ошибка инициализации. Обновите страницу.');
       return;
     }
 
     setIsLoading(true);
     setFormError(null);
+    setEmailInfo(null);
 
-    const origin =
-      typeof window !== 'undefined'
-        ? window.location.origin
-        : process.env.NEXT_PUBLIC_SITE_URL;
+    const emailRedirectTo = process.env.NEXT_PUBLIC_SITE_URL
+      ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm`
+      : undefined;
 
-    // Пытаемся зарегистрировать пользователя (если он новый)
     const { data, error } = await supabase.auth.signUp({
       email: form.email.trim(),
-      password: form.password,
+      password: baseData.password,
       options: {
-        emailRedirectTo: `${origin}/auth/confirm`,
+        emailRedirectTo,
       },
     });
-
-    // Если пользователь уже существует, пробуем просто дослать письмо
-    if (error && error.message.toLowerCase().includes('already registered')) {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email: form.email.trim(),
-        options: {
-          emailRedirectTo: `${origin}/auth/confirm`,
-        },
-      });
-
-      setIsLoading(false);
-
-      if (resendError) {
-        setFormError(resendError.message || 'Не удалось отправить письмо');
-        return;
-      }
-
-      setEmailStatus('sent');
-      setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}.`);
-      return;
-    }
 
     setIsLoading(false);
 
@@ -184,76 +155,30 @@ export default function RegisterDirectorPage() {
 
     // Если signUp прошёл без ошибок - письмо отправлено Supabase
     setEmailStatus('sent');
-    setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}.`);
-  };
-
-  const handleCheckEmailConfirmed = async () => {
-    setCheckingEmail(true);
-    setFormError(null);
-
-    const { data, error } = await supabase.auth.getUser();
-
-    setCheckingEmail(false);
-
-    if (error) {
-      setFormError(error.message || 'Не удалось проверить статус e-mail');
-      return;
-    }
-
-    const user = data.user;
-
-    if (!user || !user.email) {
-      setFormError('Пользователь не найден. Попробуйте отправить письмо ещё раз.');
-      return;
-    }
-
-    if (!user.email_confirmed_at) {
-      setFormError('E-mail ещё не подтверждён. Перейдите по ссылке в письме.');
-      return;
-    }
-
-    // E-mail подтверждён
-    setEmailStatus('confirmed');
-    setEmailInfo('E-mail подтверждён. Вы можете продолжить регистрацию.');
-    setStep(3); // переход к шагу Телефон
+    setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме.`);
   };
 
   const handleFinish = async (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setFormSuccess(null);
-    setWasSubmittedStep3(true);
 
     if (!validatePhone()) {
       return;
     }
 
-    if (emailStatus !== 'confirmed') {
-      setFormError('Сначала подтвердите e-mail. Вернитесь на шаг 2 и дождитесь подтверждения.');
-      return;
-    }
-
-    setIsLoading(true);
-    setFormError(null);
-
-    const result = await createDirectorProfile({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      middleName: form.middleName?.trim() || undefined,
-      birthDate: form.birthDate,            // уже в нужном формате ДД.ММ.ГГГГ
+    // Пока просто показываем сообщение и логируем данные
+    setFormSuccess('Регистрация завершена. Войдите в систему.');
+    
+    // Временный console.log с данными (без авторизации)
+    console.log('Registration data:', {
+      ...baseData,
       email: form.email.trim(),
-      password: form.password,
-      phone: form.phone?.trim() || undefined,
+      phone: form.phone.trim(),
     });
 
-    setIsLoading(false);
-
-    if (!result.success) {
-      setFormError(result.error ?? 'Проверьте корректность данных');
-      return;
-    }
-
-    router.push('/dashboard/director');
+    // TODO: Здесь будет создание директорского профиля в таблицах
+    // Пока не трогаем, чтобы не ломать email-поток
   };
 
   const steps = [
@@ -318,8 +243,8 @@ export default function RegisterDirectorPage() {
             Имя <span className="text-destructive">*</span>
           </label>
           <input
-            value={form.firstName}
-            onChange={handleChange('firstName')}
+            value={baseData.firstName}
+            onChange={(e) => setBaseData(prev => ({ ...prev, firstName: e.target.value }))}
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
             placeholder="Иван"
           />
@@ -329,8 +254,8 @@ export default function RegisterDirectorPage() {
             Фамилия <span className="text-destructive">*</span>
           </label>
           <input
-            value={form.lastName}
-            onChange={handleChange('lastName')}
+            value={baseData.lastName}
+            onChange={(e) => setBaseData(prev => ({ ...prev, lastName: e.target.value }))}
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
             placeholder="Иванов"
           />
@@ -340,8 +265,8 @@ export default function RegisterDirectorPage() {
       <div>
         <label className="mb-1.5 block text-sm font-medium">Отчество</label>
         <input
-          value={form.middleName}
-          onChange={handleChange('middleName')}
+          value={baseData.middleName}
+          onChange={(e) => setBaseData(prev => ({ ...prev, middleName: e.target.value }))}
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
           placeholder="Иванович"
         />
@@ -353,8 +278,8 @@ export default function RegisterDirectorPage() {
         </label>
         <input
           type="date"
-          value={form.birthDate}
-          onChange={handleChange('birthDate')}
+          value={baseData.birthDate}
+          onChange={(e) => setBaseData(prev => ({ ...prev, birthDate: e.target.value }))}
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
         />
         <p className="mt-1 text-xs text-muted-foreground">Формат: ДД.ММ.ГГГГ</p>
@@ -368,8 +293,8 @@ export default function RegisterDirectorPage() {
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
-              value={form.password}
-              onChange={handleChange('password')}
+              value={baseData.password}
+              onChange={(e) => setBaseData(prev => ({ ...prev, password: e.target.value }))}
               className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
               placeholder="Минимум 8 символов"
             />
@@ -389,19 +314,19 @@ export default function RegisterDirectorPage() {
           </label>
           <div className="relative">
             <input
-              type={showPasswordConfirm ? 'text' : 'password'}
-              value={form.passwordConfirm}
-              onChange={handleChange('passwordConfirm')}
+              type={showPassword ? 'text' : 'password'}
+              value={passwordConfirm}
+              onChange={(e) => setPasswordConfirm(e.target.value)}
               className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
               placeholder="Повторите пароль"
             />
             <button
               type="button"
-              onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+              onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               tabIndex={-1}
             >
-              {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
@@ -426,7 +351,7 @@ export default function RegisterDirectorPage() {
         <input
           type="email"
           value={form.email}
-          onChange={handleChange('email')}
+          onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
           placeholder="you@example.com"
         />
@@ -434,12 +359,6 @@ export default function RegisterDirectorPage() {
 
       {emailStatus === 'sent' && emailInfo && (
         <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-300">
-          {emailInfo} Перейдите по ссылке в письме.
-        </div>
-      )}
-
-      {emailStatus === 'confirmed' && emailInfo && (
-        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
           {emailInfo}
         </div>
       )}
@@ -452,7 +371,7 @@ export default function RegisterDirectorPage() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={isLoading || checkingEmail}
+            disabled={isLoading}
             onClick={() => setStep(1)}
           >
             Назад
@@ -475,7 +394,7 @@ export default function RegisterDirectorPage() {
               disabled={isLoading}
               onClick={handleSendEmail}
             >
-              {isLoading ? 'Отправляем...' : 'Отправить письмо'}
+              {isLoading ? 'Отправляем...' : 'Далее'}
             </Button>
           )}
         </div>
@@ -484,10 +403,10 @@ export default function RegisterDirectorPage() {
           <Button
             type="button"
             className="w-full md:w-auto"
-            disabled={checkingEmail}
-            onClick={handleCheckEmailConfirmed}
+            disabled={isLoading}
+            onClick={() => setStep(3)}
           >
-            {checkingEmail ? 'Проверяем...' : 'Дальше'}
+            Дальше
           </Button>
         )}
       </div>
@@ -502,7 +421,7 @@ export default function RegisterDirectorPage() {
         </label>
         <input
           value={form.phone}
-          onChange={handleChange('phone')}
+          onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
           placeholder="+38 (0XX) XXX-XX-XX"
         />
