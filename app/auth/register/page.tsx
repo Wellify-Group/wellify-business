@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -28,15 +28,11 @@ interface FormState {
 
 export default function RegisterDirectorPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   const [step, setStep] = useState<Step>(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [emailInfo, setEmailInfo] = useState<string | null>(null)
-  const [emailConfirmed, setEmailConfirmed] = useState(
-    searchParams.get('emailConfirmed') === '1'
-  )
 
   const [form, setForm] = useState<FormState>({
     first_name: '',
@@ -83,7 +79,6 @@ export default function RegisterDirectorPage() {
       setError('Укажите e-mail')
       return false
     }
-    // очень простая проверка, без фанатизма
     if (!form.email.includes('@')) {
       setError('Введите корректный e-mail')
       return false
@@ -110,10 +105,8 @@ export default function RegisterDirectorPage() {
     setEmailInfo(null)
     if (!validateStep2()) return
 
-    // здесь пока только показываем уведомление,
-    // вызов signUp / отправку письма настроим отдельным шагом
     setEmailInfo(
-      'Мы отправили письмо с подтверждением на указанную почту. Перейдите по ссылке из письма, чтобы подтвердить e-mail.'
+      'Мы отправили письмо с подтверждением на указанный e-mail. Перейдите по ссылке из письма, чтобы подтвердить адрес.'
     )
     setStep(3)
   }
@@ -138,12 +131,7 @@ export default function RegisterDirectorPage() {
     try {
       setIsLoading(true)
 
-      // TODO: сюда подвязываем registerDirector или прямой вызов supabase.auth.signUp.
-      // Сейчас просто заглушка перехода на дашборд:
-      // const result = await registerDirector(...);
-      // if (!result.success) throw new Error(result.error || 'Ошибка регистрации')
-
-      // имитация успешной регистрации
+      // TODO: здесь будет реальный вызов registerDirector / supabase.auth.signUp
       await new Promise(res => setTimeout(res, 800))
 
       router.push('/dashboard/director')
@@ -206,11 +194,9 @@ export default function RegisterDirectorPage() {
   )
 
   const renderEmailInfo = () =>
-    step >= 2 && (emailInfo || emailConfirmed) ? (
+    step >= 2 && emailInfo ? (
       <div className="mt-2 mb-4 rounded-xl border border-emerald-900/40 bg-emerald-900/15 px-3 py-2 text-xs text-emerald-300">
-        {emailConfirmed
-          ? 'E-mail подтверждён. Можете перейти к следующему шагу.'
-          : emailInfo}
+        {emailInfo}
       </div>
     ) : null
 
@@ -376,7 +362,7 @@ export default function RegisterDirectorPage() {
                 className="w-28 rounded-xl border-slate-700 bg-slate-900/60"
                 onClick={() => {
                   setError(null)
-                  if (step > 1) setStep((prev => (prev - 1) as Step))
+                  if (step > 1) setStep(prev => (prev - 1) as Step)
                   else router.push('/auth/login')
                 }}
               >
@@ -384,9 +370,8 @@ export default function RegisterDirectorPage() {
               </Button>
 
               <Button
-                type={step === 3 ? 'submit' : 'button'}
+                type="submit"
                 className="flex-1 rounded-xl"
-                onClick={step === 3 ? undefined : handleStep1Next}
                 disabled={isLoading}
               >
                 {isLoading
