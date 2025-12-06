@@ -90,3 +90,47 @@ export async function registerDirector(formData: FormData) {
     }
   }
 }
+
+export async function createDirectorProfile(payload: {
+  firstName: string
+  lastName: string
+  middleName?: string
+  birthDate: string
+  email: string
+  password: string
+  phone?: string
+}) {
+  const supabase = await createServerSupabaseClient()
+
+  const { firstName, lastName, middleName, birthDate, email, password, phone } = payload
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${
+        process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dev.wellifyglobal.com'
+      }/auth/confirm`,
+      data: {
+        first_name: firstName,
+        last_name: lastName,
+        middle_name: middleName,
+        birth_date: birthDate,
+        phone,
+      },
+    },
+  })
+
+  if (error) {
+    console.error('Error during signUp', error)
+    return {
+      success: false as const,
+      error: error.message,
+    }
+  }
+
+  return {
+    success: true as const,
+    userId: data.user?.id ?? null,
+  }
+}
