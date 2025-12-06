@@ -39,13 +39,14 @@ export default function RegisterDirectorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
-  const [emailSent, setEmailSent] = useState(false);
   const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailInfo, setEmailInfo] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [wasSubmittedStep3, setWasSubmittedStep3] = useState(false);
 
-  const supabase = createBrowserSupabaseClient();
+  const [supabase] = useState(() => createBrowserSupabaseClient());
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Очистка при размонтировании
@@ -57,51 +58,6 @@ export default function RegisterDirectorPage() {
     };
   }, []);
 
-  // Автоопределение подтверждения email на шаге 2
-  useEffect(() => {
-    if (step !== 2 || emailStatus !== 'sent') {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-      return;
-    }
-
-    const checkEmailConfirmation = async () => {
-      const { data, error } = await supabase.auth.getUser();
-
-      if (!error && data.user?.email_confirmed_at) {
-        setEmailStatus('confirmed');
-        setFormSuccess('E-mail подтверждён. Можно переходить к следующему шагу.');
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
-      }
-    };
-
-    // Проверяем сразу при монтировании
-    checkEmailConfirmation();
-
-    // Затем каждые 5 секунд
-    pollIntervalRef.current = setInterval(checkEmailConfirmation, 5000);
-
-    // Также проверяем при возврате на вкладку
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        checkEmailConfirmation();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [step, emailStatus, supabase]);
 
   // Сбрасываем ошибки при смене шага
   useEffect(() => {
@@ -174,83 +130,92 @@ export default function RegisterDirectorPage() {
     setStep(2);
   };
 
-  const handleSendEmail = async (e: FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    setFormSuccess(null);
-
-    if (!validateEmail()) return;
+  const handleSendEmail = async () => {
+    if (!form.email.trim() || !form.password) {
+      setFormError('Укажите e-mail и пароль');
+      return;
+    }
 
     setIsLoading(true);
+    setFormError(null);
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL;
 
-    const { error } = await supabase.auth.signUp({
+    // Пытаемся зарегистрировать пользователя (если он новый)
+    const { data, error } = await supabase.auth.signUp({
       email: form.email.trim(),
       password: form.password,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/confirm`,
-        data: {
-          first_name: form.firstName.trim(),
-          last_name: form.lastName.trim(),
-          middle_name: form.middleName.trim() || null,
-          birth_date: form.birthDate.trim(),
+        emailRedirectTo: `${origin}/auth/confirm`,
+      },
+    });
+
+    // Если пользователь уже существует, пробуем просто дослать письмо
+    if (error && error.message.toLowerCase().includes('already registered')) {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: form.email.trim(),
+        options: {
+          emailRedirectTo: `${origin}/auth/confirm`,
         },
-      },
-    });
+      });
 
-    setIsLoading(false);
+      setIsLoading(false);
 
-    if (error) {
-      if (error.message.includes('already registered') || error.message.includes('already exists')) {
-        setFormError('Аккаунт с таким e-mail уже существует. Попробуйте войти.');
-      } else {
-        setFormError('Не удалось отправить письмо. Попробуйте ещё раз.');
+      if (resendError) {
+        setFormError(resendError.message || 'Не удалось отправить письмо');
+        return;
       }
+
+      setEmailStatus('sent');
+      setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}.`);
       return;
     }
-
-    setEmailSent(true);
-    setEmailStatus('sent');
-    setFormSuccess(
-      `Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме.`,
-    );
-  };
-
-  const handleResendEmail = async () => {
-    setFormError(null);
-    setFormSuccess(null);
-
-    if (!validateEmail()) return;
-
-    setIsLoading(true);
-
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: form.email.trim(),
-      options: {
-        emailRedirectTo: `${siteUrl}/auth/confirm`,
-      },
-    });
 
     setIsLoading(false);
 
     if (error) {
-      setFormError('Не удалось отправить письмо. Попробуйте ещё раз.');
+      setFormError(error.message || 'Не удалось отправить письмо');
       return;
     }
 
-    setFormSuccess('Письмо отправлено повторно. Проверьте вашу почту.');
+    // Если signUp прошёл без ошибок - письмо отправлено Supabase
+    setEmailStatus('sent');
+    setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}.`);
   };
 
-  const handleNextFromStep2 = () => {
-    if (emailStatus !== 'confirmed') {
-      setFormError('Сначала подтвердите e-mail.');
+  const handleCheckEmailConfirmed = async () => {
+    setCheckingEmail(true);
+    setFormError(null);
+
+    const { data, error } = await supabase.auth.getUser();
+
+    setCheckingEmail(false);
+
+    if (error) {
+      setFormError(error.message || 'Не удалось проверить статус e-mail');
       return;
     }
-    setStep(3);
+
+    const user = data.user;
+
+    if (!user || !user.email) {
+      setFormError('Пользователь не найден. Попробуйте отправить письмо ещё раз.');
+      return;
+    }
+
+    if (!user.email_confirmed_at) {
+      setFormError('E-mail ещё не подтверждён. Перейдите по ссылке в письме.');
+      return;
+    }
+
+    // E-mail подтверждён
+    setEmailStatus('confirmed');
+    setEmailInfo('E-mail подтверждён. Вы можете продолжить регистрацию.');
+    setStep(3); // переход к шагу Телефон
   };
 
   const handleFinish = async (e: FormEvent) => {
@@ -453,7 +418,7 @@ export default function RegisterDirectorPage() {
   );
 
   const renderStep2 = () => (
-    <form onSubmit={handleSendEmail} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <label className="mb-1.5 block text-sm font-medium">
           E-mail <span className="text-destructive">*</span>
@@ -467,6 +432,18 @@ export default function RegisterDirectorPage() {
         />
       </div>
 
+      {emailStatus === 'sent' && emailInfo && (
+        <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-300">
+          {emailInfo} Перейдите по ссылке в письме.
+        </div>
+      )}
+
+      {emailStatus === 'confirmed' && emailInfo && (
+        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          {emailInfo}
+        </div>
+      )}
+
       {renderAlerts()}
 
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -475,44 +452,46 @@ export default function RegisterDirectorPage() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={isLoading}
+            disabled={isLoading || checkingEmail}
             onClick={() => setStep(1)}
           >
             Назад
           </Button>
-          {!emailSent ? (
-            <Button
-              type="submit"
-              className="w-full md:w-auto"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Отправляем...' : 'Отправить письмо'}
-            </Button>
-          ) : emailStatus === 'sent' ? (
+          {emailStatus === 'sent' && (
             <Button
               type="button"
               variant="outline"
               className="w-full md:w-auto"
               disabled={isLoading}
-              onClick={handleResendEmail}
+              onClick={handleSendEmail}
             >
               {isLoading ? 'Отправляем...' : 'Отправить ещё раз'}
             </Button>
-          ) : null}
+          )}
+          {emailStatus === 'idle' && (
+            <Button
+              type="button"
+              className="w-full md:w-auto"
+              disabled={isLoading}
+              onClick={handleSendEmail}
+            >
+              {isLoading ? 'Отправляем...' : 'Отправить письмо'}
+            </Button>
+          )}
         </div>
 
-        {emailStatus === 'confirmed' && (
+        {emailStatus === 'sent' && (
           <Button
             type="button"
             className="w-full md:w-auto"
-            disabled={isLoading}
-            onClick={handleNextFromStep2}
+            disabled={checkingEmail}
+            onClick={handleCheckEmailConfirmed}
           >
-            Дальше
+            {checkingEmail ? 'Проверяем...' : 'Дальше'}
           </Button>
         )}
       </div>
-    </form>
+    </div>
   );
 
   const renderStep3 = () => (
