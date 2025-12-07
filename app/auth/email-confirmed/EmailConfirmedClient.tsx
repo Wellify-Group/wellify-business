@@ -87,25 +87,35 @@ export default function EmailConfirmedClient() {
             meta.birthDate ?? meta.birth_date ?? null;
           const role = meta.role ?? meta.user_role ?? "director";
 
+          // Формируем full_name из компонентов
+          const fullName = [lastName, firstName, middleName]
+            .filter(Boolean)
+            .join(" ") || null;
+
+          const profileData: Record<string, any> = {
+            id: user.id,
+            email: user.email || "",
+            email_verified: true,
+            role: role,
+            updated_at: new Date().toISOString(),
+          };
+
+          // Добавляем поля только если они есть
+          if (firstName) profileData.first_name = firstName.trim();
+          if (lastName) profileData.last_name = lastName.trim();
+          if (middleName) profileData.middle_name = middleName.trim();
+          if (birthDate) profileData.birth_date = birthDate;
+          if (fullName) profileData.full_name = fullName;
+
           const { error: upsertError } = await supabase
             .from("profiles")
-            .upsert(
-              {
-                id: user.id,
-                email: user.email,
-                first_name: firstName,
-                last_name: lastName,
-                middle_name: middleName,
-                birth_date: birthDate,
-                role,
-                email_verified: true,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "id" },
-            );
+            .upsert(profileData, { onConflict: "id" });
 
           if (upsertError) {
             console.error("Error upserting profile after email confirm:", upsertError);
+            console.error("Profile data:", profileData);
+          } else {
+            console.log("Profile successfully updated after email confirmation");
           }
         }
       } catch (err) {

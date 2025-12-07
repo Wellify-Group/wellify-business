@@ -74,18 +74,20 @@ export default function RegisterDirectorPage() {
 
   // ПОЛЛИНГ подтверждения e-mail и подтягивание профиля
   useEffect(() => {
-    if (!supabase || step !== 2 || !emailSent) return;
+    if (!supabase || step !== 2 || !emailSent || emailVerified) return;
 
     let cancelled = false;
 
     const checkEmailAndProfile = async () => {
+      if (cancelled) return;
+
       try {
         const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
 
-        if (userError || !user) {
+        if (userError || !user || cancelled) {
           return;
         }
 
@@ -98,7 +100,7 @@ export default function RegisterDirectorPage() {
           .eq("id", user.id)
           .single();
 
-        if (profileError || !profile) {
+        if (profileError || !profile || cancelled) {
           return;
         }
 
@@ -119,6 +121,9 @@ export default function RegisterDirectorPage() {
             email: prev.email || profile.email || "",
             phone: prev.phone || profile.phone || "",
           }));
+
+          // Останавливаем polling после успешного подтверждения
+          cancelled = true;
         }
       } catch (error) {
         console.error("Error polling email verification:", error);
@@ -128,16 +133,20 @@ export default function RegisterDirectorPage() {
     // первый запуск сразу
     checkEmailAndProfile().catch(console.error);
 
-    // затем - каждые 4 секунды
+    // затем - каждые 2 секунды (быстрее для лучшего UX)
     const intervalId = window.setInterval(() => {
-      checkEmailAndProfile().catch(console.error);
-    }, 4000);
+      if (!cancelled && !emailVerified) {
+        checkEmailAndProfile().catch(console.error);
+      } else {
+        window.clearInterval(intervalId);
+      }
+    }, 2000);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [supabase, step, emailSent]);
+  }, [supabase, step, emailSent, emailVerified]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -490,9 +499,9 @@ export default function RegisterDirectorPage() {
           </div>
         )}
         {emailSent && emailVerified && (
-          <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
-            Поздравляем! Ваша почта подтверждена, можете переходить к следующему
-            шагу.
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            <span>Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.</span>
           </div>
         )}
 
