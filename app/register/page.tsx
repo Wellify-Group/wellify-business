@@ -47,6 +47,7 @@ export default function RegisterDirectorPage() {
   const [emailInfo, setEmailInfo] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   // Создаем клиент Supabase через useMemo
   const supabase = useMemo<SupabaseClient | null>(() => {
@@ -66,30 +67,44 @@ export default function RegisterDirectorPage() {
 
   // Поллинг для проверки подтверждения email
   useEffect(() => {
-    if (!userId || !supabase || emailStatus !== 'sent') return;
+    if (!isCheckingEmail || !supabase) return;
 
-    const checkEmailConfirmation = async () => {
+    let intervalId: number | undefined;
+
+    const checkEmail = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user?.email_confirmed_at) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        // если пользователь уже авторизован и email подтверждён
+        if (user && (user.email_confirmed_at || user.confirmed_at)) {
           setEmailStatus('confirmed');
+          setIsCheckingEmail(false);
+
+          if (intervalId) {
+            window.clearInterval(intervalId);
+          }
         }
       } catch (error) {
         console.error('Error checking email confirmation:', error);
       }
     };
 
-    // Проверяем сразу
-    checkEmailConfirmation();
+    // первая проверка сразу
+    checkEmail().catch(console.error);
 
-    // Затем каждые 4 секунды
-    const interval = setInterval(checkEmailConfirmation, 4000);
+    // и затем периодический поллинг раз в 3 секунды
+    intervalId = window.setInterval(() => {
+      checkEmail().catch(console.error);
+    }, 3000);
 
     return () => {
-      clearInterval(interval);
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
     };
-  }, [userId, supabase, emailStatus]);
+  }, [isCheckingEmail, supabase]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -171,10 +186,10 @@ export default function RegisterDirectorPage() {
       options: {
         emailRedirectTo,
         data: {
-          first_name: baseData.firstName,
-          last_name: baseData.lastName,
-          middle_name: baseData.middleName,
-          birth_date: baseData.birthDate,
+          firstName: baseData.firstName,
+          lastName: baseData.lastName,
+          middleName: baseData.middleName,
+          birthDate: baseData.birthDate,
           role: 'director',
         },
       },
@@ -195,6 +210,9 @@ export default function RegisterDirectorPage() {
     // Если signUp прошёл без ошибок - письмо отправлено Supabase
     setEmailStatus('sent');
     setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме.`);
+    
+    // Начинаем проверку статуса подтверждения
+    setIsCheckingEmail(true);
   };
 
   const handleFinish = async (e: FormEvent) => {
@@ -206,21 +224,37 @@ export default function RegisterDirectorPage() {
       return;
     }
 
-    if (!userId) {
-      setFormError('Ошибка: не найден ID пользователя. Пожалуйста, начните регистрацию заново.');
+    if (!supabase) {
+      setFormError('Ошибка инициализации. Обновите страницу.');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const { updateDirectorPhone } = await import('@/app/auth/register/actions');
-      const result = await updateDirectorPhone(form.phone.trim());
+      // Получаем текущего пользователя
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        setIsLoading(false);
+        setFormError('Пользователь не авторизован. Пожалуйста, войдите в систему.');
+        return;
+      }
+
+      // Обновляем телефон в профиле
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ phone: form.phone.trim() })
+        .eq('id', user.id);
 
       setIsLoading(false);
 
-      if (!result.success) {
-        setFormError(result.error || 'Ошибка при сохранении телефона');
+      if (updateError) {
+        console.error('Error updating phone:', updateError);
+        setFormError(updateError.message || 'Ошибка при сохранении телефона');
         return;
       }
 
@@ -398,17 +432,15 @@ export default function RegisterDirectorPage() {
         />
       </div>
 
-      {emailStatus === 'sent' && (
+      {emailStatus === 'confirmed' ? (
+        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+          Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.
+        </div>
+      ) : emailStatus === 'sent' ? (
         <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
           Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите по ссылке в письме.
         </div>
-      )}
-
-      {emailStatus === 'confirmed' && (
-        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
-          Поздравляем! Ваша почта подтверждена.
-        </div>
-      )}
+      ) : null}
 
       {renderAlerts()}
 
