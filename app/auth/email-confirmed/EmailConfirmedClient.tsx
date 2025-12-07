@@ -53,6 +53,7 @@ export default function EmailConfirmedClient() {
 
       console.log("[email-confirmed] verifyOtp success:", verifyData);
 
+      // Получаем пользователя и обновляем профиль
       try {
         const {
           data: { user },
@@ -64,15 +65,135 @@ export default function EmailConfirmedClient() {
             "[email-confirmed] Error getting user after verifyOtp:",
             userError,
           );
-        } else if (user) {
-          console.log("[email-confirmed] User confirmed:", {
-            id: user.id,
-            email: user.email,
-            email_confirmed_at: user.email_confirmed_at,
-          });
+          // Показываем успех, так как email уже подтвержден в auth
+          setStatus("success");
+          return;
+        }
+
+        if (!user) {
+          console.warn("[email-confirmed] No user after verifyOtp");
+          setStatus("success");
+          return;
+        }
+
+        console.log("[email-confirmed] User confirmed:", {
+          id: user.id,
+          email: user.email,
+          email_confirmed_at: user.email_confirmed_at,
+          metadata: user.user_metadata,
+        });
+
+        // Обновляем профиль с данными из user_metadata
+        const metadata = user.user_metadata || {};
+        const firstName = metadata.firstName?.trim() || null;
+        const lastName = metadata.lastName?.trim() || null;
+        const middleName = metadata.middleName?.trim() || null;
+        let birthDate = metadata.birthDate || null;
+        const role = metadata.role || "director";
+
+        // Нормализуем формат даты (YYYY-MM-DD для PostgreSQL date)
+        if (birthDate) {
+          // Если дата в формате YYYY-MM-DD, оставляем как есть
+          // Если в другом формате, пытаемся преобразовать
+          const dateMatch = birthDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (!dateMatch) {
+            // Пытаемся распарсить другие форматы
+            const parsed = new Date(birthDate);
+            if (!isNaN(parsed.getTime())) {
+              birthDate = parsed.toISOString().split("T")[0];
+            } else {
+              console.warn(
+                "[email-confirmed] Invalid birthDate format:",
+                birthDate,
+              );
+              birthDate = null;
+            }
+          }
+        }
+
+        // Формируем full_name
+        const fullName = [lastName, firstName, middleName]
+          .filter(Boolean)
+          .join(" ") || null;
+
+        const profilePayload: {
+          id: string;
+          email: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          middle_name: string | null;
+          full_name: string | null;
+          birth_date: string | null;
+          role: string;
+          email_verified: boolean;
+          updated_at: string;
+        } = {
+          id: user.id,
+          email: user.email ?? null,
+          first_name: firstName,
+          last_name: lastName,
+          middle_name: middleName,
+          full_name: fullName,
+          birth_date: birthDate,
+          role: role,
+          email_verified: true,
+          updated_at: new Date().toISOString(),
+        };
+
+        console.log(
+          "[email-confirmed] Updating profile with payload:",
+          JSON.stringify(profilePayload, null, 2),
+        );
+
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "id" })
+          .select();
+
+        if (profileError) {
+          console.error(
+            "[email-confirmed] Error updating profile:",
+            profileError,
+          );
+          console.error(
+            "[email-confirmed] Error details:",
+            JSON.stringify(profileError, null, 2),
+          );
+          // Показываем успех, так как email уже подтвержден
+          // Профиль можно обновить позже на шаге 3
+        } else {
+          console.log(
+            "[email-confirmed] Profile updated successfully:",
+            profileData,
+          );
         }
       } catch (e) {
-        console.warn("[email-confirmed] Cannot get user after verifyOtp:", e);
+        console.warn("[email-confirmed] Error in profile update:", e);
+        // Показываем успех, так как email уже подтвержден
+      }
+
+      // Устанавливаем флаг в localStorage и отправляем события для синхронизации
+      try {
+        window.localStorage.setItem("wellify_email_confirmed", "true");
+        console.log(
+          "[email-confirmed] localStorage flag set, dispatching events...",
+        );
+
+        // Событие для текущей вкладки
+        window.dispatchEvent(new CustomEvent("emailConfirmed"));
+
+        // Событие для других вкладок (storage event)
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "wellify_email_confirmed",
+            newValue: "true",
+            storageArea: localStorage,
+          }),
+        );
+
+        console.log("[email-confirmed] Events dispatched successfully");
+      } catch (e) {
+        console.warn("[email-confirmed] Cannot use localStorage:", e);
       }
 
       setStatus("success");
