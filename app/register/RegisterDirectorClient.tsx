@@ -811,29 +811,33 @@ export default function RegisterDirectorClient() {
               className="w-full md:w-auto"
               disabled={!canGoNextFromEmailStep}
               onClick={async () => {
-                // Дополнительная проверка при клике на "Далее"
-                if (!supabase) {
-                  setFormError("Ошибка инициализации. Обновите страницу.");
+                // Если email уже подтвержден (проверено через API route), просто переходим
+                if (emailVerified) {
+                  console.log("[register] Email already verified, proceeding to step 3");
+                  setFormError(null);
+                  setStep(3);
                   return;
                 }
 
+                // Если emailVerified === false, проверяем через API route (без сессии)
+                setFormError(null);
                 try {
-                  const { data: { user }, error: userError } = await supabase.auth.getUser();
+                  const response = await fetch("/api/auth/check-email-status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: form.email.trim() }),
+                  });
 
-                  if (userError || !user) {
-                    setFormError("Пользователь не авторизован. Пожалуйста, выполните вход ещё раз.");
-                    return;
-                  }
+                  const data = await response.json();
 
-                  if (!user.email_confirmed_at) {
+                  if (data.success && data.emailVerified) {
+                    console.log("[register] Email confirmed via API route, proceeding to step 3");
+                    setEmailVerified(true);
+                    setFormError(null);
+                    setStep(3);
+                  } else {
                     setFormError("Почта ещё не подтверждена. Проверьте письмо и перейдите по ссылке.");
-                    return;
                   }
-
-                  // Email подтверждён - переходим на шаг 3
-                  console.log("[register] Email confirmed, proceeding to step 3");
-                  setEmailVerified(true);
-                  setStep(3);
                 } catch (error) {
                   console.error("[register] Error checking email on button click:", error);
                   setFormError("Ошибка при проверке статуса email. Попробуйте ещё раз.");
