@@ -237,7 +237,7 @@ export default function RegisterDirectorPage() {
 
   const renderStep1 = () => (
     <form onSubmit={handleNextFromStep1} className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
           <label className="mb-1.5 block text-sm font-medium">
             Имя <span className="text-destructive">*</span>
@@ -260,16 +260,15 @@ export default function RegisterDirectorPage() {
             placeholder="Иванов"
           />
         </div>
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">Отчество</label>
-        <input
-          value={baseData.middleName}
-          onChange={(e) => setBaseData(prev => ({ ...prev, middleName: e.target.value }))}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-          placeholder="Иванович"
-        />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Отчество</label>
+          <input
+            value={baseData.middleName}
+            onChange={(e) => setBaseData(prev => ({ ...prev, middleName: e.target.value }))}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Иванович"
+          />
+        </div>
       </div>
 
       <div>
@@ -334,7 +333,7 @@ export default function RegisterDirectorPage() {
 
       {renderAlerts()}
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-2 flex justify-end">
         <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
           {isLoading ? 'Загрузка...' : 'Дальше'}
         </Button>
@@ -451,10 +450,7 @@ export default function RegisterDirectorPage() {
       <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <CardHeader className="pb-4">
           {renderStepHeader()}
-          <CardTitle className="text-center text-2xl font-semibold">Создать аккаунт</CardTitle>
-          <CardDescription className="mt-1 text-center text-sm">
-            Заполните форму для регистрации директора
-          </CardDescription>
+          <CardTitle className="text-xl font-semibold text-center">Создать аккаунт директора</CardTitle>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Уже есть аккаунт?{' '}
             <Link href="/auth/login" className="font-medium text-primary hover:underline">
