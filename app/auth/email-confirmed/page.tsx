@@ -1,191 +1,94 @@
-'use client';
+"use client";
 
-import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-function EmailConfirmedInner() {
+type Status = "pending" | "success" | "error";
+
+export default function EmailConfirmedPage() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<'pending' | 'success' | 'error'>('pending');
-  const [error, setError] = useState<string | null>(null);
-
-  const tokenHash = searchParams.get('token_hash');
-  const type = searchParams.get('type') || 'signup';
-  const email = searchParams.get('email') || undefined;
+  const [status, setStatus] = useState<Status>("pending");
 
   useEffect(() => {
-    const run = async () => {
-      const supabase = createBrowserSupabaseClient();
+    const token_hash = searchParams.get("token_hash");
+    const typeParam = searchParams.get("type");
 
-      // Сначала проверяем, есть ли уже активная сессия с подтвержденным email
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (!sessionError && session?.user && session.user.email_confirmed_at) {
-        // Email уже подтвержден, обновляем профиль и показываем успех
-        const user = session.user;
-        
-        const { error: upsertError } = await supabase
-          .from('profiles')
-          .upsert(
-            {
-              id: user.id,
-              email: user.email,
-              email_verified: true,
-              роль: 'директор',
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' }
-          );
+    if (!token_hash) {
+      setStatus("error");
+      return;
+    }
 
-        if (upsertError) {
-          console.error('profiles upsert error', upsertError);
-        }
+    const supabase = createClientComponentClient();
 
-        setStatus('success');
+    const verify = async () => {
+      type EmailOtpType = "signup" | "email" | "recovery" | "magiclink";
+
+      const raw = (typeParam ?? "").toLowerCase();
+      const type: EmailOtpType =
+        raw === "signup" ||
+        raw === "email" ||
+        raw === "recovery" ||
+        raw === "magiclink"
+          ? (raw as EmailOtpType)
+          : "email";
+
+      const { error } = await supabase.auth.verifyOtp({
+        type,
+        token_hash,
+      });
+
+      if (error) {
+        console.error("Email confirmation error:", error.message);
+        setStatus("error");
         return;
       }
 
-      // Если нет сессии, пытаемся обработать токен
-      if (!tokenHash || !email) {
-        // Проверяем, может быть есть code параметр (стандартный формат Supabase)
-        const code = searchParams.get('code');
-        if (code) {
-          // Для code параметра нужна серверная обработка через exchangeCodeForSession
-          // Показываем ошибку и просим пользователя попробовать снова
-          setError('Пожалуйста, используйте ссылку из письма или попробуйте запросить новую ссылку.');
-          setStatus('error');
-          return;
-        }
-        
-        setError('Некорректная ссылка подтверждения.');
-        setStatus('error');
-        return;
-      }
-
-      // Пытаемся использовать verifyOtp (может не работать с token_hash)
-      try {
-        const { data, error: verifyError } = await supabase.auth.verifyOtp({
-          type: type as 'signup' | 'magiclink' | 'recovery',
-          token_hash: tokenHash,
-          email,
-        });
-
-        if (verifyError) {
-          console.error('verifyOtp error', verifyError);
-          // Если verifyOtp не работает, проверяем сессию ещё раз
-          const { data: { session: newSession } } = await supabase.auth.getSession();
-          if (newSession?.user?.email_confirmed_at) {
-            // Email подтвержден другим способом
-            setStatus('success');
-            return;
-          }
-          
-          setError('Не удалось подтвердить e-mail. Попробуйте ещё раз или запросите новую ссылку.');
-          setStatus('error');
-          return;
-        }
-
-        // После verifyOtp получаем пользователя
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError || !userData.user) {
-          console.error('getUser error', userError);
-          setError('Не удалось получить данные пользователя после подтверждения.');
-          setStatus('error');
-          return;
-        }
-
-        const user = userData.user;
-
-        // Синхронизируем профиль
-        const { error: upsertError } = await supabase
-          .from('profiles')
-          .upsert(
-            {
-              id: user.id,
-              email: user.email,
-              email_verified: true,
-              роль: 'директор',
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'id' }
-          );
-
-        if (upsertError) {
-          console.error('profiles upsert error', upsertError);
-        }
-
-        setStatus('success');
-      } catch (e) {
-        console.error('Error in verifyOtp:', e);
-        setError('Произошла ошибка при подтверждении e-mail.');
-        setStatus('error');
-      }
+      setStatus("success");
     };
 
-    run().catch((e) => {
-      console.error(e);
-      setError('Произошла ошибка при подтверждении e-mail.');
-      setStatus('error');
+    verify().catch((err) => {
+      console.error("Unexpected verify error:", err);
+      setStatus("error");
     });
-  }, [tokenHash, type, email, searchParams]);
+  }, [searchParams]);
 
   return (
-    <main className="h-screen w-screen flex items-center justify-center px-4 overflow-hidden">
-      <div className="max-w-md w-full rounded-2xl bg-zinc-950/80 border border-zinc-800 px-8 py-10 shadow-xl">
-        {status === 'pending' && (
+    <main className="min-h-screen bg-[#020617] flex items-center justify-center px-4">
+      <div className="max-w-md w-full rounded-3xl bg-[#050816] border border-white/5 px-8 py-10 text-center shadow-xl shadow-black/40">
+        {status === "pending" && (
           <>
-            <h1 className="text-xl font-semibold text-white mb-3">
-              Подтверждение e-mail
+            <h1 className="text-white text-xl font-semibold mb-3">
+              Подтверждаем e-mail...
             </h1>
             <p className="text-sm text-zinc-400">
-              Пожалуйста, подождите, мы подтверждаем вашу почту...
+              Пожалуйста, подождите несколько секунд. Мы проверяем ссылку подтверждения.
             </p>
           </>
         )}
 
-        {status === 'success' && (
+        {status === "success" && (
           <>
-            <h1 className="text-xl font-semibold text-white mb-3">
-              E-mail подтверждён
+            <h1 className="text-white text-xl font-semibold mb-3">
+              E-mail подтвержден
             </h1>
-            <p className="text-sm text-zinc-400 mb-4">
-              Ваша почта успешно подтверждена. Можете закрыть эту вкладку и вернуться к окну регистрации.
+            <p className="text-sm text-zinc-300">
+              Ваша почта успешно подтверждена. Можете закрыть это окно и вернуться к регистрации в WELLIFY business.
             </p>
           </>
         )}
 
-        {status === 'error' && (
+        {status === "error" && (
           <>
-            <h1 className="text-xl font-semibold text-white mb-3">
+            <h1 className="text-white text-xl font-semibold mb-3">
               Ошибка подтверждения
             </h1>
-            <p className="text-sm text-zinc-400 mb-4">
-              {error ?? 'Не удалось подтвердить e-mail. Попробуйте ещё раз запросить письмо.'}
+            <p className="text-sm text-zinc-400">
+              Не удалось подтвердить e-mail. Попробуйте ещё раз отправить письмо с подтверждением из формы регистрации.
             </p>
           </>
         )}
       </div>
     </main>
-  );
-}
-
-export default function EmailConfirmedPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="h-screen w-screen flex items-center justify-center px-4 overflow-hidden">
-          <div className="max-w-md w-full rounded-2xl bg-zinc-950/80 border border-zinc-800 px-8 py-10 shadow-xl">
-            <h1 className="text-xl font-semibold text-white mb-3">
-              Подтверждение e-mail
-            </h1>
-            <p className="text-sm text-zinc-400">
-              Пожалуйста, подождите...
-            </p>
-          </div>
-        </main>
-      }
-    >
-      <EmailConfirmedInner />
-    </Suspense>
   );
 }
