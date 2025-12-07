@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { PhoneStep } from "@/components/register/PhoneStep";
+import { useLanguage } from "@/components/language-provider";
 
 type Step = 1 | 2 | 3;
 
@@ -31,7 +33,11 @@ interface FormState {
 
 export default function RegisterDirectorClient() {
   const router = useRouter();
+  const { language } = useLanguage();
   const [step, setStep] = useState<Step>(1);
+  
+  // Маппинг локали для API: "en" | "ua" | "ru" -> "en" | "uk" | "ru"
+  const localeForAPI = language === "ua" ? "uk" : language;
 
   const [baseData, setBaseData] = useState<BaseData>({
     firstName: "",
@@ -55,6 +61,7 @@ export default function RegisterDirectorClient() {
   const [emailSent, setEmailSent] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   // Supabase клиент
   const supabase = useMemo<SupabaseClient | null>(() => {
@@ -70,6 +77,10 @@ export default function RegisterDirectorClient() {
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
+    // Сбрасываем верификацию телефона при переходе на другие шаги
+    if (step !== 3) {
+      setPhoneVerified(false);
+    }
   }, [step]);
 
   // Проверка подтверждения email на шаге 2
@@ -389,8 +400,8 @@ export default function RegisterDirectorClient() {
       setFormError("Укажите телефон.");
       return false;
     }
-    if (form.phone.replace(/\D/g, "").length < 10) {
-      setFormError("Укажите корректный телефон.");
+    if (!phoneVerified) {
+      setFormError("Телефон должен быть подтверждён.");
       return false;
     }
     return true;
@@ -495,8 +506,10 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  const handleFinish = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleFinish = async (e?: FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     setFormError(null);
     setFormSuccess(null);
 
@@ -852,40 +865,72 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStep3 = () => (
-    <form onSubmit={handleFinish} className="space-y-4">
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">
-          Телефон <span className="text-destructive">*</span>
-        </label>
-        <input
-          value={form.phone}
-          onChange={(e) =>
-            setForm((prev) => ({ ...prev, phone: e.target.value }))
-          }
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-          placeholder="+38 (0XX) XXX-XX-XX"
-        />
-      </div>
+  const renderStep3 = () => {
+    const canFinish = phoneVerified && !isLoading;
 
-      {renderAlerts()}
+    return (
+      <div className="space-y-4">
+        {!phoneVerified ? (
+          <PhoneStep
+            initialPhone={form.phone}
+            locale={localeForAPI}
+            onPhoneVerified={(verifiedPhone) => {
+              setForm((prev) => ({ ...prev, phone: verifiedPhone }));
+              setPhoneVerified(true);
+            }}
+          />
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">
+                Телефон <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="tel"
+                value={form.phone}
+                disabled
+                className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition opacity-60 cursor-not-allowed"
+              />
+              <p className="mt-1 text-xs text-emerald-400">
+                Телефон подтверждён
+              </p>
+            </div>
+          </div>
+        )}
 
-      <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full md:w-auto"
-          disabled={isLoading}
-          onClick={() => setStep(2)}
-        >
-          Назад
-        </Button>
-        <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
-          {isLoading ? "Завершаем..." : "Завершить регистрацию"}
-        </Button>
+        {phoneVerified && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            <span>
+              Поздравляем! Ваш телефон подтверждён. Можете завершить регистрацию.
+            </span>
+          </div>
+        )}
+
+        {renderAlerts()}
+
+        <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full md:w-auto"
+            disabled={isLoading}
+            onClick={() => setStep(2)}
+          >
+            Назад
+          </Button>
+          <Button
+            type="button"
+            className="w-full md:w-auto"
+            disabled={!canFinish}
+            onClick={handleFinish}
+          >
+            {isLoading ? "Завершаем..." : "Завершить регистрацию"}
+          </Button>
+        </div>
       </div>
-    </form>
-  );
+    );
+  };
 
   return (
     <main className="flex mt-[72px] min-h-[calc(100vh-72px)] items-center justify-center px-4">

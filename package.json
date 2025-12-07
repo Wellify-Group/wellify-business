@@ -23,6 +23,7 @@
     "recharts": "^3.4.1",
     "stripe": "^14.9.0",
     "tailwind-merge": "^2.6.0",
+    "twilio": "^5.10.7",
     "zod": "^4.1.13",
     "zustand": "^4.5.0"
   },
