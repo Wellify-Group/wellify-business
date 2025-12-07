@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Status = "pending" | "success" | "error";
 
@@ -19,7 +19,7 @@ export default function EmailConfirmedPage() {
       return;
     }
 
-    const supabase = createClientComponentClient();
+    const supabase = createBrowserSupabaseClient();
 
     const verify = async () => {
       type EmailOtpType = "signup" | "email" | "recovery" | "magiclink";
