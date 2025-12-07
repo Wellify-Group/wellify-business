@@ -2,9 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 
 type Status = "pending" | "success" | "error";
+
+// создаём единый браузерный Supabase-клиент
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  // это всплывёт в консоль, если вдруг забыли переменные окружения
+  // (но сборку не уронит на этапе типов)
+  // eslint-disable-next-line no-console
+  console.warn(
+    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for EmailConfirmedClient",
+  );
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function EmailConfirmedClient() {
   const searchParams = useSearchParams();
@@ -12,21 +27,37 @@ export default function EmailConfirmedClient() {
 
   useEffect(() => {
     const token_hash = searchParams.get("token_hash");
-    const email = searchParams.get("email");
+    const typeParam = searchParams.get("type"); // email | signup | null
+    const emailParam = searchParams.get("email");
 
     if (!token_hash) {
       setStatus("error");
       return;
     }
 
-    const supabase = createClientComponentClient();
-
     const verify = async () => {
-      const { error } = await supabase.auth.verifyOtp({
-        type: "email",
+      const type: "email" | "signup" =
+        typeParam === "email" ? "email" : "signup";
+
+      const payload: {
+        type: "email" | "signup";
+        token_hash: string;
+        email?: string;
+      } = {
+        type,
         token_hash,
-        email: email ?? undefined,
-      });
+      };
+
+      // Для старых ссылок (type=signup) нужен email
+      if (type === "signup") {
+        if (!emailParam) {
+          setStatus("error");
+          return;
+        }
+        payload.email = emailParam;
+      }
+
+      const { error } = await supabase.auth.verifyOtp(payload);
 
       if (error) {
         console.error("Email confirmation error:", error.message);
@@ -52,7 +83,8 @@ export default function EmailConfirmedClient() {
               Подтверждаем e-mail...
             </h1>
             <p className="text-sm text-zinc-400">
-              Пожалуйста, подождите несколько секунд. Мы проверяем ссылку подтверждения.
+              Пожалуйста, подождите несколько секунд. Мы проверяем ссылку
+              подтверждения.
             </p>
           </>
         )}
@@ -63,7 +95,8 @@ export default function EmailConfirmedClient() {
               E-mail подтвержден
             </h1>
             <p className="text-sm text-zinc-300">
-              Ваша почта успешно подтверждена. Можете закрыть это окно и вернуться к регистрации в WELLIFY business.
+              Ваша почта успешно подтверждена. Можете закрыть это окно и
+              вернуться к регистрации в WELLIFY business.
             </p>
           </>
         )}
@@ -74,7 +107,8 @@ export default function EmailConfirmedClient() {
               Ошибка подтверждения
             </h1>
             <p className="text-sm text-zinc-400">
-              Не удалось подтвердить e-mail. Попробуйте ещё раз отправить письмо с подтверждением из формы регистрации.
+              Не удалось подтвердить e-mail. Попробуйте ещё раз отправить письмо
+              с подтверждением из формы регистрации.
             </p>
           </>
         )}
@@ -82,4 +116,3 @@ export default function EmailConfirmedClient() {
     </main>
   );
 }
-
