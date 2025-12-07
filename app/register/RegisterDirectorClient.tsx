@@ -74,50 +74,185 @@ export default function RegisterDirectorClient() {
 
   // Проверка подтверждения email на шаге 2
   useEffect(() => {
-    if (!supabase || step !== 2 || !emailSent || emailVerified) return;
+    if (!supabase || step !== 2 || !emailSent || emailVerified) {
+      console.log("[register] useEffect skipped:", {
+        hasSupabase: !!supabase,
+        step,
+        emailSent,
+        emailVerified,
+      });
+      return;
+    }
 
     let cancelled = false;
 
-    const checkEmailStatus = async () => {
+    // Подписка на изменения состояния аутентификации
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled || emailVerified) return;
 
+      console.log("[register] Auth state changed:", {
+        event,
+        hasSession: !!session,
+        userId: session?.user?.id,
+        emailConfirmed: !!session?.user?.email_confirmed_at,
+      });
+
+      if (session?.user?.email_confirmed_at && !emailVerified) {
+        console.log("[register] ✅ Email confirmed via auth state change!");
+        setEmailVerified(true);
+        cancelled = true;
+      }
+    });
+
+    const checkEmailStatus = async () => {
+      if (cancelled || emailVerified) {
+        console.log("[register] checkEmailStatus skipped (cancelled or verified)");
+        return;
+      }
+
       try {
+        console.log("[register] Checking email status...");
+        
+        // Сначала проверяем сессию (это обновит cookies если они изменились)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("[register] Error getting session:", sessionError);
+        } else {
+          console.log("[register] Session:", {
+            hasSession: !!session,
+            userId: session?.user?.id,
+            emailConfirmed: !!session?.user?.email_confirmed_at,
+          });
+
+          // Если сессия есть и email подтвержден, обновляем состояние
+          if (session?.user?.email_confirmed_at && !emailVerified) {
+            console.log("[register] ✅ Email confirmed via session!");
+            setEmailVerified(true);
+            cancelled = true;
+            return;
+          }
+        }
+
+        // Затем получаем пользователя (это также может обновить сессию)
         const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
 
         if (userError) {
-          console.error("[register] Error getting user:", userError);
+          // Если ошибка "Auth session missing", используем альтернативный способ проверки
+          if (
+            userError.message?.includes("Auth session missing") ||
+            userError.message?.includes("session")
+          ) {
+            console.log(
+              "[register] No session available, checking via API route...",
+            );
+
+            // Проверяем через API route по email
+            try {
+              const response = await fetch("/api/auth/check-email-status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: form.email.trim() }),
+              });
+
+              const data = await response.json();
+
+              if (data.success && data.emailVerified) {
+                console.log(
+                  "[register] ✅ Email confirmed via API route!",
+                  data,
+                );
+                setEmailVerified(true);
+                cancelled = true;
+                return;
+              } else {
+                console.log(
+                  "[register] Email not verified yet (checked via API):",
+                  data,
+                );
+              }
+            } catch (apiError) {
+              console.error(
+                "[register] Error checking via API route:",
+                apiError,
+              );
+            }
+          } else {
+            console.error("[register] Error getting user:", userError);
+          }
           return;
         }
 
         if (!user) {
+          console.log("[register] No user found");
           return;
         }
 
+        console.log("[register] User data:", {
+          id: user.id,
+          email: user.email,
+          email_confirmed_at: user.email_confirmed_at,
+          hasMetadata: !!user.user_metadata,
+        });
+
         if (user.email_confirmed_at) {
           console.log(
-            "[register] Email confirmed! email_confirmed_at:",
+            "[register] ✅ Email confirmed! email_confirmed_at:",
             user.email_confirmed_at,
           );
           setEmailVerified(true);
           cancelled = true;
           return;
+        } else {
+          console.log("[register] Email not confirmed yet");
         }
       } catch (error) {
         console.error("[register] Error checking email status:", error);
       }
     };
 
-    const checkLocalStorage = () => {
+    const checkLocalStorage = async () => {
       try {
         const isConfirmed =
           window.localStorage.getItem("wellify_email_confirmed") === "true";
+        console.log("[register] localStorage check:", {
+          isConfirmed,
+          emailVerified,
+        });
         if (isConfirmed && !emailVerified) {
           console.log(
-            "[register] Found localStorage flag, checking with Supabase...",
+            "[register] ✅ Found localStorage flag, checking with Supabase...",
           );
+          
+          // Сначала пробуем через API route (работает без сессии)
+          try {
+            const response = await fetch("/api/auth/check-email-status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: form.email.trim() }),
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.emailVerified) {
+              console.log(
+                "[register] ✅ Email confirmed via API route (from localStorage)!",
+                data,
+              );
+              setEmailVerified(true);
+              cancelled = true;
+              return;
+            }
+          } catch (apiError) {
+            console.warn("[register] API check failed, trying direct check:", apiError);
+          }
+          
+          // Если API не сработал, пробуем обычную проверку
           checkEmailStatus();
         }
       } catch (e) {
@@ -125,7 +260,7 @@ export default function RegisterDirectorClient() {
       }
     };
 
-    const handleStorage = (event: StorageEvent) => {
+    const handleStorage = async (event: StorageEvent) => {
       if (
         event.key === "wellify_email_confirmed" &&
         event.newValue === "true"
@@ -133,23 +268,84 @@ export default function RegisterDirectorClient() {
         console.log(
           "[register] Storage event received, checking email status...",
         );
+        
+        // Проверяем через API route (работает без сессии)
+        try {
+          const response = await fetch("/api/auth/check-email-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: form.email.trim() }),
+          });
+
+          const data = await response.json();
+
+          if (data.success && data.emailVerified) {
+            console.log(
+              "[register] ✅ Email confirmed via API route (from storage event)!",
+              data,
+            );
+            setEmailVerified(true);
+            cancelled = true;
+            return;
+          }
+        } catch (apiError) {
+          console.warn("[register] API check failed, trying direct check:", apiError);
+        }
+        
         checkEmailStatus();
       }
     };
 
-    const handleCustom = () => {
+    const handleCustom = async () => {
       console.log(
         "[register] Custom event 'emailConfirmed' received, checking email status...",
       );
+      
+      // Проверяем через API route (работает без сессии)
+      try {
+        const response = await fetch("/api/auth/check-email-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email.trim() }),
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.emailVerified) {
+          console.log(
+            "[register] ✅ Email confirmed via API route (from custom event)!",
+            data,
+          );
+          setEmailVerified(true);
+          cancelled = true;
+          return;
+        }
+      } catch (apiError) {
+        console.warn("[register] API check failed, trying direct check:", apiError);
+      }
+      
       checkEmailStatus();
     };
 
+    // Проверяем сразу при монтировании
     checkLocalStorage();
     checkEmailStatus();
 
+    // Слушаем события
     window.addEventListener("storage", handleStorage);
     window.addEventListener("emailConfirmed", handleCustom as EventListener);
 
+    // Проверяем при возврате фокуса на вкладку
+    const handleFocus = () => {
+      if (!cancelled && !emailVerified) {
+        console.log("[register] Window focused, checking email status...");
+        checkLocalStorage();
+        checkEmailStatus();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+
+    // Поллинг каждые 3 секунды
     const intervalId = setInterval(() => {
       if (!cancelled && !emailVerified) {
         checkEmailStatus();
@@ -161,8 +357,10 @@ export default function RegisterDirectorClient() {
     return () => {
       cancelled = true;
       clearInterval(intervalId);
+      subscription.unsubscribe();
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("emailConfirmed", handleCustom as EventListener);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [supabase, step, emailSent, emailVerified]);
 
