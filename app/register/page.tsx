@@ -3,7 +3,13 @@
 import { FormEvent, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
@@ -62,7 +68,7 @@ export default function RegisterDirectorPage() {
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
-    // При переходе со шага 2 сбрасываем состояния email
+    // При выходе со шага 2 сбрасываем состояния email
     if (step !== 2) {
       setEmailSent(false);
       setEmailVerified(false);
@@ -76,23 +82,25 @@ export default function RegisterDirectorPage() {
     // Функция проверки подтверждения email
     const checkEmailVerified = async () => {
       setIsCheckingVerification(true);
-      
+
       try {
         const { data: userData, error: userError } = await supabase.auth.getUser();
-        
-        // Проверяем auth user с verified email
-        if (!userError && userData.user && (userData.user.email_confirmed_at || userData.user.confirmed_at)) {
-          setEmailVerified(true);
-          setIsCheckingVerification(false);
-          return;
-        }
 
-        // Дополнительно читаем профиль для проверки email_verified
         if (!userError && userData.user) {
+          const user = userData.user;
+
+          // 1) Проверяем поля auth
+          if (user.email_confirmed_at || (user as any).confirmed_at) {
+            setEmailVerified(true);
+            setIsCheckingVerification(false);
+            return;
+          }
+
+          // 2) Дополнительно проверяем профиль
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('email_verified')
-            .eq('id', userData.user.id)
+            .eq('id', user.id)
             .single();
 
           if (!profileError && profile?.email_verified) {
@@ -106,7 +114,7 @@ export default function RegisterDirectorPage() {
       }
     };
 
-    // Функция для синхронизации профиля в БД
+    // Функция для синхронизации профиля в БД (минимально: id + email)
     const syncProfile = async () => {
       try {
         const {
@@ -117,17 +125,15 @@ export default function RegisterDirectorPage() {
 
         const { id, email } = user;
 
-        const { error } = await supabase
-          .from('profiles')
-          .upsert(
-            {
-              id: id,
-              email: email,
-            },
-            {
-              onConflict: 'id',
-            }
-          );
+        const { error } = await supabase.from('profiles').upsert(
+          {
+            id,
+            email,
+          },
+          {
+            onConflict: 'id',
+          },
+        );
 
         if (error) {
           console.error('Error upserting profile', error);
@@ -143,9 +149,8 @@ export default function RegisterDirectorPage() {
       if (!session?.user) return;
 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        // Проверяем, что email подтвержден
         const user = session.user;
-        if (user.email_confirmed_at || user.confirmed_at) {
+        if (user.email_confirmed_at || (user as any).confirmed_at) {
           setEmailVerified(true);
           // Синхронизируем профиль после подтверждения
           syncProfile().catch(console.error);
@@ -153,9 +158,9 @@ export default function RegisterDirectorPage() {
       }
     });
 
-    // Проверяем подтверждение при открытии шага 2, если письмо было отправлено
+    // Проверяем подтверждение при открытии шага 2, если письмо уже отправлено
     if (emailSent) {
-      checkEmailVerified();
+      checkEmailVerified().catch(console.error);
     }
 
     return () => {
@@ -216,19 +221,15 @@ export default function RegisterDirectorPage() {
   };
 
   const handleSendEmailVerification = async () => {
-    if (!form.email.trim()) {
-      setFormError('Укажите e-mail.');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      setFormError('Укажите корректный e-mail.');
+    if (!validateEmail()) {
       return;
     }
 
     // Проверка наличия env переменных
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
       setFormError('Ошибка конфигурации. Обратитесь к администратору.');
       console.error('Missing Supabase env');
       return;
@@ -243,7 +244,9 @@ export default function RegisterDirectorPage() {
     setFormError(null);
 
     const redirectTo =
-      `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dev.wellifyglobal.com'}/auth/email-confirmed`;
+      `${
+        process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dev.wellifyglobal.com'
+      }/auth/email-confirmed`;
 
     const { data, error } = await supabase.auth.signUp({
       email: form.email.trim(),
@@ -281,6 +284,11 @@ export default function RegisterDirectorPage() {
       return;
     }
 
+    if (!emailVerified) {
+      setFormError('Подтвердите e-mail перед завершением регистрации.');
+      return;
+    }
+
     if (!supabase) {
       setFormError('Ошибка инициализации. Обновите страницу.');
       return;
@@ -297,30 +305,51 @@ export default function RegisterDirectorPage() {
 
       if (userError || !user) {
         setIsLoading(false);
-        setFormError('Пользователь не авторизован. Пожалуйста, войдите в систему.');
+        setFormError(
+          'Пользователь не авторизован. Пожалуйста, войдите в систему.',
+        );
         return;
       }
 
-      // Обновляем телефон в профиле
+      const fullName = [baseData.lastName, baseData.firstName, baseData.middleName]
+        .filter(Boolean)
+        .join(' ');
+
+      // Обновляем профиль: ФИО, телефон, роль, email_verified и при необходимости дату рождения
+      const profileUpdate: Record<string, any> = {
+        first_name: baseData.firstName.trim(),
+        last_name: baseData.lastName.trim(),
+        middle_name: baseData.middleName.trim() || null,
+        full_name: fullName || null,
+        phone: form.phone.trim(),
+        role: 'директор',
+        email_verified: true,
+      };
+
+      // Если в таблице есть колонка с русским названием даты рождения
+      profileUpdate['дата_рождения'] = baseData.birthDate || null;
+
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ phone: form.phone.trim() })
+        .update(profileUpdate)
         .eq('id', user.id);
 
       setIsLoading(false);
 
       if (updateError) {
-        console.error('Error updating phone:', updateError);
-        setFormError(updateError.message || 'Ошибка при сохранении телефона');
+        console.error('Error updating profile:', updateError);
+        setFormError(updateError.message || 'Ошибка при сохранении профиля');
         return;
       }
 
       // Редирект в дашборд директора
       router.push('/dashboard/director');
     } catch (error) {
-      console.error('Error updating phone:', error);
+      console.error('Error updating profile:', error);
       setIsLoading(false);
-      setFormError('Произошла ошибка при сохранении телефона. Попробуйте ещё раз.');
+      setFormError(
+        'Произошла ошибка при сохранении данных. Попробуйте ещё раз.',
+      );
     }
   };
 
@@ -333,7 +362,7 @@ export default function RegisterDirectorPage() {
   const renderStepHeader = () => (
     <div className="mb-6">
       <div className="mb-2 flex items-center gap-4">
-        {steps.map(s => (
+        {steps.map((s) => (
           <div key={s.id} className="flex-1">
             <div
               className={`h-1.5 rounded-full transition-all ${
@@ -344,13 +373,15 @@ export default function RegisterDirectorPage() {
         ))}
       </div>
       <div className="flex items-center justify-between text-[11px] text-zinc-400">
-        {steps.map(s => (
+        {steps.map((s) => (
           <div key={s.id} className="flex-1 text-center">
             {s.label}
           </div>
         ))}
       </div>
-      <div className="mt-2 text-center text-xs text-zinc-500">Шаг {step} из 3</div>
+      <div className="mt-2 text-center text-xs text-zinc-500">
+        Шаг {step} из 3
+      </div>
     </div>
   );
 
@@ -361,7 +392,7 @@ export default function RegisterDirectorPage() {
     }
 
     return (
-      <div className="space-y-2 min-h-[44px]">
+      <div className="min-h-[44px] space-y-2">
         {formError && (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -387,7 +418,9 @@ export default function RegisterDirectorPage() {
           </label>
           <input
             value={baseData.firstName}
-            onChange={(e) => setBaseData(prev => ({ ...prev, firstName: e.target.value }))}
+            onChange={(e) =>
+              setBaseData((prev) => ({ ...prev, firstName: e.target.value }))
+            }
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
             placeholder="Иван"
           />
@@ -398,7 +431,9 @@ export default function RegisterDirectorPage() {
           </label>
           <input
             value={baseData.lastName}
-            onChange={(e) => setBaseData(prev => ({ ...prev, lastName: e.target.value }))}
+            onChange={(e) =>
+              setBaseData((prev) => ({ ...prev, lastName: e.target.value }))
+            }
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
             placeholder="Иванов"
           />
@@ -407,7 +442,9 @@ export default function RegisterDirectorPage() {
           <label className="mb-1.5 block text-sm font-medium">Отчество</label>
           <input
             value={baseData.middleName}
-            onChange={(e) => setBaseData(prev => ({ ...prev, middleName: e.target.value }))}
+            onChange={(e) =>
+              setBaseData((prev) => ({ ...prev, middleName: e.target.value }))
+            }
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
             placeholder="Иванович"
           />
@@ -421,10 +458,14 @@ export default function RegisterDirectorPage() {
         <input
           type="date"
           value={baseData.birthDate}
-          onChange={(e) => setBaseData(prev => ({ ...prev, birthDate: e.target.value }))}
+          onChange={(e) =>
+            setBaseData((prev) => ({ ...prev, birthDate: e.target.value }))
+          }
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
         />
-        <p className="mt-1 text-xs text-muted-foreground">Формат: ДД.ММ.ГГГГ</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Формат: ДД.ММ.ГГГГ
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -436,17 +477,23 @@ export default function RegisterDirectorPage() {
             <input
               type={showPassword ? 'text' : 'password'}
               value={baseData.password}
-              onChange={(e) => setBaseData(prev => ({ ...prev, password: e.target.value }))}
+              onChange={(e) =>
+                setBaseData((prev) => ({ ...prev, password: e.target.value }))
+              }
               className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
               placeholder="Минимум 8 символов"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
               tabIndex={-1}
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
@@ -476,7 +523,8 @@ export default function RegisterDirectorPage() {
 
   const renderStep2 = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const isEmailValid = form.email.trim() && emailRegex.test(form.email.trim());
+    const isEmailValid =
+      form.email.trim() && emailRegex.test(form.email.trim());
 
     return (
       <div className="space-y-4">
@@ -487,7 +535,9 @@ export default function RegisterDirectorPage() {
           <input
             type="email"
             value={form.email}
-            onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, email: e.target.value }))
+            }
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
             placeholder="you@example.com"
           />
@@ -495,12 +545,14 @@ export default function RegisterDirectorPage() {
 
         {emailSent && !emailVerified && (
           <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите по ссылке в письме.
+            Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите
+            по ссылке в письме.
           </div>
         )}
         {emailSent && emailVerified && (
           <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
-            Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.
+            Поздравляем! Ваша почта подтверждена, можете переходить к
+            следующему шагу.
           </div>
         )}
 
@@ -549,7 +601,9 @@ export default function RegisterDirectorPage() {
         </label>
         <input
           value={form.phone}
-          onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, phone: e.target.value }))
+          }
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
           placeholder="+38 (0XX) XXX-XX-XX"
         />
@@ -575,14 +629,19 @@ export default function RegisterDirectorPage() {
   );
 
   return (
-    <main className="flex mt-[72px] min-h-[calc(100vh-72px)] items-center justify-center px-4">
+    <main className="mt-[72px] flex min-h-[calc(100vh-72px)] items-center justify-center px-4">
       <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <CardHeader className="pb-4">
           {renderStepHeader()}
-          <CardTitle className="text-xl font-semibold text-center">Создать аккаунт директора</CardTitle>
+          <CardTitle className="text-center text-xl font-semibold">
+            Создать аккаунт директора
+          </CardTitle>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Уже есть аккаунт?{' '}
-            <Link href="/auth/login" className="font-medium text-primary hover:underline">
+            <Link
+              href="/auth/login"
+              className="font-medium text-primary hover:underline"
+            >
               Войти
             </Link>
           </p>
