@@ -94,12 +94,20 @@ export default function RegisterDirectorPage() {
           // localStorage недоступен, продолжаем обычную проверку
         }
 
+        // 1. Получаем пользователя
         const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
 
-        if (userError || !user || cancelled || emailVerified) {
+        // 2. Если ошибка - логируем и выходим из итерации
+        if (userError) {
+          console.error("Error getting user during email verification polling:", userError);
+          return;
+        }
+
+        // 3. Если user нет - просто выходим из итерации (значит, пользователь ещё не подтвердил почту)
+        if (!user || cancelled || emailVerified) {
           return;
         }
 
@@ -110,7 +118,7 @@ export default function RegisterDirectorPage() {
           return;
         }
 
-        // читаем профиль
+        // 4. Если user есть - читаем профиль
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select(
@@ -119,20 +127,28 @@ export default function RegisterDirectorPage() {
           .eq("id", user.id)
           .maybeSingle();
 
-        if (profileError || !profile || cancelled || emailVerified) {
+        // 5. Если profileError - логируем и выходим из итерации
+        if (profileError) {
+          console.error("Error loading profile during email verification polling:", profileError);
           return;
         }
 
+        if (!profile || cancelled || emailVerified) {
+          return;
+        }
+
+        // 6. Если profile?.email_verified true
         if (profile.email_verified && !cancelled && !emailVerified) {
+          // вызываем setEmailVerified(true)
           setEmailVerified(true);
 
-          // аккуратно подставляем данные в локальное состояние, если они пустые
+          // опционально подтягиваем данные профиля обратно в baseData, чтобы всё было консистентно
           setBaseData((prev) => ({
             ...prev,
-            firstName: prev.firstName || profile.first_name || "",
-            lastName: prev.lastName || profile.last_name || "",
-            middleName: prev.middleName || profile.middle_name || "",
-            birthDate: prev.birthDate || profile.birth_date || "",
+            firstName: profile.first_name ?? prev.firstName,
+            lastName: profile.last_name ?? prev.lastName,
+            middleName: profile.middle_name ?? prev.middleName,
+            birthDate: profile.birth_date ?? prev.birthDate,
           }));
 
           setForm((prev) => ({
@@ -162,14 +178,14 @@ export default function RegisterDirectorPage() {
     // первый запуск сразу
     checkEmailAndProfile().catch(console.error);
 
-    // затем - каждые 2 секунды (быстрее для лучшего UX)
+    // затем - каждые 4 секунды (3-5 секунд по требованиям)
     const intervalId = window.setInterval(() => {
       if (!cancelled && !emailVerified) {
         checkEmailAndProfile().catch(console.error);
       } else {
         window.clearInterval(intervalId);
       }
-    }, 2000);
+    }, 4000);
 
     return () => {
       cancelled = true;
@@ -535,6 +551,9 @@ export default function RegisterDirectorPage() {
     const isEmailValid =
       form.email.trim() && emailRegex.test(form.email.trim());
 
+    // Кнопка "Далее" доступна только если emailVerified === true и не идёт загрузка
+    const canGoNextFromEmailStep = emailVerified && !isLoading && !isSendingEmail;
+
     return (
       <div className="space-y-4">
         <div>
@@ -559,7 +578,7 @@ export default function RegisterDirectorPage() {
             обновит статус.
           </div>
         )}
-        {emailSent && emailVerified && (
+        {emailVerified && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
             <span>Поздравляем! Ваша почта подтверждена. Можете переходить к следующему шагу.</span>
@@ -592,7 +611,7 @@ export default function RegisterDirectorPage() {
             <Button
               type="button"
               className="w-full md:w-auto"
-              disabled={!emailVerified}
+              disabled={!canGoNextFromEmailStep}
               onClick={() => setStep(3)}
             >
               Далее

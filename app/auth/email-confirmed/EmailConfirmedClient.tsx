@@ -88,14 +88,17 @@ export default function EmailConfirmedClient() {
         } = await supabase.auth.getUser();
 
         if (userError) {
-          console.error("Error getting user after verifyOtp:", userError);
-          setStatus("error");
+          console.error("Error getting user after email verification:", userError);
+          // Пользователю текст можно не менять, просто логируем
+          // Email уже подтвержден в auth, продолжаем показывать успех
+          setStatus("success");
           return;
         }
 
         if (!user) {
-          console.error("No user after verifyOtp");
-          setStatus("error");
+          console.error("No user returned after email verification");
+          // Email уже подтвержден в auth, продолжаем показывать успех
+          setStatus("success");
           return;
         }
 
