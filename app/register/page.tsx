@@ -82,18 +82,6 @@ export default function RegisterDirectorPage() {
       if (cancelled || emailVerified) return;
 
       try {
-        // Сначала проверяем localStorage для быстрого обновления
-        try {
-          const isConfirmed = localStorage.getItem("wellify_email_confirmed") === "true";
-          if (isConfirmed) {
-            // Если флаг установлен, проверяем профиль для подтверждения
-          } else {
-            // Если флага нет, продолжаем обычную проверку
-          }
-        } catch (e) {
-          // localStorage недоступен, продолжаем обычную проверку
-        }
-
         // 1. Получаем пользователя
         const {
           data: { user },
@@ -102,7 +90,10 @@ export default function RegisterDirectorPage() {
 
         // 2. Если ошибка - логируем и выходим из итерации
         if (userError) {
-          console.error("Error getting user during email verification polling:", userError);
+          console.error(
+            "Error getting user during email verification polling:",
+            userError,
+          );
           return;
         }
 
@@ -129,7 +120,10 @@ export default function RegisterDirectorPage() {
 
         // 5. Если profileError - логируем и выходим из итерации
         if (profileError) {
-          console.error("Error loading profile during email verification polling:", profileError);
+          console.error(
+            "Error loading profile during email verification polling:",
+            profileError,
+          );
           return;
         }
 
@@ -139,10 +133,9 @@ export default function RegisterDirectorPage() {
 
         // 6. Если profile?.email_verified true
         if (profile.email_verified && !cancelled && !emailVerified) {
-          // вызываем setEmailVerified(true)
           setEmailVerified(true);
 
-          // опционально подтягиваем данные профиля обратно в baseData, чтобы всё было консистентно
+          // подтягиваем данные профиля обратно в baseData, чтобы всё было консистентно
           setBaseData((prev) => ({
             ...prev,
             firstName: profile.first_name ?? prev.firstName,
@@ -157,7 +150,6 @@ export default function RegisterDirectorPage() {
             phone: prev.phone || profile.phone || "",
           }));
 
-          // Останавливаем polling после успешного подтверждения
           cancelled = true;
         }
       } catch (error) {
@@ -165,20 +157,10 @@ export default function RegisterDirectorPage() {
       }
     };
 
-    // Слушаем события localStorage для мгновенного обновления
-    const handleStorageChange = () => {
-      if (!emailVerified) {
-        checkEmailAndProfile().catch(console.error);
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("emailConfirmed", handleStorageChange);
-
     // первый запуск сразу
     checkEmailAndProfile().catch(console.error);
 
-    // затем - каждые 4 секунды (3-5 секунд по требованиям)
+    // затем - каждые 4 секунды
     const intervalId = window.setInterval(() => {
       if (!cancelled && !emailVerified) {
         checkEmailAndProfile().catch(console.error);
@@ -190,8 +172,6 @@ export default function RegisterDirectorPage() {
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("emailConfirmed", handleStorageChange);
     };
   }, [supabase, step, emailSent, emailVerified]);
 
@@ -263,12 +243,17 @@ export default function RegisterDirectorPage() {
     setIsSendingEmail(true);
     setFormError(null);
 
-    const redirectTo = `${
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
-    }/auth/email-confirmed`;
+    // ВАЖНО: redirect всегда на тот же origin, где идёт регистрация
+    const origin =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL ??
+          "https://dev--wellify-business.vercel.app";
+
+    const redirectTo = `${origin}/auth/email-confirmed`;
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: baseData.password,
         options: {
@@ -285,8 +270,10 @@ export default function RegisterDirectorPage() {
 
       if (error) {
         // Если пользователь уже существует, пробуем отправить письмо заново
-        if (error.message?.includes("already registered") || error.message?.includes("already exists")) {
-          // Пробуем resend confirmation
+        if (
+          error.message?.includes("already registered") ||
+          error.message?.includes("already exists")
+        ) {
           const { error: resendError } = await supabase.auth.resend({
             type: "signup",
             email: form.email.trim(),
@@ -296,12 +283,13 @@ export default function RegisterDirectorPage() {
           });
 
           if (resendError) {
-            setFormError(resendError.message || "Не удалось отправить письмо");
+            setFormError(
+              resendError.message || "Не удалось отправить письмо",
+            );
             setIsSendingEmail(false);
             return;
           }
 
-          // Письмо переотправлено
           setEmailSent(true);
           setEmailVerified(false);
           setIsSendingEmail(false);
@@ -552,7 +540,8 @@ export default function RegisterDirectorPage() {
       form.email.trim() && emailRegex.test(form.email.trim());
 
     // Кнопка "Далее" доступна только если emailVerified === true и не идёт загрузка
-    const canGoNextFromEmailStep = emailVerified && !isLoading && !isSendingEmail;
+    const canGoNextFromEmailStep =
+      emailVerified && !isLoading && !isSendingEmail;
 
     return (
       <div className="space-y-4">
@@ -581,7 +570,10 @@ export default function RegisterDirectorPage() {
         {emailVerified && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            <span>Поздравляем! Ваша почта подтверждена. Можете переходить к следующему шагу.</span>
+            <span>
+              Поздравляем! Ваша почта подтверждена. Можете переходить к
+              следующему шагу.
+            </span>
           </div>
         )}
 
@@ -598,7 +590,7 @@ export default function RegisterDirectorPage() {
             Назад
           </Button>
 
-        {!emailSent ? (
+          {!emailSent ? (
             <Button
               type="button"
               className="w-full md:w-auto"
@@ -640,11 +632,11 @@ export default function RegisterDirectorPage() {
 
       {renderAlerts()}
 
-      <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
+      <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify_between">
         <Button
           type="button"
           variant="outline"
-          className="w-full md:w-auto"
+          className="w_full md:w-auto"
           disabled={isLoading}
           onClick={() => setStep(2)}
         >

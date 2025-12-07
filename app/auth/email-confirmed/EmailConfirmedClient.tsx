@@ -6,8 +6,6 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Status = "pending" | "success" | "error";
 
-// Используем браузерный клиент с поддержкой cookies для сессий
-
 export default function EmailConfirmedClient() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>("pending");
@@ -56,31 +54,29 @@ export default function EmailConfirmedClient() {
 
       console.log("verifyOtp success, data:", verifyData);
 
-      // После verifyOtp сессия должна быть установлена автоматически
-      // Но иногда нужно немного подождать
+      // Пытаемся убедиться, что сессия установлена
       let attempts = 0;
       let session = verifyData?.session || null;
-      
-      // Если сессия не в ответе - пробуем получить её
+
       while (!session && attempts < 5) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         const { data: sessionData } = await supabase.auth.getSession();
         session = sessionData?.session || null;
         attempts++;
-        
+
         if (session) {
           console.log("Session obtained after", attempts, "attempts");
           break;
         }
       }
-      
+
       if (!session) {
         console.warn("No session after verifyOtp after", attempts, "attempts");
       } else {
         console.log("Session confirmed, user ID:", session.user.id);
       }
 
-      // после успешного подтверждения - получаем пользователя и синхронизируем профиль
+      // Синхронизируем профиль
       try {
         const {
           data: { user },
@@ -88,16 +84,16 @@ export default function EmailConfirmedClient() {
         } = await supabase.auth.getUser();
 
         if (userError) {
-          console.error("Error getting user after email verification:", userError);
-          // Пользователю текст можно не менять, просто логируем
-          // Email уже подтвержден в auth, продолжаем показывать успех
+          console.error(
+            "Error getting user after email verification:",
+            userError,
+          );
           setStatus("success");
           return;
         }
 
         if (!user) {
           console.error("No user returned after email verification");
-          // Email уже подтвержден в auth, продолжаем показывать успех
           setStatus("success");
           return;
         }
@@ -115,14 +111,10 @@ export default function EmailConfirmedClient() {
 
         console.log("User metadata:", meta);
 
-        const firstName =
-          meta.firstName ?? meta.first_name ?? null;
-        const lastName =
-          meta.lastName ?? meta.last_name ?? null;
-        const middleName =
-          meta.middleName ?? meta.middle_name ?? null;
-        const birthDate =
-          meta.birthDate ?? meta.birth_date ?? null;
+        const firstName = meta.firstName ?? meta.first_name ?? null;
+        const lastName = meta.lastName ?? meta.last_name ?? null;
+        const middleName = meta.middleName ?? meta.middle_name ?? null;
+        const birthDate = meta.birthDate ?? meta.birth_date ?? null;
         const role = meta.role ?? meta.user_role ?? "director";
 
         console.log("Extracted data:", {
@@ -133,19 +125,16 @@ export default function EmailConfirmedClient() {
           role,
         });
 
-        // Формируем full_name из компонентов (Фамилия Имя Отчество)
-        const fullName = [lastName, firstName, middleName]
-          .filter(Boolean)
-          .join(" ") || null;
+        // full_name = "Фамилия Имя Отчество"
+        const fullName =
+          [lastName, firstName, middleName].filter(Boolean).join(" ") || null;
 
-        // Подготавливаем объект для upsert в profiles
-        // Заполняем все поля, даже если они null (по требованиям)
         const profileData: Record<string, any> = {
           id: user.id,
           email: user.email || "",
-          first_name: firstName ? firstName.trim() : null,
-          last_name: lastName ? lastName.trim() : null,
-          middle_name: middleName ? middleName.trim() : null,
+          first_name: firstName ? String(firstName).trim() : null,
+          last_name: lastName ? String(lastName).trim() : null,
+          middle_name: middleName ? String(middleName).trim() : null,
           full_name: fullName,
           birth_date: birthDate || null,
           role: role || "director",
@@ -155,106 +144,39 @@ export default function EmailConfirmedClient() {
 
         console.log("Profile data to upsert:", profileData);
 
-        // Используем API route для обновления профиля (обходит RLS через service role)
-        try {
-          const response = await fetch("/api/profile/update-after-confirm", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId: user.id,
-              profileData: profileData,
-            }),
-          });
+        const { data: upsertData, error: upsertError } = await supabase
+          .from("profiles")
+          .upsert(profileData, { onConflict: "id" })
+          .select();
 
-          const result = await response.json();
-
-          if (!response.ok || !result.success) {
-            console.error("API route error:", result.error);
-            // Пробуем напрямую через Supabase как fallback
-            const { data: finalSession } = await supabase.auth.getSession();
-            
-            if (finalSession?.session) {
-              const { data: upsertData, error: upsertError } = await supabase
-                .from("profiles")
-                .upsert(profileData, { onConflict: "id" })
-                .select();
-
-              if (upsertError) {
-                console.error("Fallback upsert also failed:", upsertError);
-              } else {
-                console.log("Profile updated via fallback method:", upsertData);
-                
-                // Уведомляем страницу регистрации через localStorage
-                try {
-                  window.localStorage.setItem("wellify_email_confirmed", "true");
-                  window.dispatchEvent(new StorageEvent("storage", {
-                    key: "wellify_email_confirmed",
-                    newValue: "true",
-                    storageArea: localStorage,
-                  }));
-                  window.dispatchEvent(new CustomEvent("emailConfirmed"));
-                } catch (e) {
-                  console.warn("Cannot set localStorage:", e);
-                }
-              }
-            }
-          } else {
-            console.log("Profile successfully updated via API route:", result.profile);
-            
-            // Уведомляем страницу регистрации через localStorage
-            try {
-              window.localStorage.setItem("wellify_email_confirmed", "true");
-              window.dispatchEvent(new StorageEvent("storage", {
-                key: "wellify_email_confirmed",
-                newValue: "true",
-                storageArea: localStorage,
-              }));
-              window.dispatchEvent(new CustomEvent("emailConfirmed"));
-            } catch (e) {
-              console.warn("Cannot set localStorage:", e);
-            }
-          }
-        } catch (apiError) {
-          console.error("Error calling API route:", apiError);
-          
-          // Fallback: пробуем напрямую через Supabase
-          const { data: finalSession } = await supabase.auth.getSession();
-          
-          if (finalSession?.session) {
-            const { data: upsertData, error: upsertError } = await supabase
-              .from("profiles")
-              .upsert(profileData, { onConflict: "id" })
-              .select();
-
-            if (upsertError) {
-              console.error("Fallback upsert failed:", upsertError);
-            } else {
-              console.log("Profile updated via fallback:", upsertData);
-              
-              // Уведомляем страницу регистрации через localStorage
-              try {
-                window.localStorage.setItem("wellify_email_confirmed", "true");
-                window.dispatchEvent(new StorageEvent("storage", {
-                  key: "wellify_email_confirmed",
-                  newValue: "true",
-                  storageArea: localStorage,
-                }));
-                window.dispatchEvent(new CustomEvent("emailConfirmed"));
-              } catch (e) {
-                console.warn("Cannot set localStorage:", e);
-              }
-            }
-          }
+        if (upsertError) {
+          console.error("Upsert profile after email confirm failed:", upsertError);
+        } else {
+          console.log("Profile updated after email confirm:", upsertData);
         }
-        } catch (err) {
-        console.error("Unexpected error syncing profile after email confirm:", err);
-        // Продолжаем показывать успех, даже если обновление профиля не удалось
-        // Email уже подтвержден в auth, профиль можно обновить позже
+
+        // Уведомляем фронт (страницу /register) через localStorage / события
+        try {
+          window.localStorage.setItem("wellify_email_confirmed", "true");
+          window.dispatchEvent(
+            new StorageEvent("storage", {
+              key: "wellify_email_confirmed",
+              newValue: "true",
+              storageArea: localStorage,
+            }),
+          );
+          window.dispatchEvent(new CustomEvent("emailConfirmed"));
+        } catch (e) {
+          console.warn("Cannot access localStorage:", e);
+        }
+      } catch (err) {
+        console.error(
+          "Unexpected error syncing profile after email confirm:",
+          err,
+        );
+        // Профиль можно будет поправить позже, главное - e-mail подтверждён
       }
 
-      // Всегда показываем успех после успешного verifyOtp, даже если обновление профиля не удалось
       setStatus("success");
     };
 
