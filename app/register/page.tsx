@@ -10,7 +10,6 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type Step = 1 | 2 | 3;
-type EmailStatus = 'idle' | 'sent' | 'confirmed';
 
 interface BaseData {
   firstName: string;
@@ -44,8 +43,9 @@ export default function RegisterDirectorPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isEmailConfirmed, setIsEmailConfirmed] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
   // Создаем клиент Supabase через useMemo
   const supabase = useMemo<SupabaseClient | null>(() => {
@@ -61,11 +61,16 @@ export default function RegisterDirectorPage() {
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
+    // При переходе со шага 2 сбрасываем состояния email
+    if (step !== 2) {
+      setIsEmailSent(false);
+      setIsEmailConfirmed(false);
+    }
   }, [step]);
 
   // Подписка на изменения авторизации для отслеживания подтверждения email
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || step !== 2) return;
 
     // Функция для синхронизации профиля в БД
     const syncProfile = async () => {
@@ -100,9 +105,13 @@ export default function RegisterDirectorPage() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!session?.user) return;
+
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        if (session?.user && (session.user.email_confirmed_at || session.user.confirmed_at)) {
+        // Проверяем, что email подтвержден
+        const user = session.user;
+        if (user.email_confirmed_at || user.confirmed_at) {
           setIsEmailConfirmed(true);
           // Синхронизируем профиль после подтверждения
           syncProfile().catch(console.error);
@@ -113,7 +122,7 @@ export default function RegisterDirectorPage() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, step]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -167,8 +176,17 @@ export default function RegisterDirectorPage() {
     setStep(2);
   };
 
-  const handleSendEmail = async () => {
-    if (!validateEmail()) return;
+  const handleSendEmailVerification = async () => {
+    if (!form.email.trim()) {
+      setFormError('Укажите e-mail.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setFormError('Укажите корректный e-mail.');
+      return;
+    }
 
     // Проверка наличия env переменных
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -182,7 +200,7 @@ export default function RegisterDirectorPage() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSendingEmail(true);
     setFormError(null);
 
     const redirectTo =
@@ -203,17 +221,15 @@ export default function RegisterDirectorPage() {
       },
     });
 
-    setIsLoading(false);
+    setIsSendingEmail(false);
 
     if (error) {
       setFormError(error.message || 'Не удалось отправить письмо');
       return;
     }
 
-    // Сохраняем userId для отслеживания создания профиля
-    if (data.user?.id) {
-      setUserId(data.user.id);
-    }
+    // Успешная отправка письма
+    setIsEmailSent(true);
   };
 
   const handleFinish = async (e: FormEvent) => {
@@ -418,79 +434,72 @@ export default function RegisterDirectorPage() {
     </form>
   );
 
-  const renderStep2 = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">
-          E-mail <span className="text-destructive">*</span>
-        </label>
-        <input
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-          placeholder="you@example.com"
-        />
-      </div>
+  const renderStep2 = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const isEmailValid = form.email.trim() && emailRegex.test(form.email.trim());
 
-      {userId && !isEmailConfirmed && (
-        <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-          Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите по ссылке в письме.
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            E-mail <span className="text-destructive">*</span>
+          </label>
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="you@example.com"
+          />
         </div>
-      )}
-      {isEmailConfirmed && (
-        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
-          Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.
-        </div>
-      )}
 
-      {renderAlerts()}
+        {isEmailSent && !isEmailConfirmed && (
+          <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите по ссылке в письме.
+          </div>
+        )}
+        {isEmailSent && isEmailConfirmed && (
+          <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+            Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.
+          </div>
+        )}
 
-      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex gap-2">
+        {renderAlerts()}
+
+        <div className="mt-4 flex justify-between gap-4">
           <Button
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={isLoading}
+            disabled={isSendingEmail}
             onClick={() => setStep(1)}
           >
             Назад
           </Button>
-          {userId && !isEmailConfirmed && (
+
+          {!isEmailSent ? (
             <Button
               type="button"
-              variant="outline"
               className="w-full md:w-auto"
-              disabled={isLoading}
-              onClick={handleSendEmail}
+              disabled={!form.email.trim() || isSendingEmail || !isEmailValid}
+              onClick={handleSendEmailVerification}
             >
-              {isLoading ? 'Отправляем...' : 'Отправить ещё раз'}
+              {isSendingEmail ? 'Отправляем...' : 'Подтвердить почту'}
             </Button>
-          )}
-          {!userId && (
+          ) : (
             <Button
               type="button"
               className="w-full md:w-auto"
-              disabled={isLoading}
-              onClick={handleSendEmail}
+              disabled={!isEmailConfirmed}
+              onClick={() => setStep(3)}
             >
-              {isLoading ? 'Отправляем...' : 'Далее'}
+              Дальше
             </Button>
           )}
         </div>
-
-        <Button
-          type="button"
-          className="w-full md:w-auto"
-          disabled={isLoading || !isEmailConfirmed}
-          onClick={() => setStep(3)}
-        >
-          Дальше
-        </Button>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep3 = () => (
     <form onSubmit={handleFinish} className="space-y-4">
