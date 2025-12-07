@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 export default function EmailConfirmedPage() {
@@ -8,42 +9,47 @@ export default function EmailConfirmedPage() {
     const supabase = createBrowserSupabaseClient();
 
     const syncProfile = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) return;
+        if (!user) return;
 
-      const { id, email, user_metadata } = user;
+        const { id, email, user_metadata } = user;
 
-      // безопасно, без выброса ошибок наружу
-      await supabase
-        .from('profiles')
-        .upsert(
+        const { error } = await supabase.from('profiles').upsert(
           {
-            id: id,
+            // колонка должна совпадать с твоей схемой!
+            uuid: id,
             email,
-            first_name: user_metadata.first_name ?? user_metadata.firstName ?? null,
-            last_name: user_metadata.last_name ?? user_metadata.lastName ?? null,
-            middle_name: user_metadata.middle_name ?? user_metadata.middleName ?? null,
-            birth_date: user_metadata.birth_date ?? user_metadata.birthDate ?? null,
-            role: user_metadata.role ?? 'director',
+            имя: user_metadata.firstName ?? null,
+            фамилия: user_metadata.lastName ?? null,
+            отчество: user_metadata.middleName ?? null,
+            роль: user_metadata.role ?? 'director',
           },
-          { onConflict: 'id' }
-        )
-        .catch(console.error);
+          {
+            onConflict: 'uuid', // или нужное имя колонки, но точно не 'id', если её нет
+          }
+        );
+
+        if (error) {
+          console.error('Error upserting profile', error);
+        }
+      } catch (err) {
+        console.error('Unexpected error syncing profile', err);
+      }
     };
 
-    syncProfile().catch(console.error);
+    // запускаем без .catch
+    void syncProfile();
   }, []);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#050816] px-4">
-      <div className="rounded-3xl bg-[#050816] border border-white/5 px-8 py-10 shadow-xl max-w-md w-full text-center">
-        <h1 className="text-2xl font-semibold text-white mb-4">
-          E-mail подтверждён
-        </h1>
-        <p className="text-sm text-zinc-300 opacity-80">
+    <main className="flex min-h-screen items-center justify-center">
+      <div className="rounded-3xl bg-[#050816] px-8 py-10 shadow-xl max-w-md w-full text-center">
+        <h1 className="text-2xl font-semibold mb-4">E-mail подтверждён</h1>
+        <p className="text-sm opacity-80">
           Ваша почта успешно подтверждена. Можете закрыть эту вкладку и вернуться к окну регистрации, чтобы продолжить.
         </p>
       </div>
