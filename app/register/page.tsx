@@ -8,14 +8,14 @@ export default function RegisterPage() {
     <Suspense
       fallback={
         <main className="flex mt-[72px] min-h-[calc(100vh-72px)] items-center justify-center px-4">
-          <div className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl rounded-3xl px-6 py-8">
-            <div className="mb-4 h-4 w-32 rounded-full bg-zinc-800 mx-auto" />
-            <div className="mb-6 h-6 w-48 rounded-full bg-zinc-800 mx-auto" />
-            <div className="space-y-3">
-              <div className="h-10 rounded-lg bg-zinc-900/70" />
-              <div className="h-10 rounded-lg bg-zinc-900/70" />
-              <div className="h-10 rounded-lg bg-zinc-900/70" />
-            </div>
+          <div className="w-full max-w-xl rounded-3xl bg-[#050816] border border-white/5 px-8 py-10 text-center shadow-xl shadow-black/40">
+            <h1 className="text-white text-xl font-semibold mb-3">
+              Подтверждаем e-mail...
+            </h1>
+            <p className="text-sm text-zinc-400">
+              Пожалуйста, подождите несколько секунд. Мы проверяем форму
+              регистрации.
+            </p>
           </div>
         </main>
       }
