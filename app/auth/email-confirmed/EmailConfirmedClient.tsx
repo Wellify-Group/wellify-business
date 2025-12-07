@@ -130,25 +130,25 @@ export default function EmailConfirmedClient() {
           role,
         });
 
-        // Формируем full_name из компонентов
+        // Формируем full_name из компонентов (Фамилия Имя Отчество)
         const fullName = [lastName, firstName, middleName]
           .filter(Boolean)
           .join(" ") || null;
 
+        // Подготавливаем объект для upsert в profiles
+        // Заполняем все поля, даже если они null (по требованиям)
         const profileData: Record<string, any> = {
           id: user.id,
           email: user.email || "",
+          first_name: firstName ? firstName.trim() : null,
+          last_name: lastName ? lastName.trim() : null,
+          middle_name: middleName ? middleName.trim() : null,
+          full_name: fullName,
+          birth_date: birthDate || null,
+          role: role || "director",
           email_verified: true,
-          role: role,
           updated_at: new Date().toISOString(),
         };
-
-        // Добавляем поля только если они есть
-        if (firstName) profileData.first_name = firstName.trim();
-        if (lastName) profileData.last_name = lastName.trim();
-        if (middleName) profileData.middle_name = middleName.trim();
-        if (birthDate) profileData.birth_date = birthDate;
-        if (fullName) profileData.full_name = fullName;
 
         console.log("Profile data to upsert:", profileData);
 
@@ -245,10 +245,13 @@ export default function EmailConfirmedClient() {
             }
           }
         }
-      } catch (err) {
+        } catch (err) {
         console.error("Unexpected error syncing profile after email confirm:", err);
+        // Продолжаем показывать успех, даже если обновление профиля не удалось
+        // Email уже подтвержден в auth, профиль можно обновить позже
       }
 
+      // Всегда показываем успех после успешного verifyOtp, даже если обновление профиля не удалось
       setStatus("success");
     };
 

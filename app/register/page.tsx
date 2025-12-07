@@ -117,7 +117,7 @@ export default function RegisterDirectorPage() {
             "email_verified, first_name, last_name, middle_name, birth_date, email, phone",
           )
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError || !profile || cancelled || emailVerified) {
           return;
@@ -562,7 +562,7 @@ export default function RegisterDirectorPage() {
         {emailSent && emailVerified && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            <span>Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.</span>
+            <span>Поздравляем! Ваша почта подтверждена. Можете переходить к следующему шагу.</span>
           </div>
         )}
 
