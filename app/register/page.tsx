@@ -101,22 +101,35 @@ export default function RegisterDirectorPage() {
       setIsCheckingVerification(true);
 
       try {
-        // Сначала проверяем localStorage флаг
+        // ПРИОРИТЕТ 1: Проверяем localStorage флаг (самый быстрый способ)
         const localStorageFlag = localStorage.getItem('wellify_email_confirmed') === 'true';
         
-        // Получаем пользователя
-        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (localStorageFlag) {
+          // Если флаг установлен - сразу подтверждаем
+          emailVerifiedRef.current = true;
+          setEmailVerified(true);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          setIsCheckingVerification(false);
+          return;
+        }
 
-        if (!userError && userData.user) {
-          const user = userData.user;
+        // ПРИОРИТЕТ 2: Проверяем сессию и пользователя
+        // Сначала принудительно обновляем сессию (на случай, если она была обновлена в другой вкладке)
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!sessionError && sessionData.session?.user) {
+          const user = sessionData.session.user;
           let isVerified = false;
 
-          // 1) Проверяем поля auth
+          // Проверяем email_confirmed_at в сессии
           if (user.email_confirmed_at || (user as any).confirmed_at) {
             isVerified = true;
           }
 
-          // 2) Дополнительно проверяем профиль (если в auth не подтверждено)
+          // Если не подтверждено в сессии - проверяем профиль в БД (это более надежно)
           if (!isVerified) {
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
@@ -129,24 +142,20 @@ export default function RegisterDirectorPage() {
             }
           }
 
-          // Если localStorage флаг установлен ИЛИ пользователь подтвержден - обновляем состояние
-          if (localStorageFlag || isVerified) {
+          if (isVerified) {
             emailVerifiedRef.current = true;
             setEmailVerified(true);
+            // Устанавливаем флаг в localStorage для других вкладок
+            try {
+              localStorage.setItem('wellify_email_confirmed', 'true');
+            } catch (e) {
+              // игнорируем ошибки localStorage
+            }
             // Останавливаем интервал
             if (intervalRef.current) {
               clearInterval(intervalRef.current);
               intervalRef.current = null;
             }
-          }
-        } else if (localStorageFlag) {
-          // Если нет пользователя, но есть флаг в localStorage - все равно считаем подтвержденным
-          emailVerifiedRef.current = true;
-          setEmailVerified(true);
-          // Останавливаем интервал
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
           }
         }
       } catch (error) {
@@ -213,8 +222,21 @@ export default function RegisterDirectorPage() {
 
     // Слушаем события localStorage для синхронизации между вкладками
     const handleStorageChange = (e: StorageEvent | Event) => {
+      // Событие storage срабатывает только в других вкладках
+      // CustomEvent emailConfirmed срабатывает в текущем окне
       if (e.type === 'storage' || e.type === 'emailConfirmed') {
-        // Немедленно проверяем статус
+        // Проверяем флаг и если установлен - сразу обновляем состояние
+        const isConfirmed = localStorage.getItem('wellify_email_confirmed') === 'true';
+        if (isConfirmed && !emailVerifiedRef.current) {
+          emailVerifiedRef.current = true;
+          setEmailVerified(true);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+          return; // Не проверяем дальше, если уже подтвердили
+        }
+        // Дополнительно проверяем через API (если флаг не установлен, но событие пришло)
         checkEmailVerified().catch(console.error);
       }
     };
@@ -224,15 +246,18 @@ export default function RegisterDirectorPage() {
     // Слушаем кастомное событие (для синхронизации в текущем окне)
     window.addEventListener('emailConfirmed', handleStorageChange);
 
-    // Периодическая проверка (каждые 1.5 секунды, если письмо отправлено и не подтверждено)
+    // Периодическая проверка (каждые 1 секунду, если письмо отправлено и не подтверждено)
     if (emailSent && !emailVerifiedRef.current) {
       // Очищаем предыдущий интервал, если есть
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      // Проверяем сразу при запуске
+      checkEmailVerified().catch(console.error);
+      // Затем проверяем каждую секунду
       intervalRef.current = setInterval(() => {
         checkEmailVerified().catch(console.error);
-      }, 1500);
+      }, 1000);
     }
 
     return () => {

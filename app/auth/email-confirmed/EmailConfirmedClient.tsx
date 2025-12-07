@@ -2,23 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Status = "pending" | "success" | "error";
 
-// Браузерный Supabase-клиент (тот же проект, что и в остальном приложении)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Не валим сборку, просто предупреждаем в консоли браузера
-  // eslint-disable-next-line no-console
-  console.warn(
-    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for EmailConfirmedClient",
-  );
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Используем тот же клиент что и в форме регистрации для синхронизации cookies
 
 export default function EmailConfirmedClient() {
   const searchParams = useSearchParams();
@@ -33,6 +21,8 @@ export default function EmailConfirmedClient() {
       setStatus("error");
       return;
     }
+
+    const supabase = createBrowserSupabaseClient();
 
     const verify = async () => {
       const type: "email" | "signup" =
@@ -114,12 +104,24 @@ export default function EmailConfirmedClient() {
         );
       }
 
-      // 5. Уведомляем форму регистрации через localStorage событие
+      // 5. Принудительно обновляем сессию (важно для синхронизации между вкладками)
+      try {
+        await supabase.auth.getSession();
+      } catch (e) {
+        console.warn("Error refreshing session:", e);
+      }
+
+      // 6. Уведомляем форму регистрации через localStorage событие
       try {
         window.localStorage.setItem("wellify_email_confirmed", "true");
         // Триггерим событие storage для синхронизации между вкладками
-        window.dispatchEvent(new Event("storage"));
-        // Также отправляем событие в текущем окне
+        // Важно: событие storage срабатывает ТОЛЬКО в других вкладках
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: "wellify_email_confirmed",
+          newValue: "true",
+          storageArea: localStorage,
+        }));
+        // Также отправляем кастомное событие для текущего окна
         window.dispatchEvent(new CustomEvent("emailConfirmed"));
       } catch (e) {
         console.warn("Cannot set localStorage:", e);
