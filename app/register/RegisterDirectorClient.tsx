@@ -433,23 +433,115 @@ export default function RegisterDirectorClient() {
 
   const renderStep1 = () => (
     <form onSubmit={handleNextFromStep1} className="space-y-4">
-      {/* ... ВСЯ РАЗМЕТКА ШАГА 1 ИЗ ТВОЕЙ ТЕКУЩЕЙ ВЕРСИИ ... */}
-      {/* (оставил без изменений) */}
-
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {/* Имя / Фамилия / Отчество */}
-        {/* ... как у тебя сейчас ... */}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Имя <span className="text-destructive">*</span>
+          </label>
+          <input
+            value={baseData.firstName}
+            onChange={(e) =>
+              setBaseData((prev) => ({ ...prev, firstName: e.target.value }))
+            }
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Иван"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Фамилия <span className="text-destructive">*</span>
+          </label>
+          <input
+            value={baseData.lastName}
+            onChange={(e) =>
+              setBaseData((prev) => ({ ...prev, lastName: e.target.value }))
+            }
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Иванов"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Отчество</label>
+          <input
+            value={baseData.middleName}
+            onChange={(e) =>
+              setBaseData((prev) => ({ ...prev, middleName: e.target.value }))
+            }
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Иванович"
+          />
+        </div>
       </div>
 
-      {/* дата рождения, пароль, подтверждение пароля, алерты и кнопка "Дальше" — как в твоём коде */}
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">
+          Дата рождения <span className="text-destructive">*</span>
+        </label>
+        <input
+          type="date"
+          value={baseData.birthDate}
+          onChange={(e) =>
+            setBaseData((prev) => ({ ...prev, birthDate: e.target.value }))
+          }
+          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Формат: ДД.ММ.ГГГГ
+        </p>
+      </div>
 
-      {/* (я не урезал, у тебя уже всё ок — просто перенёс как есть) */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Пароль <span className="text-destructive">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={baseData.password}
+              onChange={(e) =>
+                setBaseData((prev) => ({ ...prev, password: e.target.value }))
+              }
+              className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+              placeholder="Минимум 8 символов"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Подтвердите пароль <span className="text-destructive">*</span>
+          </label>
+          <input
+            type={showPassword ? "text" : "password"}
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Повторите пароль"
+          />
+        </div>
+      </div>
+
+      {renderAlerts()}
+
+      <div className="flex justify-end">
+        <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
+          {isLoading ? "Загрузка..." : "Дальше"}
+        </Button>
+      </div>
     </form>
   );
-
-  // Для краткости я не дублирую JSX шагов 1–3 здесь ещё раз,
-  // ты просто оставляешь их ровно такими, как в текущем файле page.tsx:
-  // renderStep1, renderStep2, renderStep3 — без изменений.
 
   const renderStep2 = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -460,19 +552,136 @@ export default function RegisterDirectorClient() {
       emailVerified && !isLoading && !isSendingEmail;
 
     return (
-      // ← полностью твоя разметка шага 2 из текущего файла
-      // с тем же кодом кнопок и алертов
-      // ...
       <div className="space-y-4">
-        {/* ... вся текущая разметка шага 2 ... */}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            E-mail <span className="text-destructive">*</span>
+          </label>
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, email: e.target.value }))
+            }
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="you@example.com"
+          />
+        </div>
+
+        {emailSent && !emailVerified && (
+          <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите
+            по ссылке в письме. После подтверждения страница автоматически
+            обновит статус.
+          </div>
+        )}
+        {emailVerified && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            <span>
+              Поздравляем! Ваша почта подтверждена. Можете переходить к
+              следующему шагу.
+            </span>
+          </div>
+        )}
+
+        {renderAlerts()}
+
+        <div className="mt-4 flex justify-between gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full md:w-auto"
+            disabled={isSendingEmail}
+            onClick={() => setStep(1)}
+          >
+            Назад
+          </Button>
+
+          {!emailSent ? (
+            <Button
+              type="button"
+              className="w-full md:w-auto"
+              disabled={!form.email.trim() || isSendingEmail || !isEmailValid}
+              onClick={handleSendEmailVerification}
+            >
+              {isSendingEmail ? "Отправляем..." : "Подтвердить e-mail"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="w-full md:w-auto"
+              disabled={!canGoNextFromEmailStep}
+              onClick={async () => {
+                // Дополнительная проверка при клике на "Далее"
+                if (!supabase) {
+                  setFormError("Ошибка инициализации. Обновите страницу.");
+                  return;
+                }
+
+                try {
+                  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+                  if (userError || !user) {
+                    setFormError("Пользователь не авторизован. Пожалуйста, выполните вход ещё раз.");
+                    return;
+                  }
+
+                  if (!user.email_confirmed_at) {
+                    setFormError("Почта ещё не подтверждена. Проверьте письмо и перейдите по ссылке.");
+                    return;
+                  }
+
+                  // Email подтверждён - переходим на шаг 3
+                  console.log("[register] Email confirmed, proceeding to step 3");
+                  setEmailVerified(true);
+                  setStep(3);
+                } catch (error) {
+                  console.error("[register] Error checking email on button click:", error);
+                  setFormError("Ошибка при проверке статуса email. Попробуйте ещё раз.");
+                }
+              }}
+            >
+              Далее
+            </Button>
+          )}
+        </div>
       </div>
     );
   };
 
   const renderStep3 = () => (
-    // ← полностью твоя разметка шага 3 из текущего файла
     <form onSubmit={handleFinish} className="space-y-4">
-      {/* ... */}
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">
+          Телефон <span className="text-destructive">*</span>
+        </label>
+        <input
+          value={form.phone}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, phone: e.target.value }))
+          }
+          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+          placeholder="+38 (0XX) XXX-XX-XX"
+        />
+      </div>
+
+      {renderAlerts()}
+
+      <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full md:w-auto"
+          disabled={isLoading}
+          onClick={() => setStep(2)}
+        >
+          Назад
+        </Button>
+        <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
+          {isLoading ? "Завершаем..." : "Завершить регистрацию"}
+        </Button>
+      </div>
     </form>
   );
 
