@@ -129,8 +129,30 @@ export async function createDirectorProfile(payload: {
     }
   }
 
-  return {
-    success: true as const,
-    userId: data.user?.id ?? null,
+    return {
+      success: true as const,
+      userId: data.user?.id ?? null,
+    }
+}
+
+export async function updateDirectorPhone(args: { userId: string; phone: string }) {
+  const supabase = await createServerSupabaseClient()
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ 
+      phone: args.phone, 
+      updated_at: new Date().toISOString() 
+    })
+    .eq('id', args.userId)
+
+  if (error) {
+    console.error('Error updating phone:', error)
+    return { 
+      success: false as const, 
+      error: error.message 
+    }
   }
+
+  return { success: true as const }
 }

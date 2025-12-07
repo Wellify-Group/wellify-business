@@ -10,7 +10,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type Step = 1 | 2 | 3;
-type EmailStatus = 'idle' | 'sent';
+type EmailStatus = 'idle' | 'sent' | 'confirmed';
 
 interface BaseData {
   firstName: string;
@@ -46,6 +46,7 @@ export default function RegisterDirectorPage() {
   const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
   const [emailInfo, setEmailInfo] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Создаем клиент Supabase через useMemo
   const supabase = useMemo<SupabaseClient | null>(() => {
@@ -62,6 +63,33 @@ export default function RegisterDirectorPage() {
     setFormError(null);
     setFormSuccess(null);
   }, [step]);
+
+  // Realtime подписка для отслеживания создания профиля
+  useEffect(() => {
+    if (!userId || !supabase) return;
+
+    const channel = supabase
+      .channel(`profile-email-confirm-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${userId}`,
+        },
+        (payload) => {
+          // Как только появилась/обновилась запись профиля – считаем e-mail подтверждённым
+          console.log('Profile created/updated:', payload);
+          setEmailStatus('confirmed');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, supabase]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -134,15 +162,21 @@ export default function RegisterDirectorPage() {
     setFormError(null);
     setEmailInfo(null);
 
-    const emailRedirectTo = process.env.NEXT_PUBLIC_SITE_URL
-      ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm`
-      : undefined;
+    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const emailRedirectTo = `${SITE_URL}/auth/email-confirmed`;
 
     const { data, error } = await supabase.auth.signUp({
       email: form.email.trim(),
       password: baseData.password,
       options: {
         emailRedirectTo,
+        data: {
+          first_name: baseData.firstName,
+          last_name: baseData.lastName,
+          middle_name: baseData.middleName,
+          birth_date: baseData.birthDate,
+          role: 'director',
+        },
       },
     });
 
@@ -151,6 +185,11 @@ export default function RegisterDirectorPage() {
     if (error) {
       setFormError(error.message || 'Не удалось отправить письмо');
       return;
+    }
+
+    // Сохраняем userId для отслеживания создания профиля
+    if (data.user?.id) {
+      setUserId(data.user.id);
     }
 
     // Если signUp прошёл без ошибок - письмо отправлено Supabase
@@ -167,18 +206,41 @@ export default function RegisterDirectorPage() {
       return;
     }
 
-    // Пока просто показываем сообщение и логируем данные
-    setFormSuccess('Регистрация завершена. Войдите в систему.');
-    
-    // Временный console.log с данными (без авторизации)
-    console.log('Registration data:', {
-      ...baseData,
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-    });
+    if (!userId) {
+      setFormError('Ошибка: не найден ID пользователя. Пожалуйста, начните регистрацию заново.');
+      return;
+    }
 
-    // TODO: Здесь будет создание директорского профиля в таблицах
-    // Пока не трогаем, чтобы не ломать email-поток
+    setIsLoading(true);
+
+    try {
+      // Обновляем телефон через Supabase напрямую
+      if (!supabase) {
+        setFormError('Ошибка инициализации. Обновите страницу.');
+        setIsLoading(false);
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ phone: form.phone.trim() })
+        .eq('id', userId);
+
+      setIsLoading(false);
+
+      if (updateError) {
+        console.error('Error updating phone:', updateError);
+        setFormError(updateError.message || 'Ошибка при сохранении телефона');
+        return;
+      }
+
+      // Редирект в дашборд директора
+      router.push('/dashboard/director');
+    } catch (error) {
+      console.error('Error updating phone:', error);
+      setIsLoading(false);
+      setFormError('Произошла ошибка при сохранении телефона. Попробуйте ещё раз.');
+    }
   };
 
   const steps = [
@@ -347,8 +409,14 @@ export default function RegisterDirectorPage() {
       </div>
 
       {emailStatus === 'sent' && emailInfo && (
-        <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-300">
+        <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
           {emailInfo}
+        </div>
+      )}
+
+      {emailStatus === 'confirmed' && (
+        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+          Поздравляем! Ваша почта подтверждена.
         </div>
       )}
 
@@ -388,7 +456,7 @@ export default function RegisterDirectorPage() {
           )}
         </div>
 
-        {emailStatus === 'sent' && (
+        {emailStatus === 'confirmed' && (
           <Button
             type="button"
             className="w-full md:w-auto"
