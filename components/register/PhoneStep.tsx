@@ -45,7 +45,8 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
       parsedPhone = phoneSchema.parse(phone.trim());
     } catch (err) {
       if (err instanceof z.ZodError) {
-        setError(err.errors[0]?.message ?? "Неверный номер телефона");
+        const firstIssue = err.issues[0];
+        setError(firstIssue?.message ?? "Неверный номер телефона");
       } else {
         setError("Неверный номер телефона");
       }
