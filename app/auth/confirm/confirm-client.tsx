@@ -35,10 +35,35 @@ export default function ConfirmEmailClient() {
 
       setStatus("success");
 
-      // Через 2 секунды отправляем пользователя на дашборд
-      setTimeout(() => {
-        router.push("/dashboard/director");
-      }, 2000);
+      // Bug 5 Fix: Проверяем роль пользователя перед редиректом
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Получаем роль из профиля или metadata
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        const role = profile?.role || user.user_metadata?.role || 'director';
+
+        // Через 2 секунды отправляем пользователя на соответствующий дашборд
+        setTimeout(() => {
+          if (role === 'manager') {
+            router.push("/dashboard/manager");
+          } else if (role === 'employee') {
+            router.push("/dashboard/employee");
+          } else {
+            router.push("/dashboard/director");
+          }
+        }, 2000);
+      } else {
+        // Если пользователь не найден, редиректим на логин
+        setTimeout(() => {
+          router.push("/login");
+        }, 2000);
+      }
     };
 
     confirm();

@@ -41,30 +41,23 @@ export async function registerDirector(formData: FormData) {
   }
 
   // Получаем userId из auth.uid() после успешного signUp
-  // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
+  // Bug 1 Fix: Используем UPSERT вместо UPDATE, так как профиль может не существовать
   if (data.user) {
-    const { data: userData, error: getUserError } = await supabase.auth.getUser();
-    
-    if (getUserError || !userData?.user?.id) {
-      console.error('Failed to get user after signUp:', getUserError);
-      return { error: 'Не удалось получить данные пользователя после регистрации' };
-    }
+    const userId = data.user.id;
 
-    const userId = userData.user.id;
-
-    // Обновляем профиль в public.profiles (профиль уже создан автоматически триггером)
+    // Используем UPSERT для создания или обновления профиля
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: userId,
         email,
         full_name,
         role: 'director',
         phone_verified: false,
-      })
-      .eq('id', userId);
+      }, { onConflict: "id" });
 
     if (profileError) {
-      console.error('Profile update error', profileError);
+      console.error('Profile upsert error', profileError);
       // пользователю можно не показывать, достаточно логировать
     }
   }

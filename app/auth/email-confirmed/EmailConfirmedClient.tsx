@@ -35,7 +35,6 @@ export default function EmailConfirmedClient() {
         token_hash,
       };
 
-      // Для старых ссылок (type=signup) нужен email
       if (type === "signup") {
         if (!emailParam) {
           setStatus("error");
@@ -54,12 +53,17 @@ export default function EmailConfirmedClient() {
 
       console.log("[email-confirmed] verifyOtp success:", verifyData);
 
-      // Проверяем сессию и пользователя
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
         if (userError) {
-          console.error("[email-confirmed] Error getting user after verifyOtp:", userError);
+          console.error(
+            "[email-confirmed] Error getting user after verifyOtp:",
+            userError,
+          );
         } else if (user) {
           console.log("[email-confirmed] User confirmed:", {
             id: user.id,
@@ -69,29 +73,6 @@ export default function EmailConfirmedClient() {
         }
       } catch (e) {
         console.warn("[email-confirmed] Cannot get user after verifyOtp:", e);
-      }
-
-      // Сигнал для /register: почта подтверждена
-      try {
-        window.localStorage.setItem("wellify_email_confirmed", "true");
-        console.log("[email-confirmed] localStorage flag set, dispatching events...");
-        
-        // CustomEvent для того же окна (если /register открыт в этой же вкладке)
-        window.dispatchEvent(new CustomEvent("emailConfirmed"));
-        
-        // StorageEvent для других вкладок (если они открыты)
-        // Примечание: StorageEvent срабатывает только в других вкладках, не в той же
-        window.dispatchEvent(
-          new StorageEvent("storage", {
-            key: "wellify_email_confirmed",
-            newValue: "true",
-            storageArea: localStorage,
-          }),
-        );
-        
-        console.log("[email-confirmed] Events dispatched successfully");
-      } catch (e) {
-        console.warn("[email-confirmed] Cannot use localStorage:", e);
       }
 
       setStatus("success");

@@ -120,8 +120,9 @@ export async function POST(request: NextRequest) {
     // Проверяем наличие профиля
     if (profileError || !profileRaw) {
       console.error('Load profile error:', profileError);
-      // Выходим из сессии, если профиль не найден
-      await supabaseAdmin.auth.signOut();
+      // Bug 4 Fix: Admin клиент не имеет сессий, поэтому signOut() не работает
+      // Вместо этого просто возвращаем ошибку - сессия будет недействительной на клиенте
+      // Клиент должен обработать эту ошибку и очистить локальную сессию
       return NextResponse.json(
         { 
           success: false, 

@@ -78,34 +78,45 @@ export async function GET(request: NextRequest) {
       if (googleFullName) {
         const nameParts = googleFullName.split(" ");
         if (nameParts.length >= 2) {
-          lastName = nameParts[0];
-          firstName = nameParts.slice(1).join(" ");
+          // Bug 2 Fix: Первая часть - это firstName, остальное - lastName
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(" ");
         } else if (nameParts.length === 1) {
           firstName = nameParts[0];
         }
       }
 
-      // Обновляем профиль в таблице profiles
-      // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
-      const { error: updateError } = await supabaseAdmin
+      // Bug 1 Fix: Используем UPSERT вместо UPDATE, так как профиль может не существовать
+      const { error: upsertError } = await supabaseAdmin
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
+          email: user.email,
           first_name: firstName,
           last_name: lastName,
+          full_name: googleFullName,
           phone_verified: false,
-        })
-        .eq("id", user.id);
+          role: user.user_metadata?.role || null,
+        }, { onConflict: "id" });
 
-      if (updateError) {
-        console.error('Failed to update profile for OAuth user:', updateError);
+      if (upsertError) {
+        console.error('Failed to upsert profile for OAuth user:', upsertError);
         // Выходим из сессии при ошибке обновления профиля
+        // Используем server client для signOut
         await supabase.auth.signOut();
         const loginUrl = new URL("/auth/login", request.url);
         loginUrl.searchParams.set("error", "profile_update_failed");
         return NextResponse.redirect(loginUrl.toString());
       }
 
-      // Новый пользователь - редирект в дашборд
+      // Новый пользователь - определяем роль и редиректим
+      const newUserRole = user.user_metadata?.role || 'director';
+      if (newUserRole === 'manager') {
+        return NextResponse.redirect(new URL("/dashboard/manager", request.url));
+      } else if (newUserRole === 'employee') {
+        return NextResponse.redirect(new URL("/dashboard/employee", request.url));
+      }
+      // По умолчанию - директор
       return NextResponse.redirect(new URL("/dashboard/director", request.url));
     }
 

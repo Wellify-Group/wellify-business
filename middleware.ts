@@ -21,6 +21,8 @@ export async function middleware(request: NextRequest) {
     '/auth/callback', 
     '/auth/login',
     '/auth/register',
+    '/auth/confirm', // Bug 3 Fix: Страница подтверждения email через code
+    '/auth/email-confirmed', // Bug 3 Fix: Страница подтверждения email через token_hash
     '/forgot-password', 
     '/welcome', 
     '/about', 
