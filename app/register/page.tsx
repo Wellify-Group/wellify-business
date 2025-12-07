@@ -1,19 +1,18 @@
-'use client';
+"use client";
 
-import { FormEvent, useEffect, useState, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { FormEvent, useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
-import type { SupabaseClient } from '@supabase/supabase-js';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Step = 1 | 2 | 3;
 
@@ -34,272 +33,127 @@ export default function RegisterDirectorPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [baseData, setBaseData] = useState<BaseData>({
-    firstName: '',
-    lastName: '',
-    middleName: '',
-    birthDate: '',
-    password: '',
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    birthDate: "",
+    password: "",
   });
   const [form, setForm] = useState<FormState>({
-    email: '',
-    phone: '',
+    email: "",
+    phone: "",
   });
-  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Создаем клиент Supabase через useMemo
+  // клиент Supabase
   const supabase = useMemo<SupabaseClient | null>(() => {
     try {
       return createBrowserSupabaseClient();
     } catch (error) {
-      console.error('Failed to create Supabase client:', error);
+      console.error("Failed to create Supabase client:", error);
       return null;
     }
   }, []);
 
-  // Сбрасываем ошибки при смене шага
+  // Сброс ошибок при смене шага
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
-    // При выходе со шага 2 сбрасываем состояния email
     if (step !== 2) {
       setEmailSent(false);
       setEmailVerified(false);
     }
   }, [step]);
 
-  // Ref для хранения ID интервала
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  // Ref для отслеживания текущего состояния emailVerified
-  const emailVerifiedRef = useRef(emailVerified);
-
-  // Подписка на изменения авторизации для отслеживания подтверждения email
+  // ПОЛЛИНГ подтверждения e-mail и подтягивание профиля
   useEffect(() => {
-    if (!supabase || step !== 2) return;
+    if (!supabase || step !== 2 || !emailSent) return;
 
-    // Обновляем ref при изменении состояния
-    emailVerifiedRef.current = emailVerified;
+    let cancelled = false;
 
-    // Функция проверки подтверждения email
-    const checkEmailVerified = async () => {
-      // Если уже подтверждено - не проверяем
-      if (emailVerifiedRef.current) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        return;
-      }
-
-      setIsCheckingVerification(true);
-
-      try {
-        // ПРИОРИТЕТ 1: Проверяем localStorage флаг (самый быстрый способ)
-        const localStorageFlag = localStorage.getItem('wellify_email_confirmed') === 'true';
-        
-        if (localStorageFlag) {
-          // Если флаг установлен - сразу подтверждаем
-          emailVerifiedRef.current = true;
-          setEmailVerified(true);
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-          setIsCheckingVerification(false);
-          return;
-        }
-
-        // ПРИОРИТЕТ 2: Проверяем сессию и пользователя
-        // Сначала принудительно обновляем сессию (на случай, если она была обновлена в другой вкладке)
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!sessionError && sessionData.session?.user) {
-          const user = sessionData.session.user;
-          let isVerified = false;
-
-          // Проверяем email_confirmed_at в сессии
-          if (user.email_confirmed_at || (user as any).confirmed_at) {
-            isVerified = true;
-          }
-
-          // Если не подтверждено в сессии - проверяем профиль в БД (это более надежно)
-          if (!isVerified) {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('email_verified')
-              .eq('id', user.id)
-              .single();
-
-            if (!profileError && profile?.email_verified) {
-              isVerified = true;
-            }
-          }
-
-          if (isVerified) {
-            emailVerifiedRef.current = true;
-            setEmailVerified(true);
-            // Устанавливаем флаг в localStorage для других вкладок
-            try {
-              localStorage.setItem('wellify_email_confirmed', 'true');
-            } catch (e) {
-              // игнорируем ошибки localStorage
-            }
-            // Останавливаем интервал
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error checking email verification:', error);
-      } finally {
-        setIsCheckingVerification(false);
-      }
-    };
-
-    // Функция для синхронизации профиля в БД (минимально: id + email)
-    const syncProfile = async () => {
+    const checkEmailAndProfile = async () => {
       try {
         const {
           data: { user },
+          error: userError,
         } = await supabase.auth.getUser();
 
-        if (!user) return;
-
-        const { id, email } = user;
-
-        const { error } = await supabase.from('profiles').upsert(
-          {
-            id,
-            email,
-          },
-          {
-            onConflict: 'id',
-          },
-        );
-
-        if (error) {
-          console.error('Error upserting profile', error);
+        if (userError || !user) {
+          return;
         }
-      } catch (err) {
-        console.error('Unexpected error syncing profile', err);
+
+        // читаем профиль
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select(
+            "email_verified, first_name, last_name, middle_name, birth_date, email, phone",
+          )
+          .eq("id", user.id)
+          .single();
+
+        if (profileError || !profile) {
+          return;
+        }
+
+        if (profile.email_verified && !cancelled) {
+          setEmailVerified(true);
+
+          // аккуратно подставляем данные в локальное состояние, если они пустые
+          setBaseData((prev) => ({
+            ...prev,
+            firstName: prev.firstName || profile.first_name || "",
+            lastName: prev.lastName || profile.last_name || "",
+            middleName: prev.middleName || profile.middle_name || "",
+            birthDate: prev.birthDate || profile.birth_date || "",
+          }));
+
+          setForm((prev) => ({
+            ...prev,
+            email: prev.email || profile.email || "",
+            phone: prev.phone || profile.phone || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Error polling email verification:", error);
       }
     };
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!session?.user) return;
+    // первый запуск сразу
+    checkEmailAndProfile().catch(console.error);
 
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        const user = session.user;
-        if (user.email_confirmed_at || (user as any).confirmed_at) {
-          emailVerifiedRef.current = true;
-          setEmailVerified(true);
-          // Останавливаем интервал
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-          // Синхронизируем профиль после подтверждения
-          syncProfile().catch(console.error);
-        }
-      }
-    });
-
-    // Проверяем подтверждение при открытии шага 2, если письмо уже отправлено
-    if (emailSent) {
-      checkEmailVerified().catch(console.error);
-    }
-
-    // Слушаем события localStorage для синхронизации между вкладками
-    const handleStorageChange = (e: StorageEvent | Event) => {
-      // Событие storage срабатывает только в других вкладках
-      // CustomEvent emailConfirmed срабатывает в текущем окне
-      if (e.type === 'storage' || e.type === 'emailConfirmed') {
-        // Проверяем флаг и если установлен - сразу обновляем состояние
-        const isConfirmed = localStorage.getItem('wellify_email_confirmed') === 'true';
-        if (isConfirmed && !emailVerifiedRef.current) {
-          emailVerifiedRef.current = true;
-          setEmailVerified(true);
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-          return; // Не проверяем дальше, если уже подтвердили
-        }
-        // Дополнительно проверяем через API (если флаг не установлен, но событие пришло)
-        checkEmailVerified().catch(console.error);
-      }
-    };
-
-    // Слушаем событие storage (для синхронизации между вкладками)
-    window.addEventListener('storage', handleStorageChange);
-    // Слушаем кастомное событие (для синхронизации в текущем окне)
-    window.addEventListener('emailConfirmed', handleStorageChange);
-
-    // Периодическая проверка (каждые 1 секунду, если письмо отправлено и не подтверждено)
-    if (emailSent && !emailVerifiedRef.current) {
-      // Очищаем предыдущий интервал, если есть
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      // Проверяем сразу при запуске
-      checkEmailVerified().catch(console.error);
-      // Затем проверяем каждую секунду
-      intervalRef.current = setInterval(() => {
-        checkEmailVerified().catch(console.error);
-      }, 1000);
-    }
+    // затем - каждые 4 секунды
+    const intervalId = window.setInterval(() => {
+      checkEmailAndProfile().catch(console.error);
+    }, 4000);
 
     return () => {
-      subscription.unsubscribe();
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('emailConfirmed', handleStorageChange);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      cancelled = true;
+      window.clearInterval(intervalId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, step, emailSent]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
-      setFormError('Укажите имя и фамилию.');
+      setFormError("Укажите имя и фамилию.");
       return false;
     }
     if (!baseData.birthDate.trim()) {
-      setFormError('Укажите дату рождения.');
+      setFormError("Укажите дату рождения.");
       return false;
     }
     if (!baseData.password || baseData.password.length < 8) {
-      setFormError('Пароль должен содержать минимум 8 символов.');
+      setFormError("Пароль должен содержать минимум 8 символов.");
       return false;
     }
     if (baseData.password !== passwordConfirm) {
-      setFormError('Пароль и подтверждение пароля не совпадают.');
-      return false;
-    }
-    return true;
-  };
-
-  const validateEmail = () => {
-    if (!form.email.trim()) {
-      setFormError('Укажите e-mail.');
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      setFormError('Укажите корректный e-mail.');
+      setFormError("Пароль и подтверждение пароля не совпадают.");
       return false;
     }
     return true;
@@ -307,11 +161,11 @@ export default function RegisterDirectorPage() {
 
   const validatePhone = () => {
     if (!form.phone.trim()) {
-      setFormError('Укажите телефон.');
+      setFormError("Укажите телефон.");
       return false;
     }
-    if (form.phone.replace(/\D/g, '').length < 10) {
-      setFormError('Укажите корректный телефон.');
+    if (form.phone.replace(/\D/g, "").length < 10) {
+      setFormError("Укажите корректный телефон.");
       return false;
     }
     return true;
@@ -325,34 +179,39 @@ export default function RegisterDirectorPage() {
   };
 
   const handleSendEmailVerification = async () => {
-    if (!validateEmail()) {
+    if (!form.email.trim()) {
+      setFormError("Укажите e-mail.");
       return;
     }
 
-    // Проверка наличия env переменных
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setFormError("Укажите корректный e-mail.");
+      return;
+    }
+
     if (
       !process.env.NEXT_PUBLIC_SUPABASE_URL ||
       !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     ) {
-      setFormError('Ошибка конфигурации. Обратитесь к администратору.');
-      console.error('Missing Supabase env');
+      setFormError("Ошибка конфигурации. Обратитесь к администратору.");
+      console.error("Missing Supabase env");
       return;
     }
 
     if (!supabase) {
-      setFormError('Ошибка инициализации. Обновите страницу.');
+      setFormError("Ошибка инициализации. Обновите страницу.");
       return;
     }
 
     setIsSendingEmail(true);
     setFormError(null);
 
-    const redirectTo =
-      `${
-        process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dev.wellifyglobal.com'
-      }/auth/email-confirmed`;
+    const redirectTo = `${
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
+    }/auth/email-confirmed`;
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: form.email.trim(),
       password: baseData.password,
       options: {
@@ -362,7 +221,7 @@ export default function RegisterDirectorPage() {
           lastName: baseData.lastName,
           middleName: baseData.middleName,
           birthDate: baseData.birthDate,
-          role: 'director',
+          role: "director",
         },
       },
     });
@@ -370,11 +229,11 @@ export default function RegisterDirectorPage() {
     setIsSendingEmail(false);
 
     if (error) {
-      setFormError(error.message || 'Не удалось отправить письмо');
+      setFormError(error.message || "Не удалось отправить письмо");
       return;
     }
 
-    // Успешная отправка письма
+    // письмо отправлено - запускаем опрос
     setEmailSent(true);
     setEmailVerified(false);
   };
@@ -388,20 +247,14 @@ export default function RegisterDirectorPage() {
       return;
     }
 
-    if (!emailVerified) {
-      setFormError('Подтвердите e-mail перед завершением регистрации.');
-      return;
-    }
-
     if (!supabase) {
-      setFormError('Ошибка инициализации. Обновите страницу.');
+      setFormError("Ошибка инициализации. Обновите страницу.");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Получаем текущего пользователя
       const {
         data: { user },
         error: userError,
@@ -410,57 +263,40 @@ export default function RegisterDirectorPage() {
       if (userError || !user) {
         setIsLoading(false);
         setFormError(
-          'Пользователь не авторизован. Пожалуйста, войдите в систему.',
+          "Пользователь не авторизован. Пожалуйста, войдите в систему.",
         );
         return;
       }
 
-      const fullName = [baseData.lastName, baseData.firstName, baseData.middleName]
-        .filter(Boolean)
-        .join(' ');
-
-      // Обновляем профиль: ФИО, телефон, роль, email_verified и при необходимости дату рождения
-      const profileUpdate: Record<string, any> = {
-        first_name: baseData.firstName.trim(),
-        last_name: baseData.lastName.trim(),
-        middle_name: baseData.middleName.trim() || null,
-        full_name: fullName || null,
-        phone: form.phone.trim(),
-        role: 'директор',
-        email_verified: true,
-      };
-
-      // Если в таблице есть колонка с русским названием даты рождения
-      profileUpdate['дата_рождения'] = baseData.birthDate || null;
-
       const { error: updateError } = await supabase
-        .from('profiles')
-        .update(profileUpdate)
-        .eq('id', user.id);
+        .from("profiles")
+        .update({ phone: form.phone.trim() })
+        .eq("id", user.id);
 
       setIsLoading(false);
 
       if (updateError) {
-        console.error('Error updating profile:', updateError);
-        setFormError(updateError.message || 'Ошибка при сохранении профиля');
+        console.error("Error updating phone:", updateError);
+        setFormError(
+          updateError.message || "Ошибка при сохранении телефона",
+        );
         return;
       }
 
-      // Редирект в дашборд директора
-      router.push('/dashboard/director');
+      router.push("/dashboard/director");
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating phone:", error);
       setIsLoading(false);
       setFormError(
-        'Произошла ошибка при сохранении данных. Попробуйте ещё раз.',
+        "Произошла ошибка при сохранении телефона. Попробуйте ещё раз.",
       );
     }
   };
 
   const steps = [
-    { id: 1, label: 'Основные данные' },
-    { id: 2, label: 'E-mail' },
-    { id: 3, label: 'Телефон' },
+    { id: 1, label: "Основные данные" },
+    { id: 2, label: "E-mail" },
+    { id: 3, label: "Телефон" },
   ];
 
   const renderStepHeader = () => (
@@ -470,7 +306,7 @@ export default function RegisterDirectorPage() {
           <div key={s.id} className="flex-1">
             <div
               className={`h-1.5 rounded-full transition-all ${
-                step >= s.id ? 'bg-primary' : 'bg-zinc-800'
+                step >= s.id ? "bg-primary" : "bg-zinc-800"
               }`}
             />
           </div>
@@ -491,12 +327,11 @@ export default function RegisterDirectorPage() {
 
   const renderAlerts = () => {
     if (!formError && !formSuccess) {
-      // Резервируем место для алертов, чтобы карточка не прыгала
       return <div className="min-h-[44px]" />;
     }
 
     return (
-      <div className="min-h-[44px] space-y-2">
+      <div className="space-y-2 min-h-[44px]">
         {formError && (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -579,7 +414,7 @@ export default function RegisterDirectorPage() {
           </label>
           <div className="relative">
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               value={baseData.password}
               onChange={(e) =>
                 setBaseData((prev) => ({ ...prev, password: e.target.value }))
@@ -590,7 +425,7 @@ export default function RegisterDirectorPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               tabIndex={-1}
             >
               {showPassword ? (
@@ -606,7 +441,7 @@ export default function RegisterDirectorPage() {
             Подтвердите пароль <span className="text-destructive">*</span>
           </label>
           <input
-            type={showPassword ? 'text' : 'password'}
+            type={showPassword ? "text" : "password"}
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
@@ -619,7 +454,7 @@ export default function RegisterDirectorPage() {
 
       <div className="flex justify-end">
         <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
-          {isLoading ? 'Загрузка...' : 'Дальше'}
+          {isLoading ? "Загрузка..." : "Дальше"}
         </Button>
       </div>
     </form>
@@ -650,13 +485,14 @@ export default function RegisterDirectorPage() {
         {emailSent && !emailVerified && (
           <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
             Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите
-            по ссылке в письме.
+            по ссылке в письме. После подтверждения страница автоматически
+            обновит статус.
           </div>
         )}
         {emailSent && emailVerified && (
           <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
-            Поздравляем! Ваша почта подтверждена, можете переходить к
-            следующему шагу.
+            Поздравляем! Ваша почта подтверждена, можете переходить к следующему
+            шагу.
           </div>
         )}
 
@@ -673,14 +509,14 @@ export default function RegisterDirectorPage() {
             Назад
           </Button>
 
-          {!emailSent ? (
+        {!emailSent ? (
             <Button
               type="button"
               className="w-full md:w-auto"
               disabled={!form.email.trim() || isSendingEmail || !isEmailValid}
               onClick={handleSendEmailVerification}
             >
-              {isSendingEmail ? 'Отправляем...' : 'Подтвердить e-mail'}
+              {isSendingEmail ? "Отправляем..." : "Подтвердить e-mail"}
             </Button>
           ) : (
             <Button
@@ -726,22 +562,22 @@ export default function RegisterDirectorPage() {
           Назад
         </Button>
         <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
-          {isLoading ? 'Завершаем...' : 'Завершить регистрацию'}
+          {isLoading ? "Завершаем..." : "Завершить регистрацию"}
         </Button>
       </div>
     </form>
   );
 
   return (
-    <main className="mt-[72px] flex min-h-[calc(100vh-72px)] items-center justify-center px-4">
+    <main className="flex mt-[72px] min-h-[calc(100vh-72px)] items-center justify-center px-4">
       <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <CardHeader className="pb-4">
           {renderStepHeader()}
-          <CardTitle className="text-center text-xl font-semibold">
+          <CardTitle className="text-xl font-semibold text-center">
             Создать аккаунт директора
           </CardTitle>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Уже есть аккаунт?{' '}
+            Уже есть аккаунт?{" "}
             <Link
               href="/auth/login"
               className="font-medium text-primary hover:underline"

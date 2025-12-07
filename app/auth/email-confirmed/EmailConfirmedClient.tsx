@@ -2,11 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
 type Status = "pending" | "success" | "error";
 
-// Используем тот же клиент что и в форме регистрации для синхронизации cookies
+// создаём единый браузерный Supabase-клиент
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  // не валим сборку, но логируем
+  // eslint-disable-next-line no-console
+  console.warn(
+    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for EmailConfirmedClient",
+  );
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function EmailConfirmedClient() {
   const searchParams = useSearchParams();
@@ -21,8 +33,6 @@ export default function EmailConfirmedClient() {
       setStatus("error");
       return;
     }
-
-    const supabase = createBrowserSupabaseClient();
 
     const verify = async () => {
       const type: "email" | "signup" =
@@ -46,7 +56,6 @@ export default function EmailConfirmedClient() {
         payload.email = emailParam;
       }
 
-      // 1. Подтверждаем e-mail
       const { error } = await supabase.auth.verifyOtp(payload);
 
       if (error) {
@@ -55,76 +64,52 @@ export default function EmailConfirmedClient() {
         return;
       }
 
-      // 2. Берём текущего пользователя
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        console.error("Error getting user after verifyOtp:", userError?.message);
-        setStatus("error");
-        return;
-      }
-
-      // 3. Извлекаем данные из user_metadata (они были переданы при signUp)
-      const metadata = user.user_metadata || {};
-      const firstName = metadata.firstName || "";
-      const lastName = metadata.lastName || "";
-      const middleName = metadata.middleName || "";
-      const birthDate = metadata.birthDate || null;
-
-      // Формируем full_name
-      const fullName = [lastName, firstName, middleName]
-        .filter(Boolean)
-        .join(" ") || null;
-
-      // 4. Обновляем профиль: email_verified + все личные данные
-      const profileUpdate: Record<string, any> = {
-        id: user.id,
-        email: user.email || "",
-        email_verified: true,
-        роль: "директор",
-        first_name: firstName.trim() || null,
-        last_name: lastName.trim() || null,
-        middle_name: middleName.trim() || null,
-        full_name: fullName,
-        дата_рождения: birthDate || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert(profileUpdate, { onConflict: "id" });
-
-      if (profileError) {
-        console.error(
-          "Error updating profile:",
-          profileError.message,
-        );
-      }
-
-      // 5. Принудительно обновляем сессию (важно для синхронизации между вкладками)
+      // после успешного подтверждения - получаем пользователя и синхронизируем профиль
       try {
-        await supabase.auth.getSession();
-      } catch (e) {
-        console.warn("Error refreshing session:", e);
-      }
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      // 6. Уведомляем форму регистрации через localStorage событие
-      try {
-        window.localStorage.setItem("wellify_email_confirmed", "true");
-        // Триггерим событие storage для синхронизации между вкладками
-        // Важно: событие storage срабатывает ТОЛЬКО в других вкладках
-        window.dispatchEvent(new StorageEvent("storage", {
-          key: "wellify_email_confirmed",
-          newValue: "true",
-          storageArea: localStorage,
-        }));
-        // Также отправляем кастомное событие для текущего окна
-        window.dispatchEvent(new CustomEvent("emailConfirmed"));
-      } catch (e) {
-        console.warn("Cannot set localStorage:", e);
+        if (!userError && user) {
+          const meta =
+            (user.user_metadata as any) ??
+            ((user as any).raw_user_meta_data as any) ??
+            {};
+
+          const firstName =
+            meta.firstName ?? meta.first_name ?? null;
+          const lastName =
+            meta.lastName ?? meta.last_name ?? null;
+          const middleName =
+            meta.middleName ?? meta.middle_name ?? null;
+          const birthDate =
+            meta.birthDate ?? meta.birth_date ?? null;
+          const role = meta.role ?? meta.user_role ?? "director";
+
+          const { error: upsertError } = await supabase
+            .from("profiles")
+            .upsert(
+              {
+                id: user.id,
+                email: user.email,
+                first_name: firstName,
+                last_name: lastName,
+                middle_name: middleName,
+                birth_date: birthDate,
+                role,
+                email_verified: true,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "id" },
+            );
+
+          if (upsertError) {
+            console.error("Error upserting profile after email confirm:", upsertError);
+          }
+        }
+      } catch (err) {
+        console.error("Unexpected error syncing profile after email confirm:", err);
       }
 
       setStatus("success");
