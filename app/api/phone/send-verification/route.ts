@@ -1,46 +1,55 @@
-import { NextResponse } from "next/server";
-import twilio from "twilio";
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import twilio from 'twilio';
 
-export async function POST(req: Request) {
+const PhoneVerificationSchema = z.object({
+  phone: z
+    .string()
+    .min(8, 'Phone is too short')
+    .max(20, 'Phone is too long'),
+});
+
+export async function POST(req: NextRequest) {
   try {
-    const { phone } = await req.json();
+    const body = await req.json();
 
-    if (!phone) {
-      return NextResponse.json(
-        { error: "Phone number is required" },
-        { status: 400 }
-      );
+    // ВАЖНО: валидируем только phone, НИКАКОГО password
+    const { phone } = PhoneVerificationSchema.parse(body);
+
+    const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+    const apiKey = process.env.TWILIO_API_KEY!;
+    const apiSecret = process.env.TWILIO_API_SECRET!;
+    const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID!;
+
+    if (!accountSid || !apiKey || !apiSecret || !verifyServiceSid) {
+      throw new Error('Twilio credentials are not configured');
     }
 
-    const client = twilio(
-      process.env.TWILIO_ACCOUNT_SID!,
-      process.env.TWILIO_AUTH_TOKEN!
-    );
+    const client = twilio(apiKey, apiSecret, { accountSid });
 
-    console.log("[send-verification] Starting verification for:", phone);
-
-    const result = await client.verify.v2
-      .services(process.env.TWILIO_VERIFY_SERVICE_SID!)
+    const verification = await client.verify.v2
+      .services(verifyServiceSid)
       .verifications.create({
         to: phone,
-        channel: "sms",
+        channel: 'sms',
       });
 
-    console.log("[send-verification] Twilio response:", result);
-
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    console.error("[send-verification] Twilio error:", err);
+    return NextResponse.json({
+      success: true,
+      status: verification.status,
+    });
+  } catch (error: any) {
+    console.error('[phone/send-verification] error:', error);
 
     return NextResponse.json(
       {
-        error: "Twilio verification failed",
-        message: err?.message || null,
-        code: err?.code || null,
-        moreInfo: err?.moreInfo || null,
-        details: err
+        error: 'Twilio verification failed',
+        message: error?.message ?? 'Unknown error',
+        code: error?.code ?? null,
+        moreInfo: error?.moreInfo ?? null,
+        details: error?.details ?? {},
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
