@@ -152,44 +152,86 @@ export default function EmailConfirmedClient() {
 
         console.log("Profile data to upsert:", profileData);
 
-          // Используем upsert с onConflict для обновления существующей записи
-          // Если пользователь не авторизован (нет сессии), RLS может блокировать
-          // Поэтому пробуем сначала получить сессию еще раз
-          const { data: finalSession } = await supabase.auth.getSession();
-          
-          if (!finalSession?.session) {
-            console.warn("No session after verifyOtp, waiting...");
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
+        // Используем API route для обновления профиля (обходит RLS через service role)
+        try {
+          const response = await fetch("/api/profile/update-after-confirm", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              profileData: profileData,
+            }),
+          });
 
-          const { data: upsertData, error: upsertError } = await supabase
-            .from("profiles")
-            .upsert(profileData, { onConflict: "id" })
-            .select();
+          const result = await response.json();
 
-          if (upsertError) {
-            console.error("Error upserting profile after email confirm:", upsertError);
-            console.error("Profile data:", profileData);
-            console.error("User ID:", user.id);
-            console.error("Session exists:", !!finalSession?.session);
+          if (!response.ok || !result.success) {
+            console.error("API route error:", result.error);
+            // Пробуем напрямую через Supabase как fallback
+            const { data: finalSession } = await supabase.auth.getSession();
             
-            // Если ошибка RLS - пробуем использовать update вместо upsert
-            if (upsertError.code === '42501' || upsertError.message?.includes('permission')) {
-              console.warn("RLS error, trying update instead of upsert...");
-              const { error: updateError } = await supabase
+            if (finalSession?.session) {
+              const { data: upsertData, error: upsertError } = await supabase
                 .from("profiles")
-                .update(profileData)
-                .eq("id", user.id);
+                .upsert(profileData, { onConflict: "id" })
+                .select();
 
-              if (updateError) {
-                console.error("Update also failed:", updateError);
+              if (upsertError) {
+                console.error("Fallback upsert also failed:", upsertError);
               } else {
-                console.log("Profile updated using UPDATE instead of UPSERT");
+                console.log("Profile updated via fallback method:", upsertData);
               }
             }
           } else {
-            console.log("Profile successfully updated after email confirmation", upsertData);
+            console.log("Profile successfully updated via API route:", result.profile);
+            
+            // Уведомляем страницу регистрации через localStorage
+            try {
+              window.localStorage.setItem("wellify_email_confirmed", "true");
+              window.dispatchEvent(new StorageEvent("storage", {
+                key: "wellify_email_confirmed",
+                newValue: "true",
+                storageArea: localStorage,
+              }));
+              window.dispatchEvent(new CustomEvent("emailConfirmed"));
+            } catch (e) {
+              console.warn("Cannot set localStorage:", e);
+            }
           }
+        } catch (apiError) {
+          console.error("Error calling API route:", apiError);
+          
+          // Fallback: пробуем напрямую через Supabase
+          const { data: finalSession } = await supabase.auth.getSession();
+          
+          if (finalSession?.session) {
+            const { data: upsertData, error: upsertError } = await supabase
+              .from("profiles")
+              .upsert(profileData, { onConflict: "id" })
+              .select();
+
+            if (upsertError) {
+              console.error("Fallback upsert failed:", upsertError);
+            } else {
+              console.log("Profile updated via fallback:", upsertData);
+              
+              // Уведомляем страницу регистрации через localStorage
+              try {
+                window.localStorage.setItem("wellify_email_confirmed", "true");
+                window.dispatchEvent(new StorageEvent("storage", {
+                  key: "wellify_email_confirmed",
+                  newValue: "true",
+                  storageArea: localStorage,
+                }));
+                window.dispatchEvent(new CustomEvent("emailConfirmed"));
+              } catch (e) {
+                console.warn("Cannot set localStorage:", e);
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error("Unexpected error syncing profile after email confirm:", err);
       }
