@@ -79,15 +79,34 @@ export default function RegisterDirectorPage() {
     let cancelled = false;
 
     const checkEmailAndProfile = async () => {
-      if (cancelled) return;
+      if (cancelled || emailVerified) return;
 
       try {
+        // Сначала проверяем localStorage для быстрого обновления
+        try {
+          const isConfirmed = localStorage.getItem("wellify_email_confirmed") === "true";
+          if (isConfirmed) {
+            // Если флаг установлен, проверяем профиль для подтверждения
+          } else {
+            // Если флага нет, продолжаем обычную проверку
+          }
+        } catch (e) {
+          // localStorage недоступен, продолжаем обычную проверку
+        }
+
         const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
 
-        if (userError || !user || cancelled) {
+        if (userError || !user || cancelled || emailVerified) {
+          return;
+        }
+
+        // Проверяем, подтвержден ли email в auth
+        if (user.email_confirmed_at) {
+          setEmailVerified(true);
+          cancelled = true;
           return;
         }
 
@@ -100,11 +119,11 @@ export default function RegisterDirectorPage() {
           .eq("id", user.id)
           .single();
 
-        if (profileError || !profile || cancelled) {
+        if (profileError || !profile || cancelled || emailVerified) {
           return;
         }
 
-        if (profile.email_verified && !cancelled) {
+        if (profile.email_verified && !cancelled && !emailVerified) {
           setEmailVerified(true);
 
           // аккуратно подставляем данные в локальное состояние, если они пустые
@@ -130,6 +149,16 @@ export default function RegisterDirectorPage() {
       }
     };
 
+    // Слушаем события localStorage для мгновенного обновления
+    const handleStorageChange = () => {
+      if (!emailVerified) {
+        checkEmailAndProfile().catch(console.error);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("emailConfirmed", handleStorageChange);
+
     // первый запуск сразу
     checkEmailAndProfile().catch(console.error);
 
@@ -145,6 +174,8 @@ export default function RegisterDirectorPage() {
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("emailConfirmed", handleStorageChange);
     };
   }, [supabase, step, emailSent, emailVerified]);
 
@@ -220,31 +251,61 @@ export default function RegisterDirectorPage() {
       process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
     }/auth/email-confirmed`;
 
-    const { error } = await supabase.auth.signUp({
-      email: form.email.trim(),
-      password: baseData.password,
-      options: {
-        emailRedirectTo: redirectTo,
-        data: {
-          firstName: baseData.firstName,
-          lastName: baseData.lastName,
-          middleName: baseData.middleName,
-          birthDate: baseData.birthDate,
-          role: "director",
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: form.email.trim(),
+        password: baseData.password,
+        options: {
+          emailRedirectTo: redirectTo,
+          data: {
+            firstName: baseData.firstName,
+            lastName: baseData.lastName,
+            middleName: baseData.middleName,
+            birthDate: baseData.birthDate,
+            role: "director",
+          },
         },
-      },
-    });
+      });
 
-    setIsSendingEmail(false);
+      if (error) {
+        // Если пользователь уже существует, пробуем отправить письмо заново
+        if (error.message?.includes("already registered") || error.message?.includes("already exists")) {
+          // Пробуем resend confirmation
+          const { error: resendError } = await supabase.auth.resend({
+            type: "signup",
+            email: form.email.trim(),
+            options: {
+              emailRedirectTo: redirectTo,
+            },
+          });
 
-    if (error) {
-      setFormError(error.message || "Не удалось отправить письмо");
-      return;
+          if (resendError) {
+            setFormError(resendError.message || "Не удалось отправить письмо");
+            setIsSendingEmail(false);
+            return;
+          }
+
+          // Письмо переотправлено
+          setEmailSent(true);
+          setEmailVerified(false);
+          setIsSendingEmail(false);
+          return;
+        }
+
+        setFormError(error.message || "Не удалось отправить письмо");
+        setIsSendingEmail(false);
+        return;
+      }
+
+      // Письмо отправлено успешно
+      setEmailSent(true);
+      setEmailVerified(false);
+    } catch (err: any) {
+      console.error("Unexpected error sending email:", err);
+      setFormError(err.message || "Произошла ошибка. Попробуйте еще раз.");
+    } finally {
+      setIsSendingEmail(false);
     }
-
-    // письмо отправлено - запускаем опрос
-    setEmailSent(true);
-    setEmailVerified(false);
   };
 
   const handleFinish = async (e: FormEvent) => {

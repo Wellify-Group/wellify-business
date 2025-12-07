@@ -182,6 +182,19 @@ export default function EmailConfirmedClient() {
                 console.error("Fallback upsert also failed:", upsertError);
               } else {
                 console.log("Profile updated via fallback method:", upsertData);
+                
+                // Уведомляем страницу регистрации через localStorage
+                try {
+                  window.localStorage.setItem("wellify_email_confirmed", "true");
+                  window.dispatchEvent(new StorageEvent("storage", {
+                    key: "wellify_email_confirmed",
+                    newValue: "true",
+                    storageArea: localStorage,
+                  }));
+                  window.dispatchEvent(new CustomEvent("emailConfirmed"));
+                } catch (e) {
+                  console.warn("Cannot set localStorage:", e);
+                }
               }
             }
           } else {
