@@ -65,6 +65,9 @@ export default function EmailConfirmedClient() {
       // Сигнал для /register: почта подтверждена
       try {
         window.localStorage.setItem("wellify_email_confirmed", "true");
+        // CustomEvent для того же окна
+        window.dispatchEvent(new CustomEvent("emailConfirmed"));
+        // StorageEvent для других вкладок (если они открыты)
         window.dispatchEvent(
           new StorageEvent("storage", {
             key: "wellify_email_confirmed",
@@ -72,7 +75,6 @@ export default function EmailConfirmedClient() {
             storageArea: localStorage,
           }),
         );
-        window.dispatchEvent(new CustomEvent("emailConfirmed"));
       } catch (e) {
         console.warn("Cannot use localStorage in email-confirmed:", e);
       }

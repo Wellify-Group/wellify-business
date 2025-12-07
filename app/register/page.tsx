@@ -32,6 +32,7 @@ interface FormState {
 export default function RegisterDirectorPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
+
   const [baseData, setBaseData] = useState<BaseData>({
     firstName: "",
     lastName: "",
@@ -39,20 +40,23 @@ export default function RegisterDirectorPage() {
     birthDate: "",
     password: "",
   });
+
   const [form, setForm] = useState<FormState>({
     email: "",
     phone: "",
   });
+
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
+
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // клиент Supabase
+  // Supabase клиент
   const supabase = useMemo<SupabaseClient | null>(() => {
     try {
       return createBrowserSupabaseClient();
@@ -68,82 +72,46 @@ export default function RegisterDirectorPage() {
     setFormSuccess(null);
   }, [step]);
 
-  // ПОЛЛИНГ подтверждения e-mail
+  // Простой механизм: слушаем localStorage-флаг от /auth/email-confirmed
   useEffect(() => {
-    if (!supabase || step !== 2 || !emailSent || emailVerified) return;
+    if (step !== 2) return;
 
-    let cancelled = false;
-
-    const checkEmailAndProfile = async () => {
-      if (cancelled || emailVerified) return;
-
+    const checkFlag = () => {
       try {
-        // 1. Быстрая проверка по localStorage
-        try {
-          const isConfirmed =
-            localStorage.getItem("wellify_email_confirmed") === "true";
-          if (isConfirmed) {
-            setEmailVerified(true);
-            return;
-          }
-        } catch (e) {
-          console.warn("localStorage unavailable in register polling:", e);
-        }
-
-        // 2. Проверяем пользователя в Supabase
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError) {
-          console.error(
-            "Error getting user during email verification polling:",
-            userError,
-          );
-          return;
-        }
-
-        if (!user || cancelled || emailVerified) {
-          return;
-        }
-
-        // 3. Если в auth уже стоит email_confirmed_at - считаем e-mail подтверждённым
-        if (user.email_confirmed_at) {
+        const isConfirmed =
+          window.localStorage.getItem("wellify_email_confirmed") === "true";
+        if (isConfirmed) {
           setEmailVerified(true);
-          return;
         }
-      } catch (error) {
-        console.error("Error polling email verification:", error);
+      } catch (e) {
+        console.warn("Cannot read localStorage in register page:", e);
       }
     };
 
-    const handleStorageChange = () => {
-      checkEmailAndProfile().catch(console.error);
+    // мгновенная проверка при загрузке шага
+    checkFlag();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === "wellify_email_confirmed" &&
+        event.newValue === "true"
+      ) {
+        setEmailVerified(true);
+      }
     };
 
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("emailConfirmed", handleStorageChange);
+    const handleCustom = () => {
+      checkFlag();
+    };
 
-    // первый запуск сразу
-    checkEmailAndProfile().catch(console.error);
-
-    // затем - каждые 4 секунды
-    const intervalId = window.setInterval(() => {
-      if (!cancelled && !emailVerified) {
-        checkEmailAndProfile().catch(console.error);
-      } else {
-        window.clearInterval(intervalId);
-      }
-    }, 4000);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("emailConfirmed", handleCustom as EventListener);
 
     return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("emailConfirmed", handleStorageChange);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("emailConfirmed", handleCustom as EventListener);
     };
-  }, [supabase, step, emailSent, emailVerified]);
+  }, [step]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -234,7 +202,7 @@ export default function RegisterDirectorPage() {
       });
 
       if (error) {
-        // Если пользователь уже существует, пробуем отправить письмо заново
+        // пользователь уже есть → пробуем resend
         if (
           error.message?.includes("already registered") ||
           error.message?.includes("already exists")
@@ -248,9 +216,7 @@ export default function RegisterDirectorPage() {
           });
 
           if (resendError) {
-            setFormError(
-              resendError.message || "Не удалось отправить письмо",
-            );
+            setFormError(resendError.message || "Не удалось отправить письмо");
             setIsSendingEmail(false);
             return;
           }
@@ -266,7 +232,7 @@ export default function RegisterDirectorPage() {
         return;
       }
 
-      // Письмо отправлено успешно
+      console.log("signUp result:", data);
       setEmailSent(true);
       setEmailVerified(false);
     } catch (err: any) {
@@ -300,55 +266,59 @@ export default function RegisterDirectorPage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
+        console.error("getUser error or no user:", userError);
         setIsLoading(false);
         setFormError(
-          "Пользователь не авторизован. Пожалуйста, войдите в систему.",
+          "Пользователь не авторизован. Пожалуйста, выполните вход ещё раз.",
         );
         return;
       }
 
-      const firstName = baseData.firstName.trim();
-      const lastName = baseData.lastName.trim();
-      const middleName = baseData.middleName.trim();
-      const fullName = [lastName || null, firstName || null, middleName || null]
+      // здесь уже есть подтверждённый пользователь → апдейтим/создаём профиль
+      // Формируем full_name из компонентов (Фамилия Имя Отчество)
+      const fullName = [
+        baseData.lastName.trim(),
+        baseData.firstName.trim(),
+        baseData.middleName.trim(),
+      ]
         .filter(Boolean)
-        .join(" ");
+        .join(" ") || null;
+
+      const profilePayload = {
+        id: user.id,
+        email: user.email ?? form.email.trim(),
+        first_name: baseData.firstName.trim(),
+        last_name: baseData.lastName.trim(),
+        middle_name: baseData.middleName.trim() || null,
+        full_name: fullName,
+        birth_date: baseData.birthDate,
+        phone: form.phone.trim(),
+        role: "director",
+        email_verified: true,
+        updated_at: new Date().toISOString(),
+      };
 
       const { error: upsertError } = await supabase
         .from("profiles")
-        .upsert(
-          {
-            id: user.id,
-            email: form.email.trim() || user.email || "",
-            first_name: firstName,
-            last_name: lastName,
-            middle_name: middleName || null,
-            full_name: fullName || null,
-            birth_date: baseData.birthDate || null,
-            phone: form.phone.trim(),
-            role: "director",
-            email_verified: true,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" },
-        );
-
-      setIsLoading(false);
+        .upsert(profilePayload, { onConflict: "id" });
 
       if (upsertError) {
-        console.error("Error saving profile on finish:", upsertError);
+        console.error("Error upserting profile:", upsertError);
+        setIsLoading(false);
         setFormError(
-          upsertError.message || "Ошибка при сохранении профиля",
+          upsertError.message ||
+            "Ошибка при сохранении профиля. Попробуйте ещё раз.",
         );
         return;
       }
 
+      setIsLoading(false);
       router.push("/dashboard/director");
     } catch (error) {
       console.error("Error in handleFinish:", error);
       setIsLoading(false);
       setFormError(
-        "Произошла ошибка при сохранении телефона. Попробуйте ещё раз.",
+        "Произошла ошибка при завершении регистрации. Попробуйте ещё раз.",
       );
     }
   };
@@ -525,7 +495,6 @@ export default function RegisterDirectorPage() {
     const isEmailValid =
       form.email.trim() && emailRegex.test(form.email.trim());
 
-    // Кнопка "Далее" доступна только если emailVerified === true и не идёт загрузка
     const canGoNextFromEmailStep =
       emailVerified && !isLoading && !isSendingEmail;
 
