@@ -16,22 +16,19 @@ export default function EmailConfirmedPage() {
 
         if (!user) return;
 
-        const { id, email, user_metadata } = user;
+        const { id, email } = user;
 
-        const { error } = await supabase.from('profiles').upsert(
-          {
-            // колонка должна совпадать с твоей схемой!
-            uuid: id,
-            email,
-            имя: user_metadata.firstName ?? null,
-            фамилия: user_metadata.lastName ?? null,
-            отчество: user_metadata.middleName ?? null,
-            роль: user_metadata.role ?? 'director',
-          },
-          {
-            onConflict: 'uuid', // или нужное имя колонки, но точно не 'id', если её нет
-          }
-        );
+        const { error } = await supabase
+          .from('profiles')
+          .upsert(
+            {
+              id: id,
+              email: email,
+            },
+            {
+              onConflict: 'id',
+            }
+          );
 
         if (error) {
           console.error('Error upserting profile', error);

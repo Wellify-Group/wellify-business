@@ -43,11 +43,9 @@ export default function RegisterDirectorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
-  const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
-  const [emailInfo, setEmailInfo] = useState<string | null>(null);
+  const [isEmailConfirmed, setIsEmailConfirmed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   // Создаем клиент Supabase через useMemo
   const supabase = useMemo<SupabaseClient | null>(() => {
@@ -65,46 +63,57 @@ export default function RegisterDirectorPage() {
     setFormSuccess(null);
   }, [step]);
 
-  // Поллинг для проверки подтверждения email
+  // Подписка на изменения авторизации для отслеживания подтверждения email
   useEffect(() => {
-    if (!isCheckingEmail || !supabase) return;
+    if (!supabase) return;
 
-    let intervalId: number | undefined;
-
-    const checkEmail = async () => {
+    // Функция для синхронизации профиля в БД
+    const syncProfile = async () => {
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser();
 
-        // если пользователь уже авторизован и email подтверждён
-        if (user && (user.email_confirmed_at || user.confirmed_at)) {
-          setEmailStatus('confirmed');
-          setIsCheckingEmail(false);
+        if (!user) return;
 
-          if (intervalId) {
-            window.clearInterval(intervalId);
-          }
+        const { id, email } = user;
+
+        const { error } = await supabase
+          .from('profiles')
+          .upsert(
+            {
+              id: id,
+              email: email,
+            },
+            {
+              onConflict: 'id',
+            }
+          );
+
+        if (error) {
+          console.error('Error upserting profile', error);
         }
-      } catch (error) {
-        console.error('Error checking email confirmation:', error);
+      } catch (err) {
+        console.error('Unexpected error syncing profile', err);
       }
     };
 
-    // первая проверка сразу
-    checkEmail().catch(console.error);
-
-    // и затем периодический поллинг раз в 3 секунды
-    intervalId = window.setInterval(() => {
-      checkEmail().catch(console.error);
-    }, 3000);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        if (session?.user && (session.user.email_confirmed_at || session.user.confirmed_at)) {
+          setIsEmailConfirmed(true);
+          // Синхронизируем профиль после подтверждения
+          syncProfile().catch(console.error);
+        }
+      }
+    });
 
     return () => {
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
+      subscription.unsubscribe();
     };
-  }, [isCheckingEmail, supabase]);
+  }, [supabase]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -175,16 +184,15 @@ export default function RegisterDirectorPage() {
 
     setIsLoading(true);
     setFormError(null);
-    setEmailInfo(null);
 
-    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-    const emailRedirectTo = `${SITE_URL}/auth/email-confirmed`;
+    const redirectTo =
+      `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dev.wellifyglobal.com'}/auth/email-confirmed`;
 
     const { data, error } = await supabase.auth.signUp({
       email: form.email.trim(),
       password: baseData.password,
       options: {
-        emailRedirectTo,
+        emailRedirectTo: redirectTo,
         data: {
           firstName: baseData.firstName,
           lastName: baseData.lastName,
@@ -206,13 +214,6 @@ export default function RegisterDirectorPage() {
     if (data.user?.id) {
       setUserId(data.user.id);
     }
-
-    // Если signUp прошёл без ошибок - письмо отправлено Supabase
-    setEmailStatus('sent');
-    setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме.`);
-    
-    // Начинаем проверку статуса подтверждения
-    setIsCheckingEmail(true);
   };
 
   const handleFinish = async (e: FormEvent) => {
@@ -432,15 +433,16 @@ export default function RegisterDirectorPage() {
         />
       </div>
 
-      {emailStatus === 'confirmed' ? (
-        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
-          Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.
-        </div>
-      ) : emailStatus === 'sent' ? (
+      {userId && !isEmailConfirmed && (
         <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
           Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите по ссылке в письме.
         </div>
-      ) : null}
+      )}
+      {isEmailConfirmed && (
+        <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+          Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.
+        </div>
+      )}
 
       {renderAlerts()}
 
@@ -455,7 +457,7 @@ export default function RegisterDirectorPage() {
           >
             Назад
           </Button>
-          {emailStatus === 'sent' && (
+          {userId && !isEmailConfirmed && (
             <Button
               type="button"
               variant="outline"
@@ -466,7 +468,7 @@ export default function RegisterDirectorPage() {
               {isLoading ? 'Отправляем...' : 'Отправить ещё раз'}
             </Button>
           )}
-          {emailStatus === 'idle' && (
+          {!userId && (
             <Button
               type="button"
               className="w-full md:w-auto"
@@ -478,41 +480,14 @@ export default function RegisterDirectorPage() {
           )}
         </div>
 
-        {emailStatus === 'confirmed' && (
-          <Button
-            type="button"
-            className="w-full md:w-auto"
-            disabled={isLoading}
-            onClick={async () => {
-              setIsLoading(true);
-              try {
-                const { createDirectorProfile } = await import('@/app/auth/register/actions');
-                const result = await createDirectorProfile({
-                  firstName: baseData.firstName,
-                  lastName: baseData.lastName,
-                  middleName: baseData.middleName || undefined,
-                  birthDate: baseData.birthDate,
-                  email: form.email.trim(),
-                });
-
-                setIsLoading(false);
-
-                if (!result.success) {
-                  setFormError(result.error || 'Ошибка при создании профиля');
-                  return;
-                }
-
-                setStep(3);
-              } catch (error) {
-                console.error('Error creating profile:', error);
-                setIsLoading(false);
-                setFormError('Произошла ошибка при создании профиля. Попробуйте ещё раз.');
-              }
-            }}
-          >
-            {isLoading ? 'Создаём профиль...' : 'Дальше'}
-          </Button>
-        )}
+        <Button
+          type="button"
+          className="w-full md:w-auto"
+          disabled={isLoading || !isEmailConfirmed}
+          onClick={() => setStep(3)}
+        >
+          Дальше
+        </Button>
       </div>
     </div>
   );
