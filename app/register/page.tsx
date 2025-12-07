@@ -64,32 +64,32 @@ export default function RegisterDirectorPage() {
     setFormSuccess(null);
   }, [step]);
 
-  // Realtime подписка для отслеживания создания профиля
+  // Поллинг для проверки подтверждения email
   useEffect(() => {
-    if (!userId || !supabase) return;
+    if (!userId || !supabase || emailStatus !== 'sent') return;
 
-    const channel = supabase
-      .channel(`profile-email-confirm-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${userId}`,
-        },
-        (payload) => {
-          // Как только появилась/обновилась запись профиля – считаем e-mail подтверждённым
-          console.log('Profile created/updated:', payload);
+    const checkEmailConfirmation = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user?.email_confirmed_at) {
           setEmailStatus('confirmed');
         }
-      )
-      .subscribe();
+      } catch (error) {
+        console.error('Error checking email confirmation:', error);
+      }
+    };
+
+    // Проверяем сразу
+    checkEmailConfirmation();
+
+    // Затем каждые 4 секунды
+    const interval = setInterval(checkEmailConfirmation, 4000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
-  }, [userId, supabase]);
+  }, [userId, supabase, emailStatus]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -214,23 +214,13 @@ export default function RegisterDirectorPage() {
     setIsLoading(true);
 
     try {
-      // Обновляем телефон через Supabase напрямую
-      if (!supabase) {
-        setFormError('Ошибка инициализации. Обновите страницу.');
-        setIsLoading(false);
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ phone: form.phone.trim() })
-        .eq('id', userId);
+      const { updateDirectorPhone } = await import('@/app/auth/register/actions');
+      const result = await updateDirectorPhone(form.phone.trim());
 
       setIsLoading(false);
 
-      if (updateError) {
-        console.error('Error updating phone:', updateError);
-        setFormError(updateError.message || 'Ошибка при сохранении телефона');
+      if (!result.success) {
+        setFormError(result.error || 'Ошибка при сохранении телефона');
         return;
       }
 
@@ -385,7 +375,7 @@ export default function RegisterDirectorPage() {
 
       {renderAlerts()}
 
-      <div className="mt-2 flex justify-end">
+      <div className="flex justify-end">
         <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
           {isLoading ? 'Загрузка...' : 'Дальше'}
         </Button>
@@ -408,9 +398,9 @@ export default function RegisterDirectorPage() {
         />
       </div>
 
-      {emailStatus === 'sent' && emailInfo && (
+      {emailStatus === 'sent' && (
         <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-          {emailInfo}
+          Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите по ссылке в письме.
         </div>
       )}
 
@@ -461,9 +451,34 @@ export default function RegisterDirectorPage() {
             type="button"
             className="w-full md:w-auto"
             disabled={isLoading}
-            onClick={() => setStep(3)}
+            onClick={async () => {
+              setIsLoading(true);
+              try {
+                const { createDirectorProfile } = await import('@/app/auth/register/actions');
+                const result = await createDirectorProfile({
+                  firstName: baseData.firstName,
+                  lastName: baseData.lastName,
+                  middleName: baseData.middleName || undefined,
+                  birthDate: baseData.birthDate,
+                  email: form.email.trim(),
+                });
+
+                setIsLoading(false);
+
+                if (!result.success) {
+                  setFormError(result.error || 'Ошибка при создании профиля');
+                  return;
+                }
+
+                setStep(3);
+              } catch (error) {
+                console.error('Error creating profile:', error);
+                setIsLoading(false);
+                setFormError('Произошла ошибка при создании профиля. Попробуйте ещё раз.');
+              }
+            }}
           >
-            Дальше
+            {isLoading ? 'Создаём профиль...' : 'Дальше'}
           </Button>
         )}
       </div>

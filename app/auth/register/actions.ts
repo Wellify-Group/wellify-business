@@ -97,54 +97,81 @@ export async function createDirectorProfile(payload: {
   middleName?: string
   birthDate: string
   email: string
-  password: string
-  phone?: string
 }) {
   const supabase = await createServerSupabaseClient()
 
-  const { firstName, lastName, middleName, birthDate, email, password, phone } = payload
+  // Получаем текущего пользователя
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${
-        process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dev.wellifyglobal.com'
-      }/auth/confirm`,
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-        middle_name: middleName,
-        birth_date: birthDate,
-        phone,
-      },
-    },
-  })
-
-  if (error) {
-    console.error('Error during signUp', error)
+  if (userError || !user) {
+    console.error('Error getting user:', userError)
     return {
       success: false as const,
-      error: error.message,
+      error: 'Пользователь не авторизован. Пожалуйста, войдите в систему.',
     }
   }
 
+  // Проверяем, что email подтверждён
+  if (!user.email_confirmed_at) {
     return {
-      success: true as const,
-      userId: data.user?.id ?? null,
+      success: false as const,
+      error: 'E-mail не подтверждён. Пожалуйста, подтвердите e-mail перед продолжением.',
     }
+  }
+
+  const { firstName, lastName, middleName, birthDate, email } = payload
+
+  // Делаем upsert в profiles
+  const { error: upsertError } = await supabase
+    .from('profiles')
+    .upsert({
+      id: user.id,
+      email: email,
+      first_name: firstName,
+      last_name: lastName,
+      middle_name: middleName || null,
+      birth_date: birthDate,
+      role: 'director',
+      phone: null,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'id'
+    })
+
+  if (upsertError) {
+    console.error('Error creating/updating profile:', upsertError)
+    return {
+      success: false as const,
+      error: upsertError.message || 'Ошибка при создании профиля',
+    }
+  }
+
+  return {
+    success: true as const,
+  }
 }
 
-export async function updateDirectorPhone(args: { userId: string; phone: string }) {
+export async function updateDirectorPhone(phone: string) {
   const supabase = await createServerSupabaseClient()
+
+  // Получаем текущего пользователя
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    console.error('Error getting user:', userError)
+    return {
+      success: false as const,
+      error: 'Пользователь не авторизован. Пожалуйста, войдите в систему.',
+    }
+  }
 
   const { error } = await supabase
     .from('profiles')
     .update({ 
-      phone: args.phone, 
+      phone: phone, 
       updated_at: new Date().toISOString() 
     })
-    .eq('id', args.userId)
+    .eq('id', user.id)
 
   if (error) {
     console.error('Error updating phone:', error)
