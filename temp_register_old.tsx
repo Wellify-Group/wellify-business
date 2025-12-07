@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { FormEvent, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -47,7 +47,7 @@ export default function RegisterDirectorPage() {
   const [emailInfo, setEmailInfo] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Создаем клиент Supabase через useMemo
+  // ╨б╨╛╨╖╨┤╨░╨╡╨╝ ╨║╨╗╨╕╨╡╨╜╤В Supabase ╤З╨╡╤А╨╡╨╖ useMemo
   const supabase = useMemo<SupabaseClient | null>(() => {
     try {
       return createBrowserSupabaseClient();
@@ -57,7 +57,7 @@ export default function RegisterDirectorPage() {
     }
   }, []);
 
-  // Сбрасываем ошибки при смене шага
+  // ╨б╨▒╤А╨░╤Б╤Л╨▓╨░╨╡╨╝ ╨╛╤И╨╕╨▒╨║╨╕ ╨┐╤А╨╕ ╤Б╨╝╨╡╨╜╨╡ ╤И╨░╨│╨░
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
@@ -65,19 +65,19 @@ export default function RegisterDirectorPage() {
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
-      setFormError('Укажите имя и фамилию.');
+      setFormError('╨г╨║╨░╨╢╨╕╤В╨╡ ╨╕╨╝╤П ╨╕ ╤Д╨░╨╝╨╕╨╗╨╕╤О.');
       return false;
     }
     if (!baseData.birthDate.trim()) {
-      setFormError('Укажите дату рождения.');
+      setFormError('╨г╨║╨░╨╢╨╕╤В╨╡ ╨┤╨░╤В╤Г ╤А╨╛╨╢╨┤╨╡╨╜╨╕╤П.');
       return false;
     }
     if (!baseData.password || baseData.password.length < 8) {
-      setFormError('Пароль должен содержать минимум 8 символов.');
+      setFormError('╨Я╨░╤А╨╛╨╗╤М ╨┤╨╛╨╗╨╢╨╡╨╜ ╤Б╨╛╨┤╨╡╤А╨╢╨░╤В╤М ╨╝╨╕╨╜╨╕╨╝╤Г╨╝ 8 ╤Б╨╕╨╝╨▓╨╛╨╗╨╛╨▓.');
       return false;
     }
     if (baseData.password !== passwordConfirm) {
-      setFormError('Пароль и подтверждение пароля не совпадают.');
+      setFormError('╨Я╨░╤А╨╛╨╗╤М ╨╕ ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜╨╕╨╡ ╨┐╨░╤А╨╛╨╗╤П ╨╜╨╡ ╤Б╨╛╨▓╨┐╨░╨┤╨░╤О╤В.');
       return false;
     }
     return true;
@@ -85,12 +85,12 @@ export default function RegisterDirectorPage() {
 
   const validateEmail = () => {
     if (!form.email.trim()) {
-      setFormError('Укажите e-mail.');
+      setFormError('╨г╨║╨░╨╢╨╕╤В╨╡ e-mail.');
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email.trim())) {
-      setFormError('Укажите корректный e-mail.');
+      setFormError('╨г╨║╨░╨╢╨╕╤В╨╡ ╨║╨╛╤А╤А╨╡╨║╤В╨╜╤Л╨╣ e-mail.');
       return false;
     }
     return true;
@@ -98,11 +98,11 @@ export default function RegisterDirectorPage() {
 
   const validatePhone = () => {
     if (!form.phone.trim()) {
-      setFormError('Укажите телефон.');
+      setFormError('╨г╨║╨░╨╢╨╕╤В╨╡ ╤В╨╡╨╗╨╡╤Д╨╛╨╜.');
       return false;
     }
     if (form.phone.replace(/\D/g, '').length < 10) {
-      setFormError('Укажите корректный телефон.');
+      setFormError('╨г╨║╨░╨╢╨╕╤В╨╡ ╨║╨╛╤А╤А╨╡╨║╤В╨╜╤Л╨╣ ╤В╨╡╨╗╨╡╤Д╨╛╨╜.');
       return false;
     }
     return true;
@@ -118,15 +118,15 @@ export default function RegisterDirectorPage() {
   const handleSendEmail = async () => {
     if (!validateEmail()) return;
 
-    // Проверка наличия env переменных
+    // ╨Я╤А╨╛╨▓╨╡╤А╨║╨░ ╨╜╨░╨╗╨╕╤З╨╕╤П env ╨┐╨╡╤А╨╡╨╝╨╡╨╜╨╜╤Л╤Е
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      setFormError('Ошибка конфигурации. Обратитесь к администратору.');
+      setFormError('╨Ю╤И╨╕╨▒╨║╨░ ╨║╨╛╨╜╤Д╨╕╨│╤Г╤А╨░╤Ж╨╕╨╕. ╨Ю╨▒╤А╨░╤В╨╕╤В╨╡╤Б╤М ╨║ ╨░╨┤╨╝╨╕╨╜╨╕╤Б╤В╤А╨░╤В╨╛╤А╤Г.');
       console.error('Missing Supabase env');
       return;
     }
 
     if (!supabase) {
-      setFormError('Ошибка инициализации. Обновите страницу.');
+      setFormError('╨Ю╤И╨╕╨▒╨║╨░ ╨╕╨╜╨╕╤Ж╨╕╨░╨╗╨╕╨╖╨░╤Ж╨╕╨╕. ╨Ю╨▒╨╜╨╛╨▓╨╕╤В╨╡ ╤Б╤В╤А╨░╨╜╨╕╤Ж╤Г.');
       return;
     }
 
@@ -149,13 +149,13 @@ export default function RegisterDirectorPage() {
     setIsLoading(false);
 
     if (error) {
-      setFormError(error.message || 'Не удалось отправить письмо');
+      setFormError(error.message || '╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╨╛╤В╨┐╤А╨░╨▓╨╕╤В╤М ╨┐╨╕╤Б╤М╨╝╨╛');
       return;
     }
 
-    // Если signUp прошёл без ошибок - письмо отправлено Supabase
+    // ╨Х╤Б╨╗╨╕ signUp ╨┐╤А╨╛╤И╤С╨╗ ╨▒╨╡╨╖ ╨╛╤И╨╕╨▒╨╛╨║ - ╨┐╨╕╤Б╤М╨╝╨╛ ╨╛╤В╨┐╤А╨░╨▓╨╗╨╡╨╜╨╛ Supabase
     setEmailStatus('sent');
-    setEmailInfo(`Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме.`);
+    setEmailInfo(`╨Я╨╕╤Б╤М╨╝╨╛ ╤Б ╨┐╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜╨╕╨╡╨╝ ╨╛╤В╨┐╤А╨░╨▓╨╗╨╡╨╜╨╛ ╨╜╨░ ${form.email.trim()}. ╨Я╨╡╤А╨╡╨╣╨┤╨╕╤В╨╡ ╨┐╨╛ ╤Б╤Б╤Л╨╗╨║╨╡ ╨▓ ╨┐╨╕╤Б╤М╨╝╨╡.`);
   };
 
   const handleFinish = async (e: FormEvent) => {
@@ -167,24 +167,24 @@ export default function RegisterDirectorPage() {
       return;
     }
 
-    // Пока просто показываем сообщение и логируем данные
-    setFormSuccess('Регистрация завершена. Войдите в систему.');
+    // ╨Я╨╛╨║╨░ ╨┐╤А╨╛╤Б╤В╨╛ ╨┐╨╛╨║╨░╨╖╤Л╨▓╨░╨╡╨╝ ╤Б╨╛╨╛╨▒╤Й╨╡╨╜╨╕╨╡ ╨╕ ╨╗╨╛╨│╨╕╤А╤Г╨╡╨╝ ╨┤╨░╨╜╨╜╤Л╨╡
+    setFormSuccess('╨а╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╤П ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░. ╨Т╨╛╨╣╨┤╨╕╤В╨╡ ╨▓ ╤Б╨╕╤Б╤В╨╡╨╝╤Г.');
     
-    // Временный console.log с данными (без авторизации)
+    // ╨Т╤А╨╡╨╝╨╡╨╜╨╜╤Л╨╣ console.log ╤Б ╨┤╨░╨╜╨╜╤Л╨╝╨╕ (╨▒╨╡╨╖ ╨░╨▓╤В╨╛╤А╨╕╨╖╨░╤Ж╨╕╨╕)
     console.log('Registration data:', {
       ...baseData,
       email: form.email.trim(),
       phone: form.phone.trim(),
     });
 
-    // TODO: Здесь будет создание директорского профиля в таблицах
-    // Пока не трогаем, чтобы не ломать email-поток
+    // TODO: ╨Ч╨┤╨╡╤Б╤М ╨▒╤Г╨┤╨╡╤В ╤Б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨┤╨╕╤А╨╡╨║╤В╨╛╤А╤Б╨║╨╛╨│╨╛ ╨┐╤А╨╛╤Д╨╕╨╗╤П ╨▓ ╤В╨░╨▒╨╗╨╕╤Ж╨░╤Е
+    // ╨Я╨╛╨║╨░ ╨╜╨╡ ╤В╤А╨╛╨│╨░╨╡╨╝, ╤З╤В╨╛╨▒╤Л ╨╜╨╡ ╨╗╨╛╨╝╨░╤В╤М email-╨┐╨╛╤В╨╛╨║
   };
 
   const steps = [
-    { id: 1, label: 'Основные данные' },
+    { id: 1, label: '╨Ю╤Б╨╜╨╛╨▓╨╜╤Л╨╡ ╨┤╨░╨╜╨╜╤Л╨╡' },
     { id: 2, label: 'E-mail' },
-    { id: 3, label: 'Телефон' },
+    { id: 3, label: '╨в╨╡╨╗╨╡╤Д╨╛╨╜' },
   ];
 
   const renderStepHeader = () => (
@@ -207,13 +207,13 @@ export default function RegisterDirectorPage() {
           </div>
         ))}
       </div>
-      <div className="mt-2 text-center text-xs text-zinc-500">Шаг {step} из 3</div>
+      <div className="mt-2 text-center text-xs text-zinc-500">╨и╨░╨│ {step} ╨╕╨╖ 3</div>
     </div>
   );
 
   const renderAlerts = () => {
     if (!formError && !formSuccess) {
-      // Резервируем место для алертов, чтобы карточка не прыгала
+      // ╨а╨╡╨╖╨╡╤А╨▓╨╕╤А╤Г╨╡╨╝ ╨╝╨╡╤Б╤В╨╛ ╨┤╨╗╤П ╨░╨╗╨╡╤А╤В╨╛╨▓, ╤З╤В╨╛╨▒╤Л ╨║╨░╤А╤В╨╛╤З╨║╨░ ╨╜╨╡ ╨┐╤А╤Л╨│╨░╨╗╨░
       return <div className="min-h-[44px]" />;
     }
 
@@ -240,41 +240,41 @@ export default function RegisterDirectorPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium">
-            Имя <span className="text-destructive">*</span>
+            ╨Ш╨╝╤П <span className="text-destructive">*</span>
           </label>
           <input
             value={baseData.firstName}
             onChange={(e) => setBaseData(prev => ({ ...prev, firstName: e.target.value }))}
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="Иван"
+            placeholder="╨Ш╨▓╨░╨╜"
           />
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium">
-            Фамилия <span className="text-destructive">*</span>
+            ╨д╨░╨╝╨╕╨╗╨╕╤П <span className="text-destructive">*</span>
           </label>
           <input
             value={baseData.lastName}
             onChange={(e) => setBaseData(prev => ({ ...prev, lastName: e.target.value }))}
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="Иванов"
+            placeholder="╨Ш╨▓╨░╨╜╨╛╨▓"
           />
         </div>
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium">Отчество</label>
+        <label className="mb-1.5 block text-sm font-medium">╨Ю╤В╤З╨╡╤Б╤В╨▓╨╛</label>
         <input
           value={baseData.middleName}
           onChange={(e) => setBaseData(prev => ({ ...prev, middleName: e.target.value }))}
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-          placeholder="Иванович"
+          placeholder="╨Ш╨▓╨░╨╜╨╛╨▓╨╕╤З"
         />
       </div>
 
       <div>
         <label className="mb-1.5 block text-sm font-medium">
-          Дата рождения <span className="text-destructive">*</span>
+          ╨Ф╨░╤В╨░ ╤А╨╛╨╢╨┤╨╡╨╜╨╕╤П <span className="text-destructive">*</span>
         </label>
         <input
           type="date"
@@ -282,13 +282,13 @@ export default function RegisterDirectorPage() {
           onChange={(e) => setBaseData(prev => ({ ...prev, birthDate: e.target.value }))}
           className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
         />
-        <p className="mt-1 text-xs text-muted-foreground">Формат: ДД.ММ.ГГГГ</p>
+        <p className="mt-1 text-xs text-muted-foreground">╨д╨╛╤А╨╝╨░╤В: ╨Ф╨Ф.╨Ь╨Ь.╨У╨У╨У╨У</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium">
-            Пароль <span className="text-destructive">*</span>
+            ╨Я╨░╤А╨╛╨╗╤М <span className="text-destructive">*</span>
           </label>
           <div className="relative">
             <input
@@ -296,7 +296,7 @@ export default function RegisterDirectorPage() {
               value={baseData.password}
               onChange={(e) => setBaseData(prev => ({ ...prev, password: e.target.value }))}
               className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-              placeholder="Минимум 8 символов"
+              placeholder="╨Ь╨╕╨╜╨╕╨╝╤Г╨╝ 8 ╤Б╨╕╨╝╨▓╨╛╨╗╨╛╨▓"
             />
             <button
               type="button"
@@ -310,7 +310,7 @@ export default function RegisterDirectorPage() {
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium">
-            Подтвердите пароль <span className="text-destructive">*</span>
+            ╨Я╨╛╨┤╤В╨▓╨╡╤А╨┤╨╕╤В╨╡ ╨┐╨░╤А╨╛╨╗╤М <span className="text-destructive">*</span>
           </label>
           <div className="relative">
             <input
@@ -318,7 +318,7 @@ export default function RegisterDirectorPage() {
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
               className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-              placeholder="Повторите пароль"
+              placeholder="╨Я╨╛╨▓╤В╨╛╤А╨╕╤В╨╡ ╨┐╨░╤А╨╛╨╗╤М"
             />
             <button
               type="button"
@@ -336,7 +336,7 @@ export default function RegisterDirectorPage() {
 
       <div className="mt-4 flex justify-end">
         <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
-          {isLoading ? 'Загрузка...' : 'Дальше'}
+          {isLoading ? '╨Ч╨░╨│╤А╤Г╨╖╨║╨░...' : '╨Ф╨░╨╗╤М╤И╨╡'}
         </Button>
       </div>
     </form>
@@ -374,7 +374,7 @@ export default function RegisterDirectorPage() {
             disabled={isLoading}
             onClick={() => setStep(1)}
           >
-            Назад
+            ╨Э╨░╨╖╨░╨┤
           </Button>
           {emailStatus === 'sent' && (
             <Button
@@ -384,7 +384,7 @@ export default function RegisterDirectorPage() {
               disabled={isLoading}
               onClick={handleSendEmail}
             >
-              {isLoading ? 'Отправляем...' : 'Отправить ещё раз'}
+              {isLoading ? '╨Ю╤В╨┐╤А╨░╨▓╨╗╤П╨╡╨╝...' : '╨Ю╤В╨┐╤А╨░╨▓╨╕╤В╤М ╨╡╤Й╤С ╤А╨░╨╖'}
             </Button>
           )}
           {emailStatus === 'idle' && (
@@ -394,7 +394,7 @@ export default function RegisterDirectorPage() {
               disabled={isLoading}
               onClick={handleSendEmail}
             >
-              {isLoading ? 'Отправляем...' : 'Далее'}
+              {isLoading ? '╨Ю╤В╨┐╤А╨░╨▓╨╗╤П╨╡╨╝...' : '╨Ф╨░╨╗╨╡╨╡'}
             </Button>
           )}
         </div>
@@ -406,7 +406,7 @@ export default function RegisterDirectorPage() {
             disabled={isLoading}
             onClick={() => setStep(3)}
           >
-            Дальше
+            ╨Ф╨░╨╗╤М╤И╨╡
           </Button>
         )}
       </div>
@@ -417,7 +417,7 @@ export default function RegisterDirectorPage() {
     <form onSubmit={handleFinish} className="space-y-4">
       <div>
         <label className="mb-1.5 block text-sm font-medium">
-          Телефон <span className="text-destructive">*</span>
+          ╨в╨╡╨╗╨╡╤Д╨╛╨╜ <span className="text-destructive">*</span>
         </label>
         <input
           value={form.phone}
@@ -437,10 +437,10 @@ export default function RegisterDirectorPage() {
           disabled={isLoading}
           onClick={() => setStep(2)}
         >
-          Назад
+          ╨Э╨░╨╖╨░╨┤
         </Button>
         <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
-          {isLoading ? 'Завершаем...' : 'Завершить регистрацию'}
+          {isLoading ? '╨Ч╨░╨▓╨╡╤А╤И╨░╨╡╨╝...' : '╨Ч╨░╨▓╨╡╤А╤И╨╕╤В╤М ╤А╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╤О'}
         </Button>
       </div>
     </form>
@@ -451,14 +451,14 @@ export default function RegisterDirectorPage() {
       <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <CardHeader className="pb-4">
           {renderStepHeader()}
-          <CardTitle className="text-center text-2xl font-semibold">Создать аккаунт</CardTitle>
+          <CardTitle className="text-center text-2xl font-semibold">╨б╨╛╨╖╨┤╨░╤В╤М ╨░╨║╨║╨░╤Г╨╜╤В</CardTitle>
           <CardDescription className="mt-1 text-center text-sm">
-            Заполните форму для регистрации директора
+            ╨Ч╨░╨┐╨╛╨╗╨╜╨╕╤В╨╡ ╤Д╨╛╤А╨╝╤Г ╨┤╨╗╤П ╤А╨╡╨│╨╕╤Б╤В╤А╨░╤Ж╨╕╨╕ ╨┤╨╕╤А╨╡╨║╤В╨╛╤А╨░
           </CardDescription>
           <p className="mt-2 text-center text-xs text-muted-foreground">
-            Уже есть аккаунт?{' '}
+            ╨г╨╢╨╡ ╨╡╤Б╤В╤М ╨░╨║╨║╨░╤Г╨╜╤В?{' '}
             <Link href="/auth/login" className="font-medium text-primary hover:underline">
-              Войти
+              ╨Т╨╛╨╣╤В╨╕
             </Link>
           </p>
         </CardHeader>
