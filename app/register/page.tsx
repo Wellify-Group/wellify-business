@@ -66,13 +66,9 @@ export default function RegisterDirectorPage() {
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
-    if (step !== 2) {
-      setEmailSent(false);
-      setEmailVerified(false);
-    }
   }, [step]);
 
-  // ПОЛЛИНГ подтверждения e-mail и подтягивание профиля
+  // ПОЛЛИНГ подтверждения e-mail
   useEffect(() => {
     if (!supabase || step !== 2 || !emailSent || emailVerified) return;
 
@@ -82,13 +78,24 @@ export default function RegisterDirectorPage() {
       if (cancelled || emailVerified) return;
 
       try {
-        // 1. Получаем пользователя
+        // 1. Быстрая проверка по localStorage
+        try {
+          const isConfirmed =
+            localStorage.getItem("wellify_email_confirmed") === "true";
+          if (isConfirmed) {
+            setEmailVerified(true);
+            return;
+          }
+        } catch (e) {
+          console.warn("localStorage unavailable in register polling:", e);
+        }
+
+        // 2. Проверяем пользователя в Supabase
         const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
 
-        // 2. Если ошибка - логируем и выходим из итерации
         if (userError) {
           console.error(
             "Error getting user during email verification polling:",
@@ -97,65 +104,26 @@ export default function RegisterDirectorPage() {
           return;
         }
 
-        // 3. Если user нет - просто выходим из итерации (значит, пользователь ещё не подтвердил почту)
         if (!user || cancelled || emailVerified) {
           return;
         }
 
-        // Проверяем, подтвержден ли email в auth
+        // 3. Если в auth уже стоит email_confirmed_at - считаем e-mail подтверждённым
         if (user.email_confirmed_at) {
           setEmailVerified(true);
-          cancelled = true;
           return;
-        }
-
-        // 4. Если user есть - читаем профиль
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select(
-            "email_verified, first_name, last_name, middle_name, birth_date, email, phone",
-          )
-          .eq("id", user.id)
-          .maybeSingle();
-
-        // 5. Если profileError - логируем и выходим из итерации
-        if (profileError) {
-          console.error(
-            "Error loading profile during email verification polling:",
-            profileError,
-          );
-          return;
-        }
-
-        if (!profile || cancelled || emailVerified) {
-          return;
-        }
-
-        // 6. Если profile?.email_verified true
-        if (profile.email_verified && !cancelled && !emailVerified) {
-          setEmailVerified(true);
-
-          // подтягиваем данные профиля обратно в baseData, чтобы всё было консистентно
-          setBaseData((prev) => ({
-            ...prev,
-            firstName: profile.first_name ?? prev.firstName,
-            lastName: profile.last_name ?? prev.lastName,
-            middleName: profile.middle_name ?? prev.middleName,
-            birthDate: profile.birth_date ?? prev.birthDate,
-          }));
-
-          setForm((prev) => ({
-            ...prev,
-            email: prev.email || profile.email || "",
-            phone: prev.phone || profile.phone || "",
-          }));
-
-          cancelled = true;
         }
       } catch (error) {
         console.error("Error polling email verification:", error);
       }
     };
+
+    const handleStorageChange = () => {
+      checkEmailAndProfile().catch(console.error);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("emailConfirmed", handleStorageChange);
 
     // первый запуск сразу
     checkEmailAndProfile().catch(console.error);
@@ -172,6 +140,8 @@ export default function RegisterDirectorPage() {
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("emailConfirmed", handleStorageChange);
     };
   }, [supabase, step, emailSent, emailVerified]);
 
@@ -243,17 +213,12 @@ export default function RegisterDirectorPage() {
     setIsSendingEmail(true);
     setFormError(null);
 
-    // ВАЖНО: redirect всегда на тот же origin, где идёт регистрация
-    const origin =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : process.env.NEXT_PUBLIC_SITE_URL ??
-          "https://dev--wellify-business.vercel.app";
-
-    const redirectTo = `${origin}/auth/email-confirmed`;
+    const redirectTo = `${
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
+    }/auth/email-confirmed`;
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: baseData.password,
         options: {
@@ -342,24 +307,45 @@ export default function RegisterDirectorPage() {
         return;
       }
 
-      const { error: updateError } = await supabase
+      const firstName = baseData.firstName.trim();
+      const lastName = baseData.lastName.trim();
+      const middleName = baseData.middleName.trim();
+      const fullName = [lastName || null, firstName || null, middleName || null]
+        .filter(Boolean)
+        .join(" ");
+
+      const { error: upsertError } = await supabase
         .from("profiles")
-        .update({ phone: form.phone.trim() })
-        .eq("id", user.id);
+        .upsert(
+          {
+            id: user.id,
+            email: form.email.trim() || user.email || "",
+            first_name: firstName,
+            last_name: lastName,
+            middle_name: middleName || null,
+            full_name: fullName || null,
+            birth_date: baseData.birthDate || null,
+            phone: form.phone.trim(),
+            role: "director",
+            email_verified: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        );
 
       setIsLoading(false);
 
-      if (updateError) {
-        console.error("Error updating phone:", updateError);
+      if (upsertError) {
+        console.error("Error saving profile on finish:", upsertError);
         setFormError(
-          updateError.message || "Ошибка при сохранении телефона",
+          upsertError.message || "Ошибка при сохранении профиля",
         );
         return;
       }
 
       router.push("/dashboard/director");
     } catch (error) {
-      console.error("Error updating phone:", error);
+      console.error("Error in handleFinish:", error);
       setIsLoading(false);
       setFormError(
         "Произошла ошибка при сохранении телефона. Попробуйте ещё раз.",
@@ -632,11 +618,11 @@ export default function RegisterDirectorPage() {
 
       {renderAlerts()}
 
-      <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify_between">
+      <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
         <Button
           type="button"
           variant="outline"
-          className="w_full md:w-auto"
+          className="w-full md:w-auto"
           disabled={isLoading}
           onClick={() => setStep(2)}
         >

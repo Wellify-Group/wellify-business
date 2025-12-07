@@ -52,129 +52,29 @@ export default function EmailConfirmedClient() {
         return;
       }
 
-      console.log("verifyOtp success, data:", verifyData);
+      console.log("verifyOtp success:", verifyData);
 
-      // Пытаемся убедиться, что сессия установлена
-      let attempts = 0;
-      let session = verifyData?.session || null;
-
-      while (!session && attempts < 5) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        const { data: sessionData } = await supabase.auth.getSession();
-        session = sessionData?.session || null;
-        attempts++;
-
-        if (session) {
-          console.log("Session obtained after", attempts, "attempts");
-          break;
-        }
-      }
-
-      if (!session) {
-        console.warn("No session after verifyOtp after", attempts, "attempts");
-      } else {
-        console.log("Session confirmed, user ID:", session.user.id);
-      }
-
-      // Синхронизируем профиль
+      // Просто убеждаемся, что сессия есть (не обязательно)
       try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        const { data: sessionData } = await supabase.auth.getSession();
+        console.log("Session after verifyOtp:", sessionData?.session?.user?.id);
+      } catch (e) {
+        console.warn("Cannot read session after verifyOtp:", e);
+      }
 
-        if (userError) {
-          console.error(
-            "Error getting user after email verification:",
-            userError,
-          );
-          setStatus("success");
-          return;
-        }
-
-        if (!user) {
-          console.error("No user returned after email verification");
-          setStatus("success");
-          return;
-        }
-
-        console.log("User retrieved after verifyOtp:", {
-          id: user.id,
-          email: user.email,
-          email_confirmed_at: user.email_confirmed_at,
-        });
-
-        const meta =
-          (user.user_metadata as any) ??
-          ((user as any).raw_user_meta_data as any) ??
-          {};
-
-        console.log("User metadata:", meta);
-
-        const firstName = meta.firstName ?? meta.first_name ?? null;
-        const lastName = meta.lastName ?? meta.last_name ?? null;
-        const middleName = meta.middleName ?? meta.middle_name ?? null;
-        const birthDate = meta.birthDate ?? meta.birth_date ?? null;
-        const role = meta.role ?? meta.user_role ?? "director";
-
-        console.log("Extracted data:", {
-          firstName,
-          lastName,
-          middleName,
-          birthDate,
-          role,
-        });
-
-        // full_name = "Фамилия Имя Отчество"
-        const fullName =
-          [lastName, firstName, middleName].filter(Boolean).join(" ") || null;
-
-        const profileData: Record<string, any> = {
-          id: user.id,
-          email: user.email || "",
-          first_name: firstName ? String(firstName).trim() : null,
-          last_name: lastName ? String(lastName).trim() : null,
-          middle_name: middleName ? String(middleName).trim() : null,
-          full_name: fullName,
-          birth_date: birthDate || null,
-          role: role || "director",
-          email_verified: true,
-          updated_at: new Date().toISOString(),
-        };
-
-        console.log("Profile data to upsert:", profileData);
-
-        const { data: upsertData, error: upsertError } = await supabase
-          .from("profiles")
-          .upsert(profileData, { onConflict: "id" })
-          .select();
-
-        if (upsertError) {
-          console.error("Upsert profile after email confirm failed:", upsertError);
-        } else {
-          console.log("Profile updated after email confirm:", upsertData);
-        }
-
-        // Уведомляем фронт (страницу /register) через localStorage / события
-        try {
-          window.localStorage.setItem("wellify_email_confirmed", "true");
-          window.dispatchEvent(
-            new StorageEvent("storage", {
-              key: "wellify_email_confirmed",
-              newValue: "true",
-              storageArea: localStorage,
-            }),
-          );
-          window.dispatchEvent(new CustomEvent("emailConfirmed"));
-        } catch (e) {
-          console.warn("Cannot access localStorage:", e);
-        }
-      } catch (err) {
-        console.error(
-          "Unexpected error syncing profile after email confirm:",
-          err,
+      // Сигнал для /register: почта подтверждена
+      try {
+        window.localStorage.setItem("wellify_email_confirmed", "true");
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "wellify_email_confirmed",
+            newValue: "true",
+            storageArea: localStorage,
+          }),
         );
-        // Профиль можно будет поправить позже, главное - e-mail подтверждён
+        window.dispatchEvent(new CustomEvent("emailConfirmed"));
+      } catch (e) {
+        console.warn("Cannot use localStorage in email-confirmed:", e);
       }
 
       setStatus("success");
