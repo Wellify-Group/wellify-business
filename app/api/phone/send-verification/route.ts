@@ -1,5 +1,4 @@
-// app/api/phone/send-verification/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import twilio from "twilio";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID!;
@@ -7,33 +6,36 @@ const apiKey = process.env.TWILIO_API_KEY!;
 const apiSecret = process.env.TWILIO_API_SECRET!;
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID!;
 
-// клиент Twilio через API Key (рекомендованный способ)
 const client = twilio(apiKey, apiSecret, { accountSid });
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const phone: string = body.phone;
-    const locale: string | undefined = body.locale; // "en", "ru", "uk" и т.п.
+// Валидация формата E.164: + и от 8 до 15 цифр, первая цифра после + не 0
+const E164_REGEX = /^\+[1-9]\d{7,14}$/;
 
-    if (!phone) {
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { phone, locale } = body;
+
+    // Валидация формата E.164
+    if (!phone || typeof phone !== "string" || !E164_REGEX.test(phone)) {
       return NextResponse.json(
-        { error: "Phone is required" },
+        { error: "Invalid phone" },
         { status: 400 }
       );
     }
 
-    // мапим локаль с фронта в формат Twilio
-    const localeMap: Record<string, string> = {
-      en: "en",
-      ru: "ru",
-      uk: "uk",   // украинский
-      ua: "uk",
-    };
+    // Маппинг локали: "ru" → "ru", "uk" → "uk", остальное → "en"
+    let twilioLocale: string;
+    if (locale === "ru") {
+      twilioLocale = "ru";
+    } else if (locale === "uk") {
+      twilioLocale = "uk";
+    } else {
+      twilioLocale = "en";
+    }
 
-    const twilioLocale = localeMap[locale ?? "en"] ?? "en";
-
-    const verification = await client.verify.v2
+    // Отправка кода через Twilio Verify
+    await client.verify.v2
       .services(verifyServiceSid)
       .verifications.create({
         to: phone,
@@ -41,9 +43,9 @@ export async function POST(request: Request) {
         locale: twilioLocale,
       });
 
-    return NextResponse.json({ status: verification.status });
-  } catch (error: any) {
-    console.error("Twilio send verification error:", error);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Twilio send error", err);
     return NextResponse.json(
       { error: "Failed to send verification code" },
       { status: 500 }
