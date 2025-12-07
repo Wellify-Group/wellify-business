@@ -6,13 +6,12 @@ import { createClient } from "@supabase/supabase-js";
 
 type Status = "pending" | "success" | "error";
 
-// создаём единый браузерный Supabase-клиент
+// Браузерный Supabase-клиент (тот же проект, что и в остальном приложении)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  // это всплывёт в консоль, если вдруг забыли переменные окружения
-  // (но сборку не уронит на этапе типов)
+  // Не валим сборку, просто предупреждаем в консоли браузера
   // eslint-disable-next-line no-console
   console.warn(
     "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for EmailConfirmedClient",
@@ -57,12 +56,38 @@ export default function EmailConfirmedClient() {
         payload.email = emailParam;
       }
 
+      // 1. Подтверждаем e-mail
       const { error } = await supabase.auth.verifyOtp(payload);
 
       if (error) {
         console.error("Email confirmation error:", error.message);
         setStatus("error");
         return;
+      }
+
+      // 2. Берём текущего пользователя
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("Error getting user after verifyOtp:", userError.message);
+      }
+
+      // 3. Обновляем профиль: email_verified = true
+      if (user) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ email_verified: true })
+          .eq("id", user.id);
+
+        if (profileError) {
+          console.error(
+            "Error updating profile email_verified:",
+            profileError.message,
+          );
+        }
       }
 
       setStatus("success");
