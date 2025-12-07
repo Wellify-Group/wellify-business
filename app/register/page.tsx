@@ -42,9 +42,10 @@ export default function RegisterDirectorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
-  const [isEmailConfirmed, setIsEmailConfirmed] = useState(false);
-  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Создаем клиент Supabase через useMemo
@@ -63,14 +64,47 @@ export default function RegisterDirectorPage() {
     setFormSuccess(null);
     // При переходе со шага 2 сбрасываем состояния email
     if (step !== 2) {
-      setIsEmailSent(false);
-      setIsEmailConfirmed(false);
+      setEmailSent(false);
+      setEmailVerified(false);
     }
   }, [step]);
 
   // Подписка на изменения авторизации для отслеживания подтверждения email
   useEffect(() => {
     if (!supabase || step !== 2) return;
+
+    // Функция проверки подтверждения email
+    const checkEmailVerified = async () => {
+      setIsCheckingVerification(true);
+      
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        
+        // Проверяем auth user с verified email
+        if (!userError && userData.user && (userData.user.email_confirmed_at || userData.user.confirmed_at)) {
+          setEmailVerified(true);
+          setIsCheckingVerification(false);
+          return;
+        }
+
+        // Дополнительно читаем профиль для проверки email_verified
+        if (!userError && userData.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('email_verified')
+            .eq('id', userData.user.id)
+            .single();
+
+          if (!profileError && profile?.email_verified) {
+            setEmailVerified(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking email verification:', error);
+      } finally {
+        setIsCheckingVerification(false);
+      }
+    };
 
     // Функция для синхронизации профиля в БД
     const syncProfile = async () => {
@@ -112,17 +146,22 @@ export default function RegisterDirectorPage() {
         // Проверяем, что email подтвержден
         const user = session.user;
         if (user.email_confirmed_at || user.confirmed_at) {
-          setIsEmailConfirmed(true);
+          setEmailVerified(true);
           // Синхронизируем профиль после подтверждения
           syncProfile().catch(console.error);
         }
       }
     });
 
+    // Проверяем подтверждение при открытии шага 2, если письмо было отправлено
+    if (emailSent) {
+      checkEmailVerified();
+    }
+
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, step]);
+  }, [supabase, step, emailSent]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -229,7 +268,8 @@ export default function RegisterDirectorPage() {
     }
 
     // Успешная отправка письма
-    setIsEmailSent(true);
+    setEmailSent(true);
+    setEmailVerified(false);
   };
 
   const handleFinish = async (e: FormEvent) => {
@@ -453,12 +493,12 @@ export default function RegisterDirectorPage() {
           />
         </div>
 
-        {isEmailSent && !isEmailConfirmed && (
+        {emailSent && !emailVerified && (
           <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
             Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите по ссылке в письме.
           </div>
         )}
-        {isEmailSent && isEmailConfirmed && (
+        {emailSent && emailVerified && (
           <div className="mt-4 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             Поздравляем! Ваша почта подтверждена, можете переходить к следующему шагу.
           </div>
@@ -477,23 +517,23 @@ export default function RegisterDirectorPage() {
             Назад
           </Button>
 
-          {!isEmailSent ? (
+          {!emailSent ? (
             <Button
               type="button"
               className="w-full md:w-auto"
               disabled={!form.email.trim() || isSendingEmail || !isEmailValid}
               onClick={handleSendEmailVerification}
             >
-              {isSendingEmail ? 'Отправляем...' : 'Подтвердить почту'}
+              {isSendingEmail ? 'Отправляем...' : 'Подтвердить e-mail'}
             </Button>
           ) : (
             <Button
               type="button"
               className="w-full md:w-auto"
-              disabled={!isEmailConfirmed}
+              disabled={!emailVerified}
               onClick={() => setStep(3)}
             >
-              Дальше
+              Далее
             </Button>
           )}
         </div>
