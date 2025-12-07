@@ -2,23 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Status = "pending" | "success" | "error";
 
-// создаём единый браузерный Supabase-клиент
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  // не валим сборку, но логируем
-  // eslint-disable-next-line no-console
-  console.warn(
-    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for EmailConfirmedClient",
-  );
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Используем браузерный клиент с поддержкой cookies для сессий
 
 export default function EmailConfirmedClient() {
   const searchParams = useSearchParams();
@@ -33,6 +21,8 @@ export default function EmailConfirmedClient() {
       setStatus("error");
       return;
     }
+
+    const supabase = createBrowserSupabaseClient();
 
     const verify = async () => {
       const type: "email" | "signup" =
@@ -56,12 +46,38 @@ export default function EmailConfirmedClient() {
         payload.email = emailParam;
       }
 
-      const { error } = await supabase.auth.verifyOtp(payload);
+      const { data: verifyData, error } = await supabase.auth.verifyOtp(payload);
 
       if (error) {
         console.error("Email confirmation error:", error.message);
         setStatus("error");
         return;
+      }
+
+      console.log("verifyOtp success, data:", verifyData);
+
+      // После verifyOtp сессия должна быть установлена автоматически
+      // Но иногда нужно немного подождать
+      let attempts = 0;
+      let session = verifyData?.session || null;
+      
+      // Если сессия не в ответе - пробуем получить её
+      while (!session && attempts < 5) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const { data: sessionData } = await supabase.auth.getSession();
+        session = sessionData?.session || null;
+        attempts++;
+        
+        if (session) {
+          console.log("Session obtained after", attempts, "attempts");
+          break;
+        }
+      }
+      
+      if (!session) {
+        console.warn("No session after verifyOtp after", attempts, "attempts");
+      } else {
+        console.log("Session confirmed, user ID:", session.user.id);
       }
 
       // после успешного подтверждения - получаем пользователя и синхронизируем профиль
@@ -71,53 +87,109 @@ export default function EmailConfirmedClient() {
           error: userError,
         } = await supabase.auth.getUser();
 
-        if (!userError && user) {
-          const meta =
-            (user.user_metadata as any) ??
-            ((user as any).raw_user_meta_data as any) ??
-            {};
+        if (userError) {
+          console.error("Error getting user after verifyOtp:", userError);
+          setStatus("error");
+          return;
+        }
 
-          const firstName =
-            meta.firstName ?? meta.first_name ?? null;
-          const lastName =
-            meta.lastName ?? meta.last_name ?? null;
-          const middleName =
-            meta.middleName ?? meta.middle_name ?? null;
-          const birthDate =
-            meta.birthDate ?? meta.birth_date ?? null;
-          const role = meta.role ?? meta.user_role ?? "director";
+        if (!user) {
+          console.error("No user after verifyOtp");
+          setStatus("error");
+          return;
+        }
 
-          // Формируем full_name из компонентов
-          const fullName = [lastName, firstName, middleName]
-            .filter(Boolean)
-            .join(" ") || null;
+        console.log("User retrieved after verifyOtp:", {
+          id: user.id,
+          email: user.email,
+          email_confirmed_at: user.email_confirmed_at,
+        });
 
-          const profileData: Record<string, any> = {
-            id: user.id,
-            email: user.email || "",
-            email_verified: true,
-            role: role,
-            updated_at: new Date().toISOString(),
-          };
+        const meta =
+          (user.user_metadata as any) ??
+          ((user as any).raw_user_meta_data as any) ??
+          {};
 
-          // Добавляем поля только если они есть
-          if (firstName) profileData.first_name = firstName.trim();
-          if (lastName) profileData.last_name = lastName.trim();
-          if (middleName) profileData.middle_name = middleName.trim();
-          if (birthDate) profileData.birth_date = birthDate;
-          if (fullName) profileData.full_name = fullName;
+        console.log("User metadata:", meta);
 
-          const { error: upsertError } = await supabase
+        const firstName =
+          meta.firstName ?? meta.first_name ?? null;
+        const lastName =
+          meta.lastName ?? meta.last_name ?? null;
+        const middleName =
+          meta.middleName ?? meta.middle_name ?? null;
+        const birthDate =
+          meta.birthDate ?? meta.birth_date ?? null;
+        const role = meta.role ?? meta.user_role ?? "director";
+
+        console.log("Extracted data:", {
+          firstName,
+          lastName,
+          middleName,
+          birthDate,
+          role,
+        });
+
+        // Формируем full_name из компонентов
+        const fullName = [lastName, firstName, middleName]
+          .filter(Boolean)
+          .join(" ") || null;
+
+        const profileData: Record<string, any> = {
+          id: user.id,
+          email: user.email || "",
+          email_verified: true,
+          role: role,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Добавляем поля только если они есть
+        if (firstName) profileData.first_name = firstName.trim();
+        if (lastName) profileData.last_name = lastName.trim();
+        if (middleName) profileData.middle_name = middleName.trim();
+        if (birthDate) profileData.birth_date = birthDate;
+        if (fullName) profileData.full_name = fullName;
+
+        console.log("Profile data to upsert:", profileData);
+
+          // Используем upsert с onConflict для обновления существующей записи
+          // Если пользователь не авторизован (нет сессии), RLS может блокировать
+          // Поэтому пробуем сначала получить сессию еще раз
+          const { data: finalSession } = await supabase.auth.getSession();
+          
+          if (!finalSession?.session) {
+            console.warn("No session after verifyOtp, waiting...");
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+
+          const { data: upsertData, error: upsertError } = await supabase
             .from("profiles")
-            .upsert(profileData, { onConflict: "id" });
+            .upsert(profileData, { onConflict: "id" })
+            .select();
 
           if (upsertError) {
             console.error("Error upserting profile after email confirm:", upsertError);
             console.error("Profile data:", profileData);
+            console.error("User ID:", user.id);
+            console.error("Session exists:", !!finalSession?.session);
+            
+            // Если ошибка RLS - пробуем использовать update вместо upsert
+            if (upsertError.code === '42501' || upsertError.message?.includes('permission')) {
+              console.warn("RLS error, trying update instead of upsert...");
+              const { error: updateError } = await supabase
+                .from("profiles")
+                .update(profileData)
+                .eq("id", user.id);
+
+              if (updateError) {
+                console.error("Update also failed:", updateError);
+              } else {
+                console.log("Profile updated using UPDATE instead of UPSERT");
+              }
+            }
           } else {
-            console.log("Profile successfully updated after email confirmation");
+            console.log("Profile successfully updated after email confirmation", upsertData);
           }
-        }
       } catch (err) {
         console.error("Unexpected error syncing profile after email confirm:", err);
       }
