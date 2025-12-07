@@ -163,9 +163,38 @@ export default function RegisterDirectorPage() {
       checkEmailVerified().catch(console.error);
     }
 
+    // Слушаем события localStorage для синхронизации между вкладками
+    const handleStorageChange = () => {
+      // Проверяем флаг подтверждения
+      const isConfirmed = localStorage.getItem('wellify_email_confirmed') === 'true';
+      if (isConfirmed && emailSent) {
+        // Немедленно проверяем статус (checkEmailVerified сама проверит emailVerified)
+        checkEmailVerified().catch(console.error);
+      }
+    };
+
+    // Слушаем событие storage (для синхронизации между вкладками)
+    window.addEventListener('storage', handleStorageChange);
+    // Слушаем кастомное событие (для синхронизации в текущем окне)
+    window.addEventListener('emailConfirmed', handleStorageChange);
+
+    // Периодическая проверка (каждые 2 секунды, если письмо отправлено, но не подтверждено)
+    let intervalId: NodeJS.Timeout | null = null;
+    if (emailSent && !emailVerified) {
+      intervalId = setInterval(() => {
+        checkEmailVerified().catch(console.error);
+      }, 2000);
+    }
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('emailConfirmed', handleStorageChange);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, step, emailSent]);
 
   const validateStep1 = () => {

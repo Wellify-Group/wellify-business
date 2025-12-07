@@ -71,23 +71,58 @@ export default function EmailConfirmedClient() {
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError) {
-        console.error("Error getting user after verifyOtp:", userError.message);
+      if (userError || !user) {
+        console.error("Error getting user after verifyOtp:", userError?.message);
+        setStatus("error");
+        return;
       }
 
-      // 3. Обновляем профиль: email_verified = true
-      if (user) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ email_verified: true })
-          .eq("id", user.id);
+      // 3. Извлекаем данные из user_metadata (они были переданы при signUp)
+      const metadata = user.user_metadata || {};
+      const firstName = metadata.firstName || "";
+      const lastName = metadata.lastName || "";
+      const middleName = metadata.middleName || "";
+      const birthDate = metadata.birthDate || null;
 
-        if (profileError) {
-          console.error(
-            "Error updating profile email_verified:",
-            profileError.message,
-          );
-        }
+      // Формируем full_name
+      const fullName = [lastName, firstName, middleName]
+        .filter(Boolean)
+        .join(" ") || null;
+
+      // 4. Обновляем профиль: email_verified + все личные данные
+      const profileUpdate: Record<string, any> = {
+        id: user.id,
+        email: user.email || "",
+        email_verified: true,
+        роль: "директор",
+        first_name: firstName.trim() || null,
+        last_name: lastName.trim() || null,
+        middle_name: middleName.trim() || null,
+        full_name: fullName,
+        дата_рождения: birthDate || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(profileUpdate, { onConflict: "id" });
+
+      if (profileError) {
+        console.error(
+          "Error updating profile:",
+          profileError.message,
+        );
+      }
+
+      // 5. Уведомляем форму регистрации через localStorage событие
+      try {
+        window.localStorage.setItem("wellify_email_confirmed", "true");
+        // Триггерим событие storage для синхронизации между вкладками
+        window.dispatchEvent(new Event("storage"));
+        // Также отправляем событие в текущем окне
+        window.dispatchEvent(new CustomEvent("emailConfirmed"));
+      } catch (e) {
+        console.warn("Cannot set localStorage:", e);
       }
 
       setStatus("success");
