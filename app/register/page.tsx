@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState, useMemo } from 'react';
+import { FormEvent, useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -75,36 +75,78 @@ export default function RegisterDirectorPage() {
     }
   }, [step]);
 
+  // Ref для хранения ID интервала
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref для отслеживания текущего состояния emailVerified
+  const emailVerifiedRef = useRef(emailVerified);
+
   // Подписка на изменения авторизации для отслеживания подтверждения email
   useEffect(() => {
     if (!supabase || step !== 2) return;
 
+    // Обновляем ref при изменении состояния
+    emailVerifiedRef.current = emailVerified;
+
     // Функция проверки подтверждения email
     const checkEmailVerified = async () => {
+      // Если уже подтверждено - не проверяем
+      if (emailVerifiedRef.current) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        return;
+      }
+
       setIsCheckingVerification(true);
 
       try {
+        // Сначала проверяем localStorage флаг
+        const localStorageFlag = localStorage.getItem('wellify_email_confirmed') === 'true';
+        
+        // Получаем пользователя
         const { data: userData, error: userError } = await supabase.auth.getUser();
 
         if (!userError && userData.user) {
           const user = userData.user;
+          let isVerified = false;
 
           // 1) Проверяем поля auth
           if (user.email_confirmed_at || (user as any).confirmed_at) {
-            setEmailVerified(true);
-            setIsCheckingVerification(false);
-            return;
+            isVerified = true;
           }
 
-          // 2) Дополнительно проверяем профиль
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('email_verified')
-            .eq('id', user.id)
-            .single();
+          // 2) Дополнительно проверяем профиль (если в auth не подтверждено)
+          if (!isVerified) {
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('email_verified')
+              .eq('id', user.id)
+              .single();
 
-          if (!profileError && profile?.email_verified) {
+            if (!profileError && profile?.email_verified) {
+              isVerified = true;
+            }
+          }
+
+          // Если localStorage флаг установлен ИЛИ пользователь подтвержден - обновляем состояние
+          if (localStorageFlag || isVerified) {
+            emailVerifiedRef.current = true;
             setEmailVerified(true);
+            // Останавливаем интервал
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+          }
+        } else if (localStorageFlag) {
+          // Если нет пользователя, но есть флаг в localStorage - все равно считаем подтвержденным
+          emailVerifiedRef.current = true;
+          setEmailVerified(true);
+          // Останавливаем интервал
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
           }
         }
       } catch (error) {
@@ -151,7 +193,13 @@ export default function RegisterDirectorPage() {
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         const user = session.user;
         if (user.email_confirmed_at || (user as any).confirmed_at) {
+          emailVerifiedRef.current = true;
           setEmailVerified(true);
+          // Останавливаем интервал
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           // Синхронизируем профиль после подтверждения
           syncProfile().catch(console.error);
         }
@@ -164,11 +212,9 @@ export default function RegisterDirectorPage() {
     }
 
     // Слушаем события localStorage для синхронизации между вкладками
-    const handleStorageChange = () => {
-      // Проверяем флаг подтверждения
-      const isConfirmed = localStorage.getItem('wellify_email_confirmed') === 'true';
-      if (isConfirmed && emailSent) {
-        // Немедленно проверяем статус (checkEmailVerified сама проверит emailVerified)
+    const handleStorageChange = (e: StorageEvent | Event) => {
+      if (e.type === 'storage' || e.type === 'emailConfirmed') {
+        // Немедленно проверяем статус
         checkEmailVerified().catch(console.error);
       }
     };
@@ -178,20 +224,24 @@ export default function RegisterDirectorPage() {
     // Слушаем кастомное событие (для синхронизации в текущем окне)
     window.addEventListener('emailConfirmed', handleStorageChange);
 
-    // Периодическая проверка (каждые 2 секунды, если письмо отправлено, но не подтверждено)
-    let intervalId: NodeJS.Timeout | null = null;
-    if (emailSent && !emailVerified) {
-      intervalId = setInterval(() => {
+    // Периодическая проверка (каждые 1.5 секунды, если письмо отправлено и не подтверждено)
+    if (emailSent && !emailVerifiedRef.current) {
+      // Очищаем предыдущий интервал, если есть
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      intervalRef.current = setInterval(() => {
         checkEmailVerified().catch(console.error);
-      }, 2000);
+      }, 1500);
     }
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('emailConfirmed', handleStorageChange);
-      if (intervalId) {
-        clearInterval(intervalId);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
