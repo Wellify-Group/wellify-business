@@ -3,8 +3,6 @@
 import { FormEvent, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -188,13 +186,13 @@ export default function RegisterDirectorPage() {
   ];
 
   const renderStepHeader = () => (
-    <div className="mb-6">
+    <div className="mb-4">
       <div className="mb-2 flex items-center gap-4">
         {steps.map(s => (
           <div key={s.id} className="flex-1">
             <div
               className={`h-1.5 rounded-full transition-all ${
-                step >= s.id ? 'bg-primary' : 'bg-zinc-800'
+                step >= s.id ? 'bg-blue-600' : 'bg-zinc-800'
               }`}
             />
           </div>
@@ -207,7 +205,7 @@ export default function RegisterDirectorPage() {
           </div>
         ))}
       </div>
-      <div className="mt-2 text-center text-xs text-zinc-500">Шаг {step} из 3</div>
+      <p className="mt-2 text-center text-[11px] uppercase tracking-[0.16em] text-zinc-500">Шаг {step} из 3</p>
     </div>
   );
 
@@ -220,13 +218,13 @@ export default function RegisterDirectorPage() {
     return (
       <div className="space-y-2 min-h-[44px]">
         {formError && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+          <div className="flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>{formError}</span>
           </div>
         )}
         {formSuccess && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
             <span>{formSuccess}</span>
           </div>
@@ -236,129 +234,135 @@ export default function RegisterDirectorPage() {
   };
 
   const renderStep1 = () => (
-    <form onSubmit={handleNextFromStep1} className="space-y-4">
+    <form onSubmit={handleNextFromStep1} className="space-y-5">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Имя <span className="text-destructive">*</span>
-          </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-zinc-400">
+            Имя <span className="text-red-400">*</span>
+          </span>
           <input
             value={baseData.firstName}
             onChange={(e) => setBaseData(prev => ({ ...prev, firstName: e.target.value }))}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:border-blue-500/80 focus:bg-zinc-900/80"
             placeholder="Иван"
           />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Фамилия <span className="text-destructive">*</span>
-          </label>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-zinc-400">
+            Фамилия <span className="text-red-400">*</span>
+          </span>
           <input
             value={baseData.lastName}
             onChange={(e) => setBaseData(prev => ({ ...prev, lastName: e.target.value }))}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:border-blue-500/80 focus:bg-zinc-900/80"
             placeholder="Иванов"
           />
-        </div>
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">Отчество</label>
-        <input
-          value={baseData.middleName}
-          onChange={(e) => setBaseData(prev => ({ ...prev, middleName: e.target.value }))}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-          placeholder="Иванович"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">
-          Дата рождения <span className="text-destructive">*</span>
         </label>
-        <input
-          type="date"
-          value={baseData.birthDate}
-          onChange={(e) => setBaseData(prev => ({ ...prev, birthDate: e.target.value }))}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
-        />
-        <p className="mt-1 text-xs text-muted-foreground">Формат: ДД.ММ.ГГГГ</p>
+      </div>
+
+      <div className="space-y-1">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-zinc-400">Отчество</span>
+          <input
+            value={baseData.middleName}
+            onChange={(e) => setBaseData(prev => ({ ...prev, middleName: e.target.value }))}
+            className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:border-blue-500/80 focus:bg-zinc-900/80"
+            placeholder="Иванович"
+          />
+        </label>
+      </div>
+
+      <div className="space-y-1">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-zinc-400">
+            Дата рождения <span className="text-red-400">*</span>
+          </span>
+          <input
+            type="date"
+            value={baseData.birthDate}
+            onChange={(e) => setBaseData(prev => ({ ...prev, birthDate: e.target.value }))}
+            className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 outline-none ring-0 focus:border-blue-500/80 focus:bg-zinc-900/80 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+          />
+        </label>
+        <p className="text-[11px] text-zinc-500">Формат: ДД.ММ.ГГГГ</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Пароль <span className="text-destructive">*</span>
-          </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-zinc-400">
+            Пароль <span className="text-red-400">*</span>
+          </span>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               value={baseData.password}
               onChange={(e) => setBaseData(prev => ({ ...prev, password: e.target.value }))}
-              className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+              className="h-11 w-full rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-blue-500/80 focus:bg-zinc-900/80"
               placeholder="Минимум 8 символов"
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              tabIndex={-1}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 right-2.5 flex items-center text-zinc-500 hover:text-zinc-300 transition"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Подтвердите пароль <span className="text-destructive">*</span>
-          </label>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-zinc-400">
+            Подтвердите пароль <span className="text-red-400">*</span>
+          </span>
           <div className="relative">
             <input
               type={showPassword ? 'text' : 'password'}
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
-              className="h-11 w-full rounded-lg border border-border bg-card px-4 pr-10 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+              className="h-11 w-full rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none focus:border-blue-500/80 focus:bg-zinc-900/80"
               placeholder="Повторите пароль"
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              tabIndex={-1}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 right-2.5 flex items-center text-zinc-500 hover:text-zinc-300 transition"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-        </div>
+        </label>
       </div>
 
       {renderAlerts()}
 
       <div className="mt-4 flex justify-end">
-        <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={isLoading}
+        >
           {isLoading ? 'Загрузка...' : 'Дальше'}
-        </Button>
+        </button>
       </div>
     </form>
   );
 
   const renderStep2 = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">
-          E-mail <span className="text-destructive">*</span>
-        </label>
+    <div className="space-y-5">
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-zinc-400">
+          E-mail <span className="text-red-400">*</span>
+        </span>
         <input
           type="email"
           value={form.email}
           onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+          className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:border-blue-500/80 focus:bg-zinc-900/80"
           placeholder="you@example.com"
         />
-      </div>
+      </label>
 
       {emailStatus === 'sent' && emailInfo && (
-        <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-300">
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-300">
           {emailInfo}
         </div>
       )}
@@ -367,107 +371,106 @@ export default function RegisterDirectorPage() {
 
       <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex gap-2">
-          <Button
+          <button
             type="button"
-            variant="outline"
-            className="w-full md:w-auto"
+            className="inline-flex items-center justify-center rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800/60 transition disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={isLoading}
             onClick={() => setStep(1)}
           >
             Назад
-          </Button>
+          </button>
           {emailStatus === 'sent' && (
-            <Button
+            <button
               type="button"
-              variant="outline"
-              className="w-full md:w-auto"
+              className="inline-flex items-center justify-center rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800/60 transition disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={isLoading}
               onClick={handleSendEmail}
             >
               {isLoading ? 'Отправляем...' : 'Отправить ещё раз'}
-            </Button>
+            </button>
           )}
           {emailStatus === 'idle' && (
-            <Button
+            <button
               type="button"
-              className="w-full md:w-auto"
+              className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={isLoading}
               onClick={handleSendEmail}
             >
               {isLoading ? 'Отправляем...' : 'Далее'}
-            </Button>
+            </button>
           )}
         </div>
 
         {emailStatus === 'sent' && (
-          <Button
+          <button
             type="button"
-            className="w-full md:w-auto"
+            className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={isLoading}
             onClick={() => setStep(3)}
           >
             Дальше
-          </Button>
+          </button>
         )}
       </div>
     </div>
   );
 
   const renderStep3 = () => (
-    <form onSubmit={handleFinish} className="space-y-4">
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">
-          Телефон <span className="text-destructive">*</span>
-        </label>
+    <form onSubmit={handleFinish} className="space-y-5">
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-zinc-400">
+          Телефон <span className="text-red-400">*</span>
+        </span>
         <input
           value={form.phone}
           onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+          className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:border-blue-500/80 focus:bg-zinc-900/80"
           placeholder="+38 (0XX) XXX-XX-XX"
         />
-      </div>
+      </label>
 
       {renderAlerts()}
 
       <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
-        <Button
+        <button
           type="button"
-          variant="outline"
-          className="w-full md:w-auto"
+          className="inline-flex items-center justify-center rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800/60 transition disabled:opacity-60 disabled:cursor-not-allowed"
           disabled={isLoading}
           onClick={() => setStep(2)}
         >
           Назад
-        </Button>
-        <Button type="submit" className="w-full md:w-auto" disabled={isLoading}>
+        </button>
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={isLoading}
+        >
           {isLoading ? 'Завершаем...' : 'Завершить регистрацию'}
-        </Button>
+        </button>
       </div>
     </form>
   );
 
   return (
-    <main className="flex mt-[72px] min-h-[calc(100vh-72px)] items-center justify-center px-4">
-      <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
-        <CardHeader className="pb-4">
+    <main className="min-h-[calc(100vh-88px)] flex items-center justify-center px-4 pb-10">
+      <section className="w-full max-w-[520px] rounded-3xl border border-zinc-800/60 bg-zinc-900/85 shadow-[0_24px_80px_rgba(0,0,0,0.85)] px-8 py-8 md:px-10 md:py-9 space-y-6">
+        <header className="space-y-2 text-center">
           {renderStepHeader()}
-          <CardTitle className="text-center text-2xl font-semibold">Создать аккаунт</CardTitle>
-          <CardDescription className="mt-1 text-center text-sm">
-            Заполните форму для регистрации директора
-          </CardDescription>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
+          <h1 className="text-[22px] font-semibold text-zinc-50">Создать аккаунт</h1>
+          <p className="text-sm text-zinc-400">Заполните форму для регистрации директора</p>
+          <p className="text-xs text-zinc-500">
             Уже есть аккаунт?{' '}
-            <Link href="/auth/login" className="font-medium text-primary hover:underline">
+            <Link href="/auth/login" className="font-medium text-blue-400 hover:text-blue-300 hover:underline">
               Войти
             </Link>
           </p>
-        </CardHeader>
-        <CardContent>
+        </header>
+        <div>
           {step === 1 && renderStep1()}
           {step === 2 && renderStep2()}
           {step === 3 && renderStep3()}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </main>
   );
 }

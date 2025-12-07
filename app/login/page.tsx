@@ -298,16 +298,16 @@ export default function LoginPage() {
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="w-full relative z-10"
         >
-          <div className="w-full bg-card border border-border rounded-[24px] shadow-[0_18px_45px_rgba(0,0,0,0.65)] p-8">
+          <div className="w-full max-w-[480px] rounded-3xl border border-zinc-800/60 bg-zinc-900/85 shadow-[0_24px_80px_rgba(0,0,0,0.85)] px-8 py-7">
           <div className="flex flex-col gap-6">
             {/* Tabs */}
-            <div className="grid w-full grid-cols-2 gap-1 p-1 bg-muted border border-border rounded-[10px]">
+            <div className="grid w-full grid-cols-2 gap-1 p-1 bg-zinc-800/40 border border-zinc-800/60 rounded-xl">
               <button
                 onClick={() => handleTabChange("office")}
-                className={`relative flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 h-9 rounded-[10px] ${
+                className={`relative flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 h-9 rounded-lg ${
                   activeTab === "office"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-zinc-900/80 text-zinc-50 shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-300"
                 }`}
               >
                 <Building2 className="h-4 w-4" />
@@ -316,10 +316,10 @@ export default function LoginPage() {
 
               <button
                 onClick={() => handleTabChange("terminal")}
-                className={`relative flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 h-9 rounded-[10px] ${
+                className={`relative flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 h-9 rounded-lg ${
                   activeTab === "terminal"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-zinc-900/80 text-zinc-50 shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-300"
                 }`}
               >
                 <Store className="h-4 w-4" />
@@ -328,13 +328,13 @@ export default function LoginPage() {
             </div>
 
             {/* Title */}
-            <div className="text-center space-y-1">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            <div className="text-center space-y-2">
+              <h1 className="text-[22px] font-semibold text-zinc-50">
                 {activeTab === "office" 
                   ? (t("login_office_title") || "Вход в кабинет") 
                   : (t("login_terminal_title") || "Вход в терминал")}
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-zinc-400">
                 {activeTab === "office"
                   ? (t("login_office_desc") || "Для владельцев и менеджеров")
                   : (terminalStep === 1 ? "Введите ID компании" : "Введите пин-код сотрудника")}
@@ -353,11 +353,11 @@ export default function LoginPage() {
                   className="flex flex-col gap-5"
                 >
                   <form onSubmit={handleOfficeSubmit} className="flex flex-col gap-4">
-                    <div className="space-y-4">
-                      <div>
-                         <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-zinc-500 ml-1">
-                            {t("email_label") || "EMAIL"}
-                          </label>
+                    <div className="space-y-5">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-xs font-medium text-zinc-400">
+                          {t("email_label") || "E-mail"} <span className="text-red-400">*</span>
+                        </span>
                         <input
                           type="email"
                           value={email}
@@ -367,21 +367,21 @@ export default function LoginPage() {
                             setError("");
                           }}
                           required
-                          className={`h-12 w-full bg-card border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all ${
-                             isError ? "border-destructive text-destructive focus:ring-destructive" : "border-border"
+                          className={`h-11 rounded-2xl border bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 transition-all ${
+                             isError ? "border-red-500/80 text-red-400 focus:border-red-500/80" : "border-zinc-800/70 focus:border-blue-500/80"
                           }`}
                           placeholder={t("email_placeholder") || "you@example.com"}
                         />
-                      </div>
+                      </label>
 
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5 ml-1">
-                          <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-                            {t("password_label") || "Пароль"}
-                          </label>
+                      <label className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-zinc-400">
+                            {t("password_label") || "Пароль"} <span className="text-red-400">*</span>
+                          </span>
                           <Link
                               href="/forgot-password"
-                              className="text-xs font-medium text-zinc-400 hover:text-foreground transition-colors"
+                              className="text-xs font-medium text-blue-400 hover:text-blue-300 hover:underline transition-colors"
                           >
                               {t("login_forgot_password") || "Забыли пароль?"}
                           </Link>
@@ -396,43 +396,39 @@ export default function LoginPage() {
                                 setError("");
                             }}
                             required
-                            className={`h-12 w-full bg-card border rounded-[20px] px-4 text-base text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:border-transparent focus:ring-ring transition-all ${
-                                isError ? "border-destructive text-destructive focus:ring-destructive" : "border-border"
+                            className={`h-11 w-full rounded-2xl border bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 transition-all ${
+                                isError ? "border-red-500/80 text-red-400 focus:border-red-500/80" : "border-zinc-800/70 focus:border-blue-500/80"
                             }`}
                             placeholder="••••••••"
                             />
                         </div>
-                      </div>
+                      </label>
                     </div>
 
                     {error && (
                       <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-xl p-3 text-xs text-red-600 dark:text-red-400 text-center flex items-center justify-center gap-2"
+                        className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400 flex items-center gap-2"
                       >
-                        <AlertCircle className="h-4 w-4" />
-                        {error}
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        <span>{error}</span>
                       </motion.div>
                     )}
 
-                    <motion.div
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      className="h-12 w-full mt-1"
-                    >
-                      <PrimaryButton
+                    <div className="mt-4 flex justify-end">
+                      <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full h-full rounded-[20px] text-[15px] font-semibold"
+                        className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isLoading ? (t("logging_in") || "Вход...") : (t("btn_login") || "Войти")}
-                      </PrimaryButton>
-                    </motion.div>
+                      </button>
+                    </div>
                   </form>
 
                     <div className="text-center">
-                        <p className="text-xs text-zinc-400 font-light">
+                        <p className="text-xs text-zinc-500">
                             {t("login_terminal_hint") || "Если вы сотрудник точки — используйте вкладку «Терминал»"}
                         </p>
                     </div>
@@ -461,9 +457,9 @@ export default function LoginPage() {
                   */}
 
                   <div className="text-center">
-                    <p className="text-xs text-zinc-400 font-light">
+                    <p className="text-xs text-zinc-500">
                       Нет аккаунта?{" "}
-                      <Link href="/register" className="text-primary hover:underline font-medium">
+                      <Link href="/register" className="font-medium text-blue-400 hover:text-blue-300 hover:underline">
                         Зарегистрироваться
                       </Link>
                     </p>
@@ -504,26 +500,22 @@ export default function LoginPage() {
                         <motion.div
                            initial={{ opacity: 0, y: -10 }}
                            animate={{ opacity: 1, y: 0 }}
-                           className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-xl p-3 text-xs text-red-600 dark:text-red-400 text-center flex items-center justify-center gap-2"
+                           className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400 flex items-center gap-2"
                          >
-                           <AlertCircle className="h-4 w-4" />
-                           {error}
+                           <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                           <span>{error}</span>
                         </motion.div>
                       )}
 
-                      <motion.div
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className="h-12 w-full"
-                      >
-                        <PrimaryButton
+                      <div className="mt-4 flex justify-end">
+                        <button
                           type="button"
                           onClick={handleContinueFromCompanyId}
-                          className="w-full h-full rounded-[20px] text-[15px] font-semibold"
+                          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition"
                         >
                           Продолжить
-                        </PrimaryButton>
-                      </motion.div>
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -550,35 +542,29 @@ export default function LoginPage() {
                          <motion.div
                            initial={{ opacity: 0, y: -10 }}
                            animate={{ opacity: 1, y: 0 }}
-                           className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-xl p-3 text-xs text-red-600 dark:text-red-400 text-center flex items-center justify-center gap-2"
+                           className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400 flex items-center gap-2"
                          >
-                           <AlertCircle className="h-4 w-4" />
-                           {error}
+                           <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                           <span>{error}</span>
                         </motion.div>
                       )}
 
-                      <div className="flex gap-3">
+                      <div className="mt-4 flex gap-3">
                         <button
                           type="button"
                           onClick={() => setTerminalStep(1)}
-                          className="flex-1 h-12 rounded-[20px] border border-zinc-200 dark:border-zinc-700 font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+                          className="inline-flex items-center justify-center rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-6 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800/60 transition"
                         >
                           Назад
                         </button>
-                        <motion.div
-                          whileHover={{ scale: 1.01 }}
-                          whileTap={{ scale: 0.99 }}
-                          className="flex-[2] h-12"
+                        <button
+                          type="button"
+                          onClick={handleTerminalLogin}
+                          disabled={isLoading}
+                          className="flex-1 inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          <PrimaryButton
-                            type="button"
-                            onClick={handleTerminalLogin}
-                            disabled={isLoading}
-                            className="w-full h-full rounded-[20px] text-[15px] font-semibold"
-                          >
-                            {isLoading ? "Вход..." : "Войти"}
-                          </PrimaryButton>
-                        </motion.div>
+                          {isLoading ? "Вход..." : "Войти"}
+                        </button>
                       </div>
                     </div>
                   )}
