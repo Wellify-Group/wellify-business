@@ -1,8 +1,6 @@
 import { Suspense } from "react";
 import EmailConfirmedClient from "./EmailConfirmedClient";
 
-export const dynamic = "force-dynamic";
-
 export default function EmailConfirmedPage() {
   return (
     <Suspense
