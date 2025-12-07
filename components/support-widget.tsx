@@ -49,8 +49,8 @@ export function SupportWidget() {
   const { t } = useLanguage();
   const pathname = usePathname();
 
-  // Скрываем виджет на страницах дашборда
-  if (pathname?.startsWith("/dashboard")) {
+  // Скрываем виджет на страницах дашборда и на странице подтверждения email
+  if (pathname?.startsWith("/dashboard") || pathname === "/auth/email-confirmed") {
     return null;
   }
 

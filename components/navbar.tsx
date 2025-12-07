@@ -18,6 +18,7 @@ export function Navbar() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDashboard = pathname?.startsWith("/dashboard");
+  const isEmailConfirmed = pathname === "/auth/email-confirmed";
 
   useEffect(() => {
     setMounted(true);
@@ -25,8 +26,8 @@ export function Navbar() {
 
   const isDark = mounted && resolvedTheme === "dark";
 
-  // Навбар скрыт только в дашборде
-  if (isDashboard) return null;
+  // Навбар скрыт в дашборде и на странице подтверждения email
+  if (isDashboard || isEmailConfirmed) return null;
 
   return (
     <header
