@@ -521,10 +521,16 @@ export default function RegisterDirectorClient() {
       return;
     }
 
+    if (!supabase) {
+      setFormError("Ошибка инициализации. Обновите страницу.");
+      return;
+    }
+
     setIsLoading(true);
     setFormError(null);
 
     try {
+      // Сначала завершаем регистрацию (обновляем профиль)
       const res = await fetch("/api/director/complete-registration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -542,20 +548,79 @@ export default function RegisterDirectorClient() {
 
       if (!res.ok) {
         if (res.status === 401) {
-          // пользователь не авторизован
-          setFormError(
-            "Пользователь не авторизован. Пожалуйста, выполните вход ещё раз."
-          );
-          setIsLoading(false);
+          // Пользователь не авторизован - выполняем вход
+          console.log("[register] User not authenticated, signing in...");
+          
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: form.email.trim(),
+            password: baseData.password,
+          });
+
+          if (signInError || !signInData.user) {
+            setFormError(
+              "Пользователь не авторизован. Пожалуйста, выполните вход ещё раз."
+            );
+            setIsLoading(false);
+            return;
+          }
+
+          // После успешного входа повторяем запрос на завершение регистрации
+          const retryRes = await fetch("/api/director/complete-registration", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              firstName: baseData.firstName,
+              lastName: baseData.lastName,
+              middleName: baseData.middleName,
+              birthDate: baseData.birthDate,
+              email: form.email,
+              phone: form.phone,
+            }),
+          });
+
+          const retryData = await retryRes.json().catch(() => null);
+
+          if (!retryRes.ok) {
+            throw new Error(retryData?.error || "Не удалось завершить регистрацию");
+          }
+
+          // Успех: ведём директора в его дашборд
+          router.push("/dashboard/director");
           return;
         }
 
         throw new Error(data?.error || "Не удалось завершить регистрацию");
       }
 
+      // Успех: после завершения регистрации выполняем вход для установки сессии
+      console.log("[register] Registration completed, signing in...");
+      
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email.trim(),
+        password: baseData.password,
+      });
+
+      if (signInError) {
+        console.error("[register] Sign in error:", signInError);
+        setFormError(
+          "Регистрация завершена, но не удалось войти. Пожалуйста, войдите вручную."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      if (!signInData.user) {
+        setFormError(
+          "Регистрация завершена, но не удалось войти. Пожалуйста, войдите вручную."
+        );
+        setIsLoading(false);
+        return;
+      }
+
       // Успех: ведём директора в его дашборд
       router.push("/dashboard/director");
     } catch (err) {
+      console.error("[register] Error in handleCompleteRegistration:", err);
       setFormError(
         err instanceof Error ? err.message : "Неизвестная ошибка регистрации"
       );
