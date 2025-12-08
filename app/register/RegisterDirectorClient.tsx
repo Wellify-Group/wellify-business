@@ -132,6 +132,25 @@ export default function RegisterDirectorClient() {
         
         if (sessionError) {
           console.error("[register] Error getting session:", sessionError);
+          // Если ошибка сессии, пробуем проверить через API
+          try {
+            const response = await fetch("/api/auth/check-email-status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: form.email.trim() }),
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.emailVerified) {
+              console.log("[register] ✅ Email confirmed via API route (session error)!");
+              setEmailVerified(true);
+              cancelled = true;
+              return;
+            }
+          } catch (apiError) {
+            console.warn("[register] API check failed:", apiError);
+          }
         } else {
           console.log("[register] Session:", {
             hasSession: !!session,
@@ -357,14 +376,14 @@ export default function RegisterDirectorClient() {
     };
     window.addEventListener("focus", handleFocus);
 
-    // Поллинг каждые 3 секунды
+    // Поллинг каждые 2 секунды для более быстрого обнаружения подтверждения
     const intervalId = setInterval(() => {
       if (!cancelled && !emailVerified) {
         checkEmailStatus();
       } else {
         clearInterval(intervalId);
       }
-    }, 3000);
+    }, 2000);
 
     return () => {
       cancelled = true;

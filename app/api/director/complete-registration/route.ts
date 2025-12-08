@@ -109,18 +109,32 @@ export async function POST(request: NextRequest) {
       });
 
       // Обновляем профиль в таблице profiles
-      const { error: profileError } = await supabase
+      const { error: profileError, data: updatedProfile } = await supabase
         .from("profiles")
         .update(profileUpdate)
-        .eq("id", user.id);
+        .eq("id", user.id)
+        .select();
 
       if (profileError) {
-        console.error("Failed to update profile", profileError);
+        console.error("Failed to update profile", {
+          error: profileError,
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint,
+          code: profileError.code,
+          profileUpdate,
+          userId: user.id,
+        });
         return NextResponse.json(
-          { error: "Failed to update profile" },
+          { 
+            error: "Failed to update profile",
+            details: profileError.message || "Unknown error"
+          },
           { status: 500 }
         );
       }
+
+      console.log("Profile updated successfully", { updatedProfile });
     }
 
     // Опционально: обновляем телефон в user_metadata
