@@ -658,45 +658,9 @@ export default function RegisterDirectorClient() {
           <Button
             type="button"
             className="mt-4 w-full"
-            onClick={() => {
-              // Проверяем сессию перед переходом
-              const checkSession = async () => {
-                const { data: sessionData } = await supabase.auth.getSession();
-                setHasSession(sessionData?.session !== null);
-                
-                if (!sessionData?.session) {
-                  // Нет сессии - показываем кнопку "Войти"
-                  return;
-                }
-                
-                // Есть сессия - переходим на шаг 3
-                setStep(3);
-              };
-              checkSession();
-            }}
+            onClick={() => setStep(3)}
           >
             Далее
-          </Button>
-        )}
-
-        {/* КНОПКА "Войти" — если email подтверждён, но нет сессии */}
-        {emailStatus === "confirmed" && !hasSession && (
-          <Button
-            type="button"
-            className="mt-4 w-full"
-            onClick={() => {
-              // Сохраняем состояние перед переходом на логин
-              localStorage.setItem("register_in_progress", JSON.stringify({
-                step: 2,
-                email: form.email,
-                phone: form.phone,
-                phoneVerified: phoneVerified,
-                baseData: baseData,
-              }));
-              router.push("/auth/login");
-            }}
-          >
-            Войти
           </Button>
         )}
 
