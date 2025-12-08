@@ -121,11 +121,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Для директора: проверяем только email_confirmed_at, телефон можно подтвердить позже
-    if (role === 'director') {
+    if (role === 'director' || user.user_metadata?.role === 'director') {
       if (!emailConfirmed) {
         // Email еще не подтвержден (не должно произойти, так как мы в callback)
         return NextResponse.redirect(new URL("/auth/login", request.url));
       }
+      
+      // Если это регистрация (есть данные регистрации в user_metadata), редиректим на /register
+      // Иначе - в дашборд
+      const hasRegistrationData = user.user_metadata?.first_name || user.user_metadata?.last_name;
+      if (hasRegistrationData && !profileRaw) {
+        // Это новая регистрация - редиректим на /register для завершения
+        return NextResponse.redirect(new URL("/register", request.url));
+      }
+      
       // Редиректим директора в его дашборд
       return NextResponse.redirect(new URL("/dashboard/director", request.url));
     }

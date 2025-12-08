@@ -57,6 +57,9 @@ export async function POST(request: NextRequest) {
     const profileUpdate: Record<string, any> = {
       email: email.trim(),
       full_name: fullName,
+      phone: phone.trim(),
+      birth_date: birthDate,
+      role: "director", // Устанавливаем роль директора
       updated_at: new Date().toISOString(),
     };
 

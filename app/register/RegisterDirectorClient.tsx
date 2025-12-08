@@ -17,7 +17,7 @@ import { useLanguage } from "@/components/language-provider";
 
 type Step = 1 | 2 | 3;
 
-type EmailStatus = "idle" | "sending" | "link_sent" | "checking" | "verified" | "error";
+type EmailStatus = "idle" | "sending" | "sent" | "confirmed" | "error";
 
 interface BaseData {
   firstName: string;
@@ -63,8 +63,8 @@ export default function RegisterDirectorClient() {
   const [emailError, setEmailError] = useState<string | null>(null);
   
   // Обратная совместимость (для других частей кода)
-  const emailVerifiedStatus = emailStatus === "verified";
-  const emailSent = emailStatus === "link_sent" || emailStatus === "checking" || emailStatus === "verified";
+  const emailVerifiedStatus = emailStatus === "confirmed";
+  const emailSent = emailStatus === "sent" || emailStatus === "confirmed";
   const isSendingEmail = emailStatus === "sending";
 
   const [showPassword, setShowPassword] = useState(false);
@@ -81,23 +81,53 @@ export default function RegisterDirectorClient() {
   // Supabase клиент (не-null, создается один раз через useState с функцией-инициализатором)
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
-  // Проверка сессии при монтировании (для восстановления состояния)
-  const checkSessionOnMount = async () => {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: sessionData } = await supabase.auth.getSession();
+  // Функция для обновления статуса email
+  const refreshEmailStatus = async () => {
+    if (!form.email.trim()) {
+        return;
+      }
+
+      try {
+      // Сначала проверяем через сессию
+      const { data: userData, error: userError } = await supabase.auth.getUser();
       
-      const emailIsVerified = userData?.user?.email_confirmed_at !== null && userData?.user?.email_confirmed_at !== undefined;
-      const sessionExists = sessionData?.session !== null;
+      if (!userError && userData?.user) {
+        const user = userData.user;
+        // Если есть сессия и email подтверждён, и email совпадает
+        if (user.email_confirmed_at && user.email?.toLowerCase().trim() === form.email.toLowerCase().trim()) {
+          setEmailStatus("confirmed");
+          setIsEmailVerified(true);
+          const { data: sessionData } = await supabase.auth.getSession();
+          setHasSession(sessionData?.session !== null);
+            return;
+          }
+        }
 
-      setIsEmailVerified(emailIsVerified);
-      setHasSession(sessionExists);
+      // Если сессии нет или email не совпадает, проверяем через API
+      const res = await fetch("/api/auth/check-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: form.email.trim() }),
+              });
 
-      if (emailIsVerified) {
-        setEmailStatus("verified");
+      const data = await res.json();
+
+      if (data.ok && data.confirmed) {
+        setEmailStatus("confirmed");
+        setIsEmailVerified(true);
+        // Проверяем сессию
+        const { data: sessionData } = await supabase.auth.getSession();
+        setHasSession(sessionData?.session !== null);
+              } else {
+        // Если письмо было отправлено, но ещё не подтверждено - остаёмся в sent
+        // Не меняем статус на idle если уже был sent
+        if (emailStatus === "idle" || emailStatus === "error") {
+          // Оставляем как есть, не меняем на sent автоматически
+        }
       }
     } catch (err) {
-      console.error("Error checking session on mount:", err);
+      console.error("Error refreshing email status:", err);
+      // Не меняем статус при ошибке
     }
   };
 
@@ -120,8 +150,8 @@ export default function RegisterDirectorClient() {
         if (state.phoneVerified) {
           setPhoneVerified(true);
         }
-        // Проверяем сессию при восстановлении
-        checkSessionOnMount();
+        // Проверяем статус email при восстановлении
+        refreshEmailStatus();
       } catch (e) {
         console.error("Error restoring registration state:", e);
         localStorage.removeItem("register_in_progress");
@@ -147,26 +177,31 @@ export default function RegisterDirectorClient() {
     }
   }, [step]);
 
-  // Проверка сессии и email при переходе на шаг 3
+  // Проверка email при переходе на шаг 3
   useEffect(() => {
     if (step === 3) {
-      const checkSessionAndEmail = async () => {
-        try {
-          const { data: userData } = await supabase.auth.getUser();
-          const { data: sessionData } = await supabase.auth.getSession();
-          
-          const emailIsVerified = userData?.user?.email_confirmed_at !== null && userData?.user?.email_confirmed_at !== undefined;
-          const sessionExists = sessionData?.session !== null;
-
-          setIsEmailVerified(emailIsVerified);
-          setHasSession(sessionExists);
-        } catch (err) {
-          console.error("Error checking session on step 3:", err);
-        }
-      };
-      checkSessionAndEmail();
+      refreshEmailStatus();
     }
-  }, [step, supabase]);
+  }, [step]);
+
+  // Проверка email при монтировании и при возврате на страницу
+  useEffect(() => {
+    if (step === 2 && form.email.trim()) {
+      refreshEmailStatus();
+    }
+
+    // Проверяем при возврате на страницу (visibilitychange)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && step === 2 && form.email.trim()) {
+        refreshEmailStatus();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [step, form.email]);
 
   // Удалена автоматическая проверка email - теперь проверка только по кнопке "Я подтвердил email"
 
@@ -222,6 +257,12 @@ export default function RegisterDirectorClient() {
         email: form.email.trim(),
         password: baseData.password,
         options: {
+          data: {
+            first_name: baseData.firstName,
+            last_name: baseData.lastName,
+            middle_name: baseData.middleName,
+            birth_date: baseData.birthDate,
+          },
           emailRedirectTo: redirectTo,
         },
       });
@@ -252,7 +293,9 @@ export default function RegisterDirectorClient() {
         }
       }
 
-      setEmailStatus("link_sent");
+      setEmailStatus("sent");
+      // После успешной отправки проверяем статус
+      setTimeout(() => refreshEmailStatus(), 1000);
     } catch (e: any) {
       setEmailStatus("error");
       setEmailError(e?.message ?? "Не удалось отправить письмо.");
@@ -264,38 +307,6 @@ export default function RegisterDirectorClient() {
     await handleSendEmailLink();
   };
 
-  const handleCheckEmailConfirmed = async () => {
-    try {
-      setEmailError(null);
-      setEmailStatus("checking");
-
-      const res = await fetch("/api/auth/check-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (!data.ok) {
-        throw new Error(data.error || "Не удалось проверить e-mail");
-      }
-
-      if (data.confirmed) {
-        setEmailStatus("verified");
-        setIsEmailVerified(true);
-        // Проверяем сессию
-        const { data: sessionData } = await supabase.auth.getSession();
-        setHasSession(sessionData?.session !== null);
-      } else {
-        setEmailStatus("link_sent");
-        setEmailError("E-mail ещё не подтверждён. Перейдите по ссылке из письма.");
-      }
-    } catch (e: any) {
-      setEmailStatus("error");
-      setEmailError(e?.message ?? "Не удалось проверить e-mail.");
-    }
-  };
 
   const handleChangeEmail = async () => {
     // Очищаем состояние
@@ -333,7 +344,7 @@ export default function RegisterDirectorClient() {
       const sessionExists = sessionData?.session !== null;
 
       // Проверка A: emailVerified
-      if (!emailIsVerified) {
+      if (!emailIsVerified || emailStatus !== "confirmed") {
         setFinishError("Ваш email ещё не подтверждён. Откройте письмо на любом устройстве, перейдите по ссылке, затем войдите в аккаунт и вернитесь сюда.");
         return;
       }
@@ -356,31 +367,28 @@ export default function RegisterDirectorClient() {
       // Оба условия выполнены - продолжаем
       setHasSession(true);
 
-      const user = sessionData.session.user;
-
-      // Формируем полное имя (Фамилия Имя Отчество)
-      const fullName = [
-        baseData.lastName.trim(),
-        baseData.firstName.trim(),
-        baseData.middleName?.trim(),
-      ]
-        .filter(Boolean)
-        .join(" ") || null;
-
-      // Записываем профиль с всеми данными
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
+      // Вызываем API для завершения регистрации
+      const res = await fetch("/api/director/complete-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: baseData.firstName,
+          lastName: baseData.lastName,
+          middleName: baseData.middleName,
+          birthDate: baseData.birthDate,
           email: form.email.trim(),
-          full_name: fullName,
           phone: form.phone.trim(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+        }),
+      });
 
-      if (updateError) {
-        console.error("Failed to update profile:", updateError);
-        setFinishError("Не удалось сохранить профиль. Попробуйте ещё раз.");
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          setFinishError("Пользователь не авторизован. Пожалуйста, выполните вход ещё раз.");
+        } else {
+          setFinishError(data?.error || "Не удалось завершить регистрацию");
+        }
         return;
       }
 
@@ -599,13 +607,13 @@ export default function RegisterDirectorClient() {
         </div>
 
         {/* БАННЕРЫ */}
-        {emailStatus === "link_sent" && (
+        {emailStatus === "sent" && (
           <p className="mt-3 text-sm text-emerald-400">
             Мы отправили письмо. Подтвердите email и вернитесь на страницу.
           </p>
         )}
 
-        {emailStatus === "verified" && (
+        {emailStatus === "confirmed" && (
           <p className="mt-3 text-sm text-emerald-400">
             E-mail подтверждён. Можете перейти к следующему шагу.
           </p>
@@ -619,20 +627,21 @@ export default function RegisterDirectorClient() {
 
         {/* КНОПКИ ПОД ПОЛЕМ E-MAIL */}
         <div className="mt-4 flex gap-3">
-          {/* Изменить e-mail — доступна всегда, пока не verified */}
-          {emailStatus !== "verified" && (
+          {/* Изменить e-mail — доступна всегда, пока не confirmed */}
+          {emailStatus !== "confirmed" && (
             <Button
               type="button"
               variant="outline"
               className="flex-1"
               onClick={handleChangeEmail}
+              disabled={emailStatus === "sending"}
             >
               Изменить e-mail
             </Button>
           )}
 
           {/* Отправить ещё раз — только если письмо уже отправляли */}
-          {emailStatus === "link_sent" && (
+          {emailStatus === "sent" && (
             <Button
               type="button"
               variant="outline"
@@ -642,26 +651,10 @@ export default function RegisterDirectorClient() {
               Отправить ещё раз
             </Button>
           )}
-        </div>
-
-        {/* КНОПКА "Я подтвердил email" — ТОЛЬКО ПОКА НЕ ПОДТВЕРЖДЁН */}
-        {emailStatus === "link_sent" && (
-          <Button
-            type="button"
-            className="mt-4 w-full"
-            onClick={handleCheckEmailConfirmed}
-          >
-            Я подтвердил email
-          </Button>
-        )}
-        {emailStatus === "checking" && (
-          <div className="mt-4 text-sm text-muted-foreground">
-            Проверяем подтверждение email...
           </div>
-        )}
 
         {/* КНОПКА "Далее" — ТОЛЬКО КОГДА EMAIL ПОДТВЕРЖДЁН */}
-        {emailStatus === "verified" && (
+        {emailStatus === "confirmed" && (
           <Button
             type="button"
             className="mt-4 w-full"
@@ -687,7 +680,7 @@ export default function RegisterDirectorClient() {
         )}
 
         {/* КНОПКА "Войти" — если email подтверждён, но нет сессии */}
-        {emailStatus === "verified" && !hasSession && (
+        {emailStatus === "confirmed" && !hasSession && (
           <Button
             type="button"
             className="mt-4 w-full"
@@ -714,7 +707,7 @@ export default function RegisterDirectorClient() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={emailStatus === "sending" || emailStatus === "checking"}
+            disabled={emailStatus === "sending"}
             onClick={() => setStep(1)}
           >
             Назад
