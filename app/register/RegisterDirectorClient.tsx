@@ -618,6 +618,7 @@ export default function RegisterDirectorClient() {
       }
 
       // Успех: ведём директора в его дашборд
+      // Данные профиля загрузятся автоматически через syncWithServer в dashboard layout
       router.push("/dashboard/director");
     } catch (err) {
       console.error("[register] Error in handleCompleteRegistration:", err);
