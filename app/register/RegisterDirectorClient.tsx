@@ -210,6 +210,10 @@ export default function RegisterDirectorClient() {
       setFormError("Укажите имя и фамилию.");
       return false;
     }
+    if (!baseData.middleName.trim()) {
+      setFormError("Укажите отчество.");
+      return false;
+    }
     if (!baseData.birthDate.trim()) {
       setFormError("Укажите дату рождения.");
       return false;
@@ -329,73 +333,54 @@ export default function RegisterDirectorClient() {
       setFinishLoading(true);
       setFinishError(null);
 
-    if (!phoneVerified) {
+      if (!phoneVerified) {
         setFinishError("Телефон ещё не подтверждён.");
-      return;
-    }
+        return;
+      }
 
-      // Проверяем emailVerified через getUser()
+      // 1) Убедиться, что у нас есть текущий пользователь из Supabase
       const { data: userData, error: userError } = await supabase.auth.getUser();
-      
-      // Проверяем hasSession через getSession()
-      const { data: sessionData } = await supabase.auth.getSession();
+      const user = userData?.user;
 
-      const emailIsVerified = userData?.user?.email_confirmed_at !== null && userData?.user?.email_confirmed_at !== undefined;
-      const sessionExists = sessionData?.session !== null;
-
-      // Проверка A: emailVerified
-      if (!emailIsVerified || emailStatus !== "confirmed") {
-        setFinishError("Ваш email ещё не подтверждён. Откройте письмо на любом устройстве, перейдите по ссылке, затем войдите в аккаунт и вернитесь сюда.");
+      if (userError || !user) {
+        setFinishError("Не удалось завершить регистрацию. Обновите страницу или ещё раз перейдите по ссылке из письма и повторите попытку.");
         return;
       }
 
-      // Проверка B: hasSession
-      if (!sessionExists || !sessionData.session?.user) {
-        setFinishError("Вы не авторизованы. Пожалуйста, войдите в аккаунт.");
-        setHasSession(false);
-        // Сохраняем состояние для восстановления после входа
-        localStorage.setItem("register_in_progress", JSON.stringify({
-          step: 3,
-          email: form.email,
-          phone: form.phone,
-          phoneVerified: phoneVerified,
-          baseData: baseData,
-        }));
-        return;
-      }
+      // 2) Собрать данные из состояния формы регистрации
+      const registrationData = {
+        firstName: baseData.firstName.trim(),
+        lastName: baseData.lastName.trim(),
+        middleName: baseData.middleName.trim(), // Отчество обязательно
+        birthDate: baseData.birthDate,
+        email: form.email.trim() || user.email || "",
+        phone: form.phone.trim(),
+      };
 
-      // Оба условия выполнены - продолжаем
-      setHasSession(true);
-
-      // Вызываем API для завершения регистрации
+      // 3) Записать/обновить профиль пользователя в Supabase через API
       const res = await fetch("/api/director/complete-registration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: baseData.firstName,
-          lastName: baseData.lastName,
-          middleName: baseData.middleName,
-          birthDate: baseData.birthDate,
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-        }),
+        body: JSON.stringify(registrationData),
       });
 
       const data = await res.json().catch(() => null);
 
+      // 4) Дождаться успешного ответа. Если есть ошибка – показываем понятный тост и НЕ редиректим
       if (!res.ok) {
         if (res.status === 401) {
-          setFinishError("Пользователь не авторизован. Пожалуйста, выполните вход ещё раз.");
+          setFinishError("Не удалось завершить регистрацию. Обновите страницу или ещё раз перейдите по ссылке из письма и повторите попытку.");
         } else {
-          setFinishError(data?.error || "Не удалось завершить регистрацию");
+          setFinishError(data?.error || "Не удалось завершить регистрацию. Попробуйте ещё раз.");
         }
         return;
       }
 
-      // Очищаем сохранённое состояние регистрации
+      // 5) При успехе:
+      // - Очищаем сохранённое состояние регистрации
       localStorage.removeItem("register_in_progress");
 
-      // Редирект на дашборд директора только после успешного сохранения
+      // - Редирект на дашборд директора (пользователь уже авторизован по сессии Supabase)
       router.push("/dashboard/director");
     } catch (e: any) {
       console.error("finishRegistration error", e);
@@ -496,7 +481,9 @@ export default function RegisterDirectorClient() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium">Отчество</label>
+          <label className="mb-1.5 block text-sm font-medium">
+            Отчество <span className="text-destructive">*</span>
+          </label>
           <input
             value={baseData.middleName}
             onChange={(e) =>
@@ -607,13 +594,13 @@ export default function RegisterDirectorClient() {
         </div>
 
         {/* БАННЕРЫ */}
-        {emailStatus === "sent" && (
-          <p className="mt-3 text-sm text-emerald-400">
+        {emailStatus === "sent" && !isEmailVerified && (
+          <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
             Мы отправили письмо. Подтвердите email и вернитесь на страницу.
-          </p>
+          </div>
         )}
 
-        {emailStatus === "confirmed" && (
+        {emailStatus === "confirmed" && isEmailVerified && (
           <p className="mt-3 text-sm text-emerald-400">
             E-mail подтверждён. Можете перейти к следующему шагу.
           </p>
@@ -626,9 +613,10 @@ export default function RegisterDirectorClient() {
         )}
 
         {/* КНОПКИ ПОД ПОЛЕМ E-MAIL */}
-        <div className="mt-4 flex gap-3">
-          {/* Изменить e-mail — доступна всегда, пока не confirmed */}
-          {emailStatus !== "confirmed" && (
+        {/* Показываем кнопки только если email ещё не подтверждён */}
+        {!isEmailVerified && emailStatus !== "confirmed" && (
+          <div className="mt-4 flex gap-3">
+            {/* Изменить e-mail — доступна всегда, пока не confirmed */}
             <Button
               type="button"
               variant="outline"
@@ -638,30 +626,19 @@ export default function RegisterDirectorClient() {
             >
               Изменить e-mail
             </Button>
-          )}
 
-          {/* Отправить ещё раз — только если письмо уже отправляли */}
-          {emailStatus === "sent" && (
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={handleSendEmailLink}
-            >
-              Отправить ещё раз
-            </Button>
-          )}
+            {/* Отправить ещё раз — только если письмо уже отправляли */}
+            {emailStatus === "sent" && (
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={handleSendEmailLink}
+              >
+                Отправить ещё раз
+              </Button>
+            )}
           </div>
-
-        {/* КНОПКА "Далее" — ТОЛЬКО КОГДА EMAIL ПОДТВЕРЖДЁН */}
-        {emailStatus === "confirmed" && (
-          <Button
-            type="button"
-            className="mt-4 w-full"
-            onClick={() => setStep(3)}
-          >
-            Далее
-          </Button>
         )}
 
         {renderAlerts()}
@@ -696,6 +673,17 @@ export default function RegisterDirectorClient() {
               onClick={handleSendEmailLink}
             >
               Отправить письмо
+            </Button>
+          )}
+
+          {/* Кнопка "Далее" показывается только когда email подтверждён */}
+          {emailStatus === "confirmed" && (
+            <Button
+              type="button"
+              className="w-full md:w-auto"
+              onClick={() => setStep(3)}
+            >
+              Далее
             </Button>
           )}
         </div>
@@ -752,31 +740,6 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
-        {/* Показываем кнопку "Войти" если email подтверждён, но нет сессии */}
-        {!hasSession && isEmailVerified && phoneVerified && (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Для завершения регистрации необходимо войти в аккаунт.
-            </p>
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => {
-                // Сохраняем состояние перед переходом на логин
-                localStorage.setItem("register_in_progress", JSON.stringify({
-                  step: 3,
-                  email: form.email,
-                  phone: form.phone,
-                  baseData: baseData,
-                }));
-                router.push("/auth/login");
-              }}
-            >
-              Войти
-            </Button>
-          </div>
-        )}
-
         {renderAlerts()}
 
         <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
@@ -792,7 +755,7 @@ export default function RegisterDirectorClient() {
           <Button
             type="button"
             className="w-full md:w-auto"
-            disabled={finishLoading || !phoneVerified || !hasSession || !isEmailVerified}
+            disabled={finishLoading || !phoneVerified}
             onClick={finishRegistration}
           >
             {finishLoading ? "Завершаем..." : "Завершить регистрацию"}
