@@ -111,32 +111,22 @@ export default function EmailConfirmedClient() {
           }
         }
 
-        // Формируем full_name
+        // Формируем full_name (Фамилия Имя Отчество)
         const fullName = [lastName, firstName, middleName]
           .filter(Boolean)
           .join(" ") || null;
 
+        // Обновляем только существующие колонки в базе данных
+        // Согласно схеме, в profiles есть только: id, created_at, updated_at, email, full_name
         const profilePayload: {
           id: string;
           email: string | null;
-          first_name: string | null;
-          last_name: string | null;
-          middle_name: string | null;
           full_name: string | null;
-          birth_date: string | null;
-          role: string;
-          email_verified: boolean;
           updated_at: string;
         } = {
           id: user.id,
           email: user.email ?? null,
-          first_name: firstName,
-          last_name: lastName,
-          middle_name: middleName,
           full_name: fullName,
-          birth_date: birthDate,
-          role: role,
-          email_verified: true,
           updated_at: new Date().toISOString(),
         };
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { mapProfileToDb } from "@/lib/types/profile";
 
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
@@ -53,89 +52,41 @@ export async function POST(request: NextRequest) {
     // Формируем короткое имя (только имя)
     const shortName = firstName.trim() || null;
 
-    // Получаем текущий профиль, чтобы сохранить роль и бизнес_id, если они есть
-    const { data: existingProfile, error: profileFetchError } = await supabase
+    // Обновляем профиль в таблице profiles
+    // Используем английские названия колонок, которые есть в базе данных
+    const profileUpdate: Record<string, any> = {
+      email: email.trim(),
+      full_name: fullName,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Обновляем профиль в таблице profiles
+    const { error: profileError, data: updatedProfile } = await supabase
       .from("profiles")
-      .select("роль, бизнес_id")
+      .update(profileUpdate)
       .eq("id", user.id)
-      .single() as { data: { роль?: string; бизнес_id?: string } | null; error: any };
+      .select();
 
-    // Если профиль не найден, создаем его с базовыми данными
-    if (profileFetchError && profileFetchError.code === 'PGRST116') {
-      // Профиль не существует, создаем новый
-      const businessId = `biz-${Date.now()}`;
-      const companyCode = (() => {
-        const part = () => Math.floor(1000 + Math.random() * 9000);
-        return `${part()}-${part()}-${part()}-${part()}`;
-      })();
-
-      const profileData = mapProfileToDb({
-        id: user.id,
-        email: email.trim(),
-        fullName: fullName,
-        shortName: shortName,
-        role: "директор",
-        businessId: businessId,
-        companyCode: companyCode,
-        phone: phone.trim(),
-        active: true,
+    if (profileError) {
+      console.error("Failed to update profile", {
+        error: profileError,
+        message: profileError.message,
+        details: profileError.details,
+        hint: profileError.hint,
+        code: profileError.code,
+        profileUpdate,
+        userId: user.id,
       });
-
-      const { error: insertError } = await supabase
-        .from("profiles")
-        .insert(profileData);
-
-      if (insertError) {
-        console.error("Failed to create profile", insertError);
-        return NextResponse.json(
-          { error: "Failed to create profile" },
-          { status: 500 }
-        );
-      }
-    } else {
-      // Профиль существует, обновляем его
-      // Подготавливаем данные для обновления профиля с русскими названиями полей
-      const existingRole = (existingProfile as any)?.роль;
-      const existingBusinessId = (existingProfile as any)?.бизнес_id;
-      
-      const profileUpdate = mapProfileToDb({
-        fullName: fullName,
-        shortName: shortName,
-        email: email.trim(),
-        phone: phone.trim(),
-        // Сохраняем существующие роль и бизнес_id, если они есть
-        role: existingRole || "директор",
-        businessId: existingBusinessId || null,
-      });
-
-      // Обновляем профиль в таблице profiles
-      const { error: profileError, data: updatedProfile } = await supabase
-        .from("profiles")
-        .update(profileUpdate)
-        .eq("id", user.id)
-        .select();
-
-      if (profileError) {
-        console.error("Failed to update profile", {
-          error: profileError,
-          message: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint,
-          code: profileError.code,
-          profileUpdate,
-          userId: user.id,
-        });
-        return NextResponse.json(
-          { 
-            error: "Failed to update profile",
-            details: profileError.message || "Unknown error"
-          },
-          { status: 500 }
-        );
-      }
-
-      console.log("Profile updated successfully", { updatedProfile });
+      return NextResponse.json(
+        { 
+          error: "Failed to update profile",
+          details: profileError.message || "Unknown error"
+        },
+        { status: 500 }
+      );
     }
+
+    console.log("Profile updated successfully", { updatedProfile });
 
     // Опционально: обновляем телефон в user_metadata
     try {
