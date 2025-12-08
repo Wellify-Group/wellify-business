@@ -661,7 +661,7 @@ export default function RegisterDirectorClient() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={emailStatus === "sending" || emailStatus === "checking" || !isEmailValid}
+                disabled={emailStatus === "checking" || !isEmailValid}
                 onClick={handleResendEmail}
               >
                 Отправить ещё раз
@@ -702,10 +702,10 @@ export default function RegisterDirectorClient() {
             <Button
               type="button"
               className="w-full md:w-auto"
-              disabled={!form.email.trim() || emailStatus === "sending" || !isEmailValid}
+              disabled={!form.email.trim() || !isEmailValid}
               onClick={handleSendEmailVerification}
             >
-              {emailStatus === "sending" ? "Отправляем..." : "Отправить письмо"}
+              Отправить письмо
             </Button>
           )}
 
