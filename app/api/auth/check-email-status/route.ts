@@ -49,11 +49,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем email_confirmed_at из auth.users (это основной источник истины)
-    const emailVerified = !!user.email_confirmed_at;
+    // Важно: проверяем не только наличие, но и что это не null/undefined
+    const emailVerified = !!user.email_confirmed_at && user.email_confirmed_at !== null;
+
+    // Дополнительная проверка: убеждаемся, что email_confirmed_at - это валидная дата
+    let isValidConfirmation = false;
+    if (user.email_confirmed_at) {
+      try {
+        const confirmedDate = new Date(user.email_confirmed_at);
+        isValidConfirmation = !isNaN(confirmedDate.getTime()) && confirmedDate.getTime() > 0;
+      } catch (e) {
+        isValidConfirmation = false;
+      }
+    }
+
+    const finalEmailVerified = emailVerified && isValidConfirmation;
 
     return NextResponse.json({
       success: true,
-      emailVerified: emailVerified,
+      emailVerified: finalEmailVerified,
       userId: user.id,
       emailConfirmedAt: user.email_confirmed_at,
     });

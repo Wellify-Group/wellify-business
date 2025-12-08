@@ -86,6 +86,11 @@ export default function RegisterDirectorClient() {
 
   // Проверка подтверждения email на шаге 2
   useEffect(() => {
+    // Проверяем только если:
+    // 1. Есть supabase клиент
+    // 2. Мы на шаге 2 (email)
+    // 3. Письмо было отправлено (emailSent === true)
+    // 4. Email еще не подтвержден (emailVerified === false)
     if (!supabase || step !== 2 || !emailSent || emailVerified) {
       console.log("[register] useEffect skipped:", {
         hasSupabase: !!supabase,
@@ -97,6 +102,7 @@ export default function RegisterDirectorClient() {
     }
 
     let cancelled = false;
+    let checkStarted = false;
 
     // Подписка на изменения состояния аутентификации
     const {
@@ -358,9 +364,19 @@ export default function RegisterDirectorClient() {
       checkEmailStatus();
     };
 
-    // Проверяем сразу при монтировании
+    // Проверяем localStorage сразу (может быть флаг из другой вкладки)
     checkLocalStorage();
-    checkEmailStatus();
+    
+    // НЕ проверяем email статус сразу после отправки письма
+    // Даем время на отправку письма - начинаем проверку через 10 секунд
+    const startCheckDelay = setTimeout(() => {
+      checkStarted = true;
+      console.log("[register] Starting email status checks after delay");
+      // Первая проверка после задержки
+      if (!cancelled && !emailVerified) {
+        checkEmailStatus();
+      }
+    }, 10000); // 10 секунд задержка перед началом проверок
 
     // Слушаем события
     window.addEventListener("storage", handleStorage);
@@ -368,7 +384,7 @@ export default function RegisterDirectorClient() {
 
     // Проверяем при возврате фокуса на вкладку
     const handleFocus = () => {
-      if (!cancelled && !emailVerified) {
+      if (!cancelled && !emailVerified && checkStarted) {
         console.log("[register] Window focused, checking email status...");
         checkLocalStorage();
         checkEmailStatus();
@@ -376,18 +392,21 @@ export default function RegisterDirectorClient() {
     };
     window.addEventListener("focus", handleFocus);
 
-    // Поллинг каждые 2 секунды для более быстрого обнаружения подтверждения
+    // Поллинг каждые 5 секунд (не слишком часто, чтобы не создавать ложных срабатываний)
+    // Начинаем проверку только после задержки
     const intervalId = setInterval(() => {
-      if (!cancelled && !emailVerified) {
+      if (!cancelled && !emailVerified && checkStarted) {
         checkEmailStatus();
-      } else {
+      } else if (emailVerified) {
         clearInterval(intervalId);
+        clearTimeout(startCheckDelay);
       }
-    }, 2000);
+    }, 5000);
 
     return () => {
       cancelled = true;
       clearInterval(intervalId);
+      clearTimeout(startCheckDelay);
       subscription.unsubscribe();
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("emailConfirmed", handleCustom as EventListener);
