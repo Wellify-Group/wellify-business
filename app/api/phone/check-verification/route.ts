@@ -1,44 +1,55 @@
-import { NextRequest, NextResponse } from "next/server";
 import twilio from "twilio";
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-const apiKey = process.env.TWILIO_API_KEY!;
-const apiSecret = process.env.TWILIO_API_SECRET!;
-const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID!;
+const client = twilio(
+  process.env.TWILIO_ACCOUNT_SID!,
+  process.env.TWILIO_AUTH_TOKEN!
+);
 
-const client = twilio(apiKey, apiSecret, { accountSid });
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { phone, code } = body;
+    const { phone, code } = await req.json();
 
-    // Проверка наличия phone и code
+    // Простейшая проверка входных данных
     if (!phone || !code) {
-      return NextResponse.json(
-        { error: "Phone and code are required" },
+      return Response.json(
+        { error: "phone and code are required" },
         { status: 400 }
       );
     }
 
-    // Проверка кода через Twilio Verify
-    const result = await client.verify.v2
-      .services(verifyServiceSid)
+    // Проверяем код через Twilio Verify
+    const check = await client.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID!)
       .verificationChecks.create({
         to: phone,
-        code,
+        code: code,
       });
 
-    // Возвращаем результат проверки
-    if (result.status === "approved") {
-      return NextResponse.json({ valid: true });
+    // Twilio вернул статус проверки
+    console.log("Twilio verification check:", check.status);
+
+    if (check.status === "approved") {
+      // Код правильный
+      return Response.json({ success: true });
     }
 
-    return NextResponse.json({ valid: false });
-  } catch (err) {
-    console.error("Twilio check error", err);
-    return NextResponse.json(
-      { error: "Failed to check verification code" },
+    // Код неправильный / истёк / слишком много попыток и т.п.
+    return Response.json(
+      {
+        success: false,
+        status: check.status,
+        error: "Verification code is not approved",
+      },
+      { status: 400 }
+    );
+  } catch (error: any) {
+    console.error("Twilio check error:", error);
+
+    return Response.json(
+      {
+        error: "Twilio verification failed",
+        message: error?.message ?? "Unknown error",
+      },
       { status: 500 }
     );
   }

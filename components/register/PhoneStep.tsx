@@ -1,31 +1,39 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
-const phoneSchema = z
-  .string()
-  .min(8, "Введите номер телефона")
-  // Формат E.164: + и от 8 до 15 цифр, первая цифра не 0
-  .regex(/^\+[1-9]\d{7,14}$/, "Номер должен быть в формате +XXXXXXXX");
+// Типы для ответов API
+interface SendVerificationResponse {
+  success?: boolean;
+  sid?: string;
+  error?: string;
+  message?: string;
+  code?: number | null;
+}
+
+interface CheckVerificationResponse {
+  success?: boolean;
+  status?: string;
+  error?: string;
+  message?: string;
+}
 
 type PhoneStepProps = {
   // текущий номер (если пользователь вернулся на шаг)
   initialPhone?: string | null;
-  // текущая локаль интерфейса ("ru" | "uk" | "en" | ...)
-  locale: string;
   // коллбэк, который вызываем при успешной верификации
   onPhoneVerified: (phone: string) => void;
 };
 
-export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepProps) {
+export function PhoneStep({ initialPhone, onPhoneVerified }: PhoneStepProps) {
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"enter-phone" | "enter-code">("enter-phone");
-  const [isSending, setIsSending] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -36,46 +44,86 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
     }
   }, [initialPhone]);
 
+  // Валидация телефона: начинается с +, только цифры после +, длина 8-15 символов
+  function validatePhone(phoneValue: string): string | null {
+    const trimmed = phoneValue.trim();
+    
+    if (!trimmed) {
+      return "Введите номер телефона";
+    }
+
+    if (!trimmed.startsWith("+")) {
+      return "Номер должен начинаться с + (международный формат)";
+    }
+
+    // Проверяем, что после + только цифры
+    const digitsOnly = trimmed.slice(1);
+    if (!/^\d+$/.test(digitsOnly)) {
+      return "Номер может содержать только + и цифры";
+    }
+
+    // Проверяем длину (минимум 8 символов после +, максимум 15)
+    if (digitsOnly.length < 8 || digitsOnly.length > 15) {
+      return "Номер должен содержать от 8 до 15 цифр после +";
+    }
+
+    return null;
+  }
+
+  // Валидация кода: только цифры, длина 4-8 символов
+  function validateCode(codeValue: string): string | null {
+    const trimmed = codeValue.trim();
+
+    if (!trimmed) {
+      return "Введите код из SMS";
+    }
+
+    if (!/^\d+$/.test(trimmed)) {
+      return "Код должен содержать только цифры";
+    }
+
+    if (trimmed.length < 4 || trimmed.length > 8) {
+      return "Код должен содержать от 4 до 8 цифр";
+    }
+
+    return null;
+  }
+
   async function handleSendCode() {
     setError(null);
     setSuccess(null);
 
-    let parsedPhone: string;
-    try {
-      parsedPhone = phoneSchema.parse(phone.trim());
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        const firstIssue = err.issues[0];
-        setError(firstIssue?.message ?? "Неверный номер телефона");
-      } else {
-        setError("Неверный номер телефона");
-      }
+    // Валидация телефона
+    const phoneError = validatePhone(phone);
+    if (phoneError) {
+      setError(phoneError);
       return;
     }
 
-    setIsSending(true);
+    const trimmedPhone = phone.trim();
+    setIsSendingCode(true);
+
     try {
       const res = await fetch("/api/phone/send-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: parsedPhone,
-          locale,
-        }),
+        body: JSON.stringify({ phone: trimmedPhone }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? "Не удалось отправить код. Повторите попытку.");
-        return;
-      }
+      const data: SendVerificationResponse = await res.json().catch(() => ({}));
 
-      setSuccess("Код отправлен. Введите его из SMS.");
-      setStep("enter-code");
+      if (res.ok && data.success) {
+        setSuccess("Код отправлен на ваш номер.");
+        setStep("enter-code");
+      } else {
+        // Обработка ошибок
+        const errorMessage = data.error || data.message || "Не удалось отправить код. Повторите попытку.";
+        setError(errorMessage);
+      }
     } catch (e) {
       setError("Ошибка сети. Попробуйте ещё раз.");
     } finally {
-      setIsSending(false);
+      setIsSendingCode(false);
     }
   }
 
@@ -83,39 +131,54 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
     setError(null);
     setSuccess(null);
 
-    if (!code.trim()) {
-      setError("Введите код из SMS");
+    // Валидация телефона и кода
+    const phoneError = validatePhone(phone);
+    if (phoneError) {
+      setError(phoneError);
       return;
     }
 
-    setIsVerifying(true);
+    const codeError = validateCode(code);
+    if (codeError) {
+      setError(codeError);
+      return;
+    }
+
+    const trimmedPhone = phone.trim();
+    const trimmedCode = code.trim();
+
+    setIsVerifyingCode(true);
+
     try {
       const res = await fetch("/api/phone/check-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: phone.trim(),
-          code: code.trim(),
-        }),
+        body: JSON.stringify({ phone: trimmedPhone, code: trimmedCode }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? "Не удалось проверить код. Попробуйте ещё раз.");
-        return;
-      }
+      const data: CheckVerificationResponse = await res.json().catch(() => ({}));
 
-      const data = await res.json();
-      if (data.valid) {
+      if (res.ok && data.success === true) {
+        // Телефон успешно верифицирован
         setSuccess("Телефон успешно подтверждён.");
-        onPhoneVerified(phone.trim());
+        setIsPhoneVerified(true);
+        onPhoneVerified(trimmedPhone);
+      } else if (res.status === 400) {
+        // Код неверный или истёк
+        const errorMessage = data.error || data.message || "Код неверный или истёк. Попробуйте ещё раз.";
+        setError(errorMessage);
+      } else if (res.status === 500) {
+        // Серверная ошибка
+        setError("Сервис верификации временно недоступен. Попробуйте позже.");
       } else {
-        setError("Неверный код. Попробуйте ещё раз.");
+        // Другие ошибки
+        const errorMessage = data.error || data.message || "Не удалось проверить код. Попробуйте ещё раз.";
+        setError(errorMessage);
       }
     } catch (e) {
       setError("Ошибка сети. Попробуйте ещё раз.");
     } finally {
-      setIsVerifying(false);
+      setIsVerifyingCode(false);
     }
   }
 
@@ -130,8 +193,8 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
           placeholder="+380671234567"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          disabled={step === "enter-code" || isSending || isVerifying}
-          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+          disabled={step === "enter-code" || isSendingCode || isVerifyingCode || isPhoneVerified}
+          className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card disabled:opacity-60 disabled:cursor-not-allowed"
         />
         <p className="text-xs text-muted-foreground">
           Укажите номер в формате E.164: +{`{код_страны}`}{`{номер}`}. Любая страна поддерживается.
@@ -143,11 +206,16 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
           <label className="mb-1.5 block text-sm font-medium">Код из SMS</label>
           <input
             type="text"
+            inputMode="numeric"
             placeholder="123456"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            disabled={isVerifying}
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            onChange={(e) => {
+              // Разрешаем только цифры
+              const value = e.target.value.replace(/\D/g, "");
+              setCode(value);
+            }}
+            disabled={isVerifyingCode || isPhoneVerified}
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card disabled:opacity-60 disabled:cursor-not-allowed"
           />
         </div>
       )}
@@ -171,14 +239,14 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
           <Button
             type="button"
             onClick={handleSendCode}
-            disabled={isSending}
+            disabled={isSendingCode || isPhoneVerified}
             className="w-full"
           >
-            {isSending ? "Отправка..." : "Отправить код"}
+            {isSendingCode ? "Отправляем..." : "Отправить код"}
           </Button>
         )}
 
-        {step === "enter-code" && (
+        {step === "enter-code" && !isPhoneVerified && (
           <>
             <Button
               type="button"
@@ -189,7 +257,7 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
                 setSuccess(null);
                 setError(null);
               }}
-              disabled={isVerifying}
+              disabled={isVerifyingCode}
               className="w-1/3"
             >
               Изменить номер
@@ -197,15 +265,21 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
             <Button
               type="button"
               onClick={handleVerifyCode}
-              disabled={isVerifying}
+              disabled={isVerifyingCode}
               className="w-2/3"
             >
-              {isVerifying ? "Проверка..." : "Подтвердить телефон"}
+              {isVerifyingCode ? "Проверка..." : "Подтвердить телефон"}
             </Button>
           </>
+        )}
+
+        {isPhoneVerified && (
+          <div className="w-full flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            <span>Телефон подтверждён</span>
+          </div>
         )}
       </div>
     </div>
   );
 }
-
