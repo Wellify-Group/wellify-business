@@ -18,6 +18,8 @@ import { useLanguage } from "@/components/language-provider";
 
 type Step = 1 | 2 | 3;
 
+type EmailStatus = "idle" | "sending" | "link_sent" | "checking" | "verified" | "error";
+
 interface BaseData {
   firstName: string;
   lastName: string;
@@ -57,12 +59,21 @@ export default function RegisterDirectorClient() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  // Машина состояний для e-mail шага
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
   const [emailError, setEmailError] = useState<string | null>(null);
+  
+  // Обратная совместимость (для других частей кода)
+  const emailVerified = emailStatus === "verified";
+  const emailSent = emailStatus === "link_sent" || emailStatus === "checking" || emailStatus === "verified";
+  const isSendingEmail = emailStatus === "sending";
+
   const [showPassword, setShowPassword] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  
+  // Состояние для завершения регистрации
+  const [finishLoading, setFinishLoading] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
 
   // Supabase клиент
   const supabase = useMemo<SupabaseClient | null>(() => {
@@ -72,6 +83,17 @@ export default function RegisterDirectorClient() {
       console.error("Failed to create Supabase client:", error);
       return null;
     }
+  }, []);
+
+  // Очистка старых флагов при первом заходе на регистрацию
+  useEffect(() => {
+    // Новая регистрация – чистим хвосты
+    localStorage.removeItem("register_email");
+    localStorage.removeItem("wellify_email_confirmed");
+    
+    // Сбрасываем в начальное состояние
+    setEmailStatus("idle");
+    setEmailError(null);
   }, []);
 
   // Сброс ошибок при смене шага
@@ -84,61 +106,26 @@ export default function RegisterDirectorClient() {
     }
   }, [step]);
 
-  // Проверка подтверждения email на шаге 2
+  // Периодическая проверка подтверждения email только после отправки ссылки
   useEffect(() => {
-    // Проверяем только если:
-    // 1. Есть supabase клиент
-    // 2. Мы на шаге 2 (email)
-    // 3. Письмо было отправлено (emailSent === true)
-    // 4. Email еще не подтвержден (emailVerified === false)
-    if (!supabase || step !== 2 || !emailSent || emailVerified) {
-      console.log("[register] useEffect skipped:", {
-        hasSupabase: !!supabase,
-        step,
-        emailSent,
-        emailVerified,
-      });
+    if (emailStatus !== "link_sent" || !supabase || step !== 2) {
       return;
     }
 
     let cancelled = false;
-    let checkStarted = false;
 
-    // Подписка на изменения состояния аутентификации
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (cancelled || emailVerified) return;
-
-      console.log("[register] Auth state changed:", {
-        event,
-        hasSession: !!session,
-        userId: session?.user?.id,
-        emailConfirmed: !!session?.user?.email_confirmed_at,
-      });
-
-      if (session?.user?.email_confirmed_at && !emailVerified) {
-        console.log("[register] ✅ Email confirmed via auth state change!");
-        setEmailVerified(true);
-        cancelled = true;
-      }
-    });
-
-    const checkEmailStatus = async () => {
-      if (cancelled || emailVerified) {
-        console.log("[register] checkEmailStatus skipped (cancelled or verified)");
-        return;
-      }
+    async function checkEmailVerified() {
+      if (cancelled) return;
 
       try {
-        console.log("[register] Checking email status...");
-        
-        // Сначала проверяем сессию (это обновит cookies если они изменились)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error("[register] Error getting session:", sessionError);
-          // Если ошибка сессии, пробуем проверить через API
+        setEmailStatus("checking");
+
+        // Сначала пробуем через getUser (если есть сессия)
+        const { data, error } = await supabase.auth.getUser();
+
+        if (error) {
+          console.log("[register] getUser error", error);
+          // если 401/нет сессии – проверяем через API route
           try {
             const response = await fetch("/api/auth/check-email-status", {
               method: "POST",
@@ -149,270 +136,46 @@ export default function RegisterDirectorClient() {
             const data = await response.json();
 
             if (data.success && data.emailVerified) {
-              console.log("[register] ✅ Email confirmed via API route (session error)!");
-              setEmailVerified(true);
+              console.log("[register] ✅ Email confirmed via API route!");
+              setEmailStatus("verified");
+              setEmailError(null);
               cancelled = true;
               return;
             }
           } catch (apiError) {
             console.warn("[register] API check failed:", apiError);
           }
-        } else {
-          console.log("[register] Session:", {
-            hasSession: !!session,
-            userId: session?.user?.id,
-            emailConfirmed: !!session?.user?.email_confirmed_at,
-          });
-
-          // Если сессия есть и email подтвержден, обновляем состояние
-          if (session?.user?.email_confirmed_at && !emailVerified) {
-            console.log("[register] ✅ Email confirmed via session!");
-            setEmailVerified(true);
-            cancelled = true;
-            return;
-          }
-        }
-
-        // Затем получаем пользователя (это также может обновить сессию)
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError) {
-          // Если ошибка "Auth session missing", используем альтернативный способ проверки
-          if (
-            userError.message?.includes("Auth session missing") ||
-            userError.message?.includes("session")
-          ) {
-            console.log(
-              "[register] No session available, checking via API route...",
-            );
-
-            // Проверяем через API route по email
-            try {
-              const response = await fetch("/api/auth/check-email-status", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: form.email.trim() }),
-              });
-
-              const data = await response.json();
-
-              if (data.success && data.emailVerified) {
-                console.log(
-                  "[register] ✅ Email confirmed via API route!",
-                  data,
-                );
-                setEmailVerified(true);
-                cancelled = true;
-                return;
-              } else {
-                console.log(
-                  "[register] Email not verified yet (checked via API):",
-                  data,
-                );
-              }
-            } catch (apiError) {
-              console.error(
-                "[register] Error checking via API route:",
-                apiError,
-              );
-            }
-          } else {
-            console.error("[register] Error getting user:", userError);
-          }
+          
+          // если 401/нет сессии – значит пользователь ещё не кликал по письму
+          setEmailStatus("link_sent");
           return;
         }
 
-        if (!user) {
-          console.log("[register] No user found");
-          return;
-        }
+        const user = data?.user;
 
-        console.log("[register] User data:", {
-          id: user.id,
-          email: user.email,
-          email_confirmed_at: user.email_confirmed_at,
-          hasMetadata: !!user.user_metadata,
-        });
-
-        if (user.email_confirmed_at) {
-          console.log(
-            "[register] ✅ Email confirmed! email_confirmed_at:",
-            user.email_confirmed_at,
-          );
-          setEmailVerified(true);
+        if (user && user.email_confirmed_at) {
+          console.log("[register] ✅ Email confirmed! email_confirmed_at:", user.email_confirmed_at);
+          setEmailStatus("verified");
+          setEmailError(null);
           cancelled = true;
-          return;
         } else {
-          console.log("[register] Email not confirmed yet");
-        }
-      } catch (error) {
-        console.error("[register] Error checking email status:", error);
-      }
-    };
-
-    const checkLocalStorage = async () => {
-      try {
-        const isConfirmed =
-          window.localStorage.getItem("wellify_email_confirmed") === "true";
-        console.log("[register] localStorage check:", {
-          isConfirmed,
-          emailVerified,
-        });
-        if (isConfirmed && !emailVerified) {
-          console.log(
-            "[register] ✅ Found localStorage flag, checking with Supabase...",
-          );
-          
-          // Сначала пробуем через API route (работает без сессии)
-          try {
-            const response = await fetch("/api/auth/check-email-status", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: form.email.trim() }),
-            });
-
-            const data = await response.json();
-
-            if (data.success && data.emailVerified) {
-              console.log(
-                "[register] ✅ Email confirmed via API route (from localStorage)!",
-                data,
-              );
-              setEmailVerified(true);
-              cancelled = true;
-              return;
-            }
-          } catch (apiError) {
-            console.warn("[register] API check failed, trying direct check:", apiError);
-          }
-          
-          // Если API не сработал, пробуем обычную проверку
-          checkEmailStatus();
+          setEmailStatus("link_sent");
         }
       } catch (e) {
-        console.warn("[register] Cannot read localStorage:", e);
+        console.error("[register] checkEmailVerified error", e);
+        setEmailStatus("link_sent");
       }
-    };
+    }
 
-    const handleStorage = async (event: StorageEvent) => {
-      if (
-        event.key === "wellify_email_confirmed" &&
-        event.newValue === "true"
-      ) {
-        console.log(
-          "[register] Storage event received, checking email status...",
-        );
-        
-        // Проверяем через API route (работает без сессии)
-        try {
-          const response = await fetch("/api/auth/check-email-status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: form.email.trim() }),
-          });
-
-          const data = await response.json();
-
-          if (data.success && data.emailVerified) {
-            console.log(
-              "[register] ✅ Email confirmed via API route (from storage event)!",
-              data,
-            );
-            setEmailVerified(true);
-            cancelled = true;
-            return;
-          }
-        } catch (apiError) {
-          console.warn("[register] API check failed, trying direct check:", apiError);
-        }
-        
-        checkEmailStatus();
-      }
-    };
-
-    const handleCustom = async () => {
-      console.log(
-        "[register] Custom event 'emailConfirmed' received, checking email status...",
-      );
-      
-      // Проверяем через API route (работает без сессии)
-      try {
-        const response = await fetch("/api/auth/check-email-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email.trim() }),
-        });
-
-        const data = await response.json();
-
-        if (data.success && data.emailVerified) {
-          console.log(
-            "[register] ✅ Email confirmed via API route (from custom event)!",
-            data,
-          );
-          setEmailVerified(true);
-          cancelled = true;
-          return;
-        }
-      } catch (apiError) {
-        console.warn("[register] API check failed, trying direct check:", apiError);
-      }
-      
-      checkEmailStatus();
-    };
-
-    // Проверяем localStorage сразу (может быть флаг из другой вкладки)
-    checkLocalStorage();
-    
-    // НЕ проверяем email статус сразу после отправки письма
-    // Даем время на отправку письма - начинаем проверку через 10 секунд
-    const startCheckDelay = setTimeout(() => {
-      checkStarted = true;
-      console.log("[register] Starting email status checks after delay");
-      // Первая проверка после задержки
-      if (!cancelled && !emailVerified) {
-        checkEmailStatus();
-      }
-    }, 10000); // 10 секунд задержка перед началом проверок
-
-    // Слушаем события
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("emailConfirmed", handleCustom as EventListener);
-
-    // Проверяем при возврате фокуса на вкладку
-    const handleFocus = () => {
-      if (!cancelled && !emailVerified && checkStarted) {
-        console.log("[register] Window focused, checking email status...");
-        checkLocalStorage();
-        checkEmailStatus();
-      }
-    };
-    window.addEventListener("focus", handleFocus);
-
-    // Поллинг каждые 5 секунд (не слишком часто, чтобы не создавать ложных срабатываний)
-    // Начинаем проверку только после задержки
-    const intervalId = setInterval(() => {
-      if (!cancelled && !emailVerified && checkStarted) {
-        checkEmailStatus();
-      } else if (emailVerified) {
-        clearInterval(intervalId);
-        clearTimeout(startCheckDelay);
-      }
-    }, 5000);
+    // Проверяем каждые 10-15 секунд
+    checkEmailVerified();
+    const interval = setInterval(checkEmailVerified, 15000);
 
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
-      clearTimeout(startCheckDelay);
-      subscription.unsubscribe();
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("emailConfirmed", handleCustom as EventListener);
-      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
     };
-  }, [supabase, step, emailSent, emailVerified]);
+  }, [emailStatus, supabase, step, form.email]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -479,8 +242,9 @@ export default function RegisterDirectorClient() {
       return;
     }
 
-    setIsSendingEmail(true);
+    // Перед запросом
     setEmailError(null);
+    setEmailStatus("sending");
     setFormError(null);
 
     const redirectTo = `${
@@ -508,6 +272,7 @@ export default function RegisterDirectorClient() {
           error.message?.includes("already registered") ||
           error.message?.includes("already exists")
         ) {
+          // Пользователь уже существует, отправляем повторное письмо
           const { error: resendError } = await supabase.auth.resend({
             type: "signup",
             email: form.email.trim(),
@@ -517,156 +282,174 @@ export default function RegisterDirectorClient() {
           });
 
           if (resendError) {
-            setEmailError(
-              resendError.message || "Не удалось отправить письмо",
-            );
-            setIsSendingEmail(false);
+            setEmailStatus("error");
+            setEmailError(resendError.message || "Не удалось отправить письмо");
             return;
           }
 
-          setEmailSent(true);
-          setEmailVerified(false);
-          setIsSendingEmail(false);
+          // Успешно отправили повторное письмо
+          setEmailStatus("link_sent");
+          localStorage.setItem("register_email", form.email.trim());
           return;
         }
 
+        // Другая ошибка
+        setEmailStatus("error");
         setEmailError(error.message || "Не удалось отправить письмо");
-        setIsSendingEmail(false);
         return;
       }
 
-      console.log("signUp result:", data);
-      setEmailSent(true);
-      setEmailVerified(false);
+      // Успешно отправили письмо
+      if (data.user) {
+        setEmailStatus("link_sent");
+        localStorage.setItem("register_email", form.email.trim());
+      }
     } catch (err: any) {
       console.error("Unexpected error sending email:", err);
+      setEmailStatus("error");
       setEmailError(err.message || "Произошла ошибка. Попробуйте еще раз.");
-    } finally {
-      setIsSendingEmail(false);
     }
   };
 
-  const handleChangeEmail = () => {
-    setEmailSent(false);
-    setEmailVerified(false);
+  const handleResendEmail = async () => {
+    if (!form.email.trim() || !supabase) {
+      setEmailError("Ошибка. Обновите страницу.");
+      return;
+    }
+
     setEmailError(null);
-    setFormError(null);
-  };
+    setEmailStatus("sending");
 
-  const handleCompleteRegistration = async () => {
-    if (!phoneVerified) {
-      setFormError("Сначала подтвердите телефон");
-      return;
-    }
-
-    if (!supabase) {
-      setFormError("Ошибка инициализации. Обновите страницу.");
-      return;
-    }
-
-    setIsLoading(true);
-    setFormError(null);
+    const redirectTo = `${
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
+    }/auth/email-confirmed`;
 
     try {
-      // Сначала завершаем регистрацию (обновляем профиль)
-      const res = await fetch("/api/director/complete-registration", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: baseData.firstName,
-          lastName: baseData.lastName,
-          middleName: baseData.middleName,
-          birthDate: baseData.birthDate,
-          email: form.email,
-          phone: form.phone,
-        }),
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          // Пользователь не авторизован - выполняем вход
-          console.log("[register] User not authenticated, signing in...");
-          
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: form.email.trim(),
-            password: baseData.password,
-          });
-
-          if (signInError || !signInData.user) {
-            setFormError(
-              "Пользователь не авторизован. Пожалуйста, выполните вход ещё раз."
-            );
-            setIsLoading(false);
-            return;
-          }
-
-          // После успешного входа повторяем запрос на завершение регистрации
-          const retryRes = await fetch("/api/director/complete-registration", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              firstName: baseData.firstName,
-              lastName: baseData.lastName,
-              middleName: baseData.middleName,
-              birthDate: baseData.birthDate,
-              email: form.email,
-              phone: form.phone,
-            }),
-          });
-
-          const retryData = await retryRes.json().catch(() => null);
-
-          if (!retryRes.ok) {
-            throw new Error(retryData?.error || "Не удалось завершить регистрацию");
-          }
-
-          // Успех: ведём директора в его дашборд
-          router.push("/dashboard/director");
-          return;
-        }
-
-        throw new Error(data?.error || "Не удалось завершить регистрацию");
-      }
-
-      // Успех: после завершения регистрации выполняем вход для установки сессии
-      console.log("[register] Registration completed, signing in...");
-      
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
         email: form.email.trim(),
-        password: baseData.password,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
       });
 
-      if (signInError) {
-        console.error("[register] Sign in error:", signInError);
-        setFormError(
-          "Регистрация завершена, но не удалось войти. Пожалуйста, войдите вручную."
-        );
-        setIsLoading(false);
+      if (resendError) {
+        setEmailStatus("error");
+        setEmailError(resendError.message || "Не удалось отправить письмо");
         return;
       }
 
-      if (!signInData.user) {
-        setFormError(
-          "Регистрация завершена, но не удалось войти. Пожалуйста, войдите вручную."
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // Успех: ведём директора в его дашборд
-      // Данные профиля загрузятся автоматически через syncWithServer в dashboard layout
-      router.push("/dashboard/director");
+      setEmailStatus("link_sent");
+      localStorage.setItem("register_email", form.email.trim());
     } catch (err) {
-      console.error("[register] Error in handleCompleteRegistration:", err);
-      setFormError(
-        err instanceof Error ? err.message : "Неизвестная ошибка регистрации"
-      );
-    } finally {
-      setIsLoading(false);
+      console.error("Error resending email:", err);
+      setEmailStatus("error");
+      setEmailError("Не удалось отправить письмо. Попробуйте ещё раз.");
     }
   };
+
+  const handleChangeEmail = async () => {
+    // Очищаем состояние
+    setEmailStatus("idle");
+    setEmailError(null);
+    setFormError(null);
+    localStorage.removeItem("register_email");
+    localStorage.removeItem("wellify_email_confirmed");
+    
+    // Выходим из сессии, если она есть
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.warn("Error signing out:", err);
+      }
+    }
+  };
+
+  const finishRegistration = async () => {
+    try {
+      setFinishLoading(true);
+      setFinishError(null);
+
+      // 1. Проверяем, что e-mail и телефон подтверждены
+      if (emailStatus !== "verified") {
+        setFinishError("E-mail ещё не подтверждён. Перейдите по ссылке из письма.");
+        return;
+      }
+
+      if (!phoneVerified) {
+        setFinishError("Телефон ещё не подтверждён.");
+        return;
+      }
+
+      if (!supabase) {
+        setFinishError("Ошибка инициализации. Обновите страницу.");
+        return;
+      }
+
+      // 2. Проверяем сессию Supabase
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("No authenticated user", userError);
+        setFinishError("Пользователь не авторизован. Пожалуйста, зайдите по ссылке из письма и попробуйте ещё раз.");
+        return;
+      }
+
+      // 3. Формируем полное имя (Фамилия Имя Отчество)
+      const fullName = [
+        baseData.lastName.trim(),
+        baseData.firstName.trim(),
+        baseData.middleName?.trim(),
+      ]
+        .filter(Boolean)
+        .join(" ") || null;
+
+      // 4. Обновляем профиль директора в таблице profiles
+      // Используем английские названия колонок, которые есть в базе данных
+      const profilePayload = {
+        email: form.email.trim(),
+        full_name: fullName,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert(
+          { id: user.id, ...profilePayload },
+          { onConflict: "id" }
+        );
+
+      if (upsertError) {
+        console.error("upsert profile error", upsertError);
+        setFinishError("Не удалось сохранить профиль. Попробуйте ещё раз.");
+        return;
+      }
+
+      // 5. Опционально: обновляем телефон в user_metadata
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            phone: form.phone.trim(),
+          },
+        });
+      } catch (metadataError) {
+        console.warn("Failed to update user metadata:", metadataError);
+        // Не критично, если не удалось обновить metadata
+      }
+
+      // 6. Редирект на дашборд директора
+      router.push("/dashboard/director");
+    } catch (e: any) {
+      console.error("finishRegistration error", e);
+      setFinishError(e?.message ?? "Неизвестная ошибка при завершении регистрации");
+    } finally {
+      setFinishLoading(false);
+    }
+  };
+
+  // Оставляем старые функции для обратной совместимости
+  const handleCompleteRegistration = finishRegistration;
 
   // Оставляем handleFinish для обратной совместимости
   const handleFinish = handleCompleteRegistration;
@@ -843,8 +626,8 @@ export default function RegisterDirectorClient() {
     const isEmailValid =
       form.email.trim() && emailRegex.test(form.email.trim());
 
-    const canGoNextFromEmailStep =
-      emailVerified && !isLoading && !isSendingEmail;
+    // Поле ввода e-mail активно только если idle или error
+    const isEmailInputDisabled = emailStatus !== "idle" && emailStatus !== "error";
 
     return (
       <div className="space-y-4">
@@ -858,27 +641,38 @@ export default function RegisterDirectorClient() {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, email: e.target.value }))
             }
-            disabled={emailVerified}
+            disabled={isEmailInputDisabled}
             className={`h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card ${
-              emailVerified ? "opacity-60 cursor-not-allowed" : ""
+              isEmailInputDisabled ? "opacity-60 cursor-not-allowed" : ""
             }`}
             placeholder="you@example.com"
           />
         </div>
 
-        {emailSent && !emailVerified && (
+        {/* Статусы */}
+        {emailStatus === "idle" && (
+          <p className="text-sm text-muted-foreground">
+            Введите e-mail и отправьте письмо подтверждения.
+          </p>
+        )}
+
+        {emailStatus === "sending" && (
+          <p className="text-sm text-muted-foreground">Отправляем письмо...</p>
+        )}
+
+        {(emailStatus === "link_sent" || emailStatus === "checking") && (
           <div className="mt-4 space-y-3">
             <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-              Мы отправили письмо с подтверждением на {form.email.trim()}. Перейдите
-              по ссылке в письме. После подтверждения страница автоматически
-              обновит статус.
+              {emailStatus === "checking" 
+                ? "Проверяем, подтверждён ли e-mail..."
+                : `Письмо отправлено на ${form.email.trim()}. Перейдите по ссылке в письме, затем вернитесь сюда. Мы периодически проверяем подтверждение.`}
             </div>
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={isSendingEmail}
+                disabled={emailStatus === "sending" || emailStatus === "checking"}
                 onClick={handleChangeEmail}
               >
                 Изменить e-mail
@@ -887,24 +681,23 @@ export default function RegisterDirectorClient() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={isSendingEmail || !isEmailValid}
-                onClick={handleSendEmailVerification}
+                disabled={emailStatus === "sending" || emailStatus === "checking" || !isEmailValid}
+                onClick={handleResendEmail}
               >
-                {isSendingEmail ? "Отправляем..." : "Отправить ещё раз"}
+                Отправить ещё раз
               </Button>
             </div>
           </div>
         )}
-        {emailVerified && (
+
+        {emailStatus === "verified" && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            <span>
-              E-mail подтверждён. Можете перейти к следующему шагу.
-            </span>
+            <span>E-mail подтверждён. Можете перейти к следующему шагу.</span>
           </div>
         )}
 
-        {emailError && (
+        {emailStatus === "error" && emailError && (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>{emailError}</span>
@@ -918,58 +711,47 @@ export default function RegisterDirectorClient() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={isSendingEmail}
+            disabled={emailStatus === "sending"}
             onClick={() => setStep(1)}
           >
             Назад
           </Button>
 
-          {!emailSent ? (
+          {/* Кнопка "Отправить письмо" показывается только когда idle или error */}
+          {(emailStatus === "idle" || emailStatus === "error") && (
             <Button
               type="button"
               className="w-full md:w-auto"
-              disabled={!form.email.trim() || isSendingEmail || !isEmailValid}
+              disabled={!form.email.trim() || emailStatus === "sending" || !isEmailValid}
               onClick={handleSendEmailVerification}
             >
-              {isSendingEmail ? "Отправляем..." : "Отправить письмо"}
+              {emailStatus === "sending" ? "Отправляем..." : "Отправить письмо"}
             </Button>
-          ) : (
+          )}
+
+          {/* Кнопка "Далее" показывается только когда verified */}
+          {emailStatus === "verified" && (
             <Button
               type="button"
               className="w-full md:w-auto"
-              disabled={!canGoNextFromEmailStep}
-              onClick={async () => {
-                // Если email уже подтвержден (проверено через API route), просто переходим
-                if (emailVerified) {
-                  console.log("[register] Email already verified, proceeding to step 3");
-                  setFormError(null);
-                  setStep(3);
-                  return;
-                }
-
-                // Если emailVerified === false, проверяем через API route (без сессии)
+              disabled={isLoading}
+              onClick={() => {
                 setFormError(null);
-                try {
-                  const response = await fetch("/api/auth/check-email-status", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email: form.email.trim() }),
-                  });
+                setStep(3);
+              }}
+            >
+              Далее
+            </Button>
+          )}
 
-                  const data = await response.json();
-
-                  if (data.success && data.emailVerified) {
-                    console.log("[register] Email confirmed via API route, proceeding to step 3");
-                    setEmailVerified(true);
-                    setFormError(null);
-                    setStep(3);
-                  } else {
-                    setFormError("Почта ещё не подтверждена. Проверьте письмо и перейдите по ссылке.");
-                  }
-                } catch (error) {
-                  console.error("[register] Error checking email on button click:", error);
-                  setFormError("Ошибка при проверке статуса email. Попробуйте ещё раз.");
-                }
+          {/* Если не idle/error и не verified, показываем сообщение */}
+          {emailStatus !== "idle" && emailStatus !== "error" && emailStatus !== "verified" && (
+            <Button
+              type="button"
+              className="w-full md:w-auto"
+              disabled={true}
+              onClick={() => {
+                setFormError("Сначала подтвердите e-mail через письмо.");
               }}
             >
               Далее
@@ -1022,6 +804,13 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
+        {finishError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{finishError}</span>
+          </div>
+        )}
+
         {renderAlerts()}
 
         <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
@@ -1029,7 +818,7 @@ export default function RegisterDirectorClient() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={isLoading}
+            disabled={finishLoading}
             onClick={() => setStep(2)}
           >
             Назад
@@ -1037,10 +826,10 @@ export default function RegisterDirectorClient() {
           <Button
             type="button"
             className="w-full md:w-auto"
-            disabled={!canFinish}
-            onClick={handleCompleteRegistration}
+            disabled={finishLoading || !phoneVerified || emailStatus !== "verified"}
+            onClick={finishRegistration}
           >
-            {isLoading ? "Завершаем..." : "Завершить регистрацию"}
+            {finishLoading ? "Завершаем..." : "Завершить регистрацию"}
           </Button>
         </div>
       </div>
