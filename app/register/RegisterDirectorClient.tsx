@@ -60,6 +60,7 @@ export default function RegisterDirectorClient() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
 
@@ -416,13 +417,13 @@ export default function RegisterDirectorClient() {
 
   const handleSendEmailVerification = async () => {
     if (!form.email.trim()) {
-      setFormError("Укажите e-mail.");
+      setEmailError("Укажите e-mail.");
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email.trim())) {
-      setFormError("Укажите корректный e-mail.");
+      setEmailError("Укажите корректный e-mail.");
       return;
     }
 
@@ -430,17 +431,18 @@ export default function RegisterDirectorClient() {
       !process.env.NEXT_PUBLIC_SUPABASE_URL ||
       !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     ) {
-      setFormError("Ошибка конфигурации. Обратитесь к администратору.");
+      setEmailError("Ошибка конфигурации. Обратитесь к администратору.");
       console.error("Missing Supabase env");
       return;
     }
 
     if (!supabase) {
-      setFormError("Ошибка инициализации. Обновите страницу.");
+      setEmailError("Ошибка инициализации. Обновите страницу.");
       return;
     }
 
     setIsSendingEmail(true);
+    setEmailError(null);
     setFormError(null);
 
     const redirectTo = `${
@@ -477,7 +479,7 @@ export default function RegisterDirectorClient() {
           });
 
           if (resendError) {
-            setFormError(
+            setEmailError(
               resendError.message || "Не удалось отправить письмо",
             );
             setIsSendingEmail(false);
@@ -490,7 +492,7 @@ export default function RegisterDirectorClient() {
           return;
         }
 
-        setFormError(error.message || "Не удалось отправить письмо");
+        setEmailError(error.message || "Не удалось отправить письмо");
         setIsSendingEmail(false);
         return;
       }
@@ -500,25 +502,27 @@ export default function RegisterDirectorClient() {
       setEmailVerified(false);
     } catch (err: any) {
       console.error("Unexpected error sending email:", err);
-      setFormError(err.message || "Произошла ошибка. Попробуйте еще раз.");
+      setEmailError(err.message || "Произошла ошибка. Попробуйте еще раз.");
     } finally {
       setIsSendingEmail(false);
     }
   };
 
-  const handleFinish = async (e?: FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
+  const handleChangeEmail = () => {
+    setEmailSent(false);
+    setEmailVerified(false);
+    setEmailError(null);
     setFormError(null);
-    setFormSuccess(null);
+  };
 
+  const handleCompleteRegistration = async () => {
     if (!phoneVerified) {
       setFormError("Сначала подтвердите телефон");
       return;
     }
 
     setIsLoading(true);
+    setFormError(null);
 
     try {
       const res = await fetch("/api/director/complete-registration", {
@@ -538,26 +542,30 @@ export default function RegisterDirectorClient() {
 
       if (!res.ok) {
         if (res.status === 401) {
+          // пользователь не авторизован
           setFormError(
             "Пользователь не авторизован. Пожалуйста, выполните вход ещё раз."
           );
-        } else {
-          throw new Error(data?.error || "Не удалось завершить регистрацию");
+          setIsLoading(false);
+          return;
         }
-        setIsLoading(false);
-        return;
+
+        throw new Error(data?.error || "Не удалось завершить регистрацию");
       }
 
-      // Успешное завершение - отправляем директора в дашборд
+      // Успех: ведём директора в его дашборд
       router.push("/dashboard/director");
     } catch (err) {
-      console.error("Error in handleFinish:", err);
       setFormError(
         err instanceof Error ? err.message : "Неизвестная ошибка регистрации"
       );
+    } finally {
       setIsLoading(false);
     }
   };
+
+  // Оставляем handleFinish для обратной совместимости
+  const handleFinish = handleCompleteRegistration;
 
   const steps = [
     { id: 1, label: "Основные данные" },
@@ -746,25 +754,56 @@ export default function RegisterDirectorClient() {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, email: e.target.value }))
             }
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            disabled={emailVerified}
+            className={`h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card ${
+              emailVerified ? "opacity-60 cursor-not-allowed" : ""
+            }`}
             placeholder="you@example.com"
           />
         </div>
 
         {emailSent && !emailVerified && (
-          <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            Письмо с подтверждением отправлено на {form.email.trim()}. Перейдите
-            по ссылке в письме. После подтверждения страница автоматически
-            обновит статус.
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              Мы отправили письмо с подтверждением на {form.email.trim()}. Перейдите
+              по ссылке в письме. После подтверждения страница автоматически
+              обновит статус.
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                disabled={isSendingEmail}
+                onClick={handleChangeEmail}
+              >
+                Изменить e-mail
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                disabled={isSendingEmail || !isEmailValid}
+                onClick={handleSendEmailVerification}
+              >
+                {isSendingEmail ? "Отправляем..." : "Отправить ещё раз"}
+              </Button>
+            </div>
           </div>
         )}
         {emailVerified && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
             <span>
-              Поздравляем! Ваша почта подтверждена. Можете переходить к
-              следующему шагу.
+              E-mail подтверждён. Можете перейти к следующему шагу.
             </span>
+          </div>
+        )}
+
+        {emailError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{emailError}</span>
           </div>
         )}
 
@@ -788,7 +827,7 @@ export default function RegisterDirectorClient() {
               disabled={!form.email.trim() || isSendingEmail || !isEmailValid}
               onClick={handleSendEmailVerification}
             >
-              {isSendingEmail ? "Отправляем..." : "Подтвердить e-mail"}
+              {isSendingEmail ? "Отправляем..." : "Отправить письмо"}
             </Button>
           ) : (
             <Button
@@ -895,7 +934,7 @@ export default function RegisterDirectorClient() {
             type="button"
             className="w-full md:w-auto"
             disabled={!canFinish}
-            onClick={handleFinish}
+            onClick={handleCompleteRegistration}
           >
             {isLoading ? "Завершаем..." : "Завершить регистрацию"}
           </Button>
