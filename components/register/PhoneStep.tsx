@@ -23,11 +23,13 @@ interface CheckVerificationResponse {
 type PhoneStepProps = {
   // текущий номер (если пользователь вернулся на шаг)
   initialPhone?: string | null;
+  // текущая локаль интерфейса ("ru" | "uk" | "en" | ...)
+  locale: string;
   // коллбэк, который вызываем при успешной верификации
   onPhoneVerified: (phone: string) => void;
 };
 
-export function PhoneStep({ initialPhone, onPhoneVerified }: PhoneStepProps) {
+export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepProps) {
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"enter-phone" | "enter-code">("enter-phone");
