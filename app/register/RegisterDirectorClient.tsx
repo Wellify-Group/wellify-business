@@ -513,77 +513,49 @@ export default function RegisterDirectorClient() {
     setFormError(null);
     setFormSuccess(null);
 
-    if (!validatePhone()) {
-      return;
-    }
-
-    if (!supabase) {
-      setFormError("Ошибка инициализации. Обновите страницу.");
+    if (!phoneVerified) {
+      setFormError("Сначала подтвердите телефон");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const res = await fetch("/api/director/complete-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: baseData.firstName,
+          lastName: baseData.lastName,
+          middleName: baseData.middleName,
+          birthDate: baseData.birthDate,
+          email: form.email,
+          phone: form.phone,
+        }),
+      });
 
-      if (userError || !user) {
-        console.error("getUser error or no user:", userError);
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          setFormError(
+            "Пользователь не авторизован. Пожалуйста, выполните вход ещё раз."
+          );
+        } else {
+          throw new Error(data?.error || "Не удалось завершить регистрацию");
+        }
         setIsLoading(false);
-        setFormError(
-          "Пользователь не авторизован. Пожалуйста, выполните вход ещё раз.",
-        );
         return;
       }
 
-      const fullName =
-        [
-          baseData.lastName.trim(),
-          baseData.firstName.trim(),
-          baseData.middleName.trim(),
-        ]
-          .filter(Boolean)
-          .join(" ") || null;
-
-      const profilePayload = {
-        id: user.id,
-        email: user.email ?? form.email.trim(),
-        first_name: baseData.firstName.trim(),
-        last_name: baseData.lastName.trim(),
-        middle_name: baseData.middleName.trim() || null,
-        full_name: fullName,
-        birth_date: baseData.birthDate,
-        phone: form.phone.trim(),
-        role: "director",
-        email_verified: true,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error: upsertError } = await supabase
-        .from("profiles")
-        .upsert(profilePayload, { onConflict: "id" });
-
-      if (upsertError) {
-        console.error("Error upserting profile:", upsertError);
-        setIsLoading(false);
-        setFormError(
-          upsertError.message ||
-            "Ошибка при сохранении профиля. Попробуйте ещё раз.",
-        );
-        return;
-      }
-
-      setIsLoading(false);
+      // Успешное завершение - отправляем директора в дашборд
       router.push("/dashboard/director");
-    } catch (error) {
-      console.error("Error in handleFinish:", error);
-      setIsLoading(false);
+    } catch (err) {
+      console.error("Error in handleFinish:", err);
       setFormError(
-        "Произошла ошибка при завершении регистрации. Попробуйте ещё раз.",
+        err instanceof Error ? err.message : "Неизвестная ошибка регистрации"
       );
+      setIsLoading(false);
     }
   };
 
