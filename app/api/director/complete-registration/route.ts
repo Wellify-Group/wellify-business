@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       .from("profiles")
       .select("роль, бизнес_id")
       .eq("id", user.id)
-      .single();
+      .single() as { data: { роль?: string; бизнес_id?: string } | null; error: any };
 
     // Если профиль не найден, создаем его с базовыми данными
     if (profileFetchError && profileFetchError.code === 'PGRST116') {
@@ -95,14 +95,17 @@ export async function POST(request: NextRequest) {
     } else {
       // Профиль существует, обновляем его
       // Подготавливаем данные для обновления профиля с русскими названиями полей
+      const existingRole = (existingProfile as any)?.роль;
+      const existingBusinessId = (existingProfile as any)?.бизнес_id;
+      
       const profileUpdate = mapProfileToDb({
         fullName: fullName,
         shortName: shortName,
         email: email.trim(),
         phone: phone.trim(),
         // Сохраняем существующие роль и бизнес_id, если они есть
-        role: existingProfile?.роль || "директор",
-        businessId: existingProfile?.бизнес_id || null,
+        role: existingRole || "директор",
+        businessId: existingBusinessId || null,
       });
 
       // Обновляем профиль в таблице profiles
