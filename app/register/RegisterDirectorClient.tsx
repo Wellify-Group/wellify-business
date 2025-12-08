@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState, useMemo } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,8 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { PhoneStep } from "@/components/register/PhoneStep";
 import { useLanguage } from "@/components/language-provider";
 
@@ -75,15 +74,8 @@ export default function RegisterDirectorClient() {
   const [finishLoading, setFinishLoading] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
 
-  // Supabase клиент
-  const supabase = useMemo<SupabaseClient | null>(() => {
-    try {
-      return createBrowserSupabaseClient();
-    } catch (error) {
-      console.error("Failed to create Supabase client:", error);
-      return null;
-    }
-  }, []);
+  // Supabase клиент (не-null, создается один раз)
+  const supabase = createClientComponentClient();
 
   // Очистка старых флагов при первом заходе на регистрацию
   useEffect(() => {
@@ -108,7 +100,7 @@ export default function RegisterDirectorClient() {
 
   // Периодическая проверка подтверждения email только после отправки ссылки
   useEffect(() => {
-    if (emailStatus !== "link_sent" || !supabase || step !== 2) {
+    if (emailStatus !== "link_sent" || step !== 2) {
       return;
     }
 
@@ -175,7 +167,7 @@ export default function RegisterDirectorClient() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [emailStatus, supabase, step, form.email]);
+  }, [emailStatus, step, form.email]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -234,11 +226,6 @@ export default function RegisterDirectorClient() {
     ) {
       setEmailError("Ошибка конфигурации. Обратитесь к администратору.");
       console.error("Missing Supabase env");
-      return;
-    }
-
-    if (!supabase) {
-      setEmailError("Ошибка инициализации. Обновите страницу.");
       return;
     }
 
@@ -312,7 +299,7 @@ export default function RegisterDirectorClient() {
   };
 
   const handleResendEmail = async () => {
-    if (!form.email.trim() || !supabase) {
+    if (!form.email.trim()) {
       setEmailError("Ошибка. Обновите страницу.");
       return;
     }
@@ -356,13 +343,11 @@ export default function RegisterDirectorClient() {
     localStorage.removeItem("register_email");
     localStorage.removeItem("wellify_email_confirmed");
     
-    // Выходим из сессии, если она есть
-    if (supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch (err) {
-        console.warn("Error signing out:", err);
-      }
+    // Выходим из сессии
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn("Error signing out:", err);
     }
   };
 
@@ -379,11 +364,6 @@ export default function RegisterDirectorClient() {
 
       if (!phoneVerified) {
         setFinishError("Телефон ещё не подтверждён.");
-        return;
-      }
-
-      if (!supabase) {
-        setFinishError("Ошибка инициализации. Обновите страницу.");
         return;
       }
 
