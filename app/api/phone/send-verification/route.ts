@@ -2,9 +2,24 @@ import twilio from "twilio";
 
 export async function POST(req: Request) {
   try {
-    const { phone } = await req.json();
+    const body = await req.json();
+    const phone = (body?.phone as string | undefined)?.trim();
 
-    // 1. Проверяем, что все переменные есть
+    if (!phone) {
+      return Response.json(
+        { error: "Phone is required" },
+        { status: 400 }
+      );
+    }
+
+    // Простая проверка формата: должен начинаться с "+" и дальше только цифры
+    if (!/^\+\d{8,15}$/.test(phone)) {
+      return Response.json(
+        { error: "Phone must be in international E.164 format (+380...)" },
+        { status: 400 }
+      );
+    }
+
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
@@ -22,10 +37,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Создаём клиента уже после проверки
     const client = twilio(accountSid, authToken);
 
-    // 3. Стартуем Verify
     const verification = await client.verify.v2
       .services(verifyServiceSid)
       .verifications.create({
