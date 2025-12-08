@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PhoneStep } from "@/components/register/PhoneStep";
 import { useLanguage } from "@/components/language-provider";
 
@@ -74,8 +74,8 @@ export default function RegisterDirectorClient() {
   const [finishLoading, setFinishLoading] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
 
-  // Supabase клиент (не-null, создается один раз)
-  const supabase = createClientComponentClient();
+  // Supabase клиент (не-null, создается один раз через useState с функцией-инициализатором)
+  const [supabase] = useState(() => createBrowserSupabaseClient());
 
   // Очистка старых флагов при первом заходе на регистрацию
   useEffect(() => {
