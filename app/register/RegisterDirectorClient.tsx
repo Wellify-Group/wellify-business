@@ -652,7 +652,7 @@ export default function RegisterDirectorClient() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                disabled={emailStatus === "sending" || emailStatus === "checking"}
+                disabled={emailStatus === "checking"}
                 onClick={handleChangeEmail}
               >
                 Изменить e-mail
