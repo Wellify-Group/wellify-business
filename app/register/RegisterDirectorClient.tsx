@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
@@ -32,6 +32,7 @@ interface FormState {
 
 export default function RegisterDirectorClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { language } = useLanguage();
   const [step, setStep] = useState<Step>(1);
   
@@ -75,8 +76,52 @@ export default function RegisterDirectorClient() {
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
 
+  // Функция для полной очистки состояния регистрации
+  const clearRegistrationState = () => {
+    if (typeof window === "undefined") return;
+    
+    localStorage.removeItem("register_in_progress");
+    localStorage.removeItem("register_email");
+    localStorage.removeItem("wellify_email");
+    localStorage.removeItem("wellify_email_confirmed");
+    localStorage.removeItem("wellify_email_confirmed_for");
+    
+    setStep(1);
+    setForm({ email: "", phone: "" });
+    setBaseData({
+      firstName: "",
+      lastName: "",
+      middleName: "",
+      birthDate: "",
+      password: "",
+    });
+    setPasswordConfirm("");
+    setEmailStatus("idle");
+    setEmailError(null);
+    setEmailVerified(false);
+    setPhoneVerified(false);
+    setFormError(null);
+    setFormSuccess(null);
+    setFinishError(null);
+    
+    // Выходим из сессии Supabase
+    supabase.auth.signOut().catch((err) => {
+      console.warn("Error signing out:", err);
+    });
+  };
+
   // Очистка старых флагов при первом заходе на регистрацию
   useEffect(() => {
+    // Проверяем query параметр для начала новой регистрации
+    const shouldStartNew = searchParams.get("new") === "true" || searchParams.get("reset") === "true";
+    
+    if (shouldStartNew) {
+      clearRegistrationState();
+      // Убираем параметр из URL
+      router.replace("/register", { scroll: false });
+      return;
+    }
+
     // Проверяем, есть ли сохранённое состояние регистрации (после возврата с логина)
     const savedState = localStorage.getItem("register_in_progress");
     if (savedState) {
@@ -93,6 +138,14 @@ export default function RegisterDirectorClient() {
         // Восстанавливаем верификацию если они были подтверждены
         if (state.emailVerified) {
           setEmailVerified(true);
+          // Восстанавливаем статус email
+          const confirmed = localStorage.getItem("wellify_email_confirmed");
+          const confirmedFor = localStorage.getItem("wellify_email_confirmed_for");
+          if (confirmed === "true" && confirmedFor && confirmedFor.toLowerCase() === (state.email || "").toLowerCase()) {
+            setEmailStatus("verified");
+          } else {
+            setEmailStatus("link_sent");
+          }
         }
         if (state.phoneVerified) {
           setPhoneVerified(true);
@@ -105,8 +158,9 @@ export default function RegisterDirectorClient() {
       // Новая регистрация – чистим хвосты
       localStorage.removeItem("register_email");
       localStorage.removeItem("wellify_email_confirmed");
+      localStorage.removeItem("wellify_email_confirmed_for");
     }
-  }, []);
+  }, [searchParams, router]);
 
   // Сброс ошибок при смене шага
   useEffect(() => {
@@ -822,15 +876,26 @@ export default function RegisterDirectorClient() {
           <CardTitle className="text-xl font-semibold text-center">
             Создать аккаунт директора
           </CardTitle>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Уже есть аккаунт?{" "}
-            <Link
-              href="/auth/login"
-              className="font-medium text-primary hover:underline"
-            >
-              Войти
-            </Link>
-          </p>
+          <div className="mt-2 flex items-center justify-center gap-3 text-xs">
+            <span className="text-muted-foreground">
+              Уже есть аккаунт?{" "}
+              <Link
+                href="/auth/login"
+                className="font-medium text-primary hover:underline"
+              >
+                Войти
+              </Link>
+            </span>
+            {(step > 1 || form.email || form.phone || baseData.firstName) && (
+              <button
+                type="button"
+                onClick={clearRegistrationState}
+                className="text-muted-foreground hover:text-foreground transition-colors underline"
+              >
+                Начать заново
+              </button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {step === 1 && renderStep1()}
