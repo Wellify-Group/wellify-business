@@ -17,8 +17,6 @@ import { useLanguage } from "@/components/language-provider";
 
 type Step = 1 | 2 | 3;
 
-type EmailStatus = "idle" | "sending" | "link_sent" | "checking" | "verified" | "error";
-
 interface BaseData {
   firstName: string;
   lastName: string;
@@ -58,13 +56,16 @@ export default function RegisterDirectorClient() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
-  // Машина состояний для e-mail шага
-  const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
+  // Состояния верификации
+  // Email верификация через Supabase (не Twilio!)
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "link_sent" | "checking" | "verified" | "error">("idle");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [confirmedUserId, setConfirmedUserId] = useState<string | undefined>(undefined);
+  // Телефон верификация через Twilio SMS
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [phoneVerified, setPhoneVerified] = useState(false);
 
   // Состояние для завершения регистрации
   const [finishLoading, setFinishLoading] = useState(false);
@@ -73,41 +74,6 @@ export default function RegisterDirectorClient() {
   // Supabase клиент (не-null, создается один раз через useState с функцией-инициализатором)
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
-  // Функция для проверки подтверждения email через API
-  const handleConfirmEmail = async () => {
-    if (!form.email.trim()) {
-      setEmailError("Введите e-mail");
-      return;
-    }
-
-    try {
-      setEmailStatus("checking");
-      setEmailError(null);
-
-      const res = await fetch("/api/auth/check-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (data.confirmed === true) {
-        setEmailStatus("verified");
-        if (data.userId) {
-          setConfirmedUserId(data.userId);
-        }
-        setEmailError(null);
-      } else {
-        setEmailStatus("link_sent");
-        setEmailError("E-mail ещё не подтверждён. Проверьте почту и перейдите по ссылке из письма.");
-      }
-    } catch (err) {
-      console.error("Error checking email:", err);
-      setEmailStatus("link_sent");
-      setEmailError("Не удалось проверить статус e-mail. Попробуйте ещё раз.");
-    }
-  };
 
   // Очистка старых флагов при первом заходе на регистрацию
   useEffect(() => {
@@ -124,12 +90,13 @@ export default function RegisterDirectorClient() {
         if (state.baseData) {
           setBaseData(state.baseData);
         }
-        // Восстанавливаем phoneVerified если телефон был подтверждён
+        // Восстанавливаем верификацию если они были подтверждены
+        if (state.emailVerified) {
+          setEmailVerified(true);
+        }
         if (state.phoneVerified) {
           setPhoneVerified(true);
         }
-        // При восстановлении состояния не проверяем email автоматически
-        // Пользователь должен нажать "Я подтвердил email"
       } catch (e) {
         console.error("Error restoring registration state:", e);
         localStorage.removeItem("register_in_progress");
@@ -138,10 +105,6 @@ export default function RegisterDirectorClient() {
       // Новая регистрация – чистим хвосты
       localStorage.removeItem("register_email");
       localStorage.removeItem("wellify_email_confirmed");
-      
-      // Сбрасываем в начальное состояние
-      setEmailStatus("idle");
-      setEmailError(null);
     }
   }, []);
 
@@ -149,11 +112,78 @@ export default function RegisterDirectorClient() {
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
-    // Сбрасываем верификацию телефона при переходе на другие шаги
+    // Сбрасываем верификацию при переходе на другие шаги
+    if (step !== 2) {
+      setEmailVerified(false);
+      setEmailStatus("idle");
+      setEmailError(null);
+    }
     if (step !== 3) {
       setPhoneVerified(false);
     }
   }, [step]);
+
+  // Авто-поллинг статуса email после отправки письма
+  useEffect(() => {
+    // Авто-проверка подтверждения email после отправки письма
+    const email = form.email.trim();
+    if (emailStatus !== "link_sent" || !email) return;
+
+    let isCancelled = false;
+
+    const checkEmailOnce = async () => {
+      try {
+        setEmailStatus("checking");
+
+        const res = await fetch("/api/auth/check-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await res.json();
+
+        if (isCancelled) return;
+
+        if (data.confirmed === true) {
+          setEmailStatus("verified");
+          setEmailVerified(true);
+          if (data.userId) {
+            setConfirmedUserId(data.userId);
+          }
+          setEmailError(null);
+          return;
+        }
+
+        // Если ещё не подтверждён - возвращаемся в link_sent и планируем следующий опрос
+        setEmailStatus("link_sent");
+
+        setTimeout(() => {
+          if (!isCancelled) {
+            checkEmailOnce();
+          }
+        }, 7000); // например, раз в 7 секунд
+      } catch (err) {
+        console.error("[email auto-check] error", err);
+        if (!isCancelled) {
+          // При ошибках не ломаем UX, просто пробуем позже
+          setEmailStatus("link_sent");
+          setTimeout(() => {
+            if (!isCancelled) {
+              checkEmailOnce();
+            }
+          }, 10000);
+        }
+      }
+    };
+
+    // стартуем первый запрос
+    checkEmailOnce();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [emailStatus, form.email]);
 
   // Сохранение состояния регистрации в localStorage
   useEffect(() => {
@@ -163,11 +193,12 @@ export default function RegisterDirectorClient() {
         email: form.email,
         phone: form.phone,
         baseData,
+        emailVerified,
         phoneVerified,
       };
       localStorage.setItem("register_in_progress", JSON.stringify(state));
     }
-  }, [step, form.email, form.phone, baseData, phoneVerified]);
+  }, [step, form.email, form.phone, baseData, emailVerified, phoneVerified]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -212,13 +243,14 @@ export default function RegisterDirectorClient() {
     setStep(2);
   };
 
+  // Функции для Supabase email verification (НЕ Twilio!)
   const handleSendEmailLink = async () => {
     try {
       setEmailError(null);
       setEmailStatus("sending");
 
-    const redirectTo = `${
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
+      const redirectTo = `${
+        process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
       }/auth/callback`;
 
       const { error } = await supabase.auth.signUp({
@@ -269,16 +301,15 @@ export default function RegisterDirectorClient() {
   };
 
   const handleResendEmail = async () => {
-    // Используем ту же функцию, что и для первоначальной отправки
     await handleSendEmailLink();
   };
-
 
   const handleChangeEmail = async () => {
     // Очищаем состояние
     setEmailStatus("idle");
     setEmailError(null);
     setFormError(null);
+    setEmailVerified(false);
     localStorage.removeItem("register_email");
     localStorage.removeItem("wellify_email_confirmed");
     
@@ -290,19 +321,22 @@ export default function RegisterDirectorClient() {
     }
   };
 
+
   const finishRegistration = async () => {
     try {
       setFinishLoading(true);
       setFinishError(null);
 
       // Проверяем, что email подтверждён и телефон подтверждён
-      if (emailStatus !== "verified") {
+      if (emailStatus !== "verified" || !emailVerified) {
         setFinishError("E-mail должен быть подтверждён. Вернитесь на предыдущий шаг.");
+        setFinishLoading(false);
         return;
       }
 
       if (!phoneVerified) {
         setFinishError("Телефон ещё не подтверждён.");
+        setFinishLoading(false);
         return;
       }
 
@@ -543,7 +577,7 @@ export default function RegisterDirectorClient() {
       form.email.trim() && emailRegex.test(form.email.trim());
 
     // Поле ввода e-mail активно только если idle или error
-    const isEmailInputDisabled = emailStatus === "verified" || emailStatus === "link_sent" || emailStatus === "checking";
+    const isEmailInputDisabled = emailStatus === "verified" || emailStatus === "link_sent" || emailStatus === "checking" || emailStatus === "sending";
 
     return (
       <div className="space-y-4">
@@ -572,6 +606,12 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
+        {emailStatus === "checking" && (
+          <div className="mt-3 text-sm text-muted-foreground">
+            Проверяем подтверждение email...
+          </div>
+        )}
+
         {emailStatus === "verified" && (
           <p className="mt-3 text-sm text-emerald-400">
             E-mail подтверждён. Можете перейти к следующему шагу.
@@ -584,35 +624,19 @@ export default function RegisterDirectorClient() {
           </p>
         )}
 
-        {/* КНОПКИ ПОД ПОЛЕМ E-MAIL */}
-        {/* Показываем кнопки только если email ещё не подтверждён */}
+        {/* Дополнительные действия, когда письмо уже отправлено */}
         {emailStatus === "link_sent" && (
-          <div className="mt-4 flex gap-3">
-            {/* Изменить e-mail */}
+          <div className="mt-4 flex flex-col gap-3">
             <Button
               type="button"
               variant="outline"
-              className="flex-1"
+              className="w-full"
               onClick={handleChangeEmail}
               disabled={false}
             >
               Изменить e-mail
             </Button>
 
-            {/* Кнопка "Я подтвердил email" */}
-            <Button
-              type="button"
-              className="flex-1"
-              onClick={handleConfirmEmail}
-              disabled={false}
-            >
-              Я подтвердил email
-            </Button>
-          </div>
-        )}
-
-        {emailStatus === "link_sent" && (
-          <div className="mt-2">
             <Button
               type="button"
               variant="outline"
@@ -625,12 +649,6 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
-        {emailStatus === "checking" && (
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Проверяем статус e-mail...
-          </div>
-        )}
-
         {renderAlerts()}
 
         <div className="mt-4 flex justify-between gap-4">
@@ -638,7 +656,7 @@ export default function RegisterDirectorClient() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={emailStatus === "sending"}
+            disabled={emailStatus === "sending" || emailStatus === "checking"}
             onClick={() => setStep(1)}
           >
             Назад
@@ -656,7 +674,7 @@ export default function RegisterDirectorClient() {
             </Button>
           )}
 
-          {/* Кнопка "Далее" показывается только когда email подтверждён */}
+          {/* Кнопка "Далее" - ТОЛЬКО когда emailStatus === "verified" */}
           {emailStatus === "verified" && (
             <Button
               type="button"
@@ -734,7 +752,7 @@ export default function RegisterDirectorClient() {
           <Button
             type="button"
             className="w-full md:w-auto"
-            disabled={finishLoading || !phoneVerified || emailStatus !== "verified"}
+            disabled={finishLoading || !phoneVerified || !emailVerified}
             onClick={finishRegistration}
           >
             {finishLoading ? "Завершаем..." : "Завершить регистрацию"}

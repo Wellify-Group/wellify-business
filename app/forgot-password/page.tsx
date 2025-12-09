@@ -30,21 +30,25 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      // TODO: Интегрировать с реальным API восстановления пароля
-      // Если есть Supabase/Firebase/собственный API, используйте его здесь
-      // Пример для Supabase:
-      // const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      //   redirectTo: `${window.location.origin}/reset-password`,
-      // });
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-      // Имитация запроса
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const data = await res.json();
 
-      // В реальном приложении здесь будет проверка ответа от API
-      setIsSuccess(true);
+      if (res.ok && data.success) {
+        setIsSuccess(true);
+        setError("");
+      } else {
+        // Обработка ошибок (rate limiting и т.п.)
+        const errorMessage = data.error || "Произошла ошибка. Попробуйте позже.";
+        setError(errorMessage);
+      }
     } catch (err: any) {
       console.error("Password reset error:", err);
-      setError(err.message || "Произошла ошибка. Попробуйте позже.");
+      setError("Произошла ошибка. Попробуйте позже.");
     } finally {
       setIsSubmitting(false);
     }

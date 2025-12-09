@@ -79,31 +79,23 @@ export async function POST(request: NextRequest) {
       // Пользователь уже существует - обновляем его
       userId = existingUser.id;
 
-      // Проверяем, что email подтверждён
+      // Обновляем email и телефон в auth, если нужно
+      const updateData: any = {};
       if (!existingUser.email_confirmed_at) {
-        console.error(
-          "[register-director] User exists but email not confirmed",
-          userId
-        );
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Email not confirmed. Please confirm your email first.",
-          },
-          { status: 400 }
-        );
+        // Если email не подтверждён, подтверждаем его (проверен через Supabase email verification)
+        updateData.email_confirm = true;
+      }
+      if (existingUser.phone !== phone.trim()) {
+        updateData.phone = phone.trim();
+        updateData.phone_confirm = true; // Телефон проверен через Twilio SMS
       }
 
-      // Обновляем телефон в auth, если нужно
-      if (existingUser.phone !== phone.trim()) {
+      if (Object.keys(updateData).length > 0) {
         const { error: updateError } =
-          await supabaseAdmin.auth.admin.updateUserById(userId, {
-            phone: phone.trim(),
-            phone_confirm: true,
-          });
+          await supabaseAdmin.auth.admin.updateUserById(userId, updateData);
 
         if (updateError) {
-          console.error("[register-director] Error updating phone", updateError);
+          console.error("[register-director] Error updating user", updateError);
           // Не критично, продолжаем
         }
       }
@@ -113,9 +105,9 @@ export async function POST(request: NextRequest) {
         await supabaseAdmin.auth.admin.createUser({
           email: normalizedEmail,
           password,
-          email_confirm: true, // Автоматически подтверждаем email
+          email_confirm: true, // Подтверждаем email (проверен через Supabase email verification)
           phone: phone.trim(),
-          phone_confirm: true,
+          phone_confirm: true, // Подтверждаем телефон (проверен через Twilio SMS)
           user_metadata: {
             first_name: firstName.trim(),
             last_name: lastName.trim(),

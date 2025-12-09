@@ -106,16 +106,16 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
     setIsSendingCode(true);
 
     try {
-      const res = await fetch("/api/phone/send-verification", {
+      const res = await fetch("/api/auth/phone/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: trimmedPhone }),
+        body: JSON.stringify({ phone: trimmedPhone, action: "signup" }),
       });
 
       const data: SendVerificationResponse = await res.json().catch(() => ({}));
 
       if (res.ok && data.success) {
-        setSuccess("Код отправлен на ваш номер.");
+        setSuccess(data.message || "Код отправлен на ваш номер.");
         setStep("enter-code");
       } else {
         // Обработка ошибок
@@ -152,7 +152,7 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
     setIsVerifyingCode(true);
 
     try {
-      const res = await fetch("/api/phone/check-verification", {
+      const res = await fetch("/api/auth/phone/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: trimmedPhone, code: trimmedCode }),
@@ -168,6 +168,10 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
       } else if (res.status === 400) {
         // Код неверный или истёк
         const errorMessage = data.error || data.message || "Код неверный или истёк. Попробуйте ещё раз.";
+        setError(errorMessage);
+      } else if (res.status === 429) {
+        // Rate limit
+        const errorMessage = data.error || data.message || "Слишком много попыток. Попробуйте позже.";
         setError(errorMessage);
       } else if (res.status === 500) {
         // Серверная ошибка

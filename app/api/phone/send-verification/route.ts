@@ -1,24 +1,8 @@
-import twilio from "twilio";
 import { NextRequest, NextResponse } from "next/server";
+import { getTwilioClient, getVerifyServiceSid } from "@/lib/twilio";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-// Ленивое создание Twilio клиента
-function getTwilioClient() {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-
-  if (!accountSid || !authToken) {
-    console.error("Missing Twilio envs", {
-      hasAccountSid: !!accountSid,
-      hasAuthToken: !!authToken,
-    });
-    return null;
-  }
-
-  return twilio(accountSid, authToken);
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,9 +32,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+    const verifyServiceSid = getVerifyServiceSid();
     if (!verifyServiceSid) {
-      console.error("Missing TWILIO_VERIFY_SERVICE_SID");
       return NextResponse.json(
         { success: false, error: "Server config error (Twilio Verify Service)" },
         { status: 500 }

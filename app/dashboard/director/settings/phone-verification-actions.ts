@@ -1,11 +1,10 @@
 'use server'
 
-import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export interface SendPhoneVerificationCodeResult {
   success: boolean
   error?: string
-  code?: string // Только для тестирования, в продакшене не возвращаем
 }
 
 export interface VerifyPhoneCodeResult {
@@ -13,6 +12,10 @@ export interface VerifyPhoneCodeResult {
   error?: string
 }
 
+/**
+ * Send SMS verification code via Twilio
+ * Uses the centralized API route /api/auth/phone/send-code
+ */
 export async function sendPhoneVerificationCode(
   formData: FormData
 ): Promise<SendPhoneVerificationCodeResult> {
@@ -38,36 +41,31 @@ export async function sendPhoneVerificationCode(
       }
     }
 
-    // Генерируем 6-значный код
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-
-    // Сохраняем код в профиле
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
+    // Вызываем API для отправки SMS через Twilio
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const res = await fetch(`${baseUrl}/api/auth/phone/send-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
         phone: phone.trim(),
-        phone_verification_code: code
-      })
-      .eq('id', session.user.id)
+        action: 'phone_update' // Для обновления телефона в настройках
+      }),
+    })
 
-    if (updateError) {
-      console.error('Error updating phone verification code:', updateError)
+    const data = await res.json()
+
+    if (res.ok && data.success) {
       return {
-        success: false,
-        error: 'Ошибка при сохранении кода'
+        success: true
       }
     }
 
-    // В будущем здесь будет вызов SMS-сервиса или Telegram-бота
-    // Пока логируем код для тестирования
-    console.log(`[PHONE VERIFICATION] Code for ${phone}: ${code}`)
-
     return {
-      success: true,
-      code: code // Только для тестирования
+      success: false,
+      error: data.error || 'Не удалось отправить код'
     }
   } catch (error: any) {
-    console.error('Send phone verification code error:', error)
+    console.error('[phone-verification-actions] Send code error:', error)
     return {
       success: false,
       error: error.message || 'Произошла ошибка при отправке кода'
@@ -75,6 +73,10 @@ export async function sendPhoneVerificationCode(
   }
 }
 
+/**
+ * Verify SMS code via Twilio
+ * Uses the centralized API route /api/auth/phone/verify-code
+ */
 export async function verifyPhoneCode(
   formData: FormData
 ): Promise<VerifyPhoneCodeResult> {
@@ -91,59 +93,74 @@ export async function verifyPhoneCode(
       }
     }
 
+    const phone = formData.get('phone') as string
     const code = formData.get('code') as string
 
-    if (!code || code.trim().length !== 6) {
+    if (!phone || !code) {
       return {
         success: false,
-        error: 'Введите 6-значный код'
+        error: 'Укажите номер телефона и код'
       }
     }
 
-    // Получаем профиль с кодом
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('phone_verification_code')
-      .eq('id', session.user.id)
-      .maybeSingle()
-
-    if (profileError || !profile) {
+    if (code.trim().length < 4 || code.trim().length > 8) {
       return {
         success: false,
-        error: 'Профиль не найден'
+        error: 'Код должен содержать от 4 до 8 цифр'
       }
     }
 
-    // Проверяем код
-    if (profile.phone_verification_code !== code.trim()) {
-      return {
-        success: false,
-        error: 'Неверный код подтверждения'
+    // Вызываем API для проверки кода через Twilio
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const res = await fetch(`${baseUrl}/api/auth/phone/verify-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        phone: phone.trim(),
+        code: code.trim()
+      }),
+    })
+
+    const data = await res.json()
+
+    if (res.ok && data.success) {
+      // Код верный - обновляем профиль
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          phone: phone.trim(),
+          phone_verified: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', session.user.id)
+
+      if (updateError) {
+        console.error('[phone-verification-actions] Error updating profile:', updateError)
+        // Не возвращаем ошибку, так как телефон уже подтверждён через Twilio
       }
-    }
 
-    // Код верный - обновляем профиль
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        phone_verified: true,
-        phone_verification_code: null // Очищаем код
-      })
-      .eq('id', session.user.id)
+      // Опционально: обновляем телефон в user_metadata
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            phone: phone.trim(),
+          },
+        })
+      } catch (metadataError) {
+        console.warn('[phone-verification-actions] Failed to update user metadata:', metadataError)
+      }
 
-    if (updateError) {
-      console.error('Error updating phone verification:', updateError)
       return {
-        success: false,
-        error: 'Ошибка при обновлении статуса верификации'
+        success: true
       }
     }
 
     return {
-      success: true
+      success: false,
+      error: data.error || 'Неверный код или код истёк'
     }
   } catch (error: any) {
-    console.error('Verify phone code error:', error)
+    console.error('[phone-verification-actions] Verify code error:', error)
     return {
       success: false,
       error: error.message || 'Произошла ошибка при проверке кода'
