@@ -16,7 +16,6 @@ export function PhoneVerification() {
   const [phoneVerified, setPhoneVerified] = useState(false)
   const [currentPhone, setCurrentPhone] = useState<string | null>(null)
   const [codeSent, setCodeSent] = useState(false)
-  const [testCode, setTestCode] = useState<string | null>(null) // Только для тестирования
 
   // Загружаем статус верификации телефона
   useEffect(() => {
@@ -52,7 +51,6 @@ export function PhoneVerification() {
     e.preventDefault()
     setError(null)
     setSuccess(null)
-    setTestCode(null)
     setIsLoading(true)
 
     const formData = new FormData()
@@ -65,11 +63,6 @@ export function PhoneVerification() {
     if (result.success) {
       setCodeSent(true)
       setSuccess('Код отправлен на указанный номер телефона')
-      if (result.code) {
-        // Только для тестирования - показываем код в консоли и в UI
-        console.log('Тестовый код:', result.code)
-        setTestCode(result.code)
-      }
     } else {
       setError(result.error || 'Ошибка при отправке кода')
     }
@@ -93,7 +86,6 @@ export function PhoneVerification() {
       setSuccess('Телефон успешно подтвержден!')
       setCode('')
       setCodeSent(false)
-      setTestCode(null)
       // Обновляем текущий телефон
       setCurrentPhone(phone)
     } else {
@@ -201,14 +193,6 @@ export function PhoneVerification() {
               </p>
             </div>
 
-            {testCode && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-3">
-                <p className="text-xs text-blue-600 dark:text-blue-400">
-                  <strong>Тестовый режим:</strong> Код для проверки: <code className="font-mono font-bold">{testCode}</code>
-                </p>
-              </div>
-            )}
-
             {error && (
               <div className="flex items-center gap-2 text-sm text-destructive bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -233,7 +217,6 @@ export function PhoneVerification() {
                   setCode('')
                   setError(null)
                   setSuccess(null)
-                  setTestCode(null)
                 }}
               >
                 Изменить номер
