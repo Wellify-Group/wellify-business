@@ -147,20 +147,11 @@ export default function RegisterDirectorClient() {
     if (!form.email.trim()) return;
 
     let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 60;
 
     const check = async () => {
-      if (cancelled) return;
-      if (attempts >= maxAttempts) {
-        console.log("[email-poll] Max attempts reached");
-        return;
-      }
-
-      attempts += 1;
-      setEmailStatus("checking");
-
       try {
+        setEmailStatus("checking");
+
         const res = await fetch("/api/auth/check-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -169,37 +160,45 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
-        if (cancelled) return;
-
-        if (data.confirmed) {
-          setEmailStatus("verified");
-          setEmailVerified(true);
-          setFormSuccess("E-mail подтверждён. Можете перейти к следующему шагу.");
-          setEmailError(null);
-          
-          if (typeof window !== "undefined") {
-            localStorage.setItem("wellify_email_confirmed", "true");
-            localStorage.setItem("wellify_email_confirmed_for", form.email.trim());
+        if (!res.ok) {
+          console.error("check-email error", data);
+          if (!cancelled) {
+            setEmailStatus("link_sent");
           }
           return;
+        }
+
+        if (data.confirmed) {
+          if (!cancelled) {
+            setEmailStatus("verified");
+            setEmailVerified(true);
+            setFormSuccess("E-mail подтверждён. Можете перейти к следующему шагу.");
+            setEmailError(null);
+            
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("register_email");
+            }
+          }
         } else {
-          setEmailStatus("link_sent"); // остаёмся в том же состоянии
+          // Ещё не подтверждён - через пару секунд проверим ещё раз
+          if (!cancelled) {
+            setEmailStatus("link_sent");
+            setTimeout(check, 4000);
+          }
         }
       } catch (e) {
-        console.error("[email-poll] Error auto-checking email", e);
+        console.error("check-email exception", e);
         if (!cancelled) {
           setEmailStatus("link_sent");
+          setTimeout(check, 4000);
         }
       }
     };
 
-    // стартуем сразу и затем по интервалу
     check();
-    const id = setInterval(check, 5000);
 
     return () => {
       cancelled = true;
-      clearInterval(id);
     };
   }, [emailStatus, form.email]);
 
@@ -654,14 +653,15 @@ export default function RegisterDirectorClient() {
         {/* БАННЕРЫ */}
         {emailStatus === "link_sent" && (
           <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            Мы отправили письмо. Подтвердите email и вернитесь на страницу. Статус обновится автоматически.
+            Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
+            Статус обновится автоматически.
           </div>
         )}
 
         {emailStatus === "checking" && (
-          <div className="mt-3 text-sm text-muted-foreground">
-            Проверяем подтверждение email...
-          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Проверяем подтверждение e-mail...
+          </p>
         )}
 
         {emailStatus === "verified" && (
