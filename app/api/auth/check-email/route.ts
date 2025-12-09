@@ -1,21 +1,11 @@
-// app/api/auth/check-email/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { email } = await request.json();
-
-    if (!email || typeof email !== "string") {
-      return NextResponse.json(
-        { confirmed: false, message: "Email is required" },
-        { status: 400 }
-      );
-    }
-
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -27,15 +17,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { email } = await req.json();
+    if (!email) {
+      return NextResponse.json(
+        { confirmed: false, message: "Email is required" },
+        { status: 400 }
+      );
+    }
+
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const norm = (s: string) => s.trim().toLowerCase();
-
+    // Ищем пользователя по email среди auth.users
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({
       page: 1,
       perPage: 1000,
@@ -44,44 +38,32 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("[check-email] listUsers error", error);
       return NextResponse.json(
-        { confirmed: false, message: "Failed to check users" },
+        { confirmed: false, message: "Failed to check email" },
         { status: 500 }
       );
     }
 
-    const user = data.users.find(
-      (u) => u.email && norm(u.email) === norm(email)
+    const norm = (s: string) => s.trim().toLowerCase();
+    const normalizedEmail = norm(email);
+
+    const existingUser = data.users.find(
+      (u) => u.email && norm(u.email) === normalizedEmail
     );
 
-    if (!user) {
-      // Пользователя с таким email ещё нет
-      return NextResponse.json(
-        {
-          confirmed: false,
-          exists: false,
-        },
-        { status: 200 }
-      );
+    if (!existingUser) {
+      return NextResponse.json({ confirmed: false }, { status: 200 });
     }
 
-    const confirmed = !!user.email_confirmed_at;
+    const confirmed = !!existingUser.email_confirmed_at;
 
+    return NextResponse.json({
+      confirmed,
+      userId: existingUser.id,
+    });
+  } catch (e: any) {
+    console.error("[check-email] Unexpected error", e);
     return NextResponse.json(
-      {
-        confirmed,
-        exists: true,
-        userId: user.id,
-        emailConfirmedAt: user.email_confirmed_at,
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error("[check-email] Unexpected error", error);
-    return NextResponse.json(
-      {
-        confirmed: false,
-        message: error?.message || "Internal server error",
-      },
+      { confirmed: false, message: e?.message || "Internal server error" },
       { status: 500 }
     );
   }

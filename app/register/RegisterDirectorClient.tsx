@@ -58,7 +58,7 @@ export default function RegisterDirectorClient() {
 
   // Состояния верификации
   // Email верификация через Supabase (не Twilio!)
-  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "link_sent" | "verified" | "error">("idle");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "link_sent" | "checking" | "verified" | "error">("idle");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(false);
   const [confirmedUserId, setConfirmedUserId] = useState<string | undefined>(undefined);
@@ -123,27 +123,85 @@ export default function RegisterDirectorClient() {
     }
   }, [step]);
 
-  // Авто-подтверждение e-mail на шаге 2 через localStorage
+  // Подхват статуса при возврате на страницу
   useEffect(() => {
-    if (step !== 2) return;
     if (typeof window === "undefined") return;
-
-    const confirmedFlag = localStorage.getItem("wellify_email_confirmed");
-    const confirmedEmail = localStorage.getItem("wellify_email");
+    
+    const confirmed = localStorage.getItem("wellify_email_confirmed");
+    const confirmedFor = localStorage.getItem("wellify_email_confirmed_for");
     const currentEmail = form.email.trim().toLowerCase();
-
-    if (
-      confirmedFlag === "1" &&
-      confirmedEmail &&
-      confirmedEmail.toLowerCase() === currentEmail
-    ) {
+    
+    if (confirmed === "true" && confirmedFor && confirmedFor.toLowerCase() === currentEmail) {
       if (emailStatus !== "verified") {
         setEmailStatus("verified");
         setEmailVerified(true);
+        setFormSuccess("E-mail подтверждён. Можете перейти к следующему шагу.");
         setEmailError(null);
       }
     }
-  }, [step, form.email, emailStatus]);
+  }, [form.email, emailStatus]);
+
+  // Авто-проверка e-mail через поллинг API при статусе link_sent
+  useEffect(() => {
+    if (emailStatus !== "link_sent") return;
+    if (!form.email.trim()) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 60;
+
+    const check = async () => {
+      if (cancelled) return;
+      if (attempts >= maxAttempts) {
+        console.log("[email-poll] Max attempts reached");
+        return;
+      }
+
+      attempts += 1;
+      setEmailStatus("checking");
+
+      try {
+        const res = await fetch("/api/auth/check-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email.trim() }),
+        });
+
+        const data = await res.json();
+
+        if (cancelled) return;
+
+        if (data.confirmed) {
+          setEmailStatus("verified");
+          setEmailVerified(true);
+          setFormSuccess("E-mail подтверждён. Можете перейти к следующему шагу.");
+          setEmailError(null);
+          
+          if (typeof window !== "undefined") {
+            localStorage.setItem("wellify_email_confirmed", "true");
+            localStorage.setItem("wellify_email_confirmed_for", form.email.trim());
+          }
+          return;
+        } else {
+          setEmailStatus("link_sent"); // остаёмся в том же состоянии
+        }
+      } catch (e) {
+        console.error("[email-poll] Error auto-checking email", e);
+        if (!cancelled) {
+          setEmailStatus("link_sent");
+        }
+      }
+    };
+
+    // стартуем сразу и затем по интервалу
+    check();
+    const id = setInterval(check, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [emailStatus, form.email]);
 
   // Сохранение состояния регистрации в localStorage
   useEffect(() => {
@@ -273,12 +331,27 @@ export default function RegisterDirectorClient() {
     setEmailStatus("idle");
     setEmailError(null);
     setFormError(null);
+    setFormSuccess(null);
     setEmailVerified(false);
     
     if (typeof window !== "undefined") {
       localStorage.removeItem("register_email");
       localStorage.removeItem("wellify_email");
       localStorage.removeItem("wellify_email_confirmed");
+      localStorage.removeItem("wellify_email_confirmed_for");
+      
+      // очистить сохранённую регистрацию, если email меняется
+      const saved = localStorage.getItem("register_in_progress");
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          state.email = "";
+          state.step = 2;
+          localStorage.setItem("register_in_progress", JSON.stringify(state));
+        } catch (e) {
+          localStorage.removeItem("register_in_progress");
+        }
+      }
     }
     
     // Выходим из сессии
@@ -287,6 +360,12 @@ export default function RegisterDirectorClient() {
     } catch (err) {
       console.warn("Error signing out:", err);
     }
+    
+    // Обнуляем email и статусы
+    setForm((prev) => ({ ...prev, email: "" }));
+    setEmailStatus("idle");
+    setFormError(null);
+    setFormSuccess(null);
   };
 
 
@@ -350,7 +429,12 @@ export default function RegisterDirectorClient() {
       }
 
       // Очищаем сохранённое состояние регистрации
-      localStorage.removeItem("register_in_progress");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("register_in_progress");
+        localStorage.removeItem("wellify_email_confirmed");
+        localStorage.removeItem("wellify_email_confirmed_for");
+        localStorage.removeItem("register_email");
+      }
 
       // Редирект на дашборд директора
       router.push("/dashboard/director");
@@ -545,7 +629,7 @@ export default function RegisterDirectorClient() {
       form.email.trim() && emailRegex.test(form.email.trim());
 
     // Поле ввода e-mail активно только если idle или error
-    const isEmailInputDisabled = emailStatus === "sending" || emailStatus === "link_sent" || emailStatus === "verified";
+    const isEmailInputDisabled = emailStatus === "sending" || emailStatus === "link_sent" || emailStatus === "checking" || emailStatus === "verified";
 
     return (
       <div className="space-y-4">
@@ -571,6 +655,12 @@ export default function RegisterDirectorClient() {
         {emailStatus === "link_sent" && (
           <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
             Мы отправили письмо. Подтвердите email и вернитесь на страницу. Статус обновится автоматически.
+          </div>
+        )}
+
+        {emailStatus === "checking" && (
+          <div className="mt-3 text-sm text-muted-foreground">
+            Проверяем подтверждение email...
           </div>
         )}
 
@@ -618,7 +708,7 @@ export default function RegisterDirectorClient() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={emailStatus === "sending"}
+            disabled={emailStatus === "sending" || emailStatus === "checking"}
             onClick={() => setStep(1)}
           >
             Назад

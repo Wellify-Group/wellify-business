@@ -17,10 +17,28 @@ export default function EmailConfirmedPage() {
           const normalized = data.user.email.toLowerCase();
           setEmail(normalized);
 
+          // Синхронизируем профиль через API
+          try {
+            const res = await fetch("/api/auth/email-sync-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: normalized,
+              }),
+            });
+
+            if (!res.ok) {
+              console.error("[email-confirmed] Failed to sync profile");
+            }
+          } catch (syncError) {
+            console.error("[email-confirmed] Error syncing profile", syncError);
+          }
+
           // помечаем верификацию в localStorage
           if (typeof window !== "undefined") {
-            localStorage.setItem("wellify_email_confirmed", "1");
-            localStorage.setItem("wellify_email", normalized);
+            localStorage.setItem("wellify_email_confirmed", "true");
+            localStorage.setItem("wellify_email_confirmed_for", normalized);
           }
         }
       } catch (e) {
