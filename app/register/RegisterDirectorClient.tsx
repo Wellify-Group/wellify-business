@@ -580,19 +580,6 @@ export default function RegisterDirectorClient() {
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium">
-            Фамилия <span className="text-destructive">*</span>
-          </label>
-          <input
-            value={baseData.lastName}
-            onChange={(e) =>
-              setBaseData((prev) => ({ ...prev, lastName: e.target.value }))
-            }
-            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
-            placeholder="Иванов"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium">
             Отчество <span className="text-destructive">*</span>
           </label>
           <input
@@ -602,6 +589,19 @@ export default function RegisterDirectorClient() {
             }
             className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
             placeholder="Иванович"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Фамилия <span className="text-destructive">*</span>
+          </label>
+          <input
+            value={baseData.lastName}
+            onChange={(e) =>
+              setBaseData((prev) => ({ ...prev, lastName: e.target.value }))
+            }
+            className="h-11 w-full rounded-lg border border-border bg-card px-4 text-sm text-foreground outline-none transition focus:border-transparent focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-card"
+            placeholder="Иванов"
           />
         </div>
       </div>
@@ -876,26 +876,15 @@ export default function RegisterDirectorClient() {
           <CardTitle className="text-xl font-semibold text-center">
             Создать аккаунт директора
           </CardTitle>
-          <div className="mt-2 flex items-center justify-center gap-3 text-xs">
-            <span className="text-muted-foreground">
-              Уже есть аккаунт?{" "}
-              <Link
-                href="/auth/login"
-                className="font-medium text-primary hover:underline"
-              >
-                Войти
-              </Link>
-            </span>
-            {(step > 1 || form.email || form.phone || baseData.firstName) && (
-              <button
-                type="button"
-                onClick={clearRegistrationState}
-                className="text-muted-foreground hover:text-foreground transition-colors underline"
-              >
-                Начать заново
-              </button>
-            )}
-          </div>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Уже есть аккаунт?{" "}
+            <Link
+              href="/auth/login"
+              className="font-medium text-primary hover:underline"
+            >
+              Войти
+            </Link>
+          </p>
         </CardHeader>
         <CardContent>
           {step === 1 && renderStep1()}
