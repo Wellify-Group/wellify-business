@@ -3,6 +3,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// Вспомогательная функция для обрезки строки
+const trim = (str: string) => str.trim().replace(/\s+/g, ' ');
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -68,6 +71,14 @@ export async function POST(req: NextRequest) {
 
     // 3. Синхронизируем профиль
     const meta = user.user_metadata || {};
+    
+    // Формируем full_name из метаданных, если его нет
+    const fullName = meta.full_name || 
+      (meta.last_name || meta.first_name || meta.middle_name
+        ? trim(
+            `${meta.last_name || ''} ${meta.first_name || ''} ${meta.middle_name || ''}`
+          )
+        : null);
 
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -77,6 +88,7 @@ export async function POST(req: NextRequest) {
           first_name: meta.first_name ?? null,
           last_name: meta.last_name ?? null,
           middle_name: meta.middle_name ?? null,
+          full_name: fullName,
           birth_date: meta.birth_date ?? null,
           email_verified: true,
           updated_at: new Date().toISOString(),
