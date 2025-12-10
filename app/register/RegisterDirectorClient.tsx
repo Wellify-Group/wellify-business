@@ -178,15 +178,15 @@ export default function RegisterDirectorClient() {
           });
           setStep(3);
           // Восстанавливаем статус email верификации
-          if (savedState.emailVerified) {
-            setEmailVerified(true);
-            const confirmed = localStorage.getItem("wellify_email_confirmed");
-            const confirmedFor = localStorage.getItem("wellify_email_confirmed_for");
-            if (confirmed === "true" && confirmedFor && confirmedFor.toLowerCase() === (savedState.form?.email || "").toLowerCase()) {
-              setEmailStatus("verified");
-            } else {
-              setEmailStatus("link_sent");
-            }
+          // НО: не устанавливаем verified автоматически - проверяем через API polling
+          // Если email был подтверждён ранее, запускаем проверку через API
+          // НЕ устанавливаем verified сразу - только через API подтверждение из БД
+          if (savedState.emailVerified && savedState.form?.email) {
+            setEmailStatus("link_sent");
+            setEmailVerified(false); // Сбрасываем, чтобы polling проверил реальное состояние в БД
+          } else {
+            setEmailStatus("link_sent");
+            setEmailVerified(false);
           }
         } else if (restoredStep === 2) {
           // Шаг 2: Восстанавливаем шаг 1, но очищаем email
@@ -258,29 +258,8 @@ export default function RegisterDirectorClient() {
     }
   }, [step]);
 
-  // Подхват статуса при возврате на страницу
-  // Проверка подтверждения email из localStorage (только если письмо уже было отправлено)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    // Проверяем подтверждение ТОЛЬКО если письмо уже было отправлено (link_sent или verified)
-    // Не проверяем, если статус idle или error - значит письмо ещё не отправлялось
-    if (emailStatus !== "link_sent" && emailStatus !== "verified" && emailStatus !== "checking") {
-      return;
-    }
-    
-    const confirmed = localStorage.getItem("wellify_email_confirmed");
-    const confirmedFor = localStorage.getItem("wellify_email_confirmed_for");
-    const currentEmail = form.email.trim().toLowerCase();
-    
-    if (confirmed === "true" && confirmedFor && confirmedFor.toLowerCase() === currentEmail) {
-      if (emailStatus !== "verified") {
-        setEmailStatus("verified");
-        setEmailVerified(true);
-        setFormSuccess(null); // Не показываем уведомление на шаге 2
-        setEmailError(null);
-      }
-    }
-  }, [form.email, emailStatus]);
+  // НЕ проверяем localStorage автоматически - только через API polling
+  // Это гарантирует, что мы проверяем реальное состояние в БД, а не кэш
 
   // Авто-проверка e-mail через поллинг каждую секунду при статусе link_sent
   // Проверяет email_verified в таблице profiles и email_confirmed_at в сессии
@@ -310,16 +289,17 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
-        console.log("[register] checkEmailConfirmation response", { 
-          confirmed: data.confirmed, 
-          email: form.email.trim() 
-        });
-
-        // Если email подтверждён, меняем UI
+        // КРИТИЧНО: Проверяем ТОЛЬКО реальное состояние из БД (data.confirmed из API)
+        // API проверяет email_verified в таблице profiles через admin клиент
         if (data.confirmed === true) {
-          // Email подтверждён! Меняем UI
+          // State Machine: Transition WAITING_FOR_VERIFICATION -> VERIFIED
+          // Email подтверждён в БД! Переходим в состояние VERIFIED
           if (!cancelled) {
-            console.log("[register] ✅ Email confirmed! Updating UI...", { email: form.email.trim() });
+            console.log("[register] ✅ Email verified in DB! Transitioning to VERIFIED state", { 
+              email: form.email.trim(),
+              userId: data.userId 
+            });
+            
             setEmailStatus("verified");
             setEmailVerified(true);
             setFormSuccess("Отлично! Ваша почта подтверждена, можете переходить к 3 шагу.");
@@ -331,6 +311,7 @@ export default function RegisterDirectorClient() {
               intervalId = null;
             }
 
+            // Сохраняем в localStorage только после подтверждения в БД
             if (typeof window !== "undefined") {
               localStorage.setItem("wellify_email_confirmed", "true");
               localStorage.setItem("wellify_email_confirmed_for", form.email.trim().toLowerCase());
@@ -338,10 +319,13 @@ export default function RegisterDirectorClient() {
             }
           }
         } else {
-          // Email ещё не подтверждён - продолжаем проверку
+          // State Machine: Остаёмся в WAITING_FOR_VERIFICATION
+          // Email ещё не подтверждён в БД - продолжаем polling
           // Логируем только иногда, чтобы не засорять консоль
           if (Math.random() < 0.1) {
-            console.log("[register] ⏳ Email not confirmed yet, continuing polling...", { email: form.email.trim() });
+            console.log("[register] ⏳ Email not verified in DB yet, continuing polling...", { 
+              email: form.email.trim() 
+            });
           }
         }
       } catch (e) {
@@ -980,8 +964,8 @@ export default function RegisterDirectorClient() {
             </Button>
           )}
 
-          {/* Кнопка "Далее" - ТОЛЬКО когда emailStatus === "verified" */}
-          {emailStatus === "verified" && (
+          {/* State Machine: VERIFIED State - Кнопка "Далее" показывается ТОЛЬКО когда emailVerified === true из БД */}
+          {emailStatus === "verified" && emailVerified === true && (
             <Button
               type="button"
               className="w-full md:w-auto"
@@ -990,6 +974,8 @@ export default function RegisterDirectorClient() {
               Далее
             </Button>
           )}
+          
+          {/* State Machine: IDLE/WAITING_FOR_VERIFICATION - Кнопка "Далее" СКРЫТА (не рендерим ничего) */}
         </div>
       </div>
     );
