@@ -813,15 +813,18 @@ export default function RegisterDirectorClient() {
       setFinishLoading(true);
       setFinishError(null);
 
-      // Проверяем, что email подтверждён и телефон подтверждён
+      // КРИТИЧНО: Проверяем статусы из БД (аналогично шагу 2)
+      // Email должен быть подтверждён (email_verified = TRUE в profiles)
       if (emailStatus !== "verified" || !emailVerified) {
         setFinishError("E-mail должен быть подтверждён. Вернитесь на предыдущий шаг.");
         setFinishLoading(false);
         return;
       }
 
-      if (!phoneVerified) {
-        setFinishError("Телефон ещё не подтверждён.");
+      // Телефон должен быть подтверждён (phone_verified = TRUE в profiles)
+      // Проверяем через polling, который отслеживает profiles.phone_verified из БД
+      if (phoneStatus !== "verified" || !phoneVerified) {
+        setFinishError("Телефон ещё не подтверждён. Пожалуйста, подождите подтверждения.");
         setFinishLoading(false);
         return;
       }
