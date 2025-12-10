@@ -748,6 +748,48 @@ export default function RegisterDirectorClient() {
         return;
       }
 
+      // КРИТИЧНО: Проверяем, существует ли email в базе данных ДО отправки письма
+      // Если email уже зарегистрирован, предлагаем пользователю войти вместо регистрации
+      console.log("[register] Checking if email already exists in database", {
+        email: form.email.trim(),
+      });
+
+      try {
+        const checkEmailRes = await fetch("/api/auth/check-email-exists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email.trim() }),
+        });
+
+        if (checkEmailRes.ok) {
+          const checkEmailData = await checkEmailRes.json();
+
+          if (checkEmailData.exists === true) {
+            // Email уже зарегистрирован - блокируем регистрацию
+            console.log("[register] Email already exists, blocking registration", {
+              email: form.email.trim(),
+            });
+            
+            if (timeoutId) clearTimeout(timeoutId);
+            setEmailStatus("error");
+            setEmailError(
+              "Этот e-mail уже зарегистрирован. Пожалуйста, войдите в систему."
+            );
+            return; // Блокируем дальнейшую регистрацию
+          }
+        } else {
+          // Если проверка не удалась, логируем, но продолжаем регистрацию
+          // (не блокируем пользователя из-за временной ошибки API)
+          console.warn("[register] Failed to check email existence, continuing registration", {
+            status: checkEmailRes.status,
+          });
+        }
+      } catch (checkError) {
+        // Если проверка не удалась, логируем, но продолжаем регистрацию
+        // (не блокируем пользователя из-за временной ошибки API)
+        console.warn("[register] Error checking email existence, continuing registration", checkError);
+      }
+
       // Используем текущий origin для redirect после подтверждения email
       const redirectTo = typeof window !== "undefined" 
         ? `${window.location.origin}/email-confirmed`
@@ -811,6 +853,7 @@ export default function RegisterDirectorClient() {
           errorCode === 400 ||
           errorCode === 422
         ) {
+          if (timeoutId) clearTimeout(timeoutId);
           setEmailStatus("error");
           setEmailError("Этот e-mail уже зарегистрирован. Пожалуйста, войдите в систему.");
           return;
@@ -1219,7 +1262,17 @@ export default function RegisterDirectorClient() {
         {/* Красное уведомление об ошибке */}
         {emailError && (
           <div className="mt-3 w-full rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-400">
-            {emailError}
+            <div className="flex flex-col gap-2">
+              <span>{emailError}</span>
+              {emailError.includes("уже зарегистрирован") && (
+                <Link
+                  href="/login"
+                  className="text-red-300 underline hover:text-red-200 transition-colors"
+                >
+                  Перейти на страницу входа →
+                </Link>
+              )}
+            </div>
           </div>
         )}
 
