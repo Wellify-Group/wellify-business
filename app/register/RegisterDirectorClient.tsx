@@ -195,8 +195,8 @@ export default function RegisterDirectorClient() {
     }
   }, [form.email, emailStatus]);
 
-  // Авто-проверка e-mail через поллинг с refreshSession() при статусе link_sent
-  // Работает в фоне без изменения UI до подтверждения
+  // Авто-проверка e-mail через поллинг каждую секунду при статусе link_sent
+  // Проверяет email_verified в таблице profiles и email_confirmed_at в сессии
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
     if (!form.email.trim()) return;
@@ -218,12 +218,29 @@ export default function RegisterDirectorClient() {
         }
 
         // Проверяем email_confirmed_at в обновленной сессии
-        if (session?.user?.email_confirmed_at) {
+        const isEmailConfirmedInSession = !!session?.user?.email_confirmed_at;
+
+        // Также проверяем email_verified в таблице profiles
+        let isEmailVerifiedInProfile = false;
+        if (session?.user?.id) {
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("email_verified")
+            .eq("id", session.user.id)
+            .single();
+
+          if (!profileError && profile?.email_verified === true) {
+            isEmailVerifiedInProfile = true;
+          }
+        }
+
+        // Если email подтверждён (в сессии или в профиле), меняем UI
+        if (isEmailConfirmedInSession || isEmailVerifiedInProfile) {
           // Email подтверждён! Меняем UI
           if (!cancelled) {
             setEmailStatus("verified");
             setEmailVerified(true);
-            setFormSuccess("Поздравляем! Ваш e-mail подтверждён.");
+            setFormSuccess("Отлично! Ваша почта подтверждена, можете переходить к 3 шагу.");
             setEmailError(null);
             
             // Останавливаем интервал
@@ -249,14 +266,14 @@ export default function RegisterDirectorClient() {
     // Запускаем проверку сразу
     checkEmailConfirmation();
 
-    // Устанавливаем интервал для периодической проверки (каждые 3 секунды)
+    // Устанавливаем интервал для периодической проверки (каждую секунду)
     intervalId = setInterval(() => {
       if (!cancelled && !emailVerified && emailStatus === "link_sent") {
         checkEmailConfirmation();
       } else if (emailVerified && intervalId) {
         clearInterval(intervalId);
       }
-    }, 3000); // Проверяем каждые 3 секунды
+    }, 1000); // Проверяем каждую секунду
 
     return () => {
       cancelled = true;
@@ -744,10 +761,10 @@ export default function RegisterDirectorClient() {
                 </div>
                 <div className="flex-1 text-left">
                   <h3 className="text-base font-semibold text-emerald-300 mb-1">
-                    E-mail подтвержден!
+                    Отлично! Ваша почта подтверждена
                   </h3>
                   <p className="text-sm text-emerald-200">
-                    Переходите к следующему шагу.
+                    Можете переходить к 3 шагу.
                   </p>
                 </div>
               </div>
