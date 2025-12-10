@@ -288,7 +288,9 @@ export default function RegisterDirectorClient() {
 
         // Используем API route, который проверяет profiles.email_verified из базы данных
         // Мониторим изменения в этой ячейке каждую секунду
-        const res = await fetch("/api/auth/check-email-confirmed", {
+        // Передаём email в query параметре на случай, если пользователь не залогинен
+        const emailParam = encodeURIComponent(form.email.trim());
+        const res = await fetch(`/api/auth/check-email-confirmed?email=${emailParam}`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
@@ -604,10 +606,21 @@ export default function RegisterDirectorClient() {
       setFormSuccess(null); // Очищаем сообщение об успехе
       // Запускаем таймер для повторной отправки (60 секунд)
       setResendCooldown(60);
+      
+      // ВАЖНО: Проверяем, создалась ли сессия после signUp
+      // Если нет, пытаемся получить сессию
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn("[register] ⚠️ No session after signUp, email will be checked via email parameter");
+      } else {
+        console.log("[register] ✅ Session created after signUp", { userId: session.user.id });
+      }
+      
       console.log("[register] ✅ Email sent successfully", { 
         email: normalizedEmail,
         userId: data.user.id,
         emailConfirmed: !!data.user.email_confirmed_at,
+        hasSession: !!session,
       });
     } catch (e: any) {
       console.error("[register] handleSendEmailLink exception", e);
