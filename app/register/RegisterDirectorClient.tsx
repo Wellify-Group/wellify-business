@@ -414,6 +414,135 @@ export default function RegisterDirectorClient() {
     return () => clearInterval(timerId);
   }, [resendCooldown]);
 
+  // Авто-проверка телефона через поллинг каждую секунду при статусе verifying
+  // Проверяет profiles.phone_verified из базы данных
+  useEffect(() => {
+    if (phoneStatus !== "verifying") {
+      console.log("[register] Phone polling not started: phoneStatus !== 'verifying'", { phoneStatus });
+      return;
+    }
+    if (!form.phone.trim()) {
+      console.log("[register] Phone polling not started: phone is empty");
+      return;
+    }
+    if (phoneVerified) {
+      console.log("[register] Phone polling not started: phone already verified");
+      return; // Если уже подтверждён, не проверяем
+    }
+
+    console.log("[register] 🚀 Starting phone verification polling", {
+      phone: form.phone.trim(),
+      phoneStatus,
+      phoneVerified,
+    });
+
+    let cancelled = false;
+    let intervalId: NodeJS.Timeout | null = null;
+    let hasStartedPolling = false; // Флаг, чтобы не запускать проверку сразу
+
+    const checkPhoneConfirmation = async () => {
+      try {
+        if (cancelled) return;
+
+        // Используем API route, который проверяет profiles.phone_verified из базы данных
+        // Мониторим изменения в этой ячейке каждую секунду
+        // Передаём phone и email в body для поиска пользователя
+        const res = await fetch("/api/auth/check-phone", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            phone: form.phone.trim(),
+            email: form.email.trim(), // Передаём email для поиска пользователя, если не залогинен
+          }),
+        });
+
+        if (!res.ok) {
+          console.error("[register] check-phone API error:", res.status);
+          return; // Продолжаем проверку в фоне
+        }
+
+        const data = await res.json();
+
+        // Детальное логирование для отладки
+        console.log("[register] checkPhoneConfirmation response", {
+          verified: data.verified,
+          fullResponse: data,
+        });
+
+        // КРИТИЧНО: Проверяем ТОЛЬКО data.verified из API
+        // API проверяет profiles.phone_verified, который обновляется в Supabase
+        if (data.verified === true) {
+          // State Machine: Transition VERIFYING -> VERIFIED
+          // Телефон подтверждён (phone_verified = TRUE в profiles)! Переходим в состояние VERIFIED
+          if (!cancelled) {
+            console.log("[register] ✅ Phone verified (phone_verified = TRUE)! Transitioning to VERIFIED state", { 
+              phone: form.phone.trim(),
+              currentPhoneStatus: phoneStatus,
+              currentPhoneVerified: phoneVerified,
+            });
+            
+            setPhoneStatus("verified");
+            setPhoneVerified(true);
+            setFormError(null);
+            
+            // Останавливаем интервал
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+          }
+        } else {
+          // State Machine: Остаёмся в VERIFYING
+          // Телефон ещё не подтверждён - продолжаем polling
+          // Логируем каждую проверку для отладки
+          console.log("[register] ⏳ Phone not verified yet, continuing polling...", { 
+            phone: form.phone.trim(),
+            verified: data.verified,
+          });
+        }
+      } catch (e) {
+        console.error("[register] checkPhoneConfirmation exception", e);
+        // Продолжаем проверку в фоне даже при ошибке
+      }
+    };
+
+    // НЕ запускаем проверку сразу - даём время обновлению в БД
+    // Запускаем первую проверку через 2 секунды после установки статуса verifying
+    const initialDelay = setTimeout(() => {
+      if (!cancelled && !phoneVerified && phoneStatus === "verifying") {
+        hasStartedPolling = true;
+        console.log("[register] 🔍 Starting first phone check after delay");
+        checkPhoneConfirmation();
+      } else {
+        console.log("[register] ⚠️ First phone check skipped", {
+          cancelled,
+          phoneVerified,
+          phoneStatus,
+        });
+      }
+    }, 2000); // 2 секунды задержка перед первой проверкой
+
+    // Устанавливаем интервал для периодической проверки (каждую секунду)
+    // Мониторим изменения в profiles.phone_verified каждую секунду
+    intervalId = setInterval(() => {
+      if (!cancelled && !phoneVerified && phoneStatus === "verifying" && hasStartedPolling) {
+        checkPhoneConfirmation();
+      } else if (phoneVerified && intervalId) {
+        clearInterval(intervalId);
+      }
+    }, 1000); // Проверяем каждую секунду
+
+    return () => {
+      cancelled = true;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      if (initialDelay) {
+        clearTimeout(initialDelay);
+      }
+    };
+  }, [phoneStatus, form.phone, phoneVerified]);
+
   // Сохранение состояния регистрации в localStorage
   useEffect(() => {
     if (step > 1 || form.email || form.phone) {
