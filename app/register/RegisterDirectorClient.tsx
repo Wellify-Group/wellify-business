@@ -1199,6 +1199,7 @@ export default function RegisterDirectorClient() {
           <PhoneStep
             initialPhone={form.phone}
             locale={localeForAPI}
+            email={form.email} // Передаём email для поиска пользователя в БД
             onPhoneVerified={(verifiedPhone) => {
               // Когда Twilio подтвердил код, обновляем телефон и запускаем polling
               setForm((prev) => ({ ...prev, phone: verifiedPhone }));
