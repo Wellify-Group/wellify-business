@@ -358,6 +358,7 @@ export default function RegisterDirectorClient() {
             full_name: fullName,
             birth_date: birthDateFormatted, // Формат YYYY-MM-DD
             email_verified: true, // Флаг в метаданных (в БД будет false до подтверждения)
+            locale: localeForAPI, // Сохраняем язык интерфейса: 'ru' | 'uk' | 'en'
           },
           emailRedirectTo: redirectTo,
         },
