@@ -209,33 +209,22 @@ export default function RegisterDirectorClient() {
       try {
         if (cancelled) return;
 
-        // ОБЯЗАТЕЛЬНО обновляем сессию перед проверкой, чтобы получить свежие данные с сервера
-        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+        // Используем API route для проверки статуса (использует admin клиент, обходит RLS)
+        const res = await fetch("/api/auth/check-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.email.trim() }),
+        });
 
-        if (refreshError) {
-          console.error("refreshSession error:", refreshError);
+        if (!res.ok) {
+          console.error("check-email API error:", res.status);
           return; // Продолжаем проверку в фоне
         }
 
-        // Проверяем email_confirmed_at в обновленной сессии
-        const isEmailConfirmedInSession = !!session?.user?.email_confirmed_at;
+        const data = await res.json();
 
-        // Также проверяем email_verified в таблице profiles
-        let isEmailVerifiedInProfile = false;
-        if (session?.user?.id) {
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("email_verified")
-            .eq("id", session.user.id)
-            .single();
-
-          if (!profileError && profile?.email_verified === true) {
-            isEmailVerifiedInProfile = true;
-          }
-        }
-
-        // Если email подтверждён (в сессии или в профиле), меняем UI
-        if (isEmailConfirmedInSession || isEmailVerifiedInProfile) {
+        // Если email подтверждён, меняем UI
+        if (data.confirmed === true) {
           // Email подтверждён! Меняем UI
           if (!cancelled) {
             setEmailStatus("verified");

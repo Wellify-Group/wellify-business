@@ -64,12 +64,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ confirmed: false }, { status: 200 });
     }
 
-    // 2. Проверяем, подтверждён ли e-mail в auth.users
-    if (!user.email_confirmed_at) {
+    // 2. Проверяем, подтверждён ли e-mail в auth.users ИЛИ в profiles.email_verified
+    // Сначала проверяем profiles.email_verified (более надежно, так как обновляется триггером)
+    const { data: profile, error: profileCheckError } = await supabaseAdmin
+      .from("profiles")
+      .select("email_verified")
+      .eq("id", user.id)
+      .single();
+
+    const isEmailVerifiedInProfile = profile?.email_verified === true;
+    const isEmailConfirmedInAuth = !!user.email_confirmed_at;
+
+    // Email считается подтверждённым, если подтверждён в auth.users ИЛИ в profiles
+    if (!isEmailConfirmedInAuth && !isEmailVerifiedInProfile) {
       return NextResponse.json({ confirmed: false }, { status: 200 });
     }
 
-    // 3. Синхронизируем профиль
+    // 3. Синхронизируем профиль (обновляем email_verified если нужно)
     const meta = user.user_metadata || {};
     
     // Формируем full_name из метаданных, если его нет
@@ -80,7 +91,7 @@ export async function POST(req: NextRequest) {
           )
         : null);
 
-    const { error: profileError } = await supabaseAdmin
+    const { error: profileUpsertError } = await supabaseAdmin
       .from("profiles")
       .upsert(
         {
@@ -96,8 +107,8 @@ export async function POST(req: NextRequest) {
         { onConflict: "id" }
       );
 
-    if (profileError) {
-      console.error("[check-email] upsert profile error", profileError);
+    if (profileUpsertError) {
+      console.error("[check-email] upsert profile error", profileUpsertError);
       // e-mail уже подтверждён, но профиль не обновили - это не блокирует переход дальше
       return NextResponse.json(
         {
