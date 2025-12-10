@@ -151,12 +151,28 @@ export async function POST(request: NextRequest) {
       return `${part()}-${part()}-${part()}-${part()}`;
     };
 
-    // Проверяем, есть ли уже профиль
-    const { data: existingProfile } = await supabaseAdmin
+    // Проверяем, есть ли уже профиль и верифицирован ли телефон
+    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from("profiles")
-      .select("*")
+      .select("phone, phone_verified")
       .eq("id", userId)
       .maybeSingle();
+
+    // Дополнительная проверка: телефон должен быть верифицирован
+    if (!existingProfile?.phone || !existingProfile.phone_verified) {
+      console.error("[register-director] Phone is not verified", {
+        userId,
+        hasPhone: !!existingProfile?.phone,
+        phoneVerified: existingProfile?.phone_verified,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Phone is not verified. Please verify your phone number first.",
+        },
+        { status: 400 }
+      );
+    }
 
     // Используем русские названия полей из БД или английские как fallback
     const existingBusinessId = (existingProfile as any)?.["бизнес_id"] || (existingProfile as any)?.business_id;
