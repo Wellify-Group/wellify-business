@@ -82,97 +82,52 @@ export async function POST(req: NextRequest) {
       // Код правильный - телефон подтверждён через Twilio
       // Обновляем профиль пользователя в Supabase
       try {
-        // Сначала пробуем получить текущего пользователя через серверный клиент
-        let userId: string | null = null;
-        let supabase = await createServerSupabaseClient();
-        
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        const supabase = await createServerSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-        if (user && !userError) {
-          // Пользователь залогинен - используем его ID
-          userId = user.id;
-        } else {
-          // Пользователь не залогинен (возможно, во время регистрации)
-          // Используем admin-клиент для поиска пользователя по телефону
-          console.log("[phone-verify-code] User not authenticated, searching by phone via admin client");
-          const supabaseAdmin = createAdminSupabaseClient();
-          
-          const { data: usersPage, error: listError } =
-            await supabaseAdmin.auth.admin.listUsers({
-              page: 1,
-              perPage: 1000,
-            });
+        if (!user) {
+          // Не залогиненный пользователь не может верифицировать телефон
+          return NextResponse.json({ success: false, error: "User not authenticated" }, { status: 401 });
+        }
 
-          if (!listError && usersPage?.users) {
-            // Сначала ищем по телефону в auth.users
-            let foundUser = usersPage.users.find(
-              (u) => u.phone && u.phone.trim() === normalizedPhone
-            );
+        const userId = user.id;
+        const supabaseAdmin = createAdminSupabaseClient();
 
-            // Если не нашли по телефону, пробуем найти в profiles по phone и взять userId
-            if (!foundUser) {
-              const { data: profile, error: profileError } = await supabaseAdmin
-                .from("profiles")
-                .select("id")
-                .eq("phone", normalizedPhone)
-                .maybeSingle();
-
-              if (!profileError && profile) {
-                // Нашли профиль по телефону, теперь найдём пользователя по id
-                foundUser = usersPage.users.find((u) => u.id === profile.id);
-              }
-            }
-
-            if (foundUser) {
-              userId = foundUser.id;
-              // Используем admin-клиент для обновления
-              supabase = supabaseAdmin as any;
-            }
+        // ВЫЗОВ RPC-ФУНКЦИИ: verify_phone_and_update_profile
+        const { error: rpcError } = await supabaseAdmin.rpc(
+          "verify_phone_and_update_profile",
+          {
+            p_user_id: userId,
+            p_phone: normalizedPhone,
           }
-        }
+        );
 
-        if (!userId) {
-          console.warn("[phone-verify-code] User not found for phone", normalizedPhone);
-          // Не блокируем ответ, так как Twilio верификация прошла успешно
-          return NextResponse.json({ 
-            success: true, 
-            status: "approved",
-            message: "Phone verified, but user profile not found" 
-          });
-        }
-
-        // Обновляем профиль через upsert (создаёт, если не существует)
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: userId,
-              phone: normalizedPhone,
+        if (rpcError) {
+          console.error("[phone-verify-code] RPC verify_phone_and_update_profile error", rpcError);
+          // Fallback на прямое обновление, если RPC не сработал
+          const { error: updateError } = await supabaseAdmin
+            .from("profiles")
+            .update({
               phone_verified: true,
+              phone: normalizedPhone,
               updated_at: new Date().toISOString(),
-            },
-            { onConflict: "id" }
-          );
+            })
+            .eq("id", userId);
 
-        if (profileError) {
-          console.error("[phone-verify-code] Failed to update profile phone verification", profileError);
-          // Не блокируем ответ, так как Twilio верификация прошла успешно
-          // Но логируем ошибку для отладки
-          return NextResponse.json({
-            success: true,
-            status: "approved",
-            message: "Phone verified, but profile update failed",
-            warning: profileError.message,
+          if (updateError) {
+            console.error("[phone-verify-code] Fallback: Failed to update phone_verified in profiles", updateError);
+          } else {
+            console.log("[phone-verify-code] Fallback: phone_verified updated in profiles", {
+              userId: userId,
+              phone: normalizedPhone,
+            });
+          }
+        } else {
+          console.log("[phone-verify-code] RPC verify_phone_and_update_profile success", {
+            userId: userId,
+            phone: normalizedPhone,
           });
         }
-
-        console.log("[phone-verify-code] Phone verified and profile updated", {
-          userId,
-          phone: normalizedPhone,
-        });
 
         return NextResponse.json({
           success: true,

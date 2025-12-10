@@ -251,8 +251,9 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
           </Button>
         )}
 
-        {step === "enter-code" && !isPhoneVerified && (
-          <>
+        {step === "enter-code" && (
+          <div className="flex gap-3">
+            {/* Кнопка "Изменить номер" */}
             <Button
               type="button"
               variant="outline"
@@ -262,20 +263,21 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
                 setSuccess(null);
                 setError(null);
               }}
-              disabled={isVerifyingCode}
+              disabled={isVerifyingCode || isPhoneVerified}
               className="w-1/3"
             >
               Изменить номер
             </Button>
+            {/* Кнопка "Подтвердить телефон" */}
             <Button
               type="button"
               onClick={handleVerifyCode}
-              disabled={isVerifyingCode}
+              disabled={isVerifyingCode || isPhoneVerified}
               className="w-2/3"
             >
-              {isVerifyingCode ? "Проверка..." : "Подтвердить телефон"}
+              {isVerifyingCode ? "Подтверждение..." : "Подтвердить телефон"}
             </Button>
-          </>
+          </div>
         )}
 
         {isPhoneVerified && (
