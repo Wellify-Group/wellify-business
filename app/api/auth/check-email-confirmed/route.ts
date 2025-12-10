@@ -1,49 +1,64 @@
 // app/api/auth/check-email-confirmed/route.ts
 
 import { NextResponse } from 'next/server';
-
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+/**
+ * Проверяет статус email_verified в таблице profiles
+ * Возвращает emailConfirmed: true ТОЛЬКО если profiles.email_verified = TRUE
+ * Мониторит изменения в этой ячейке каждую секунду
+ */
 export async function GET() {
-  const supabase = await createServerSupabaseClient();
+  try {
+    const supabase = await createServerSupabaseClient();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    return NextResponse.json(
-      { success: false, emailConfirmed: false, reason: 'unauthorized' },
-      { status: 401 },
-    );
-  }
-
-  const emailConfirmed = !!user.email_confirmed_at;
-
-  // Синхронизация флага email_verified в profiles
-  if (emailConfirmed) {
-    const { error: upsertError } = await supabase
-      .from('profiles')
-      .upsert(
-        {
-          id: user.id,          // если у тебя колонка называется иначе (например, uid), поправь тут
-          email_verified: true,
-        },
-        { onConflict: 'id' },
-      );
-
-    if (upsertError) {
-      // Логируем, но не роняем ответ
-      console.error(
-        '[check-email-confirmed] Failed to sync email_verified to profiles',
-        upsertError,
+    if (userError || !user) {
+      return NextResponse.json(
+        { success: false, emailConfirmed: false, reason: 'unauthorized' },
+        { status: 401 },
       );
     }
-  }
 
-  return NextResponse.json({
-    success: true,
-    emailConfirmed,
-  });
+    // КРИТИЧНО: Проверяем ТОЛЬКО profiles.email_verified из базы данных
+    // Это поле обновляется триггером или вручную в Supabase
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email_verified')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('[check-email-confirmed] Error fetching profile', profileError);
+      // Если профиль не найден, считаем email не подтверждённым
+      return NextResponse.json({
+        success: true,
+        emailConfirmed: false,
+      });
+    }
+
+    const emailConfirmed = profile?.email_verified === true;
+
+    return NextResponse.json({
+      success: true,
+      emailConfirmed,
+    });
+  } catch (err: any) {
+    console.error('[check-email-confirmed] unexpected error', err);
+    return NextResponse.json(
+      {
+        success: false,
+        emailConfirmed: false,
+        message: err?.message ?? 'Internal server error',
+      },
+      { status: 500 },
+    );
+  }
 }

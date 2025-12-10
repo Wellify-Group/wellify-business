@@ -271,8 +271,8 @@ export default function RegisterDirectorClient() {
       try {
         if (cancelled) return;
 
-        // Используем новый API route, который проверяет ТОЛЬКО user.email_confirmed_at из сессии
-        // Это гарантирует, что email подтверждён только после реального перехода по ссылке из письма
+        // Используем API route, который проверяет profiles.email_verified из базы данных
+        // Мониторим изменения в этой ячейке каждую секунду
         const res = await fetch("/api/auth/check-email-confirmed", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -291,12 +291,12 @@ export default function RegisterDirectorClient() {
         const data = await res.json();
 
         // КРИТИЧНО: Проверяем ТОЛЬКО data.emailConfirmed из API
-        // API проверяет user.email_confirmed_at, который устанавливается Supabase только после перехода по ссылке
+        // API проверяет profiles.email_verified, который обновляется в Supabase
         if (data.success === true && data.emailConfirmed === true) {
           // State Machine: Transition WAITING_FOR_VERIFICATION -> VERIFIED
-          // Email подтверждён через реальный переход по ссылке! Переходим в состояние VERIFIED
+          // Email подтверждён (email_verified = TRUE в profiles)! Переходим в состояние VERIFIED
           if (!cancelled) {
-            console.log("[register] ✅ Email confirmed via link! Transitioning to VERIFIED state", { 
+            console.log("[register] ✅ Email verified (email_verified = TRUE)! Transitioning to VERIFIED state", { 
               email: form.email.trim()
             });
             
@@ -335,23 +335,23 @@ export default function RegisterDirectorClient() {
     };
 
     // НЕ запускаем проверку сразу - даём время письму отправиться
-    // Запускаем первую проверку через 5 секунд после отправки письма
+    // Запускаем первую проверку через 3 секунды после отправки письма
     const initialDelay = setTimeout(() => {
       if (!cancelled && !emailVerified && emailStatus === "link_sent") {
         hasStartedPolling = true;
         checkEmailConfirmation();
       }
-    }, 5000); // 5 секунд задержка перед первой проверкой
+    }, 3000); // 3 секунды задержка перед первой проверкой
 
-    // Устанавливаем интервал для периодической проверки (каждые 2 секунды)
-    // НО только после первой задержки
+    // Устанавливаем интервал для периодической проверки (каждую секунду)
+    // Мониторим изменения в profiles.email_verified каждую секунду
     intervalId = setInterval(() => {
       if (!cancelled && !emailVerified && emailStatus === "link_sent" && hasStartedPolling) {
         checkEmailConfirmation();
       } else if (emailVerified && intervalId) {
         clearInterval(intervalId);
       }
-    }, 2000); // Проверяем каждые 2 секунды
+    }, 1000); // Проверяем каждую секунду
 
     return () => {
       cancelled = true;
