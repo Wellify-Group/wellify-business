@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mapProfileToDb } from "@/lib/types/profile";
 
 export const dynamic = "force-dynamic";
@@ -7,24 +7,24 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    // Создаём admin-клиент ТОЛЬКО внутри handler
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      console.error("[register-director] Missing Supabase envs");
+    // Создаём admin-клиент (с service_role, обходит RLS)
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = createAdminSupabaseClient();
+    } catch (error: any) {
+      console.error("[register-director] Failed to create admin client", {
+        message: error?.message,
+        details: error?.details || error?.stack,
+      });
       return NextResponse.json(
-        { success: false, message: "Server configuration error" },
+        {
+          success: false,
+          message: "Server configuration error",
+          details: error?.message || "Failed to initialize admin client",
+        },
         { status: 500 }
       );
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
 
     const body = await request.json();
     const {
@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
       firstName,
       lastName,
       middleName,
+      birthDate, // Опционально, может быть не передано
+      locale, // Опционально, может быть не передано
     } = body;
 
     // Валидация обязательных полей
@@ -61,9 +63,16 @@ export async function POST(request: NextRequest) {
       });
 
     if (listError) {
-      console.error("[register-director] Error listing users", listError);
+      console.error("[register-director] Error listing users", {
+        message: listError.message,
+        details: listError.details || listError.status,
+      });
       return NextResponse.json(
-        { success: false, message: "Failed to check existing users" },
+        {
+          success: false,
+          message: "Failed to check existing users",
+          details: listError.message || "Unknown error",
+        },
         { status: 500 }
       );
     }
@@ -95,7 +104,10 @@ export async function POST(request: NextRequest) {
           await supabaseAdmin.auth.admin.updateUserById(userId, updateData);
 
         if (updateError) {
-          console.error("[register-director] Error updating user", updateError);
+          console.error("[register-director] Error updating user", {
+            message: updateError.message,
+            details: updateError.details || updateError.status,
+          });
           // Не критично, продолжаем
         }
       }
@@ -116,11 +128,15 @@ export async function POST(request: NextRequest) {
         });
 
       if (createError || !newUserData?.user) {
-        console.error("[register-director] Error creating user", createError);
+        console.error("[register-director] Error creating user", {
+          message: createError?.message,
+          details: createError?.details || createError?.status,
+        });
         return NextResponse.json(
           {
             success: false,
             message: createError?.message || "Failed to create user",
+            details: createError?.message || createError?.details || "Unknown error",
           },
           { status: 500 }
         );
@@ -157,8 +173,34 @@ export async function POST(request: NextRequest) {
 
     const shortName = firstName.trim();
 
-    // Создаём или обновляем профиль директора
-    const profileData = mapProfileToDb({
+    // Нормализуем locale (ua -> uk для совместимости с API)
+    const normalizedLocale = locale
+      ? locale === "ua"
+        ? "uk"
+        : ["ru", "uk", "en"].includes(locale)
+        ? locale
+        : "ru"
+      : "ru";
+
+    // Формируем данные профиля для upsert
+    // Используем прямые поля БД (английские названия) для first_name, last_name, middle_name, birth_date, locale
+    // И русские названия через mapProfileToDb для остальных полей
+    const profileDataForDb: Record<string, any> = {
+      id: userId,
+      email: normalizedEmail,
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      middle_name: middleName?.trim() || null,
+      full_name: fullName,
+      birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
+      email_verified: true, // Email уже подтверждён на шаге 2
+      phone_verified: true, // Телефон уже подтверждён на шаге 3
+      locale: normalizedLocale,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Добавляем данные через mapProfileToDb (русские названия полей)
+    const profileDataMapped = mapProfileToDb({
       id: userId,
       email: normalizedEmail,
       fullName,
@@ -173,28 +215,34 @@ export async function POST(request: NextRequest) {
       emailVerified: true,
     });
 
-    // Удаляем id из данных для upsert
-    const { id, ...updateData } = profileData;
+    // Объединяем данные: сначала английские поля, потом русские из mapProfileToDb
+    // Русские поля имеют приоритет для совместимости с существующей схемой
+    const finalProfileData = {
+      ...profileDataForDb,
+      ...profileDataMapped,
+      id: userId, // Убеждаемся, что id всегда установлен
+    };
 
-    const { error: profileError } = await supabaseAdmin
+    // Безопасный upsert: создаёт запись, если её нет, или обновляет существующую
+    const { data: upsertedProfile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .upsert(
-        {
-          id: userId,
-          ...updateData,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "id",
-        }
-      );
+      .upsert(finalProfileData, {
+        onConflict: "id",
+      })
+      .select()
+      .single();
 
     if (profileError) {
-      console.error("[register-director] Error upserting profile", profileError);
+      console.error("[register-director] Error upserting profile", {
+        message: profileError.message,
+        details: profileError.details || profileError.hint || profileError.code,
+        userId,
+      });
       return NextResponse.json(
         {
           success: false,
           message: "Failed to create/update profile",
+          details: profileError.message || profileError.details || "Unknown database error",
         },
         { status: 500 }
       );
@@ -210,11 +258,23 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("[register-director] Unexpected error", error);
+    console.error("[register-director] Unexpected error", {
+      message: error?.message,
+      details: error?.details || error?.stack,
+      name: error?.name,
+    });
+    
+    // Безопасно извлекаем детали ошибки без утечки чувствительных данных
+    const errorDetails = error?.message || "Internal server error";
+    const safeDetails = errorDetails.includes("SUPABASE_SERVICE_ROLE_KEY") 
+      ? "Configuration error" 
+      : errorDetails;
+
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Internal server error",
+        message: "Internal server error",
+        details: safeDetails,
       },
       { status: 500 }
     );
