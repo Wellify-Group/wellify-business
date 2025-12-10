@@ -195,66 +195,86 @@ export default function RegisterDirectorClient() {
     }
   }, [form.email, emailStatus]);
 
-  // Авто-проверка e-mail через поллинг API при статусе link_sent
+  // Авто-проверка e-mail через поллинг supabase.auth.getUser() при статусе link_sent
   useEffect(() => {
-    if (emailStatus !== "link_sent") return;
+    if (emailStatus !== "link_sent" && emailStatus !== "checking") return;
     if (!form.email.trim()) return;
+    if (emailVerified) return; // Если уже подтверждён, не проверяем
 
     let cancelled = false;
+    let intervalId: NodeJS.Timeout | null = null;
 
-    const check = async () => {
+    const checkEmailConfirmation = async () => {
       try {
+        if (cancelled) return;
+
         setEmailStatus("checking");
 
-        const res = await fetch("/api/auth/check-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email.trim() }),
-        });
+        // Проверяем статус через supabase.auth.getUser()
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-        const data = await res.json();
-
-        if (!res.ok) {
-          console.error("check-email error", data);
-          if (!cancelled) {
+        if (error) {
+          console.error("getUser error:", error);
+          if (!cancelled && !emailVerified) {
             setEmailStatus("link_sent");
           }
           return;
         }
 
-        if (data.confirmed) {
+        // Проверяем, подтверждён ли email
+        if (user && user.email_confirmed_at) {
+          // Email подтверждён!
           if (!cancelled) {
             setEmailStatus("verified");
             setEmailVerified(true);
-            setFormSuccess("E-mail подтверждён. Можете перейти к следующему шагу.");
+            setFormSuccess("Поздравляем! Ваш e-mail подтверждён.");
             setEmailError(null);
             
+            // Останавливаем интервал
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+
             if (typeof window !== "undefined") {
+              localStorage.setItem("wellify_email_confirmed", "true");
+              localStorage.setItem("wellify_email_confirmed_for", form.email.trim().toLowerCase());
               localStorage.removeItem("register_email");
             }
           }
         } else {
-          // Ещё не подтверждён - через пару секунд проверим ещё раз
-          if (!cancelled) {
+          // Ещё не подтверждён - продолжаем проверку
+          if (!cancelled && !emailVerified) {
             setEmailStatus("link_sent");
-            setTimeout(check, 4000);
           }
         }
       } catch (e) {
-        console.error("check-email exception", e);
-        if (!cancelled) {
+        console.error("checkEmailConfirmation exception", e);
+        if (!cancelled && !emailVerified) {
           setEmailStatus("link_sent");
-          setTimeout(check, 4000);
         }
       }
     };
 
-    check();
+    // Запускаем проверку сразу
+    checkEmailConfirmation();
+
+    // Устанавливаем интервал для периодической проверки (каждые 2-3 секунды)
+    intervalId = setInterval(() => {
+      if (!cancelled && !emailVerified && (emailStatus === "link_sent" || emailStatus === "checking")) {
+        checkEmailConfirmation();
+      } else if (emailVerified && intervalId) {
+        clearInterval(intervalId);
+      }
+    }, 2500); // Проверяем каждые 2.5 секунды
 
     return () => {
       cancelled = true;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, [emailStatus, form.email]);
+  }, [emailStatus, form.email, emailVerified, supabase]);
 
   // Сохранение состояния регистрации в localStorage
   useEffect(() => {
@@ -324,14 +344,24 @@ export default function RegisterDirectorClient() {
         process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
       }/auth/email-confirmed`;
 
+      // Формируем полное имя из компонентов
+      const fullName = [
+        baseData.lastName.trim(),
+        baseData.firstName.trim(),
+        baseData.middleName.trim(),
+      ]
+        .filter(Boolean)
+        .join(" ");
+
       const { error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: baseData.password,
         options: {
           data: {
-            first_name: baseData.firstName,
-            last_name: baseData.lastName,
-            middle_name: baseData.middleName,
+            first_name: baseData.firstName.trim(),
+            last_name: baseData.lastName.trim(),
+            middle_name: baseData.middleName.trim(),
+            full_name: fullName,
             birth_date: baseData.birthDate,
           },
           emailRedirectTo: redirectTo,
@@ -713,15 +743,22 @@ export default function RegisterDirectorClient() {
         )}
 
         {emailStatus === "checking" && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Проверяем подтверждение e-mail...
-          </p>
+          <div className="mt-3 rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-3">
+            <p className="text-sm text-blue-300">
+              Проверяем подтверждение e-mail...
+            </p>
+          </div>
         )}
 
         {emailStatus === "verified" && (
-          <p className="mt-3 text-sm text-emerald-400">
-            E-mail подтверждён. Можете перейти к следующему шагу.
-          </p>
+          <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+            <h3 className="text-base font-semibold text-emerald-300 mb-1">
+              Поздравляем! Ваш e-mail подтверждён.
+            </h3>
+            <p className="text-sm text-emerald-200">
+              Можете перейти к следующему шагу.
+            </p>
+          </div>
         )}
 
         {emailError && (
