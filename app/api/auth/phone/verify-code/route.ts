@@ -24,7 +24,7 @@ function normalizePhone(phone: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, code, email } = await req.json();
+    const { phone, code } = await req.json();
 
     // Простейшая проверка входных данных
     if (!phone || !code) {
@@ -96,62 +96,40 @@ export async function POST(req: NextRequest) {
           userId = user.id;
         } else {
           // Пользователь не залогинен (возможно, во время регистрации)
-          // Используем admin-клиент для поиска пользователя по email (более надежно, чем по телефону)
-          console.log("[phone-verify-code] User not authenticated, searching by email via admin client");
+          // Используем admin-клиент для поиска пользователя по телефону
+          console.log("[phone-verify-code] User not authenticated, searching by phone via admin client");
           const supabaseAdmin = createAdminSupabaseClient();
           
-          if (email) {
-            // Ищем пользователя по email (который уже известен на шаге 3 регистрации)
-            const normalizedEmail = email.toLowerCase().trim();
-            const { data: usersPage, error: listError } =
-              await supabaseAdmin.auth.admin.listUsers({
-                page: 1,
-                perPage: 1000,
-              });
+          const { data: usersPage, error: listError } =
+            await supabaseAdmin.auth.admin.listUsers({
+              page: 1,
+              perPage: 1000,
+            });
 
-            if (!listError && usersPage?.users) {
-              const foundUser = usersPage.users.find(
-                (u) => u.email && u.email.toLowerCase().trim() === normalizedEmail
-              );
+          if (!listError && usersPage?.users) {
+            // Сначала ищем по телефону в auth.users
+            let foundUser = usersPage.users.find(
+              (u) => u.phone && u.phone.trim() === normalizedPhone
+            );
 
-              if (foundUser) {
-                userId = foundUser.id;
-                // Используем admin-клиент для обновления
-                supabase = supabaseAdmin as any;
-              } else {
-                console.warn("[phone-verify-code] User not found by email", normalizedEmail);
+            // Если не нашли по телефону, пробуем найти в profiles по phone и взять userId
+            if (!foundUser) {
+              const { data: profile, error: profileError } = await supabaseAdmin
+                .from("profiles")
+                .select("id")
+                .eq("phone", normalizedPhone)
+                .maybeSingle();
+
+              if (!profileError && profile) {
+                // Нашли профиль по телефону, теперь найдём пользователя по id
+                foundUser = usersPage.users.find((u) => u.id === profile.id);
               }
             }
-          } else {
-            // Fallback: если email не передан, пробуем найти по телефону
-            console.log("[phone-verify-code] Email not provided, searching by phone as fallback");
-            const { data: usersPage, error: listError } =
-              await supabaseAdmin.auth.admin.listUsers({
-                page: 1,
-                perPage: 1000,
-              });
 
-            if (!listError && usersPage?.users) {
-              let foundUser = usersPage.users.find(
-                (u) => u.phone && u.phone.trim() === normalizedPhone
-              );
-
-              if (!foundUser) {
-                const { data: profile, error: profileError } = await supabaseAdmin
-                  .from("profiles")
-                  .select("id")
-                  .eq("phone", normalizedPhone)
-                  .maybeSingle();
-
-                if (!profileError && profile) {
-                  foundUser = usersPage.users.find((u) => u.id === profile.id);
-                }
-              }
-
-              if (foundUser) {
-                userId = foundUser.id;
-                supabase = supabaseAdmin as any;
-              }
+            if (foundUser) {
+              userId = foundUser.id;
+              // Используем admin-клиент для обновления
+              supabase = supabaseAdmin as any;
             }
           }
         }

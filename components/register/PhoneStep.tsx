@@ -25,13 +25,11 @@ type PhoneStepProps = {
   initialPhone?: string | null;
   // текущая локаль интерфейса ("ru" | "uk" | "en" | ...)
   locale: string;
-  // email пользователя (для поиска в БД)
-  email?: string | null;
   // коллбэк, который вызываем при успешной верификации
   onPhoneVerified: (phone: string) => void;
 };
 
-export function PhoneStep({ initialPhone, locale, email, onPhoneVerified }: PhoneStepProps) {
+export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepProps) {
   const [phone, setPhone] = useState(initialPhone ?? "");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"enter-phone" | "enter-code">("enter-phone");
@@ -157,7 +155,7 @@ export function PhoneStep({ initialPhone, locale, email, onPhoneVerified }: Phon
       const res = await fetch("/api/auth/phone/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: trimmedPhone, code: trimmedCode, email: email || null }),
+        body: JSON.stringify({ phone: trimmedPhone, code: trimmedCode }),
       });
 
       const data: CheckVerificationResponse = await res.json().catch(() => ({}));
