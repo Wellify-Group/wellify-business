@@ -257,8 +257,14 @@ export default function RegisterDirectorClient() {
   }, [step]);
 
   // Подхват статуса при возврате на страницу
+  // Проверка подтверждения email из localStorage (только если письмо уже было отправлено)
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Проверяем подтверждение ТОЛЬКО если письмо уже было отправлено (link_sent или verified)
+    // Не проверяем, если статус idle или error - значит письмо ещё не отправлялось
+    if (emailStatus !== "link_sent" && emailStatus !== "verified" && emailStatus !== "checking") {
+      return;
+    }
     
     const confirmed = localStorage.getItem("wellify_email_confirmed");
     const confirmedFor = localStorage.getItem("wellify_email_confirmed_for");
