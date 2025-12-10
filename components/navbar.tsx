@@ -18,7 +18,7 @@ export function Navbar() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDashboard = pathname?.startsWith("/dashboard");
-  const isEmailConfirmed = pathname === "/auth/email-confirmed";
+  const isEmailConfirmed = pathname === "/auth/email-confirmed" || pathname === "/email-confirmed";
 
   useEffect(() => {
     setMounted(true);

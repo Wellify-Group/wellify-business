@@ -730,7 +730,7 @@ export default function RegisterDirectorClient() {
         </div>
 
         {/* БАННЕРЫ - Стабилизированная высота контейнера */}
-        <div className="mt-3 min-h-[60px]">
+        <div className="mt-3 min-h-[80px]">
           {emailStatus === "link_sent" && (
             <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
               Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
@@ -740,12 +740,19 @@ export default function RegisterDirectorClient() {
 
           {emailStatus === "verified" && (
             <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-              <h3 className="text-base font-semibold text-emerald-300 mb-1">
-                Поздравляем! Ваш e-mail подтверждён.
-              </h3>
-              <p className="text-sm text-emerald-200">
-                Можете перейти к следующему шагу.
-              </p>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="text-base font-semibold text-emerald-300 mb-1">
+                    E-mail успешно подтвержден!
+                  </h3>
+                  <p className="text-sm text-emerald-200">
+                    Переходите к следующему шагу.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>

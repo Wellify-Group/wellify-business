@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export default function EmailConfirmedPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
 
@@ -56,17 +54,12 @@ export default function EmailConfirmedPage() {
   }, []);
 
   const handleClose = () => {
-    // Пытаемся закрыть окно, если это возможно (popup)
-    if (window.opener) {
-      window.close();
-    } else {
-      // Если не popup, редиректим на главную
-      router.push("/");
-    }
+    // Пытаемся закрыть окно
+    window.close();
   };
 
   return (
-    <main className="flex min-h-[calc(100vh-72px)] items-center justify-center px-4 py-12">
+    <main className="flex min-h-screen items-center justify-center px-4 py-12 bg-[#050816]">
       <div className="w-full max-w-md rounded-3xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] px-8 py-12 text-center shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         {loading ? (
           <>
@@ -104,21 +97,17 @@ export default function EmailConfirmedPage() {
               </p>
             )}
 
-            {/* Кнопки действий */}
-            <div className="flex flex-col gap-3">
+            {/* Кнопка закрытия */}
+            <div className="flex flex-col gap-2">
               <Button
                 onClick={handleClose}
                 className="w-full bg-primary hover:bg-primary/90"
               >
                 Закрыть страницу
               </Button>
-              <Button
-                onClick={() => router.push("/")}
-                variant="outline"
-                className="w-full border-white/10 bg-white/5 hover:bg-white/10"
-              >
-                На главную
-              </Button>
+              <p className="text-xs text-zinc-500 mt-1">
+                Если вкладка не закрылась автоматически, закройте её вручную
+              </p>
             </div>
           </>
         )}

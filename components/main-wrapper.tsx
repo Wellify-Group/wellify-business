@@ -6,7 +6,7 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isDashboard = pathname?.startsWith('/dashboard');
   const isAuthPage = pathname === '/login' || pathname === '/register' || pathname?.startsWith('/auth');
-  const isEmailConfirmed = pathname === '/auth/email-confirmed';
+  const isEmailConfirmed = pathname === '/auth/email-confirmed' || pathname === '/email-confirmed';
   
   // Для страницы подтверждения email не создаем обертку
   if (isEmailConfirmed) {
