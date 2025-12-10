@@ -209,7 +209,10 @@ export default function RegisterDirectorClient() {
       try {
         if (cancelled) return;
 
-        // Проверяем статус через supabase.auth.getUser() (в фоне, без изменения UI)
+        // Обновляем сессию перед проверкой, чтобы получить актуальные данные
+        await supabase.auth.refreshSession();
+
+        // Проверяем статус через supabase.auth.getUser()
         const { data: { user }, error } = await supabase.auth.getUser();
 
         if (error) {
@@ -218,8 +221,9 @@ export default function RegisterDirectorClient() {
         }
 
         // Проверяем, подтверждён ли email
-        if (user && user.email_confirmed_at) {
-          // Email подтверждён! Только теперь меняем UI
+        // Проверяем email_confirmed_at или роль authenticated
+        if (user && (user.email_confirmed_at || user.role === 'authenticated')) {
+          // Email подтверждён! Меняем UI
           if (!cancelled) {
             setEmailStatus("verified");
             setEmailVerified(true);
@@ -365,24 +369,16 @@ export default function RegisterDirectorClient() {
       });
 
       if (error) {
-        // Если пользователь уже существует, отправляем повторное письмо
+        // Если пользователь уже существует, показываем ошибку
         if (
-          error.message?.includes("already registered") ||
-          error.message?.includes("already exists")
+          error.message?.toLowerCase().includes("already registered") ||
+          error.message?.toLowerCase().includes("already exists") ||
+          error.message?.toLowerCase().includes("user already registered") ||
+          error.message?.toLowerCase().includes("email already registered")
         ) {
-          const { error: resendError } = await supabase.auth.resend({
-            type: "signup",
-            email: form.email.trim(),
-            options: {
-              emailRedirectTo: redirectTo,
-            },
-          });
-
-          if (resendError) {
-            setEmailStatus("error");
-            setEmailError(resendError.message || "Не удалось отправить письмо.");
-            return;
-          }
+          setEmailStatus("error");
+          setEmailError("Пользователь с таким e-mail уже существует. Пожалуйста, войдите.");
+          return;
         } else {
           setEmailStatus("error");
           setEmailError(error.message || "Не удалось отправить письмо.");
@@ -730,8 +726,8 @@ export default function RegisterDirectorClient() {
           />
         </div>
 
-        {/* БАННЕРЫ - Стабилизированная высота контейнера */}
-        <div className="mt-3 min-h-[80px]">
+        {/* БАННЕРЫ - Компактный контейнер */}
+        <div className="mt-3">
           {emailStatus === "link_sent" && (
             <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
               Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
