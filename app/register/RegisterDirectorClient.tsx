@@ -259,14 +259,14 @@ export default function RegisterDirectorClient() {
     // Запускаем проверку сразу
     checkEmailConfirmation();
 
-    // Устанавливаем интервал для периодической проверки (каждые 2-3 секунды)
+    // Устанавливаем интервал для периодической проверки (каждые 3 секунды)
     intervalId = setInterval(() => {
       if (!cancelled && !emailVerified && (emailStatus === "link_sent" || emailStatus === "checking")) {
         checkEmailConfirmation();
       } else if (emailVerified && intervalId) {
         clearInterval(intervalId);
       }
-    }, 2500); // Проверяем каждые 2.5 секунды
+    }, 3000); // Проверяем каждые 3 секунды
 
     return () => {
       cancelled = true;
@@ -344,7 +344,7 @@ export default function RegisterDirectorClient() {
         process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
       }/auth/email-confirmed`;
 
-      // Формируем полное имя из компонентов
+      // Формируем полное имя из компонентов (Фамилия Имя Отчество)
       const fullName = [
         baseData.lastName.trim(),
         baseData.firstName.trim(),
@@ -352,6 +352,9 @@ export default function RegisterDirectorClient() {
       ]
         .filter(Boolean)
         .join(" ");
+
+      // Убеждаемся, что birth_date в формате YYYY-MM-DD
+      const birthDateFormatted = baseData.birthDate; // input type="date" уже возвращает YYYY-MM-DD
 
       const { error } = await supabase.auth.signUp({
         email: form.email.trim(),
@@ -362,7 +365,8 @@ export default function RegisterDirectorClient() {
             last_name: baseData.lastName.trim(),
             middle_name: baseData.middleName.trim(),
             full_name: fullName,
-            birth_date: baseData.birthDate,
+            birth_date: birthDateFormatted, // Формат YYYY-MM-DD
+            email_verified: true, // Флаг в метаданных (в БД будет false до подтверждения)
           },
           emailRedirectTo: redirectTo,
         },
