@@ -253,6 +253,86 @@ export default function RegisterDirectorClient() {
     }
   }, [step]);
 
+  // КРИТИЧНО: Проверка статуса phone_verified при монтировании шага 3
+  // Если телефон уже подтверждён в БД, сразу обновляем состояние
+  useEffect(() => {
+    // Проверяем только на шаге 3, если есть телефон и email, и статус ещё не "verified"
+    if (step !== 3 || !form.phone.trim() || !form.email.trim()) {
+      return;
+    }
+
+    // Если уже подтверждён локально, не проверяем
+    if (phoneVerified && phoneStatus === "verified") {
+      return;
+    }
+
+    // Если статус уже "verifying", polling уже запущен
+    if (phoneStatus === "verifying") {
+      return;
+    }
+
+    // Проверяем статус в БД сразу при монтировании шага 3
+    const checkPhoneStatusOnMount = async () => {
+      try {
+        console.log("[register] 🔍 Checking phone status on step 3 mount", {
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          phoneStatus,
+          phoneVerified,
+        });
+
+        const res = await fetch("/api/auth/check-phone", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: form.phone.trim(),
+            email: form.email.trim(),
+          }),
+        });
+
+        if (!res.ok) {
+          console.error("[register] check-phone API error on mount:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+
+        console.log("[register] checkPhoneStatusOnMount response", {
+          verified: data.verified,
+          fullResponse: data,
+        });
+
+        // Если телефон подтверждён в БД, сразу обновляем состояние
+        if (data.verified === true) {
+          console.log("[register] ✅ Phone already verified in DB! Setting verified state", {
+            phone: form.phone.trim(),
+          });
+
+          setPhoneStatus("verified");
+          setPhoneVerified(true);
+          setFormError(null);
+        } else {
+          // Если не подтверждён, запускаем polling через установку статуса "idle"
+          // Polling сам запустится и будет проверять каждую секунду
+          if (phoneStatus === "idle") {
+            console.log("[register] Phone not verified yet, polling will start automatically");
+          }
+        }
+      } catch (e) {
+        console.error("[register] checkPhoneStatusOnMount exception", e);
+      }
+    };
+
+    // Запускаем проверку с небольшой задержкой, чтобы не конфликтовать с другими эффектами
+    const timeoutId = setTimeout(() => {
+      checkPhoneStatusOnMount();
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [step, form.phone, form.email]); // Запускаем при переходе на шаг 3 или изменении телефона/email
+
   // НЕ проверяем localStorage автоматически - только через API polling
   // Это гарантирует, что мы проверяем реальное состояние в БД, а не кэш
 
@@ -424,10 +504,20 @@ export default function RegisterDirectorClient() {
       return;
     }
 
-    // Если статус не "verifying" и не "idle", не запускаем polling
-    if (phoneStatus !== "verifying" && phoneStatus !== "idle") {
-      console.log("[register] Phone polling not started: phoneStatus is not 'verifying' or 'idle'", { phoneStatus });
-      return;
+    // КРИТИЧНО: На шаге 3 всегда проверяем статус в БД, независимо от phoneStatus
+    // Это нужно, чтобы обнаружить, если телефон уже подтверждён в БД
+    if (step !== 3) {
+      // На других шагах проверяем только если статус "verifying"
+      if (phoneStatus !== "verifying") {
+        console.log("[register] Phone polling not started: not on step 3 and phoneStatus is not 'verifying'", { phoneStatus, step });
+        return;
+      }
+    } else {
+      // На шаге 3 проверяем для статусов "verifying" и "idle"
+      if (phoneStatus !== "verifying" && phoneStatus !== "idle") {
+        console.log("[register] Phone polling not started: step 3 but phoneStatus is not 'verifying' or 'idle'", { phoneStatus });
+        return;
+      }
     }
 
     if (!form.phone.trim()) {
@@ -442,6 +532,8 @@ export default function RegisterDirectorClient() {
       phone: form.phone.trim(),
       phoneStatus,
       phoneVerified,
+      step,
+      shouldCheckImmediately,
     });
 
     let cancelled = false;
@@ -558,7 +650,7 @@ export default function RegisterDirectorClient() {
         clearTimeout(initialDelay);
       }
     };
-  }, [phoneStatus, form.phone, phoneVerified, step]); // Добавляем step в зависимости
+  }, [phoneStatus, form.phone, form.email, phoneVerified, step]); // Добавляем form.email для поиска пользователя
 
   // Сохранение состояния регистрации в localStorage
   useEffect(() => {
