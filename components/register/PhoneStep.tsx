@@ -162,9 +162,8 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
 
       if (res.ok && data.success === true) {
         // Телефон успешно верифицирован
-        setSuccess("Телефон успешно подтверждён.");
-        setIsPhoneVerified(true);
-        onPhoneVerified(trimmedPhone);
+        setIsPhoneVerified(true); // Состояние, которое управляет финальным уведомлением
+        onPhoneVerified(trimmedPhone); // Вызываем внешний коллбэк, который перечитает профиль
       } else if (res.status === 400) {
         // Код неверный или истёк
         const errorMessage = data.error || data.message || "Код неверный или истёк. Попробуйте ещё раз.";
@@ -233,7 +232,7 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
         </div>
       )}
 
-      {success && (
+      {success && !isPhoneVerified && (
         <div className="flex items-start gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
           <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span>{success}</span>

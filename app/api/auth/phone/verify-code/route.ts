@@ -84,6 +84,9 @@ export async function POST(req: NextRequest) {
         const supabaseAdmin = createAdminSupabaseClient();
         
         // Ищем пользователя по телефону в auth.users
+        // ПРИМЕЧАНИЕ: Во время регистрации директора пользователь создаётся на шаге 2 (email),
+        // но телефон может быть ещё не привязан к auth.users.phone. В этом случае поиск по телефону
+        // может не найти пользователя. Альтернатива: искать в profiles по phone или передавать userId/email в запросе.
         const { data: usersPage, error: listError } =
           await supabaseAdmin.auth.admin.listUsers({
             page: 1,
@@ -91,9 +94,24 @@ export async function POST(req: NextRequest) {
           });
 
         if (!listError && usersPage?.users) {
-          const user = usersPage.users.find(
+          // Сначала ищем по телефону в auth.users
+          let user = usersPage.users.find(
             (u) => u.phone && u.phone.trim() === normalizedPhone
           );
+
+          // Если не нашли по телефону, пробуем найти в profiles по phone и взять userId
+          if (!user) {
+            const { data: profile, error: profileError } = await supabaseAdmin
+              .from("profiles")
+              .select("id")
+              .eq("phone", normalizedPhone)
+              .maybeSingle();
+
+            if (!profileError && profile) {
+              // Нашли профиль по телефону, теперь найдём пользователя по id
+              user = usersPage.users.find((u) => u.id === profile.id);
+            }
+          }
 
           if (user) {
             // ВЫЗОВ RPC-ФУНКЦИИ: verify_phone_and_update_profile
