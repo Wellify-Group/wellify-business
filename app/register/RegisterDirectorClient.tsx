@@ -189,7 +189,7 @@ export default function RegisterDirectorClient() {
       if (emailStatus !== "verified") {
         setEmailStatus("verified");
         setEmailVerified(true);
-        setFormSuccess("E-mail подтверждён. Можете перейти к следующему шагу.");
+        setFormSuccess(null); // Не показываем уведомление на шаге 2
         setEmailError(null);
       }
     }
@@ -741,24 +741,6 @@ export default function RegisterDirectorClient() {
               Статус обновится автоматически.
             </div>
           )}
-
-          {emailStatus === "verified" && (
-            <div className="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-0.5">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                </div>
-                <div className="flex-1 text-left">
-                  <h3 className="text-base font-semibold text-emerald-300 mb-1">
-                    Отлично! Ваша почта подтверждена
-                  </h3>
-                  <p className="text-sm text-emerald-200">
-                    Можете переходить к 3 шагу.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Красное уведомление об ошибке */}
@@ -795,7 +777,13 @@ export default function RegisterDirectorClient() {
           )}
         </div>
 
-        {renderAlerts()}
+        {/* Уведомления на шаге 2 - только ошибки, без formSuccess */}
+        {formError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
 
         <div className="mt-4 flex justify-between gap-4">
           <Button
@@ -883,7 +871,13 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
-        {renderAlerts()}
+        {/* Уведомления на шаге 3 - только ошибки, без formSuccess */}
+        {formError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
 
         <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
           <Button

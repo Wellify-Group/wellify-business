@@ -83,59 +83,78 @@ export async function POST(req: NextRequest) {
     });
 
     // Проверяем лимиты через таблицу phone_verification_attempts
-    const { data: attemptRecord, error: fetchError } = await supabaseAdmin
-      .from("phone_verification_attempts")
-      .select("*")
-      .eq("phone", normalizedPhone)
-      .eq("action", action)
-      .maybeSingle();
+    // ОБЕРНУТО В TRY-CATCH: если проверка лимитов падает, разрешаем отправку
+    let attemptRecord: any = null;
+    try {
+      const { data, error: fetchError } = await supabaseAdmin
+        .from("phone_verification_attempts")
+        .select("*")
+        .eq("phone", normalizedPhone)
+        .eq("action", action)
+        .maybeSingle();
 
-    if (fetchError && fetchError.code !== "PGRST116") {
-      // PGRST116 = no rows returned (это нормально для первой попытки)
-      console.error("[phone-send-code] Error fetching attempt record", fetchError);
-      return NextResponse.json(
-        { success: false, error: "Failed to check rate limits" },
-        { status: 500 }
-      );
+      if (fetchError && fetchError.code !== "PGRST116") {
+        // PGRST116 = no rows returned (это нормально для первой попытки)
+        // Другие ошибки логируем, но не блокируем отправку
+        console.warn("[phone-send-code] Rate limit check failed, allowing SMS", fetchError);
+      } else {
+        attemptRecord = data;
+      }
+    } catch (rateLimitError: any) {
+      // Если проверка лимитов полностью падает (таблица не существует, RLS, и т.д.)
+      // Логируем ошибку, но разрешаем отправку SMS
+      console.warn("[phone-send-code] Rate limit check exception, allowing SMS", rateLimitError);
+      attemptRecord = null; // Продолжаем без проверки лимитов
     }
 
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
+    // Проверяем лимиты только если удалось получить запись
     if (attemptRecord) {
-      // Проверка: максимум 1 SMS каждые 60 секунд
-      const lastSent = new Date(attemptRecord.last_sent_at);
-      if (lastSent > oneMinuteAgo) {
-        const secondsLeft = Math.ceil((lastSent.getTime() - oneMinuteAgo.getTime()) / 1000);
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Слишком часто. Попробуйте через ${secondsLeft} секунд.`,
-          },
-          { status: 429 }
-        );
-      }
-
-      // Проверка: максимум 5 SMS за 24 часа
-      if (attemptRecord.attempts_count >= 5) {
-        const lastSentDate = new Date(attemptRecord.last_sent_at);
-        if (lastSentDate > oneDayAgo) {
+      try {
+        // Проверка: максимум 1 SMS каждые 60 секунд
+        const lastSent = new Date(attemptRecord.last_sent_at);
+        if (lastSent > oneMinuteAgo) {
+          const secondsLeft = Math.ceil((lastSent.getTime() - oneMinuteAgo.getTime()) / 1000);
           return NextResponse.json(
             {
               success: false,
-              error: "Превышен лимит попыток на сегодня. Попробуйте завтра.",
+              error: `Слишком часто. Попробуйте через ${secondsLeft} секунд.`,
             },
             { status: 429 }
           );
-        } else {
-          // Сбрасываем счётчик, если прошли сутки
-          await supabaseAdmin
-            .from("phone_verification_attempts")
-            .update({ attempts_count: 0 })
-            .eq("phone", normalizedPhone)
-            .eq("action", action);
         }
+
+        // Проверка: максимум 5 SMS за 24 часа
+        if (attemptRecord.attempts_count >= 5) {
+          const lastSentDate = new Date(attemptRecord.last_sent_at);
+          if (lastSentDate > oneDayAgo) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "Превышен лимит попыток на сегодня. Попробуйте завтра.",
+              },
+              { status: 429 }
+            );
+          } else {
+            // Сбрасываем счётчик, если прошли сутки
+            try {
+              await supabaseAdmin
+                .from("phone_verification_attempts")
+                .update({ attempts_count: 0 })
+                .eq("phone", normalizedPhone)
+                .eq("action", action);
+            } catch (resetError) {
+              console.warn("[phone-send-code] Failed to reset attempt counter", resetError);
+              // Не блокируем отправку, если не удалось сбросить счётчик
+            }
+          }
+        }
+      } catch (limitCheckError) {
+        console.warn("[phone-send-code] Error checking limits, allowing SMS", limitCheckError);
+        // Продолжаем отправку, если проверка лимитов упала
       }
     }
 
@@ -169,21 +188,27 @@ export async function POST(req: NextRequest) {
         });
 
       // Обновляем/создаём запись в phone_verification_attempts
-      const newAttemptCount = attemptRecord
-        ? attemptRecord.attempts_count + 1
-        : 1;
+      // ОБЕРНУТО В TRY-CATCH: если обновление не удалось, SMS уже отправлено, просто логируем
+      try {
+        const newAttemptCount = attemptRecord
+          ? attemptRecord.attempts_count + 1
+          : 1;
 
-      await supabaseAdmin.from("phone_verification_attempts").upsert(
-        {
-          phone: normalizedPhone,
-          action: action,
-          attempts_count: newAttemptCount,
-          last_sent_at: now.toISOString(),
-        },
-        {
-          onConflict: "phone,action",
-        }
-      );
+        await supabaseAdmin.from("phone_verification_attempts").upsert(
+          {
+            phone: normalizedPhone,
+            action: action,
+            attempts_count: newAttemptCount,
+            last_sent_at: now.toISOString(),
+          },
+          {
+            onConflict: "phone,action",
+          }
+        );
+      } catch (updateError) {
+        console.warn("[phone-send-code] Failed to update attempt record", updateError);
+        // SMS уже отправлено, не блокируем успешный ответ
+      }
 
       console.log("[phone-send-code] SMS sent", {
         phone: normalizedPhone,

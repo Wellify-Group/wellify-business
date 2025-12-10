@@ -60,57 +60,76 @@ export async function POST(req: NextRequest) {
     });
 
     // Проверяем лимиты через таблицу email_reset_attempts
-    const { data: attemptRecord, error: fetchError } = await supabaseAdmin
-      .from("email_reset_attempts")
-      .select("*")
-      .eq("email", email)
-      .maybeSingle();
+    // ОБЕРНУТО В TRY-CATCH: если проверка лимитов падает, разрешаем отправку
+    let attemptRecord: any = null;
+    try {
+      const { data, error: fetchError } = await supabaseAdmin
+        .from("email_reset_attempts")
+        .select("*")
+        .eq("email", email)
+        .maybeSingle();
 
-    if (fetchError && fetchError.code !== "PGRST116") {
-      // PGRST116 = no rows returned (это нормально для первой попытки)
-      console.error("[forgot-password] Error fetching attempt record", fetchError);
-      return NextResponse.json(
-        { success: false, error: "Failed to check rate limits" },
-        { status: 500 }
-      );
+      if (fetchError && fetchError.code !== "PGRST116") {
+        // PGRST116 = no rows returned (это нормально для первой попытки)
+        // Другие ошибки логируем, но не блокируем отправку
+        console.warn("[forgot-password] Rate limit check failed, allowing email", fetchError);
+      } else {
+        attemptRecord = data;
+      }
+    } catch (rateLimitError: any) {
+      // Если проверка лимитов полностью падает (таблица не существует, RLS, и т.д.)
+      // Логируем ошибку, но разрешаем отправку email
+      console.warn("[forgot-password] Rate limit check exception, allowing email", rateLimitError);
+      attemptRecord = null; // Продолжаем без проверки лимитов
     }
 
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
+    // Проверяем лимиты только если удалось получить запись
     if (attemptRecord) {
-      // Проверка: максимум 1 email каждые 60 секунд
-      const lastSent = new Date(attemptRecord.last_sent_at);
-      if (lastSent > oneMinuteAgo) {
-        const secondsLeft = Math.ceil((lastSent.getTime() - oneMinuteAgo.getTime()) / 1000);
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Слишком часто. Попробуйте через ${secondsLeft} секунд.`,
-          },
-          { status: 429 }
-        );
-      }
-
-      // Проверка: максимум 5 emails за 24 часа
-      if (attemptRecord.attempts_count >= 5) {
-        const lastSentDate = new Date(attemptRecord.last_sent_at);
-        if (lastSentDate > oneDayAgo) {
+      try {
+        // Проверка: максимум 1 email каждые 60 секунд
+        const lastSent = new Date(attemptRecord.last_sent_at);
+        if (lastSent > oneMinuteAgo) {
+          const secondsLeft = Math.ceil((lastSent.getTime() - oneMinuteAgo.getTime()) / 1000);
           return NextResponse.json(
             {
               success: false,
-              error: "Превышен лимит попыток на сегодня. Попробуйте завтра.",
+              error: `Слишком часто. Попробуйте через ${secondsLeft} секунд.`,
             },
             { status: 429 }
           );
-        } else {
-          // Сбрасываем счётчик, если прошли сутки
-          await supabaseAdmin
-            .from("email_reset_attempts")
-            .update({ attempts_count: 0 })
-            .eq("email", email);
         }
+
+        // Проверка: максимум 5 emails за 24 часа
+        if (attemptRecord.attempts_count >= 5) {
+          const lastSentDate = new Date(attemptRecord.last_sent_at);
+          if (lastSentDate > oneDayAgo) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: "Превышен лимит попыток на сегодня. Попробуйте завтра.",
+              },
+              { status: 429 }
+            );
+          } else {
+            // Сбрасываем счётчик, если прошли сутки
+            try {
+              await supabaseAdmin
+                .from("email_reset_attempts")
+                .update({ attempts_count: 0 })
+                .eq("email", email);
+            } catch (resetError) {
+              console.warn("[forgot-password] Failed to reset attempt counter", resetError);
+              // Не блокируем отправку, если не удалось сбросить счётчик
+            }
+          }
+        }
+      } catch (limitCheckError) {
+        console.warn("[forgot-password] Error checking limits, allowing email", limitCheckError);
+        // Продолжаем отправку, если проверка лимитов упала
       }
     }
 
@@ -153,18 +172,24 @@ export async function POST(req: NextRequest) {
       }
 
       // Обновляем/создаём запись в email_reset_attempts
-      const newAttemptCount = attemptRecord ? attemptRecord.attempts_count + 1 : 1;
+      // ОБЕРНУТО В TRY-CATCH: если обновление не удалось, email уже отправлен, просто логируем
+      try {
+        const newAttemptCount = attemptRecord ? attemptRecord.attempts_count + 1 : 1;
 
-      await supabaseAdmin.from("email_reset_attempts").upsert(
-        {
-          email: email,
-          attempts_count: newAttemptCount,
-          last_sent_at: now.toISOString(),
-        },
-        {
-          onConflict: "email",
-        }
-      );
+        await supabaseAdmin.from("email_reset_attempts").upsert(
+          {
+            email: email,
+            attempts_count: newAttemptCount,
+            last_sent_at: now.toISOString(),
+          },
+          {
+            onConflict: "email",
+          }
+        );
+      } catch (updateError) {
+        console.warn("[forgot-password] Failed to update attempt record", updateError);
+        // Email уже отправлен, не блокируем успешный ответ
+      }
 
       console.log("[forgot-password] Reset email sent", { email });
 
