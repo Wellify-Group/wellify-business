@@ -281,7 +281,7 @@ export function PhoneStep({ initialPhone, locale, onPhoneVerified }: PhoneStepPr
         {isPhoneVerified && (
           <div className="w-full flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            <span>Телефон подтверждён</span>
+            <span>Телефон успешно подтверждён.</span>
           </div>
         )}
       </div>
