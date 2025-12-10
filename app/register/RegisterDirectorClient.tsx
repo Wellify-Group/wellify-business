@@ -416,19 +416,27 @@ export default function RegisterDirectorClient() {
 
   // Авто-проверка телефона через поллинг каждую секунду при статусе verifying
   // Проверяет profiles.phone_verified из базы данных
+  // Также проверяет статус при монтировании шага 3, если телефон уже подтверждён в БД
   useEffect(() => {
-    if (phoneStatus !== "verifying") {
-      console.log("[register] Phone polling not started: phoneStatus !== 'verifying'", { phoneStatus });
+    // Если уже подтверждён локально, не проверяем
+    if (phoneVerified && phoneStatus === "verified") {
+      console.log("[register] Phone already verified locally, skipping polling");
       return;
     }
+
+    // Если статус не "verifying" и не "idle", не запускаем polling
+    if (phoneStatus !== "verifying" && phoneStatus !== "idle") {
+      console.log("[register] Phone polling not started: phoneStatus is not 'verifying' or 'idle'", { phoneStatus });
+      return;
+    }
+
     if (!form.phone.trim()) {
       console.log("[register] Phone polling not started: phone is empty");
       return;
     }
-    if (phoneVerified) {
-      console.log("[register] Phone polling not started: phone already verified");
-      return; // Если уже подтверждён, не проверяем
-    }
+
+    // Если на шаге 3 и статус "idle" - проверяем сразу, возможно телефон уже подтверждён в БД
+    const shouldCheckImmediately = step === 3 && phoneStatus === "idle" && !phoneVerified;
 
     console.log("[register] 🚀 Starting phone verification polling", {
       phone: form.phone.trim(),
@@ -506,26 +514,35 @@ export default function RegisterDirectorClient() {
       }
     };
 
-    // НЕ запускаем проверку сразу - даём время обновлению в БД
+    // Если на шаге 3 и статус "idle" - проверяем сразу (возможно телефон уже подтверждён в БД)
+    if (shouldCheckImmediately) {
+      console.log("[register] 🔍 Checking phone status immediately (step 3, idle status)");
+      hasStartedPolling = true;
+      checkPhoneConfirmation();
+    }
+
+    // НЕ запускаем проверку сразу для статуса "verifying" - даём время обновлению в БД
     // Запускаем первую проверку через 2 секунды после установки статуса verifying
     const initialDelay = setTimeout(() => {
-      if (!cancelled && !phoneVerified && phoneStatus === "verifying") {
+      if (!cancelled && !phoneVerified && phoneStatus === "verifying" && !hasStartedPolling) {
         hasStartedPolling = true;
         console.log("[register] 🔍 Starting first phone check after delay");
         checkPhoneConfirmation();
-      } else {
+      } else if (!shouldCheckImmediately) {
         console.log("[register] ⚠️ First phone check skipped", {
           cancelled,
           phoneVerified,
           phoneStatus,
+          shouldCheckImmediately,
         });
       }
-    }, 2000); // 2 секунды задержка перед первой проверкой
+    }, shouldCheckImmediately ? 0 : 2000); // Если проверяем сразу, задержка 0, иначе 2 секунды
 
     // Устанавливаем интервал для периодической проверки (каждую секунду)
     // Мониторим изменения в profiles.phone_verified каждую секунду
+    // Работает для статусов "verifying" и "idle" на шаге 3
     intervalId = setInterval(() => {
-      if (!cancelled && !phoneVerified && phoneStatus === "verifying" && hasStartedPolling) {
+      if (!cancelled && !phoneVerified && (phoneStatus === "verifying" || (phoneStatus === "idle" && step === 3)) && hasStartedPolling) {
         checkPhoneConfirmation();
       } else if (phoneVerified && intervalId) {
         clearInterval(intervalId);
@@ -541,7 +558,7 @@ export default function RegisterDirectorClient() {
         clearTimeout(initialDelay);
       }
     };
-  }, [phoneStatus, form.phone, phoneVerified]);
+  }, [phoneStatus, form.phone, phoneVerified, step]); // Добавляем step в зависимости
 
   // Сохранение состояния регистрации в localStorage
   useEffect(() => {
