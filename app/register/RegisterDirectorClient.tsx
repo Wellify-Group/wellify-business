@@ -308,10 +308,16 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
+        console.log("[register] checkEmailConfirmation response", { 
+          confirmed: data.confirmed, 
+          email: form.email.trim() 
+        });
+
         // Если email подтверждён, меняем UI
         if (data.confirmed === true) {
           // Email подтверждён! Меняем UI
           if (!cancelled) {
+            console.log("[register] ✅ Email confirmed! Updating UI...", { email: form.email.trim() });
             setEmailStatus("verified");
             setEmailVerified(true);
             setFormSuccess("Отлично! Ваша почта подтверждена, можете переходить к 3 шагу.");
@@ -329,8 +335,13 @@ export default function RegisterDirectorClient() {
               localStorage.removeItem("register_email");
             }
           }
+        } else {
+          // Email ещё не подтверждён - продолжаем проверку
+          // Логируем только иногда, чтобы не засорять консоль
+          if (Math.random() < 0.1) {
+            console.log("[register] ⏳ Email not confirmed yet, continuing polling...", { email: form.email.trim() });
+          }
         }
-        // Если не подтверждён - просто продолжаем проверку в фоне, UI не меняем
       } catch (e) {
         console.error("checkEmailConfirmation exception", e);
         // Продолжаем проверку в фоне даже при ошибке
@@ -885,9 +896,9 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
-        {/* Дополнительные действия, когда письмо уже отправлено - Стабилизированная высота */}
+        {/* Дополнительные действия, когда письмо уже отправлено, но ещё не подтверждено */}
         <div className="mt-4 min-h-[100px]">
-          {emailStatus === "link_sent" && (
+          {emailStatus === "link_sent" && !emailVerified && (
             <div className="flex flex-col gap-3">
               <Button
                 type="button"
@@ -912,9 +923,15 @@ export default function RegisterDirectorClient() {
           )}
         </div>
 
-        {/* Уведомления на шаге 2 - только ошибки, без formSuccess */}
+        {/* Уведомления на шаге 2 - успех и ошибки */}
+        {formSuccess && emailStatus === "verified" && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            <span>{formSuccess}</span>
+          </div>
+        )}
         {formError && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>{formError}</span>
           </div>
