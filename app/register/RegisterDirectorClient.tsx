@@ -330,9 +330,10 @@ export default function RegisterDirectorClient() {
       setEmailError(null);
       setEmailStatus("sending");
 
-      const redirectTo = `${
-        process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
-      }/auth/email-confirmed`;
+      // Используем текущий origin для redirect после подтверждения email
+      const redirectTo = typeof window !== "undefined" 
+        ? `${window.location.origin}/email-confirmed`
+        : `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"}/email-confirmed`;
 
       // Формируем полное имя из компонентов (Фамилия Имя Отчество)
       const fullName = [
