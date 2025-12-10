@@ -104,19 +104,18 @@ export async function POST(req: NextRequest) {
 
         // Если пользователь не залогинен, ищем по email из body (если передан)
         if (!userId && email) {
-            console.log("[phone-verify-code] User not authenticated, searching by email", { email });
+          console.log("[phone-verify-code] User not authenticated, searching by email", { email });
+          
+          const { data: usersList, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+          
+          if (!listError && usersList?.users) {
+            const foundUser = usersList.users.find(
+              (u) => u.email && u.email.toLowerCase().trim() === email.toLowerCase().trim()
+            );
             
-            const { data: usersList, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-            
-            if (!listError && usersList?.users) {
-              const foundUser = usersList.users.find(
-                (u) => u.email && u.email.toLowerCase().trim() === email.toLowerCase().trim()
-              );
-              
-              if (foundUser) {
-                userId = foundUser.id;
-                console.log("[phone-verify-code] User found by email", { userId, email });
-              }
+            if (foundUser) {
+              userId = foundUser.id;
+              console.log("[phone-verify-code] User found by email", { userId, email });
             }
           }
         }
