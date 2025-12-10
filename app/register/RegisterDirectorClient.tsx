@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState, useRef } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
@@ -30,11 +30,15 @@ interface FormState {
   phone: string;
 }
 
+const SESSION_STORAGE_KEY = "wellify_register_state";
+
 export default function RegisterDirectorClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { language } = useLanguage();
   const [step, setStep] = useState<Step>(1);
+  const isInitialMount = useRef(true);
   
   // Маппинг локали для API: "en" | "ua" | "ru" -> "en" | "uk" | "ru"
   const localeForAPI = language === "ua" ? "uk" : language;
@@ -80,6 +84,9 @@ export default function RegisterDirectorClient() {
   const clearRegistrationState = () => {
     if (typeof window === "undefined") return;
     
+    // Очищаем sessionStorage
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    
     localStorage.removeItem("register_in_progress");
     localStorage.removeItem("register_email");
     localStorage.removeItem("wellify_email");
@@ -110,49 +117,103 @@ export default function RegisterDirectorClient() {
     });
   };
 
-  // Очистка старых флагов при первом заходе на регистрацию
+  // ========== СОХРАНЕНИЕ СОСТОЯНИЯ В SESSION STORAGE ==========
+  // Сохраняем состояние при каждом изменении step, baseData, form
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isInitialMount.current) return; // Пропускаем первое сохранение (до восстановления)
+
+    try {
+      const stateToSave = {
+        step,
+        baseData,
+        form: {
+          email: form.email,
+          phone: form.phone,
+        },
+        emailVerified,
+        phoneVerified,
+      };
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (error) {
+      console.warn("[register] Failed to save state to sessionStorage", error);
+    }
+  }, [step, baseData, form.email, form.phone, emailVerified, phoneVerified]);
+
+  // ========== ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ПРИ MOUNT ==========
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isInitialMount.current) return;
+
     // Проверяем query параметр для начала новой регистрации
     const shouldStartNew = searchParams.get("new") === "true" || searchParams.get("reset") === "true";
     
     if (shouldStartNew) {
       clearRegistrationState();
-      // Убираем параметр из URL
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
       router.replace("/register", { scroll: false });
+      isInitialMount.current = false;
       return;
     }
 
-    // Проверяем, есть ли сохранённое состояние регистрации (после возврата с логина)
-    const savedState = localStorage.getItem("register_in_progress");
-    if (savedState) {
+    // Проверяем, есть ли сохранённое состояние в sessionStorage
+    const savedStateStr = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    
+    if (savedStateStr) {
       try {
-        const state = JSON.parse(savedState);
-        setStep(state.step || 1);
-        setForm({
-          email: state.email || "",
-          phone: state.phone || "",
-        });
-        if (state.baseData) {
-          setBaseData(state.baseData);
-        }
-        // Восстанавливаем верификацию если они были подтверждены
-        if (state.emailVerified) {
-          setEmailVerified(true);
-          // Восстанавливаем статус email
-          const confirmed = localStorage.getItem("wellify_email_confirmed");
-          const confirmedFor = localStorage.getItem("wellify_email_confirmed_for");
-          if (confirmed === "true" && confirmedFor && confirmedFor.toLowerCase() === (state.email || "").toLowerCase()) {
-            setEmailStatus("verified");
-          } else {
-            setEmailStatus("link_sent");
+        const savedState = JSON.parse(savedStateStr);
+        const restoredStep = savedState.step || 1;
+        
+        // Восстанавливаем данные в зависимости от шага
+        if (restoredStep === 3) {
+          // Шаг 3: Восстанавливаем шаг 1 и 2, но очищаем phone
+          if (savedState.baseData) {
+            setBaseData(savedState.baseData);
           }
-        }
-        if (state.phoneVerified) {
-          setPhoneVerified(true);
+          setForm({
+            email: savedState.form?.email || "",
+            phone: "", // Очищаем phone
+          });
+          setStep(3);
+          // Восстанавливаем статус email верификации
+          if (savedState.emailVerified) {
+            setEmailVerified(true);
+            const confirmed = localStorage.getItem("wellify_email_confirmed");
+            const confirmedFor = localStorage.getItem("wellify_email_confirmed_for");
+            if (confirmed === "true" && confirmedFor && confirmedFor.toLowerCase() === (savedState.form?.email || "").toLowerCase()) {
+              setEmailStatus("verified");
+            } else {
+              setEmailStatus("link_sent");
+            }
+          }
+        } else if (restoredStep === 2) {
+          // Шаг 2: Восстанавливаем шаг 1, но очищаем email
+          if (savedState.baseData) {
+            setBaseData(savedState.baseData);
+          }
+          setForm({
+            email: "", // Очищаем email
+            phone: "",
+          });
+          setStep(2);
+        } else {
+          // Шаг 1: Сбрасываем все
+          setBaseData({
+            firstName: "",
+            lastName: "",
+            middleName: "",
+            birthDate: "",
+            password: "",
+          });
+          setForm({
+            email: "",
+            phone: "",
+          });
+          setStep(1);
         }
       } catch (e) {
-        console.error("Error restoring registration state:", e);
-        localStorage.removeItem("register_in_progress");
+        console.error("[register] Error restoring state from sessionStorage", e);
+        sessionStorage.removeItem(SESSION_STORAGE_KEY);
       }
     } else {
       // Новая регистрация – чистим хвосты
@@ -160,7 +221,21 @@ export default function RegisterDirectorClient() {
       localStorage.removeItem("wellify_email_confirmed");
       localStorage.removeItem("wellify_email_confirmed_for");
     }
+
+    isInitialMount.current = false;
   }, [searchParams, router]);
+
+  // ========== ОЧИСТКА ПРИ УХОДЕ НА ГЛАВНУЮ ==========
+  // Отслеживаем изменения pathname и очищаем sessionStorage при уходе со страницы регистрации
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isInitialMount.current) return; // Пропускаем первый рендер
+    
+    // Если мы ушли со страницы регистрации (pathname изменился и не равен /register)
+    if (pathname && pathname !== "/register") {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+  }, [pathname]);
 
   // Сброс ошибок при смене шага
   useEffect(() => {
