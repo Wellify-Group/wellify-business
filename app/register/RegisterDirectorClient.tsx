@@ -195,7 +195,7 @@ export default function RegisterDirectorClient() {
     }
   }, [form.email, emailStatus]);
 
-  // Авто-проверка e-mail через поллинг supabase.auth.getUser() при статусе link_sent
+  // Авто-проверка e-mail через поллинг с refreshSession() при статусе link_sent
   // Работает в фоне без изменения UI до подтверждения
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
@@ -209,20 +209,16 @@ export default function RegisterDirectorClient() {
       try {
         if (cancelled) return;
 
-        // Обновляем сессию перед проверкой, чтобы получить актуальные данные
-        await supabase.auth.refreshSession();
+        // ОБЯЗАТЕЛЬНО обновляем сессию перед проверкой, чтобы получить свежие данные с сервера
+        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
 
-        // Проверяем статус через supabase.auth.getUser()
-        const { data: { user }, error } = await supabase.auth.getUser();
-
-        if (error) {
-          console.error("getUser error:", error);
+        if (refreshError) {
+          console.error("refreshSession error:", refreshError);
           return; // Продолжаем проверку в фоне
         }
 
-        // Проверяем, подтверждён ли email
-        // Проверяем email_confirmed_at или роль authenticated
-        if (user && (user.email_confirmed_at || user.role === 'authenticated')) {
+        // Проверяем email_confirmed_at в обновленной сессии
+        if (session?.user?.email_confirmed_at) {
           // Email подтверждён! Меняем UI
           if (!cancelled) {
             setEmailStatus("verified");
@@ -369,15 +365,20 @@ export default function RegisterDirectorClient() {
       });
 
       if (error) {
-        // Если пользователь уже существует, показываем ошибку
+        // Если пользователь уже существует, показываем красное уведомление
+        const errorMessage = error.message?.toLowerCase() || "";
+        const errorCode = error.status || error.code;
+        
         if (
-          error.message?.toLowerCase().includes("already registered") ||
-          error.message?.toLowerCase().includes("already exists") ||
-          error.message?.toLowerCase().includes("user already registered") ||
-          error.message?.toLowerCase().includes("email already registered")
+          errorMessage.includes("already registered") ||
+          errorMessage.includes("already exists") ||
+          errorMessage.includes("user already registered") ||
+          errorMessage.includes("email already registered") ||
+          errorCode === 400 ||
+          errorCode === 422
         ) {
           setEmailStatus("error");
-          setEmailError("Пользователь с таким e-mail уже существует. Пожалуйста, войдите.");
+          setEmailError("Этот e-mail уже зарегистрирован. Пожалуйста, войдите в систему.");
           return;
         } else {
           setEmailStatus("error");
@@ -729,21 +730,21 @@ export default function RegisterDirectorClient() {
         {/* БАННЕРЫ - Компактный контейнер */}
         <div className="mt-3">
           {emailStatus === "link_sent" && (
-            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            <div className="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
               Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
               Статус обновится автоматически.
             </div>
           )}
 
           {emailStatus === "verified" && (
-            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+            <div className="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
                   <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                 </div>
                 <div className="flex-1 text-left">
                   <h3 className="text-base font-semibold text-emerald-300 mb-1">
-                    E-mail успешно подтвержден!
+                    E-mail подтвержден!
                   </h3>
                   <p className="text-sm text-emerald-200">
                     Переходите к следующему шагу.
@@ -754,10 +755,11 @@ export default function RegisterDirectorClient() {
           )}
         </div>
 
+        {/* Красное уведомление об ошибке */}
         {emailError && (
-          <p className="mt-2 text-sm text-red-400">
+          <div className="mt-3 w-full rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-400">
             {emailError}
-          </p>
+          </div>
         )}
 
         {/* Дополнительные действия, когда письмо уже отправлено - Стабилизированная высота */}
