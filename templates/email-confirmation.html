@@ -1,26 +1,3 @@
-# Настройка Email Template в Supabase / Resend
-
-## Изменение шаблона письма подтверждения email
-
-Чтобы изменить шаблон письма подтверждения email, нужно настроить его в Supabase Dashboard или Resend Dashboard.
-
-### Инструкция для Supabase:
-
-1. Перейдите в **Supabase Dashboard** → **Authentication** → **Email Templates**
-2. Выберите шаблон **"Confirm signup"** (или "Magic Link" для подтверждения email)
-3. Замените HTML-шаблон на кастомный (см. ниже)
-
-### Инструкция для Resend:
-
-1. Перейдите в **Resend Dashboard** → **Emails** → **Templates**
-2. Создайте новый шаблон или отредактируйте существующий
-3. Используйте HTML-шаблон ниже (замените `{{link}}` на переменную Resend)
-
-### Шаблон с отключенной инверсией темной темы
-
-**Важно:** Этот шаблон полностью отключает автоматическую инверсию темной темы в почтовых клиентах (iOS Mail, Gmail, Android Mail, Outlook). Письмо всегда будет отображаться с белым фоном.
-
-```html
 <!DOCTYPE html>
 <html lang="ru" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -135,7 +112,7 @@
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td align="center" bgcolor="#2D6BFF" style="background:#2D6BFF !important; border-radius:8px;">
-                          <a href="{{ .ConfirmationURL }}" style="color:#ffffff !important; text-decoration:none; display:block; padding:12px 24px; font-size:16px; font-weight:bold; background:#2D6BFF !important;">
+                          <a href="{{link}}" style="color:#ffffff !important; text-decoration:none; display:block; padding:12px 24px; font-size:16px; font-weight:bold; background:#2D6BFF !important;">
                             Подтвердить e-mail
                           </a>
                         </td>
@@ -151,8 +128,8 @@
                       Если кнопка не работает, скопируйте и вставьте эту ссылку в адресную строку браузера:
                     </p>
                     <p style="color:#2D6BFF !important; margin:0; padding:0; font-size:12px; line-height:18px; word-break:break-all; background:#ffffff !important;">
-                      <a href="{{ .ConfirmationURL }}" style="color:#2D6BFF !important; text-decoration:underline; background:#ffffff !important;">
-                        {{ .ConfirmationURL }}
+                      <a href="{{link}}" style="color:#2D6BFF !important; text-decoration:underline; background:#ffffff !important;">
+                        {{link}}
                       </a>
                     </p>
                   </td>
@@ -175,32 +152,4 @@
   </table>
 </body>
 </html>
-```
-
-### Для Resend (замените `{{ .ConfirmationURL }}` на `{{link}}`):
-
-В шаблоне выше замените все вхождения `{{ .ConfirmationURL }}` на `{{link}}` (или другую переменную, используемую в Resend).
-
-### Важно:
-
-- **`{{ .ConfirmationURL }}`** - переменная Supabase, автоматически заменяется на реальную ссылку
-- **`{{link}}`** - переменная Resend (или другая, в зависимости от вашей настройки)
-- Все стили **inline** для максимальной совместимости
-- **Фон всегда белый** (`#ffffff`), независимо от системной темы устройства
-- **Инверсия темной темы полностью отключена** через мета-теги и CSS
-- После изменения шаблона в Dashboard новые письма будут отправляться с обновленным дизайном
-
-### Тестирование:
-
-После применения шаблона протестируйте отправку письма через:
-- **Supabase Dashboard** → Test Email
-- **Resend Dashboard** → Test Email
-
-Проверьте отображение в:
-- iPhone Mail (dark / light mode)
-- Gmail (mobile / desktop)
-- Apple Mail
-- Outlook
-
-Фон должен оставаться белым во всех случаях.
 
