@@ -196,6 +196,10 @@ export default function RegisterDirectorClient() {
             phone: "",
           });
           setStep(2);
+          // Сбрасываем статус email при восстановлении на шаг 2
+          setEmailStatus("idle");
+          setEmailError(null);
+          setEmailVerified(false);
         } else {
           // Шаг 1: Сбрасываем все
           setBaseData({
@@ -407,9 +411,41 @@ export default function RegisterDirectorClient() {
 
   // Функции для Supabase email verification (НЕ Twilio!)
   const handleSendEmailLink = async () => {
+    // Защита от повторных вызовов
+    if (emailStatus === "sending") {
+      console.warn("[register] handleSendEmailLink already in progress");
+      return;
+    }
+
+    let timeoutId: NodeJS.Timeout | null = null;
+
     try {
       setEmailError(null);
+      setFormError(null);
+      setFormSuccess(null);
       setEmailStatus("sending");
+
+      // Таймаут для защиты от зависания статуса "sending"
+      timeoutId = setTimeout(() => {
+        console.error("[register] handleSendEmailLink timeout - resetting status");
+        setEmailStatus("error");
+        setEmailError("Превышено время ожидания. Попробуйте ещё раз.");
+      }, 30000); // 30 секунд
+
+      // Валидация email перед отправкой
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!form.email.trim() || !emailRegex.test(form.email.trim())) {
+        setEmailStatus("error");
+        setEmailError("Пожалуйста, введите корректный e-mail адрес.");
+        return;
+      }
+
+      // Валидация обязательных полей из шага 1
+      if (!baseData.firstName.trim() || !baseData.lastName.trim() || !baseData.password) {
+        setEmailStatus("error");
+        setEmailError("Пожалуйста, заполните все обязательные поля на шаге 1.");
+        return;
+      }
 
       // Используем текущий origin для redirect после подтверждения email
       const redirectTo = typeof window !== "undefined" 
@@ -428,7 +464,12 @@ export default function RegisterDirectorClient() {
       // Убеждаемся, что birth_date в формате YYYY-MM-DD
       const birthDateFormatted = baseData.birthDate; // input type="date" уже возвращает YYYY-MM-DD
 
-      const { error } = await supabase.auth.signUp({
+      console.log("[register] Sending email verification", {
+        email: form.email.trim(),
+        redirectTo,
+      });
+
+      const { data, error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: baseData.password,
         options: {
@@ -445,10 +486,13 @@ export default function RegisterDirectorClient() {
         },
       });
 
+      console.log("[register] signUp response", { data, error });
+
       if (error) {
+        console.error("[register] signUp error", error);
         // Если пользователь уже существует, показываем красное уведомление
         const errorMessage = error.message?.toLowerCase() || "";
-        const errorCode = error.status || error.code;
+        const errorCode = error.status || (error as any).code;
         
         if (
           errorMessage.includes("already registered") ||
@@ -463,19 +507,24 @@ export default function RegisterDirectorClient() {
           return;
         } else {
           setEmailStatus("error");
-          setEmailError(error.message || "Не удалось отправить письмо.");
+          setEmailError(error.message || "Не удалось отправить письмо. Попробуйте ещё раз.");
           return;
         }
       }
 
+      // Успешная отправка
       const normalizedEmail = form.email.trim().toLowerCase();
       if (typeof window !== "undefined") {
         localStorage.setItem("register_email", normalizedEmail);
       }
+      if (timeoutId) clearTimeout(timeoutId);
       setEmailStatus("link_sent");
+      console.log("[register] Email sent successfully", { email: normalizedEmail });
     } catch (e: any) {
+      console.error("[register] handleSendEmailLink exception", e);
+      if (timeoutId) clearTimeout(timeoutId);
       setEmailStatus("error");
-      setEmailError(e?.message ?? "Не удалось отправить письмо.");
+      setEmailError(e?.message ?? "Не удалось отправить письмо. Попробуйте ещё раз.");
     }
   };
 
@@ -810,6 +859,11 @@ export default function RegisterDirectorClient() {
 
         {/* БАННЕРЫ - Компактный контейнер */}
         <div className="mt-3">
+          {emailStatus === "sending" && (
+            <div className="w-full rounded-lg border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-300">
+              Отправляем письмо...
+            </div>
+          )}
           {emailStatus === "link_sent" && (
             <div className="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
               Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
@@ -871,15 +925,15 @@ export default function RegisterDirectorClient() {
             Назад
           </Button>
 
-          {/* Кнопка "Отправить письмо" показывается только когда idle или error */}
-          {(emailStatus === "idle" || emailStatus === "error") && (
+          {/* Кнопка "Отправить письмо" показывается когда idle, error или sending (с индикатором) */}
+          {(emailStatus === "idle" || emailStatus === "error" || emailStatus === "sending") && (
             <Button
               type="button"
               className="w-full md:w-auto"
-              disabled={!isEmailValid}
+              disabled={!isEmailValid || emailStatus === "sending"}
               onClick={handleSendEmailLink}
             >
-              Отправить письмо
+              {emailStatus === "sending" ? "Отправка..." : "Отправить письмо"}
             </Button>
           )}
 
