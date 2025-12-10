@@ -179,16 +179,10 @@ export default function RegisterDirectorClient() {
           });
           setStep(3);
           // Восстанавливаем статус email верификации
-          // НО: не устанавливаем verified автоматически - проверяем через API polling
-          // Если email был подтверждён ранее, запускаем проверку через API
-          // НЕ устанавливаем verified сразу - только через API подтверждение из БД
-          if (savedState.emailVerified && savedState.form?.email) {
-            setEmailStatus("link_sent");
-            setEmailVerified(false); // Сбрасываем, чтобы polling проверил реальное состояние в БД
-          } else {
-            setEmailStatus("link_sent");
-            setEmailVerified(false);
-          }
+          // КРИТИЧНО: НЕ устанавливаем verified автоматически - всегда сбрасываем и проверяем через API
+          // Polling проверит реальное состояние через /api/auth/check-email-confirmed
+          setEmailStatus("link_sent");
+          setEmailVerified(false); // Всегда сбрасываем, чтобы polling проверил реальное состояние
         } else if (restoredStep === 2) {
           // Шаг 2: Восстанавливаем шаг 1, но очищаем email
           if (savedState.baseData) {
@@ -263,7 +257,7 @@ export default function RegisterDirectorClient() {
   // Это гарантирует, что мы проверяем реальное состояние в БД, а не кэш
 
   // Авто-проверка e-mail через поллинг каждую секунду при статусе link_sent
-  // Проверяет email_verified в таблице profiles и email_confirmed_at в сессии
+  // Проверяет ТОЛЬКО user.email_confirmed_at из сессии (реальное подтверждение через ссылку из письма)
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
     if (!form.email.trim()) return;
@@ -277,29 +271,33 @@ export default function RegisterDirectorClient() {
       try {
         if (cancelled) return;
 
-        // Используем API route для проверки статуса (использует admin клиент, обходит RLS)
-        const res = await fetch("/api/auth/check-email", {
-          method: "POST",
+        // Используем новый API route, который проверяет ТОЛЬКО user.email_confirmed_at из сессии
+        // Это гарантирует, что email подтверждён только после реального перехода по ссылке из письма
+        const res = await fetch("/api/auth/check-email-confirmed", {
+          method: "GET",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: form.email.trim() }),
         });
 
         if (!res.ok) {
-          console.error("check-email API error:", res.status);
+          // Если пользователь не залогинен (401), это нормально - продолжаем проверку
+          if (res.status === 401) {
+            console.log("[register] User not authenticated yet, continuing polling...");
+          } else {
+            console.error("[register] check-email-confirmed API error:", res.status);
+          }
           return; // Продолжаем проверку в фоне
         }
 
         const data = await res.json();
 
-        // КРИТИЧНО: Проверяем ТОЛЬКО реальное состояние из БД (data.confirmed из API)
-        // API проверяет email_verified в таблице profiles через admin клиент
-        if (data.confirmed === true) {
+        // КРИТИЧНО: Проверяем ТОЛЬКО data.emailConfirmed из API
+        // API проверяет user.email_confirmed_at, который устанавливается Supabase только после перехода по ссылке
+        if (data.success === true && data.emailConfirmed === true) {
           // State Machine: Transition WAITING_FOR_VERIFICATION -> VERIFIED
-          // Email подтверждён в БД! Переходим в состояние VERIFIED
+          // Email подтверждён через реальный переход по ссылке! Переходим в состояние VERIFIED
           if (!cancelled) {
-            console.log("[register] ✅ Email verified in DB! Transitioning to VERIFIED state", { 
-              email: form.email.trim(),
-              userId: data.userId 
+            console.log("[register] ✅ Email confirmed via link! Transitioning to VERIFIED state", { 
+              email: form.email.trim()
             });
             
             setEmailStatus("verified");
@@ -313,7 +311,7 @@ export default function RegisterDirectorClient() {
               intervalId = null;
             }
 
-            // Сохраняем в localStorage только после подтверждения в БД
+            // Сохраняем в localStorage только после реального подтверждения
             if (typeof window !== "undefined") {
               localStorage.setItem("wellify_email_confirmed", "true");
               localStorage.setItem("wellify_email_confirmed_for", form.email.trim().toLowerCase());
@@ -322,30 +320,30 @@ export default function RegisterDirectorClient() {
           }
         } else {
           // State Machine: Остаёмся в WAITING_FOR_VERIFICATION
-          // Email ещё не подтверждён в БД - продолжаем polling
+          // Email ещё не подтверждён - продолжаем polling
           // Логируем только иногда, чтобы не засорять консоль
           if (Math.random() < 0.1) {
-            console.log("[register] ⏳ Email not verified in DB yet, continuing polling...", { 
+            console.log("[register] ⏳ Email not confirmed yet, continuing polling...", { 
               email: form.email.trim() 
             });
           }
         }
       } catch (e) {
-        console.error("checkEmailConfirmation exception", e);
+        console.error("[register] checkEmailConfirmation exception", e);
         // Продолжаем проверку в фоне даже при ошибке
       }
     };
 
     // НЕ запускаем проверку сразу - даём время письму отправиться
-    // Запускаем первую проверку через 3 секунды после отправки письма
+    // Запускаем первую проверку через 5 секунд после отправки письма
     const initialDelay = setTimeout(() => {
       if (!cancelled && !emailVerified && emailStatus === "link_sent") {
         hasStartedPolling = true;
         checkEmailConfirmation();
       }
-    }, 3000); // 3 секунды задержка перед первой проверкой
+    }, 5000); // 5 секунд задержка перед первой проверкой
 
-    // Устанавливаем интервал для периодической проверки (каждую секунду)
+    // Устанавливаем интервал для периодической проверки (каждые 2 секунды)
     // НО только после первой задержки
     intervalId = setInterval(() => {
       if (!cancelled && !emailVerified && emailStatus === "link_sent" && hasStartedPolling) {
@@ -353,7 +351,7 @@ export default function RegisterDirectorClient() {
       } else if (emailVerified && intervalId) {
         clearInterval(intervalId);
       }
-    }, 1000); // Проверяем каждую секунду
+    }, 2000); // Проверяем каждые 2 секунды
 
     return () => {
       cancelled = true;
@@ -364,7 +362,7 @@ export default function RegisterDirectorClient() {
         clearTimeout(initialDelay);
       }
     };
-  }, [emailStatus, form.email, emailVerified, supabase]);
+  }, [emailStatus, form.email, emailVerified]);
 
   // Таймер для кнопки "Отправить письмо ещё раз" (60 секунд)
   useEffect(() => {

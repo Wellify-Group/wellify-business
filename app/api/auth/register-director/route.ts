@@ -151,13 +151,33 @@ export async function POST(request: NextRequest) {
       return `${part()}-${part()}-${part()}-${part()}`;
     };
 
+    // Проверяем email: должен быть подтверждён через реальный переход по ссылке
+    // Используем уже полученного пользователя из existingUsers (получен выше)
+    const userForEmailCheck = existingUsers?.users?.find((u) => u.id === userId);
+    const isEmailConfirmed = !!userForEmailCheck?.email_confirmed_at;
+
+    if (!isEmailConfirmed) {
+      console.error("[register-director] Email is not confirmed", {
+        userId,
+        email: userForEmailCheck?.email,
+        email_confirmed_at: userForEmailCheck?.email_confirmed_at,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Email is not confirmed. Please confirm your email by clicking the link in the email.",
+        },
+        { status: 400 }
+      );
+    }
+
     // Проверяем, есть ли уже профиль и верифицирован ли телефон
     const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from("profiles")
-      .select("phone, phone_verified")
+      .select("phone, phone_verified, email_verified")
       .eq("id", userId)
       .maybeSingle();
-
+    
     // Дополнительная проверка: телефон должен быть верифицирован
     if (!existingProfile?.phone || !existingProfile.phone_verified) {
       console.error("[register-director] Phone is not verified", {
@@ -209,7 +229,7 @@ export async function POST(request: NextRequest) {
       middle_name: middleName?.trim() || null,
       full_name: fullName,
       birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
-      email_verified: true, // Email уже подтверждён на шаге 2
+      email_verified: isEmailConfirmed, // Email подтверждён только если email_confirmed_at не NULL
       phone_verified: true, // Телефон уже подтверждён на шаге 3
       locale: normalizedLocale,
       updated_at: new Date().toISOString(),

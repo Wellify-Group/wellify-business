@@ -64,23 +64,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ confirmed: false }, { status: 200 });
     }
 
-    // 2. Проверяем, подтверждён ли e-mail в auth.users ИЛИ в profiles.email_verified
-    // Сначала проверяем profiles.email_verified (более надежно, так как обновляется триггером)
-    const { data: profile, error: profileCheckError } = await supabaseAdmin
-      .from("profiles")
-      .select("email_verified")
-      .eq("id", user.id)
-      .single();
-
-    const isEmailVerifiedInProfile = profile?.email_verified === true;
+    // 2. КРИТИЧНО: Проверяем ТОЛЬКО user.email_confirmed_at
+    // Это поле устанавливается Supabase только после реального перехода по ссылке из письма
+    // НЕ проверяем profiles.email_verified, так как оно может быть установлено ошибочно
     const isEmailConfirmedInAuth = !!user.email_confirmed_at;
 
-    // Email считается подтверждённым, если подтверждён в auth.users ИЛИ в profiles
-    if (!isEmailConfirmedInAuth && !isEmailVerifiedInProfile) {
+    if (!isEmailConfirmedInAuth) {
       return NextResponse.json({ confirmed: false }, { status: 200 });
     }
 
-    // 3. Синхронизируем профиль (обновляем email_verified если нужно)
+    // 3. Email подтверждён - синхронизируем профиль (обновляем email_verified если нужно)
     const meta = user.user_metadata || {};
     
     // Формируем full_name из метаданных, если его нет
@@ -91,6 +84,7 @@ export async function POST(req: NextRequest) {
           )
         : null);
 
+    // Обновляем профиль, устанавливая email_verified = true ТОЛЬКО если email действительно подтверждён
     const { error: profileUpsertError } = await supabaseAdmin
       .from("profiles")
       .upsert(
@@ -101,7 +95,7 @@ export async function POST(req: NextRequest) {
           middle_name: meta.middle_name ?? null,
           full_name: fullName,
           birth_date: meta.birth_date ?? null,
-          email_verified: true,
+          email_verified: true, // Устанавливаем true ТОЛЬКО если email_confirmed_at не NULL
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
