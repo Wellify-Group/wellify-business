@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (listError) {
       console.error("[register-director] Error listing users", {
         message: listError.message,
-        details: listError.details || listError.status,
+        status: (listError as any).status,
       });
       return NextResponse.json(
         {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         if (updateError) {
           console.error("[register-director] Error updating user", {
             message: updateError.message,
-            details: updateError.details || updateError.status,
+            status: (updateError as any).status,
           });
           // Не критично, продолжаем
         }
@@ -130,13 +130,13 @@ export async function POST(request: NextRequest) {
       if (createError || !newUserData?.user) {
         console.error("[register-director] Error creating user", {
           message: createError?.message,
-          details: createError?.details || createError?.status,
+          status: (createError as any)?.status,
         });
         return NextResponse.json(
           {
             success: false,
             message: createError?.message || "Failed to create user",
-            details: createError?.message || createError?.details || "Unknown error",
+            details: createError?.message || "Unknown error",
           },
           { status: 500 }
         );
