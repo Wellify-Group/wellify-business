@@ -67,6 +67,8 @@ export default function RegisterDirectorClient() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(false);
   const [confirmedUserId, setConfirmedUserId] = useState<string | undefined>(undefined);
+  // Таймер для повторной отправки письма (60 секунд)
+  const [resendCooldown, setResendCooldown] = useState(0);
   // Телефон верификация через Twilio SMS
   const [phoneVerified, setPhoneVerified] = useState(false);
 
@@ -368,6 +370,22 @@ export default function RegisterDirectorClient() {
     };
   }, [emailStatus, form.email, emailVerified, supabase]);
 
+  // Таймер для кнопки "Отправить письмо ещё раз" (60 секунд)
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timerId = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [resendCooldown]);
+
   // Сохранение состояния регистрации в localStorage
   useEffect(() => {
     if (step > 1 || form.email || form.phone) {
@@ -536,6 +554,8 @@ export default function RegisterDirectorClient() {
       }
       if (timeoutId) clearTimeout(timeoutId);
       setEmailStatus("link_sent");
+      // Запускаем таймер для повторной отправки (60 секунд)
+      setResendCooldown(60);
       console.log("[register] Email sent successfully", { email: normalizedEmail });
     } catch (e: any) {
       console.error("[register] handleSendEmailLink exception", e);
@@ -546,7 +566,9 @@ export default function RegisterDirectorClient() {
   };
 
   const handleResendEmail = async () => {
+    if (resendCooldown > 0) return; // Защита от повторных вызовов во время таймера
     await handleSendEmailLink();
+    // Таймер запустится автоматически после успешной отправки в handleSendEmailLink
   };
 
   const handleChangeEmail = async () => {
@@ -883,8 +905,7 @@ export default function RegisterDirectorClient() {
           )}
           {emailStatus === "link_sent" && (
             <div className="w-full rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
-              Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
-              Статус обновится автоматически.
+              Мы отправили письмо на <strong>{form.email.trim()}</strong>. Пожалуйста, подтвердите e-mail, чтобы продолжить.
             </div>
           )}
         </div>
@@ -897,31 +918,30 @@ export default function RegisterDirectorClient() {
         )}
 
         {/* Дополнительные действия, когда письмо уже отправлено, но ещё не подтверждено */}
-        <div className="mt-4 min-h-[100px]">
-          {emailStatus === "link_sent" && !emailVerified && (
-            <div className="flex flex-col gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleChangeEmail}
-                disabled={false}
-              >
-                Изменить e-mail
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleResendEmail}
-                disabled={false}
-              >
-                Отправить письмо ещё раз
-              </Button>
-            </div>
-          )}
-        </div>
+        {emailStatus === "link_sent" && !emailVerified && (
+          <div className="mt-4 flex flex-row gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={handleResendEmail}
+              disabled={resendCooldown > 0}
+            >
+              {resendCooldown > 0 
+                ? `Отправить письмо ещё раз (${resendCooldown}с)` 
+                : "Отправить письмо ещё раз"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={handleChangeEmail}
+              disabled={false}
+            >
+              Изменить e-mail
+            </Button>
+          </div>
+        )}
 
         {/* Уведомления на шаге 2 - успех и ошибки */}
         {formSuccess && emailStatus === "verified" && (
