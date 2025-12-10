@@ -196,8 +196,9 @@ export default function RegisterDirectorClient() {
   }, [form.email, emailStatus]);
 
   // Авто-проверка e-mail через поллинг supabase.auth.getUser() при статусе link_sent
+  // Работает в фоне без изменения UI до подтверждения
   useEffect(() => {
-    if (emailStatus !== "link_sent" && emailStatus !== "checking") return;
+    if (emailStatus !== "link_sent") return;
     if (!form.email.trim()) return;
     if (emailVerified) return; // Если уже подтверждён, не проверяем
 
@@ -208,22 +209,17 @@ export default function RegisterDirectorClient() {
       try {
         if (cancelled) return;
 
-        setEmailStatus("checking");
-
-        // Проверяем статус через supabase.auth.getUser()
+        // Проверяем статус через supabase.auth.getUser() (в фоне, без изменения UI)
         const { data: { user }, error } = await supabase.auth.getUser();
 
         if (error) {
           console.error("getUser error:", error);
-          if (!cancelled && !emailVerified) {
-            setEmailStatus("link_sent");
-          }
-          return;
+          return; // Продолжаем проверку в фоне
         }
 
         // Проверяем, подтверждён ли email
         if (user && user.email_confirmed_at) {
-          // Email подтверждён!
+          // Email подтверждён! Только теперь меняем UI
           if (!cancelled) {
             setEmailStatus("verified");
             setEmailVerified(true);
@@ -242,17 +238,11 @@ export default function RegisterDirectorClient() {
               localStorage.removeItem("register_email");
             }
           }
-        } else {
-          // Ещё не подтверждён - продолжаем проверку
-          if (!cancelled && !emailVerified) {
-            setEmailStatus("link_sent");
-          }
         }
+        // Если не подтверждён - просто продолжаем проверку в фоне, UI не меняем
       } catch (e) {
         console.error("checkEmailConfirmation exception", e);
-        if (!cancelled && !emailVerified) {
-          setEmailStatus("link_sent");
-        }
+        // Продолжаем проверку в фоне даже при ошибке
       }
     };
 
@@ -261,7 +251,7 @@ export default function RegisterDirectorClient() {
 
     // Устанавливаем интервал для периодической проверки (каждые 3 секунды)
     intervalId = setInterval(() => {
-      if (!cancelled && !emailVerified && (emailStatus === "link_sent" || emailStatus === "checking")) {
+      if (!cancelled && !emailVerified && emailStatus === "link_sent") {
         checkEmailConfirmation();
       } else if (emailVerified && intervalId) {
         clearInterval(intervalId);
@@ -716,7 +706,7 @@ export default function RegisterDirectorClient() {
       form.email.trim() && emailRegex.test(form.email.trim());
 
     // Поле ввода e-mail активно только если idle или error
-    const isEmailInputDisabled = emailStatus === "sending" || emailStatus === "link_sent" || emailStatus === "checking" || emailStatus === "verified";
+    const isEmailInputDisabled = emailStatus === "sending" || emailStatus === "link_sent" || emailStatus === "verified";
 
     return (
       <div className="space-y-4">
@@ -738,32 +728,26 @@ export default function RegisterDirectorClient() {
           />
         </div>
 
-        {/* БАННЕРЫ */}
-        {emailStatus === "link_sent" && (
-          <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
-            Статус обновится автоматически.
-          </div>
-        )}
+        {/* БАННЕРЫ - Стабилизированная высота контейнера */}
+        <div className="mt-3 min-h-[60px]">
+          {emailStatus === "link_sent" && (
+            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+              Мы отправили письмо. Подтвердите e-mail и вернитесь на страницу.
+              Статус обновится автоматически.
+            </div>
+          )}
 
-        {emailStatus === "checking" && (
-          <div className="mt-3 rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-3">
-            <p className="text-sm text-blue-300">
-              Проверяем подтверждение e-mail...
-            </p>
-          </div>
-        )}
-
-        {emailStatus === "verified" && (
-          <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-            <h3 className="text-base font-semibold text-emerald-300 mb-1">
-              Поздравляем! Ваш e-mail подтверждён.
-            </h3>
-            <p className="text-sm text-emerald-200">
-              Можете перейти к следующему шагу.
-            </p>
-          </div>
-        )}
+          {emailStatus === "verified" && (
+            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+              <h3 className="text-base font-semibold text-emerald-300 mb-1">
+                Поздравляем! Ваш e-mail подтверждён.
+              </h3>
+              <p className="text-sm text-emerald-200">
+                Можете перейти к следующему шагу.
+              </p>
+            </div>
+          )}
+        </div>
 
         {emailError && (
           <p className="mt-2 text-sm text-red-400">
@@ -771,30 +755,32 @@ export default function RegisterDirectorClient() {
           </p>
         )}
 
-        {/* Дополнительные действия, когда письмо уже отправлено */}
-        {emailStatus === "link_sent" && (
-          <div className="mt-4 flex flex-col gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleChangeEmail}
-              disabled={false}
-            >
-              Изменить e-mail
-            </Button>
+        {/* Дополнительные действия, когда письмо уже отправлено - Стабилизированная высота */}
+        <div className="mt-4 min-h-[100px]">
+          {emailStatus === "link_sent" && (
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleChangeEmail}
+                disabled={false}
+              >
+                Изменить e-mail
+              </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleResendEmail}
-              disabled={false}
-            >
-              Отправить письмо ещё раз
-            </Button>
-          </div>
-        )}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleResendEmail}
+                disabled={false}
+              >
+                Отправить письмо ещё раз
+              </Button>
+            </div>
+          )}
+        </div>
 
         {renderAlerts()}
 
@@ -803,7 +789,7 @@ export default function RegisterDirectorClient() {
             type="button"
             variant="outline"
             className="w-full md:w-auto"
-            disabled={emailStatus === "sending" || emailStatus === "checking"}
+            disabled={emailStatus === "sending"}
             onClick={() => setStep(1)}
           >
             Назад
