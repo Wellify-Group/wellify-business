@@ -271,6 +271,7 @@ export default function RegisterDirectorClient() {
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
+    let hasStartedPolling = false; // Флаг, чтобы не запускать проверку сразу
 
     const checkEmailConfirmation = async () => {
       try {
@@ -335,12 +336,19 @@ export default function RegisterDirectorClient() {
       }
     };
 
-    // Запускаем проверку сразу
-    checkEmailConfirmation();
+    // НЕ запускаем проверку сразу - даём время письму отправиться
+    // Запускаем первую проверку через 3 секунды после отправки письма
+    const initialDelay = setTimeout(() => {
+      if (!cancelled && !emailVerified && emailStatus === "link_sent") {
+        hasStartedPolling = true;
+        checkEmailConfirmation();
+      }
+    }, 3000); // 3 секунды задержка перед первой проверкой
 
     // Устанавливаем интервал для периодической проверки (каждую секунду)
+    // НО только после первой задержки
     intervalId = setInterval(() => {
-      if (!cancelled && !emailVerified && emailStatus === "link_sent") {
+      if (!cancelled && !emailVerified && emailStatus === "link_sent" && hasStartedPolling) {
         checkEmailConfirmation();
       } else if (emailVerified && intervalId) {
         clearInterval(intervalId);
@@ -351,6 +359,9 @@ export default function RegisterDirectorClient() {
       cancelled = true;
       if (intervalId) {
         clearInterval(intervalId);
+      }
+      if (initialDelay) {
+        clearTimeout(initialDelay);
       }
     };
   }, [emailStatus, form.email, emailVerified, supabase]);
@@ -499,7 +510,6 @@ export default function RegisterDirectorClient() {
             middle_name: baseData.middleName.trim(),
             full_name: fullName,
             birth_date: birthDateFormatted, // Формат YYYY-MM-DD
-            email_verified: true, // Флаг в метаданных (в БД будет false до подтверждения)
             locale: localeForAPI, // Сохраняем язык интерфейса: 'ru' | 'uk' | 'en'
           },
           emailRedirectTo: redirectTo,
@@ -536,9 +546,14 @@ export default function RegisterDirectorClient() {
       const normalizedEmail = form.email.trim().toLowerCase();
       if (typeof window !== "undefined") {
         localStorage.setItem("register_email", normalizedEmail);
+        // Очищаем старые флаги подтверждения, чтобы не показывать "подтверждено" сразу
+        localStorage.removeItem("wellify_email_confirmed");
+        localStorage.removeItem("wellify_email_confirmed_for");
       }
       if (timeoutId) clearTimeout(timeoutId);
       setEmailStatus("link_sent");
+      setEmailVerified(false); // Убеждаемся, что verified = false после отправки
+      setFormSuccess(null); // Очищаем сообщение об успехе
       // Запускаем таймер для повторной отправки (60 секунд)
       setResendCooldown(60);
       console.log("[register] Email sent successfully", { email: normalizedEmail });
