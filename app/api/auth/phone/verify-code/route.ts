@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getTwilioClient, getVerifyServiceSid } from "@/lib/twilio";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -77,7 +78,52 @@ export async function POST(req: NextRequest) {
     });
 
     if (check.status === "approved") {
-      // Код правильный - телефон подтверждён
+      // Код правильный - телефон подтверждён через Twilio
+      // Обновляем phone_verified в profiles для пользователя с этим телефоном
+      try {
+        const supabaseAdmin = createAdminSupabaseClient();
+        
+        // Ищем пользователя по телефону в auth.users
+        const { data: usersPage, error: listError } =
+          await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000,
+          });
+
+        if (!listError && usersPage?.users) {
+          const user = usersPage.users.find(
+            (u) => u.phone && u.phone.trim() === normalizedPhone
+          );
+
+          if (user) {
+            // Обновляем phone_verified в profiles
+            const { error: updateError } = await supabaseAdmin
+              .from("profiles")
+              .update({
+                phone_verified: true,
+                phone: normalizedPhone,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", user.id);
+
+            if (updateError) {
+              console.error("[phone-verify-code] Failed to update phone_verified in profiles", updateError);
+              // Не блокируем ответ, так как Twilio верификация прошла успешно
+            } else {
+              console.log("[phone-verify-code] phone_verified updated in profiles", {
+                userId: user.id,
+                phone: normalizedPhone,
+              });
+            }
+          } else {
+            console.warn("[phone-verify-code] User not found for phone", normalizedPhone);
+          }
+        }
+      } catch (dbError) {
+        console.error("[phone-verify-code] Error updating phone_verified", dbError);
+        // Не блокируем ответ, так как Twilio верификация прошла успешно
+      }
+
       return NextResponse.json({ success: true, status: "approved" });
     }
 

@@ -71,6 +71,7 @@ export default function RegisterDirectorClient() {
   const [resendCooldown, setResendCooldown] = useState(0);
   // Телефон верификация через Twilio SMS
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState<"idle" | "verifying" | "verified">("idle");
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -990,8 +991,10 @@ export default function RegisterDirectorClient() {
             initialPhone={form.phone}
             locale={localeForAPI}
             onPhoneVerified={(verifiedPhone) => {
+              // Когда Twilio подтвердил код, обновляем телефон и запускаем polling
               setForm((prev) => ({ ...prev, phone: verifiedPhone }));
-              setPhoneVerified(true);
+              setPhoneStatus("verifying"); // Запускаем polling для проверки phone_verified в БД
+              // НЕ устанавливаем phoneVerified сразу - ждём подтверждения из БД через polling
             }}
           />
         ) : (
@@ -1013,7 +1016,15 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
-        {phoneVerified && (
+        {/* State Machine: WAITING_FOR_PHONE_VERIFICATION - показываем, что проверяем статус */}
+        {phoneStatus === "verifying" && !phoneVerified && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-500/60 bg-blue-500/15 px-4 py-3 text-sm text-blue-200">
+            <span>Проверяем подтверждение телефона...</span>
+          </div>
+        )}
+
+        {/* State Machine: VERIFIED - телефон подтверждён в БД */}
+        {phoneStatus === "verified" && phoneVerified && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
             <span>
@@ -1047,10 +1058,11 @@ export default function RegisterDirectorClient() {
           >
             Назад
           </Button>
+          {/* State Machine: VERIFIED - кнопка активна только когда phoneVerified === true из БД */}
           <Button
             type="button"
             className="w-full md:w-auto"
-            disabled={finishLoading || !phoneVerified || !emailVerified}
+            disabled={finishLoading || !phoneVerified || !emailVerified || phoneStatus !== "verified"}
             onClick={finishRegistration}
           >
             {finishLoading ? "Завершаем..." : "Завершить регистрацию"}
