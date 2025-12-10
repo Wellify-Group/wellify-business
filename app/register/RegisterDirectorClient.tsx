@@ -1016,13 +1016,6 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
-        {/* State Machine: WAITING_FOR_PHONE_VERIFICATION - показываем, что проверяем статус */}
-        {phoneStatus === "verifying" && !phoneVerified && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-blue-500/60 bg-blue-500/15 px-4 py-3 text-sm text-blue-200">
-            <span>Проверяем подтверждение телефона...</span>
-          </div>
-        )}
-
         {/* State Machine: VERIFIED - телефон подтверждён в БД */}
         {/* Показываем ТОЛЬКО когда phoneStatus === "verified" и phoneVerified === true */}
         {phoneStatus === "verified" && phoneVerified && (
