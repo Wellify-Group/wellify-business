@@ -36,7 +36,11 @@ export async function GET() {
       .single();
 
     if (profileError) {
-      console.error('[check-email-confirmed] Error fetching profile', profileError);
+      console.error('[check-email-confirmed] Error fetching profile', {
+        error: profileError,
+        userId: user.id,
+        email: user.email,
+      });
       // Если профиль не найден, считаем email не подтверждённым
       return NextResponse.json({
         success: true,
@@ -45,6 +49,14 @@ export async function GET() {
     }
 
     const emailConfirmed = profile?.email_verified === true;
+
+    // Детальное логирование для отладки
+    console.log('[check-email-confirmed] Profile check result', {
+      userId: user.id,
+      email: user.email,
+      email_verified: profile?.email_verified,
+      emailConfirmed,
+    });
 
     return NextResponse.json({
       success: true,

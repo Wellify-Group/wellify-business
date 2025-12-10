@@ -257,11 +257,26 @@ export default function RegisterDirectorClient() {
   // Это гарантирует, что мы проверяем реальное состояние в БД, а не кэш
 
   // Авто-проверка e-mail через поллинг каждую секунду при статусе link_sent
-  // Проверяет ТОЛЬКО user.email_confirmed_at из сессии (реальное подтверждение через ссылку из письма)
+  // Проверяет profiles.email_verified из базы данных
   useEffect(() => {
-    if (emailStatus !== "link_sent") return;
-    if (!form.email.trim()) return;
-    if (emailVerified) return; // Если уже подтверждён, не проверяем
+    if (emailStatus !== "link_sent") {
+      console.log("[register] Polling not started: emailStatus !== 'link_sent'", { emailStatus });
+      return;
+    }
+    if (!form.email.trim()) {
+      console.log("[register] Polling not started: email is empty");
+      return;
+    }
+    if (emailVerified) {
+      console.log("[register] Polling not started: email already verified");
+      return; // Если уже подтверждён, не проверяем
+    }
+
+    console.log("[register] 🚀 Starting email verification polling", {
+      email: form.email.trim(),
+      emailStatus,
+      emailVerified,
+    });
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -290,6 +305,13 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
+        // Детальное логирование для отладки
+        console.log("[register] checkEmailConfirmation response", {
+          success: data.success,
+          emailConfirmed: data.emailConfirmed,
+          fullResponse: data,
+        });
+
         // КРИТИЧНО: Проверяем ТОЛЬКО data.emailConfirmed из API
         // API проверяет profiles.email_verified, который обновляется в Supabase
         if (data.success === true && data.emailConfirmed === true) {
@@ -297,7 +319,9 @@ export default function RegisterDirectorClient() {
           // Email подтверждён (email_verified = TRUE в profiles)! Переходим в состояние VERIFIED
           if (!cancelled) {
             console.log("[register] ✅ Email verified (email_verified = TRUE)! Transitioning to VERIFIED state", { 
-              email: form.email.trim()
+              email: form.email.trim(),
+              currentEmailStatus: emailStatus,
+              currentEmailVerified: emailVerified,
             });
             
             setEmailStatus("verified");
@@ -321,12 +345,13 @@ export default function RegisterDirectorClient() {
         } else {
           // State Machine: Остаёмся в WAITING_FOR_VERIFICATION
           // Email ещё не подтверждён - продолжаем polling
-          // Логируем только иногда, чтобы не засорять консоль
-          if (Math.random() < 0.1) {
-            console.log("[register] ⏳ Email not confirmed yet, continuing polling...", { 
-              email: form.email.trim() 
-            });
-          }
+          // Логируем каждую проверку для отладки
+          console.log("[register] ⏳ Email not confirmed yet, continuing polling...", { 
+            email: form.email.trim(),
+            success: data.success,
+            emailConfirmed: data.emailConfirmed,
+            reason: data.reason,
+          });
         }
       } catch (e) {
         console.error("[register] checkEmailConfirmation exception", e);
@@ -339,7 +364,14 @@ export default function RegisterDirectorClient() {
     const initialDelay = setTimeout(() => {
       if (!cancelled && !emailVerified && emailStatus === "link_sent") {
         hasStartedPolling = true;
+        console.log("[register] 🔍 Starting first email check after delay");
         checkEmailConfirmation();
+      } else {
+        console.log("[register] ⚠️ First check skipped", {
+          cancelled,
+          emailVerified,
+          emailStatus,
+        });
       }
     }, 3000); // 3 секунды задержка перед первой проверкой
 
