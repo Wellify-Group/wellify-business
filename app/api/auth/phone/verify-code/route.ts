@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     if (check.status === "approved") {
       // Код правильный - телефон подтверждён через Twilio
-      // Обновляем phone_verified в profiles для пользователя с этим телефоном
+      // Вызываем RPC-функцию для обновления phone_verified в profiles
       try {
         const supabaseAdmin = createAdminSupabaseClient();
         
@@ -96,21 +96,37 @@ export async function POST(req: NextRequest) {
           );
 
           if (user) {
-            // Обновляем phone_verified в profiles
-            const { error: updateError } = await supabaseAdmin
-              .from("profiles")
-              .update({
-                phone_verified: true,
-                phone: normalizedPhone,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", user.id);
+            // ВЫЗОВ RPC-ФУНКЦИИ: verify_phone_and_update_profile
+            const { error: rpcError } = await supabaseAdmin.rpc(
+              "verify_phone_and_update_profile",
+              {
+                p_user_id: user.id,
+                p_phone: normalizedPhone,
+              }
+            );
 
-            if (updateError) {
-              console.error("[phone-verify-code] Failed to update phone_verified in profiles", updateError);
-              // Не блокируем ответ, так как Twilio верификация прошла успешно
+            if (rpcError) {
+              console.error("[phone-verify-code] RPC verify_phone_and_update_profile error", rpcError);
+              // Если RPC не существует или ошибка - пробуем прямое обновление как fallback
+              const { error: updateError } = await supabaseAdmin
+                .from("profiles")
+                .update({
+                  phone_verified: true,
+                  phone: normalizedPhone,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", user.id);
+
+              if (updateError) {
+                console.error("[phone-verify-code] Fallback: Failed to update phone_verified in profiles", updateError);
+              } else {
+                console.log("[phone-verify-code] Fallback: phone_verified updated in profiles", {
+                  userId: user.id,
+                  phone: normalizedPhone,
+                });
+              }
             } else {
-              console.log("[phone-verify-code] phone_verified updated in profiles", {
+              console.log("[phone-verify-code] RPC verify_phone_and_update_profile success", {
                 userId: user.id,
                 phone: normalizedPhone,
               });
@@ -120,7 +136,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (dbError) {
-        console.error("[phone-verify-code] Error updating phone_verified", dbError);
+        console.error("[phone-verify-code] Error calling RPC or updating phone_verified", dbError);
         // Не блокируем ответ, так как Twilio верификация прошла успешно
       }
 

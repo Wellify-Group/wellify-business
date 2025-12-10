@@ -1024,12 +1024,11 @@ export default function RegisterDirectorClient() {
         )}
 
         {/* State Machine: VERIFIED - телефон подтверждён в БД */}
+        {/* Показываем ТОЛЬКО когда phoneStatus === "verified" и phoneVerified === true */}
         {phoneStatus === "verified" && phoneVerified && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            <span>
-              Поздравляем! Ваш телефон подтверждён. Можете завершить регистрацию.
-            </span>
+            <span>Телефон успешно подтверждён.</span>
           </div>
         )}
 
