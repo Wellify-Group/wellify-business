@@ -514,10 +514,19 @@ export default function RegisterDirectorClient() {
         },
       });
 
-      console.log("[register] signUp response", { data, error });
+      console.log("[register] signUp response", { 
+        hasData: !!data, 
+        hasUser: !!data?.user, 
+        userId: data?.user?.id,
+        email: data?.user?.email,
+        error: error?.message,
+        errorStatus: error?.status,
+      });
 
       if (error) {
         console.error("[register] signUp error", error);
+        if (timeoutId) clearTimeout(timeoutId);
+        
         // Если пользователь уже существует, показываем красное уведомление
         const errorMessage = error.message?.toLowerCase() || "";
         const errorCode = error.status || (error as any).code;
@@ -540,7 +549,16 @@ export default function RegisterDirectorClient() {
         }
       }
 
-      // Успешная отправка
+      // Проверяем, что пользователь действительно создан
+      if (!data || !data.user) {
+        console.error("[register] signUp returned no user", { data });
+        if (timeoutId) clearTimeout(timeoutId);
+        setEmailStatus("error");
+        setEmailError("Не удалось создать пользователя. Пожалуйста, попробуйте ещё раз.");
+        return;
+      }
+
+      // Успешная отправка - пользователь создан
       const normalizedEmail = form.email.trim().toLowerCase();
       if (typeof window !== "undefined") {
         localStorage.setItem("register_email", normalizedEmail);
@@ -554,7 +572,11 @@ export default function RegisterDirectorClient() {
       setFormSuccess(null); // Очищаем сообщение об успехе
       // Запускаем таймер для повторной отправки (60 секунд)
       setResendCooldown(60);
-      console.log("[register] Email sent successfully", { email: normalizedEmail });
+      console.log("[register] ✅ Email sent successfully", { 
+        email: normalizedEmail,
+        userId: data.user.id,
+        emailConfirmed: !!data.user.email_confirmed_at,
+      });
     } catch (e: any) {
       console.error("[register] handleSendEmailLink exception", e);
       if (timeoutId) clearTimeout(timeoutId);
