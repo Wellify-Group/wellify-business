@@ -1376,7 +1376,7 @@ export default function RegisterDirectorClient() {
           <Button
             type="button"
             className="w-full md:w-auto"
-            disabled={finishLoading || !phoneVerified || !emailVerified || phoneStatus !== "verified"}
+            disabled={finishLoading || !phoneVerified || !emailVerified}
             onClick={finishRegistration}
           >
             {finishLoading ? "Завершаем..." : "Завершить регистрацию"}
