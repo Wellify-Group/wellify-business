@@ -215,18 +215,6 @@ export function TelegramVerificationStep({
             >
               <QRCode value={telegramLink} size={180} />
             </a>
-            {/* !!! КОНЕЦ ИЗМЕНЕНИЯ !!! */}
-
-            <a
-              href={telegramLink}
-              target="_blank"
-              rel="noreferrer"
-              className="w-full"
-            >
-              <Button className="w-full" size="lg">
-                {texts.buttonOpenTelegram}
-              </Button>
-            </a>
 
             <p className="whitespace-pre-line text-sm text-muted-foreground text-center">
               {texts.helpText}
