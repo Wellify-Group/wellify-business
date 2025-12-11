@@ -43,35 +43,38 @@ export function TelegramVerificationStep({
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [polling, setPolling] = useState(false);
 
-  // флаг, чтобы не запускать создание сессии бесконечно
-  const [initialized, setInitialized] = useState(false);
+  // флаг, чтобы createSession запускался максимум один раз
+  const [hasTriedInit, setHasTriedInit] = useState(false);
 
   // 1. При первом рендере создаём registration_session через Railway
   useEffect(() => {
     if (!TELEGRAM_API_URL) {
-      setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local");
+      setError("Сервис Telegram временно недоступен. Попробуйте позже.");
       return;
     }
 
-    // если уже пытались создать сессию - не запускаем ещё раз
-    if (initialized || loadingLink || sessionToken) return;
+    if (loadingLink || sessionToken || hasTriedInit) return;
 
     const createSession = async () => {
-      setLoadingLink(true);
-      setError(null);
+      setHasTriedInit(true);
 
       try {
-        console.log("TELEGRAM_API_URL:", TELEGRAM_API_URL);
+        setLoadingLink(true);
+        setError(null);
 
         // Получаем текущего пользователя из Supabase (auth.users)
         const { data: userData, error: userError } = await supabase.auth.getUser();
 
+        if (userError) {
+          console.warn("getUser error:", userError);
+        }
+
         if (userError || !userData?.user) {
-          console.error("getUser error:", userError);
           setError(
             "Не удалось получить текущего пользователя. Перезагрузите страницу и войдите заново."
           );
-          return; // просто выходим, но initialized станет true в finally
+          setLoadingLink(false);
+          return;
         }
 
         const userId = userData.user.id;
@@ -79,6 +82,7 @@ export function TelegramVerificationStep({
 
         if (!email) {
           setError("У пользователя отсутствует email. Проверьте регистрацию.");
+          setLoadingLink(false);
           return;
         }
 
@@ -94,8 +98,8 @@ export function TelegramVerificationStep({
         });
 
         if (!resp.ok) {
-          console.error("link-session failed:", resp.status);
           setError("Не удалось создать сессию Telegram. Попробуйте позже.");
+          setLoadingLink(false);
           return;
         }
 
@@ -106,18 +110,17 @@ export function TelegramVerificationStep({
 
         setSessionToken(json.sessionToken);
         setTelegramLink(json.telegramLink);
+        setLoadingLink(false);
         setPolling(true);
       } catch (e) {
         console.error("createSession error:", e);
         setError("Произошла ошибка при создании сессии Telegram.");
-      } finally {
         setLoadingLink(false);
-        setInitialized(true); // помечаем, что попытка была, чтобы не крутиться в цикле
       }
     };
 
     createSession();
-  }, [supabase, language, initialized, loadingLink, sessionToken]);
+  }, [supabase, language, loadingLink, sessionToken, hasTriedInit]);
 
   // 2. Polling статуса сессии раз в 3 секунды
   useEffect(() => {
@@ -131,7 +134,6 @@ export function TelegramVerificationStep({
           `${TELEGRAM_API_URL}/telegram/session-status/${sessionToken}`
         );
         if (!resp.ok) {
-          console.error("session-status failed:", resp.status);
           return;
         }
 
@@ -150,7 +152,7 @@ export function TelegramVerificationStep({
           setError("Сессия истекла. Нажмите кнопку ниже, чтобы создать новую ссылку.");
         }
       } catch (e) {
-        console.error("session-status error:", e);
+        // Ошибки polling не критичны, просто пропускаем этот цикл
       }
     }, 3000);
 
@@ -165,7 +167,7 @@ export function TelegramVerificationStep({
     setError(null);
     setLoadingLink(false);
     setPolling(false);
-    setInitialized(false); // позволяем снова попробовать создать сессию
+    setHasTriedInit(false); // позволяем снова попробовать создать сессию
   };
 
   // Тексты в зависимости от языка (минимум)
