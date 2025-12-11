@@ -1,4 +1,4 @@
-// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ "ФИО")
+// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ "locale")
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       emailVerified: true, // Полагаемся на Шаг 2
     });
 
-    // !!! ИСПРАВЛЕНИЕ "ФИО" OID ОШИБКИ: Используем только безопасные поля !!!
+    // !!! ИСПРАВЛЕНИЕ "ФИО" и "locale" OID ОШИБОК !!!
     // Создаем финальный объект, который не содержит проблемных русских полей
     const finalProfileData: Record<string, any> = {
         ...profileDataMapped,
@@ -160,22 +160,26 @@ export async function POST(request: NextRequest) {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         middle_name: middleName?.trim() || null,
-        locale: normalizedLocale,
+        // ИСПРАВЛЕНИЕ: Заменяем проблемное 'locale' на 'language' (предполагая, что это правильное поле)
+        language: normalizedLocale, 
         // Обязательные bool
         email_verified: true, 
         phone_verified: true, 
         updated_at: new Date().toISOString(),
+        
+        // Добавляем дату рождения, если она есть
+        birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
     };
     
-    // Удаляем проблемные русские поля, которые могли быть добавлены mapProfileToDb, 
-    // чтобы избежать ошибки "ФИО"
+    // Удаляем проблемные русские/английские поля, которые могли быть добавлены mapProfileToDb и вызывают ошибку
     delete finalProfileData.ФИО;
     delete finalProfileData.ф_и_о;
-    // ... любые другие русские поля, которые могут вызывать ошибку (проверьте схему)
+    delete finalProfileData.locale; // Удаляем, т.к. заменили на 'language'
     
     // Убеждаемся, что businessId и companyCode присутствуют
-    finalProfileData.бизнес_id = businessId;
+    finalProfileData.бизнес_ид = businessId;
     finalProfileData.код_компании = companyCode;
+
 
     // 6. Upsert (Обновление/Создание) профиля (Оставляем UPDATE/INSERT)
     const { error: updateProfileError } = await supabaseAdmin
