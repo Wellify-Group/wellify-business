@@ -22,17 +22,6 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
   // Читаем переменную внутри компонента для корректной работы с Next.js
   const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
   
-  // Детальная диагностика переменных окружения
-  useEffect(() => {
-    console.log("=== Диагностика переменных окружения ===");
-    console.log("NEXT_PUBLIC_TELEGRAM_API_URL:", TELEGRAM_API_URL);
-    console.log("Тип значения:", typeof TELEGRAM_API_URL);
-    console.log("Длина значения:", TELEGRAM_API_URL?.length);
-    console.log("Все NEXT_PUBLIC переменные:", Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_')));
-    console.log("process.env.NEXT_PUBLIC_TELEGRAM_API_URL напрямую:", process.env.NEXT_PUBLIC_TELEGRAM_API_URL);
-    console.log("========================================");
-  }, []);
-  
   const [supabase] = useState<SupabaseClient>(() => createBrowserSupabaseClient());
 
   const [loadingLink, setLoadingLink] = useState(false);
@@ -43,12 +32,10 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
 
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [polling, setPolling] = useState(false);
+  const [hasAttempted, setHasAttempted] = useState(false); // Флаг для предотвращения повторных попыток
 
   // 1. При первом рендере создаём registration_session через Railway
   useEffect(() => {
-    // Отладка: проверяем наличие переменной
-    console.log("TELEGRAM_API_URL:", TELEGRAM_API_URL);
-    
     if (!TELEGRAM_API_URL) {
       const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
       const errorMessage = isProduction
@@ -58,12 +45,14 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
       return;
     }
 
-    if (loadingLink || sessionToken) return;
+    // Предотвращаем повторные попытки, если уже пытались или есть сессия
+    if (hasAttempted || loadingLink || sessionToken) return;
 
     const createSession = async () => {
       try {
         setLoadingLink(true);
         setError(null);
+        setHasAttempted(true); // Помечаем, что попытка была
 
         // Получаем текущего пользователя из Supabase (auth.users)
         const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -72,6 +61,7 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
           console.error("getUser error:", userError);
           setError("Не удалось получить текущего пользователя. Перезагрузите страницу и войдите заново.");
           setLoadingLink(false);
+          // НЕ сбрасываем hasAttempted, чтобы не было повторных попыток
           return;
         }
 
@@ -120,7 +110,9 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
     };
 
     createSession();
-  }, [supabase, language, loadingLink, sessionToken]);
+    // Убираем loadingLink и supabase из зависимостей, чтобы избежать бесконечного цикла
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [TELEGRAM_API_URL, language, sessionToken, hasAttempted]);
 
   // 2. Polling статуса сессии раз в 3 секунды
   useEffect(() => {
@@ -166,6 +158,7 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
     setError(null);
     setLoadingLink(false);
     setPolling(false);
+    setHasAttempted(false); // Сбрасываем флаг, чтобы можно было попробовать снова
   };
 
   // Тексты в зависимости от языка (минимум)
