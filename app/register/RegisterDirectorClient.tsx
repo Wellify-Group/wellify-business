@@ -69,11 +69,13 @@ export default function RegisterDirectorClient() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Телефон – теперь будет подтверждаться через Telegram,
-  // но мы по-прежнему используем флаги phoneVerified/phoneStatus
-  // как "телефон подтверждён", только источник уже Telegram.
+  // Телефон считается подтвержденным, когда шаг Telegram завершён
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [phoneStatus, setPhoneStatus] = useState<"idle" | "verifying" | "verified">("idle");
+
+  // Пользователь, созданный на шаге 2 (из ответа signUp)
+  const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -108,9 +110,12 @@ export default function RegisterDirectorClient() {
     setEmailError(null);
     setEmailVerified(false);
     setPhoneVerified(false);
+    setPhoneStatus("idle");
     setFormError(null);
     setFormSuccess(null);
     setFinishError(null);
+    setRegisteredUserId(null);
+    setRegisteredEmail(null);
 
     supabase.auth.signOut().catch((err) => {
       console.warn("Error signing out:", err);
@@ -132,12 +137,23 @@ export default function RegisterDirectorClient() {
         },
         emailVerified,
         phoneVerified,
+        registeredUserId,
+        registeredEmail,
       };
       sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
     } catch (error) {
       console.warn("[register] Failed to save state to sessionStorage", error);
     }
-  }, [step, baseData, form.email, form.phone, emailVerified, phoneVerified]);
+  }, [
+    step,
+    baseData,
+    form.email,
+    form.phone,
+    emailVerified,
+    phoneVerified,
+    registeredUserId,
+    registeredEmail,
+  ]);
 
   // ========== ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ==========
   useEffect(() => {
@@ -161,43 +177,29 @@ export default function RegisterDirectorClient() {
     if (savedStateStr) {
       try {
         const savedState = JSON.parse(savedStateStr);
-        const restoredStep = savedState.step || 1;
+        const restoredStep: Step = savedState.step || 1;
+
+        if (savedState.baseData) {
+          setBaseData(savedState.baseData);
+        }
+
+        setForm({
+          email: savedState.form?.email || "",
+          phone: savedState.form?.phone || "",
+        });
+
+        setEmailVerified(!!savedState.emailVerified);
+        setPhoneVerified(!!savedState.phoneVerified);
+        setRegisteredUserId(savedState.registeredUserId ?? null);
+        setRegisteredEmail(savedState.registeredEmail ?? null);
 
         if (restoredStep === 3) {
-          if (savedState.baseData) {
-            setBaseData(savedState.baseData);
-          }
-          setForm({
-            email: savedState.form?.email || "",
-            phone: "", // телефон на шаге Telegram не нужен
-          });
           setStep(3);
-          setEmailStatus("link_sent");
-          setEmailVerified(false);
+          setEmailStatus(savedState.emailVerified ? "verified" : "link_sent");
         } else if (restoredStep === 2) {
-          if (savedState.baseData) {
-            setBaseData(savedState.baseData);
-          }
-          setForm({
-            email: "",
-            phone: "",
-          });
           setStep(2);
-          setEmailStatus("idle");
-          setEmailError(null);
-          setEmailVerified(false);
+          setEmailStatus(savedState.emailVerified ? "verified" : "idle");
         } else {
-          setBaseData({
-            firstName: "",
-            lastName: "",
-            middleName: "",
-            birthDate: "",
-            password: "",
-          });
-          setForm({
-            email: "",
-            phone: "",
-          });
           setStep(1);
         }
       } catch (e) {
@@ -233,7 +235,6 @@ export default function RegisterDirectorClient() {
       setEmailStatus("idle");
       setEmailError(null);
     }
-    // На шаге 3 теперь телефон идёт через Telegram, но флаги оставляем как есть
   }, [step]);
 
   // ===== ПОЛЛИНГ E-MAIL (оставляем как было) =====
@@ -352,10 +353,21 @@ export default function RegisterDirectorClient() {
         baseData,
         emailVerified,
         phoneVerified,
+        registeredUserId,
+        registeredEmail,
       };
       localStorage.setItem("register_in_progress", JSON.stringify(state));
     }
-  }, [step, form.email, form.phone, baseData, emailVerified, phoneVerified]);
+  }, [
+    step,
+    form.email,
+    form.phone,
+    baseData,
+    emailVerified,
+    phoneVerified,
+    registeredUserId,
+    registeredEmail,
+  ]);
 
   const validateStep1 = () => {
     if (!baseData.firstName.trim() || !baseData.lastName.trim()) {
@@ -518,6 +530,10 @@ export default function RegisterDirectorClient() {
         return;
       }
 
+      // Сохраняем созданного пользователя для шага Telegram
+      setRegisteredUserId(data.user.id);
+      setRegisteredEmail(data.user.email ?? form.email.trim());
+
       const normalizedEmail = form.email.trim().toLowerCase();
       if (typeof window !== "undefined") {
         localStorage.setItem("register_email", normalizedEmail);
@@ -530,6 +546,7 @@ export default function RegisterDirectorClient() {
       setFormSuccess(null);
       setResendCooldown(60);
 
+      // getSession здесь не обязателен, оставляем только лог
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -557,6 +574,8 @@ export default function RegisterDirectorClient() {
     setFormError(null);
     setFormSuccess(null);
     setEmailVerified(false);
+    setRegisteredUserId(null);
+    setRegisteredEmail(null);
 
     if (typeof window !== "undefined") {
       localStorage.removeItem("register_email");
@@ -570,6 +589,8 @@ export default function RegisterDirectorClient() {
           const state = JSON.parse(saved);
           state.email = "";
           state.step = 2;
+          state.registeredUserId = null;
+          state.registeredEmail = null;
           localStorage.setItem("register_in_progress", JSON.stringify(state));
         } catch (e) {
           localStorage.removeItem("register_in_progress");
@@ -602,8 +623,6 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // ТЕЛЕФОН: теперь мы считаем телефон подтверждённым,
-      // если Telegram завершил шаг (phoneStatus === "verified" и phoneVerified === true)
       if (phoneStatus !== "verified" || !phoneVerified) {
         setFinishError(
           "Телефон ещё не подтверждён через Telegram. Пожалуйста, завершите шаг в Telegram."
@@ -669,20 +688,18 @@ export default function RegisterDirectorClient() {
 
   // ВАЖНО: вызывается, когда TelegramVerificationStep сообщает, что всё успешно
   const handleTelegramVerified = async () => {
-    // С точки зрения регистрации это "телефон подтверждён"
     setPhoneStatus("verified");
     setPhoneVerified(true);
     setFormError(null);
     setFinishError(null);
 
-    // Автоматически завершаем регистрацию
     await finishRegistration();
   };
 
   const steps = [
     { id: 1, label: "Основные данные" },
     { id: 2, label: "E-mail" },
-    { id: 3, label: "Telegram" }, // меняем подпись
+    { id: 3, label: "Telegram" },
   ];
 
   const renderStepHeader = () => (
@@ -955,9 +972,9 @@ export default function RegisterDirectorClient() {
             Назад
           </Button>
 
-          {(emailStatus === "idle" ||
-            emailStatus === "error" ||
-            emailStatus === "sending") && (
+        {(emailStatus === "idle" ||
+          emailStatus === "error" ||
+          emailStatus === "sending") && (
             <Button
               type="button"
               className="w-full md:w-auto"
@@ -983,11 +1000,37 @@ export default function RegisterDirectorClient() {
   };
 
   const renderStep3 = () => {
+    if (!registeredUserId || !registeredEmail) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>
+              Не удалось получить данные регистрации. Вернитесь на шаг 2 и
+              отправьте письмо ещё раз.
+            </span>
+          </div>
+          <div className="mt-4 flex">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full md:w-auto"
+              onClick={() => setStep(2)}
+            >
+              Назад
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         <TelegramVerificationStep
           onVerified={handleTelegramVerified}
           language={localeForAPI as "ru" | "uk" | "en"}
+          userId={registeredUserId}
+          email={registeredEmail}
         />
 
         {finishError && (
@@ -1014,9 +1057,6 @@ export default function RegisterDirectorClient() {
           >
             Назад
           </Button>
-          {/* Кнопка "Завершить" больше не нужна:
-              теперь завершение регистрации происходит автоматически
-              внутри handleTelegramVerified */}
         </div>
       </div>
     );

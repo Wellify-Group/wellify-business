@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,8 +12,10 @@ import {
 } from "@/components/ui/card";
 
 interface TelegramVerificationStepProps {
-  onVerified: () => void; // что делать, когда Telegram подтверждён (например, перейти в дашборд)
-  language?: "ru" | "uk" | "en"; // язык интерфейса (по желанию)
+  onVerified: () => void;           // что делать, когда Telegram подтвержден
+  language?: "ru" | "uk" | "en";    // язык интерфейса
+  userId: string;                   // id пользователя из Supabase
+  email: string;                    // email пользователя
 }
 
 type SessionStatus = {
@@ -29,11 +29,9 @@ const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
 export function TelegramVerificationStep({
   onVerified,
   language = "ru",
+  userId,
+  email,
 }: TelegramVerificationStepProps) {
-  const [supabase] = useState<SupabaseClient>(() =>
-    createBrowserSupabaseClient()
-  );
-
   const [loadingLink, setLoadingLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,50 +41,25 @@ export function TelegramVerificationStep({
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [polling, setPolling] = useState(false);
 
-  // флаг, чтобы createSession запускался максимум один раз
-  const [hasTriedInit, setHasTriedInit] = useState(false);
-
-  // 1. При первом рендере создаём registration_session через Railway
+  // 1. При первом рендере создаем registration_session через Railway
   useEffect(() => {
     if (!TELEGRAM_API_URL) {
-      setError("Сервис Telegram временно недоступен. Попробуйте позже.");
+      setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local / Vercel");
       return;
     }
 
-    if (loadingLink || sessionToken || hasTriedInit) return;
+    if (!userId || !email) {
+      setError("Не удалось получить данные регистрации. Вернитесь на предыдущий шаг.");
+      return;
+    }
+
+    if (loadingLink || sessionToken) return;
 
     const createSession = async () => {
-      setHasTriedInit(true);
-
       try {
         setLoadingLink(true);
         setError(null);
 
-        // Получаем текущего пользователя из Supabase (auth.users)
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-
-        if (userError) {
-          console.warn("getUser error:", userError);
-        }
-
-        if (userError || !userData?.user) {
-          setError(
-            "Не удалось получить текущего пользователя. Перезагрузите страницу и войдите заново."
-          );
-          setLoadingLink(false);
-          return;
-        }
-
-        const userId = userData.user.id;
-        const email = userData.user.email;
-
-        if (!email) {
-          setError("У пользователя отсутствует email. Проверьте регистрацию.");
-          setLoadingLink(false);
-          return;
-        }
-
-        // Вызов нашего Railway backend: POST /telegram/link-session
         const resp = await fetch(`${TELEGRAM_API_URL}/telegram/link-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -98,6 +71,7 @@ export function TelegramVerificationStep({
         });
 
         if (!resp.ok) {
+          console.error("link-session failed:", resp.status);
           setError("Не удалось создать сессию Telegram. Попробуйте позже.");
           setLoadingLink(false);
           return;
@@ -120,8 +94,7 @@ export function TelegramVerificationStep({
     };
 
     createSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, language, sessionToken, hasTriedInit]);
+  }, [userId, email, language, loadingLink, sessionToken]);
 
   // 2. Polling статуса сессии раз в 3 секунды
   useEffect(() => {
@@ -135,6 +108,7 @@ export function TelegramVerificationStep({
           `${TELEGRAM_API_URL}/telegram/session-status/${sessionToken}`
         );
         if (!resp.ok) {
+          console.error("session-status failed:", resp.status);
           return;
         }
 
@@ -144,7 +118,7 @@ export function TelegramVerificationStep({
         if (json.status === "completed" || json.telegramVerified) {
           setPolling(false);
           clearInterval(interval);
-          onVerified(); // даём знать родителю, что всё ок
+          onVerified();
         }
 
         if (json.status === "expired") {
@@ -153,37 +127,35 @@ export function TelegramVerificationStep({
           setError("Сессия истекла. Нажмите кнопку ниже, чтобы создать новую ссылку.");
         }
       } catch (e) {
-        // Ошибки polling не критичны, просто пропускаем этот цикл
+        console.error("session-status error:", e);
       }
     }, 3000);
 
     return () => clearInterval(interval);
   }, [sessionToken, polling, onVerified]);
 
-  // 3. Хэндлер для пересоздания ссылки, если expired
-  const handleCreateNewLink = async () => {
+  // 3. Пересоздать ссылку, если expired
+  const handleCreateNewLink = () => {
     setSessionToken(null);
     setTelegramLink(null);
     setStatus(null);
     setError(null);
     setLoadingLink(false);
     setPolling(false);
-    setHasTriedInit(false); // позволяем снова попробовать создать сессию
   };
 
-  // Тексты в зависимости от языка (минимум)
   const texts = {
     ru: {
       title: "Шаг 3. Подтверждение телефона через Telegram",
       description:
         "Откройте нашего бота WELLIFY business в Telegram, отправьте свой номер телефона и дождитесь автоматического завершения регистрации.",
-      waiting: "Ждём подтверждения в Telegram...",
-      verified: "Телефон подтверждён через Telegram. Завершаем регистрацию...",
-      expired: "Ссылка устарела. Создайте новую ссылку и попробуйте ещё раз.",
+      waiting: "Ждем подтверждения в Telegram...",
+      verified: "Телефон подтвержден через Telegram. Завершаем регистрацию...",
+      expired: "Ссылка устарела. Создайте новую ссылку и попробуйте еще раз.",
       buttonOpenTelegram: "Открыть Telegram",
       buttonNewLink: "Создать новую ссылку",
       helpText:
-        "1. Отсканируйте QR-код или нажмите кнопку \"Открыть Telegram\".\n2. Нажмите \"Старт\" в боте (если нужно).\n3. Нажмите кнопку \"Отправить номер телефона\".\n4. Вернитесь сюда – шаг завершится автоматически.",
+        "1. Отсканируйте QR-код или нажмите кнопку \"Открыть Telegram\".\n2. Нажмите \"Старт\" в боте, если нужно.\n3. Нажмите кнопку \"Отправить номер телефона\".\n4. Вернитесь сюда, шаг завершится автоматически.",
     },
     uk: {
       title: "Крок 3. Підтвердження телефону через Telegram",
@@ -195,7 +167,7 @@ export function TelegramVerificationStep({
       buttonOpenTelegram: "Відкрити Telegram",
       buttonNewLink: "Створити нове посилання",
       helpText:
-        "1. Відскануйте QR-код або натисніть кнопку \"Відкрити Telegram\".\n2. Натисніть \"Старт\" у боті (якщо потрібно).\n3. Натисніть кнопку \"Надіслати номер телефону\".\n4. Поверніться сюди – крок завершиться автоматично.",
+        "1. Відскануйте QR-код або натисніть кнопку \"Відкрити Telegram\".\n2. Натисніть \"Старт\" у боті, якщо потрібно.\n3. Натисніть кнопку \"Надіслати номер телефону\".\n4. Поверніться сюди, крок завершиться автоматично.",
     },
     en: {
       title: "Step 3. Confirm your phone via Telegram",
@@ -207,7 +179,7 @@ export function TelegramVerificationStep({
       buttonOpenTelegram: "Open Telegram",
       buttonNewLink: "Create new link",
       helpText:
-        "1. Scan the QR code or click \"Open Telegram\".\n2. Press \"Start\" in the bot (if needed).\n3. Press the button to send your phone number.\n4. Come back here – this step will finish automatically.",
+        "1. Scan the QR code or click \"Open Telegram\".\n2. Press \"Start\" in the bot if needed.\n3. Press the button to send your phone number.\n4. Come back here, this step will finish automatically.",
     },
   }[language];
 
@@ -222,7 +194,7 @@ export function TelegramVerificationStep({
           <div className="text-sm text-muted-foreground">
             {loadingLink
               ? "Генерируем ссылку для Telegram..."
-              : "Подготовка ссылки для Telegram..."}
+              : "Готовим ссылку для Telegram..."}
           </div>
         )}
 
