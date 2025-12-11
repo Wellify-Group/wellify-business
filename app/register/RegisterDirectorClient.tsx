@@ -1,3 +1,5 @@
+// app/register/RegisterDirectorClient.tsx
+
 "use client";
 
 import { FormEvent, useEffect, useState, useRef } from "react";
@@ -630,11 +632,14 @@ export default function RegisterDirectorClient() {
         setFinishLoading(false);
         return;
       }
-
+      
+      // Здесь phone: form.phone.trim() || null - это заглушка, 
+      // реальный phone уже в Supabase из Telegram.
+      // Мы полагаемся на то, что TelegramVerificationStep и bot уже записали phone в profiles.
       const registrationData = {
         email: form.email.trim(),
         password: baseData.password,
-        phone: form.phone.trim() || null, // реальный телефон уже в Supabase из Telegram
+        phone: form.phone.trim() || null, 
         firstName: baseData.firstName.trim(),
         lastName: baseData.lastName.trim(),
         middleName: baseData.middleName.trim(),
@@ -688,18 +693,21 @@ export default function RegisterDirectorClient() {
 
   // ВАЖНО: вызывается, когда TelegramVerificationStep сообщает, что всё успешно
   const handleTelegramVerified = async () => {
+    // В этом случае TelegramVerificationStep уже гарантировал, что profiles обновлен
     setPhoneStatus("verified");
     setPhoneVerified(true);
     setFormError(null);
     setFinishError(null);
 
+    // Вызываем завершение регистрации.
+    // Если онбординг завершается только при переходе на дашборд, это логично
     await finishRegistration();
   };
 
   const steps = [
     { id: 1, label: "Основные данные" },
     { id: 2, label: "E-mail" },
-    { id: 3, label: "Telegram" },
+    { id: 3, label: "Telegram" }, // Изменено с "Телефон" на "Telegram"
   ];
 
   const renderStepHeader = () => (
@@ -1024,6 +1032,47 @@ export default function RegisterDirectorClient() {
       );
     }
 
+    // Если телефон уже подтвержден (после предыдущей сессии) - показываем сообщение об успешном завершении
+    if (phoneVerified) {
+        return (
+            <div className="space-y-4">
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
+                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                        Телефон уже подтвержден через Telegram. Нажмите "Завершить регистрацию".
+                    </span>
+                </div>
+
+                {finishError && (
+                    <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        <span>{finishError}</span>
+                    </div>
+                )}
+                
+                <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full md:w-auto"
+                        disabled={finishLoading}
+                        onClick={() => setStep(2)}
+                    >
+                        Назад
+                    </Button>
+                    <Button
+                        type="button"
+                        className="w-full md:w-auto"
+                        disabled={finishLoading || !phoneVerified}
+                        onClick={finishRegistration}
+                    >
+                        {finishLoading ? "Завершаем..." : "Завершить регистрацию"}
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
     return (
       <div className="space-y-4">
         <TelegramVerificationStep
@@ -1057,6 +1106,7 @@ export default function RegisterDirectorClient() {
           >
             Назад
           </Button>
+          {/* Кнопка "Завершить регистрацию" скрыта, так как флоу должен быть автоматическим */}
         </div>
       </div>
     );
