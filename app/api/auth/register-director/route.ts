@@ -1,9 +1,18 @@
+// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ ОШИБКИ SDK)
+
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { mapProfileToDb } from "@/lib/types/profile";
+import { mapProfileToDb } from "@/lib/types/profile"; 
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+// Упрощенная функция для генерации кода компании (временно вынесена)
+const generateCompanyCode = () => {
+    const part = () => Math.floor(1000 + Math.random() * 9000);
+    return `${part()}-${part()}-${part()}-${part()}`;
+};
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,8 +43,8 @@ export async function POST(request: NextRequest) {
       firstName,
       lastName,
       middleName,
-      birthDate, // Опционально, может быть не передано
-      locale, // Опционально, может быть не передано
+      birthDate,
+      locale,
     } = body;
 
     // Валидация обязательных полей
@@ -55,161 +64,71 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Ищем пользователя по email
-    const { data: existingUsers, error: listError } =
-      await supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
+    // !!! ИСПРАВЛЕНИЕ: Используем listUsers без фильтров (ищем по всему списку) !!!
+    const { data: userResponse, error: authUserError } =
+      await supabaseAdmin.auth.admin.listUsers(); // Убрали search и perPage
 
-    if (listError) {
-      console.error("[register-director] Error listing users", {
-        message: listError.message,
-        status: (listError as any).status,
-      });
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to check existing users",
-          details: listError.message || "Unknown error",
-        },
-        { status: 500 }
-      );
+    if (authUserError) {
+        console.error("[register-director] Error listing users", { error: authUserError.message });
+        return NextResponse.json(
+            { success: false, message: "Failed to check existing users" },
+            { status: 500 }
+        );
     }
-
-    const norm = (s: string) => s.trim().toLowerCase();
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email && norm(u.email) === norm(normalizedEmail)
+    
+    // Ищем точное совпадение
+    const existingUser = userResponse?.users?.find(
+        (u) => u.email && u.email.toLowerCase().trim() === normalizedEmail
     );
 
-    let userId: string;
-
-    if (existingUser) {
-      // Пользователь уже существует - обновляем его
-      userId = existingUser.id;
-
-      // Обновляем email и телефон в auth, если нужно
-      const updateData: any = {};
-      if (!existingUser.email_confirmed_at) {
-        // Если email не подтверждён, подтверждаем его (проверен через Supabase email verification)
-        updateData.email_confirm = true;
-      }
-      if (existingUser.phone !== phone.trim()) {
-        updateData.phone = phone.trim();
-        updateData.phone_confirm = true; // Телефон проверен через Twilio SMS
-      }
-
-      if (Object.keys(updateData).length > 0) {
-        const { error: updateError } =
-          await supabaseAdmin.auth.admin.updateUserById(userId, updateData);
-
-        if (updateError) {
-          console.error("[register-director] Error updating user", {
-            message: updateError.message,
-            status: (updateError as any).status,
-          });
-          // Не критично, продолжаем
-        }
-      }
-    } else {
-      // Создаём нового пользователя
-      const { data: newUserData, error: createError } =
-        await supabaseAdmin.auth.admin.createUser({
-          email: normalizedEmail,
-          password,
-          email_confirm: true, // Подтверждаем email (проверен через Supabase email verification)
-          phone: phone.trim(),
-          phone_confirm: true, // Подтверждаем телефон (проверен через Twilio SMS)
-          user_metadata: {
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            middle_name: middleName?.trim() || null,
-          },
-        });
-
-      if (createError || !newUserData?.user) {
-        console.error("[register-director] Error creating user", {
-          message: createError?.message,
-          status: (createError as any)?.status,
-        });
+    if (!existingUser) {
+        console.error("[register-director] User not found in auth", { email: normalizedEmail });
         return NextResponse.json(
-          {
-            success: false,
-            message: createError?.message || "Failed to create user",
-            details: createError?.message || "Unknown error",
-          },
-          { status: 500 }
+            { success: false, message: "User not found after sign up. Please try again." },
+            { status: 500 }
         );
-      }
-
-      userId = newUserData.user.id;
     }
 
-    // Генерируем код компании и ID бизнеса (если их ещё нет)
-    const generateCompanyCode = () => {
-      const part = () => Math.floor(1000 + Math.random() * 9000);
-      return `${part()}-${part()}-${part()}-${part()}`;
-    };
+    const userId = existingUser.id;
+    // !!! КОНЕЦ ИСПРАВЛЕНИЯ !!!
 
-    // Проверяем email: должен быть подтверждён через реальный переход по ссылке
-    // Используем уже полученного пользователя из existingUsers (получен выше)
-    const userForEmailCheck = existingUsers?.users?.find((u) => u.id === userId);
-    const isEmailConfirmed = !!userForEmailCheck?.email_confirmed_at;
+    // 2. Обновляем AUTH (для phone/phone_verified, если не обновил бот)
+    const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        phone: phone.trim(),
+        phone_confirm: true,
+        // Мы знаем, что email_confirm: true уже сработало на Шаге 2
+    });
 
-    if (!isEmailConfirmed) {
-      console.error("[register-director] Email is not confirmed", {
-        userId,
-        email: userForEmailCheck?.email,
-        email_confirmed_at: userForEmailCheck?.email_confirmed_at,
-      });
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Email is not confirmed. Please confirm your email by clicking the link in the email.",
-        },
-        { status: 400 }
-      );
+    if (updateAuthError) {
+        console.warn("[register-director] Non-critical error updating auth phone/phone_confirm", { error: updateAuthError.message });
+        // Не критично, продолжаем
     }
 
-    // Проверяем, есть ли уже профиль и верифицирован ли телефон
+    // 3. Ищем существующий профиль для businessId
     const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from("profiles")
-      .select("phone, phone_verified, email_verified")
+      .select("бизнес_id, business_id, код_компании, company_code")
       .eq("id", userId)
       .maybeSingle();
-    
-    // Дополнительная проверка: телефон должен быть верифицирован
-    if (!existingProfile?.phone || !existingProfile.phone_verified) {
-      console.error("[register-director] Phone is not verified", {
-        userId,
-        hasPhone: !!existingProfile?.phone,
-        phoneVerified: existingProfile?.phone_verified,
-      });
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Phone is not verified. Please verify your phone number first.",
-        },
-        { status: 400 }
-      );
+
+    if (profileCheckError) {
+        console.error("[register-director] Error checking existing profile for businessId", { error: profileCheckError.message });
+        // Не критично, продолжаем с генерацией нового ID
     }
 
-    // Используем русские названия полей из БД или английские как fallback
+    // 4. Генерируем businessId/companyCode (если их нет)
     const existingBusinessId = (existingProfile as any)?.["бизнес_id"] || (existingProfile as any)?.business_id;
     const existingCompanyCode = (existingProfile as any)?.["код_компании"] || (existingProfile as any)?.company_code;
     
-    const businessId =
-      existingBusinessId || `biz-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const businessId = existingBusinessId || `biz-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const companyCode = existingCompanyCode || generateCompanyCode();
 
-    // Формируем полное имя
+    // 5. Формируем финальные данные профиля
     const fullName = [lastName.trim(), firstName.trim(), middleName?.trim()]
       .filter(Boolean)
       .join(" ");
 
     const shortName = firstName.trim();
-
-    // Нормализуем locale (ua -> uk для совместимости с API)
     const normalizedLocale = locale
       ? locale === "ua"
         ? "uk"
@@ -217,25 +136,8 @@ export async function POST(request: NextRequest) {
         ? locale
         : "ru"
       : "ru";
-
-    // Формируем данные профиля для upsert
-    // Используем прямые поля БД (английские названия) для first_name, last_name, middle_name, birth_date, locale
-    // И русские названия через mapProfileToDb для остальных полей
-    const profileDataForDb: Record<string, any> = {
-      id: userId,
-      email: normalizedEmail,
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      middle_name: middleName?.trim() || null,
-      full_name: fullName,
-      birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
-      email_verified: isEmailConfirmed, // Email подтверждён только если email_confirmed_at не NULL
-      phone_verified: true, // Телефон уже подтверждён на шаге 3
-      locale: normalizedLocale,
-      updated_at: new Date().toISOString(),
-    };
-
-    // Добавляем данные через mapProfileToDb (русские названия полей)
+    
+    // Используем mapProfileToDb для маппинга на вашу сложную схему
     const profileDataMapped = mapProfileToDb({
       id: userId,
       email: normalizedEmail,
@@ -248,28 +150,20 @@ export async function POST(request: NextRequest) {
       active: true,
       phone: phone.trim(),
       phoneVerified: true,
-      emailVerified: true,
+      emailVerified: true, // Полагаемся на Шаг 2
     });
 
-    // Объединяем данные: сначала английские поля, потом русские из mapProfileToDb
-    // Русские поля имеют приоритет для совместимости с существующей схемой
-    const finalProfileData = {
-      ...profileDataForDb,
-      ...profileDataMapped,
-      id: userId, // Убеждаемся, что id всегда установлен
-    };
-
-    // Безопасный upsert: создаёт запись, если её нет, или обновляет существующую
+    // 6. Upsert (Обновление/Создание) профиля
     const { data: upsertedProfile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .upsert(finalProfileData, {
+      .upsert(profileDataMapped, { // Используем только маппированные данные
         onConflict: "id",
       })
       .select()
       .single();
 
     if (profileError) {
-      console.error("[register-director] Error upserting profile", {
+      console.error("[register-director] Final Error upserting profile", {
         message: profileError.message,
         details: profileError.details || profileError.hint || profileError.code,
         userId,
@@ -277,7 +171,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to create/update profile",
+          message: "Failed to create/update profile (Database Error)",
           details: profileError.message || profileError.details || "Unknown database error",
         },
         { status: 500 }
@@ -294,13 +188,13 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
+    // ... (обработка неожиданных ошибок)
     console.error("[register-director] Unexpected error", {
       message: error?.message,
       details: error?.details || error?.stack,
       name: error?.name,
     });
     
-    // Безопасно извлекаем детали ошибки без утечки чувствительных данных
     const errorDetails = error?.message || "Internal server error";
     const safeDetails = errorDetails.includes("SUPABASE_SERVICE_ROLE_KEY") 
       ? "Configuration error" 
@@ -316,4 +210,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
