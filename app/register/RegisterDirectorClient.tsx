@@ -335,6 +335,88 @@ export default function RegisterDirectorClient() {
     };
   }, [emailStatus, form.email, emailVerified]);
 
+  // ===== ПОЛЛИНГ PHONE_VERIFIED (на шаге 3) =====
+  useEffect(() => {
+    if (step !== 3) return;
+    if (!form.email.trim()) return;
+    if (phoneVerified) return;
+
+    let cancelled = false;
+    let intervalId: NodeJS.Timeout | null = null;
+    let hasStartedPolling = false;
+
+    const checkPhoneConfirmation = async () => {
+      try {
+        if (cancelled) return;
+
+        const emailParam = encodeURIComponent(form.email.trim());
+        const res = await fetch(
+          `/api/auth/check-phone-confirmed?email=${emailParam}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            console.log("[register] User not authenticated yet, continuing polling...");
+          } else {
+            console.error("[register] check-phone-confirmed API error:", res.status);
+          }
+          return;
+        }
+
+        const data = await res.json();
+
+        if (data.success === true && data.phoneConfirmed === true) {
+          if (!cancelled) {
+            setPhoneVerified(true);
+            setPhoneStatus("verified");
+            setFormError(null);
+            setFinishError(null);
+
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+
+            // Автоматически переходим на шаг 4
+            setStep(4);
+          }
+        }
+      } catch (e) {
+        console.error("[register] checkPhoneConfirmation exception", e);
+      }
+    };
+
+    const initialDelay = setTimeout(() => {
+      if (!cancelled && !phoneVerified && step === 3) {
+        hasStartedPolling = true;
+        checkPhoneConfirmation();
+      }
+    }, 1000); // Начинаем проверку через 1 секунду после перехода на шаг 3
+
+    intervalId = setInterval(() => {
+      if (
+        !cancelled &&
+        !phoneVerified &&
+        step === 3 &&
+        hasStartedPolling
+      ) {
+        checkPhoneConfirmation();
+      } else if (phoneVerified && intervalId) {
+        clearInterval(intervalId);
+      }
+    }, 1000); // Проверяем каждую секунду
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+      if (initialDelay) clearTimeout(initialDelay);
+    };
+  }, [step, form.email, phoneVerified]);
+
   // Таймер для resend email
   useEffect(() => {
     if (resendCooldown <= 0) return;
