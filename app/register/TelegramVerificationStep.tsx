@@ -1,4 +1,4 @@
-// app/register/TelegramVerificationStep.tsx
+// app/register/TelegramVerificationStep.tsx (обновленный код для UI)
 
 "use client";
 
@@ -25,8 +25,6 @@ type SessionStatus = {
   telegramVerified: boolean;
   phone: string | null;
 };
-
-// const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL; // Больше не нужен для прямого обращения
 
 export function TelegramVerificationStep({
   onVerified,
@@ -194,7 +192,8 @@ export function TelegramVerificationStep({
     <Card className="max-w-xl mx-auto">
       <CardHeader>
         <CardTitle>{texts.title}</CardTitle>
-        <CardDescription>{texts.description}</CardDescription>
+        {/* !!! ИЗМЕНЕНИЕ: УДАЛЯЕМ дублирующую строку !!! */}
+        {/* <CardDescription>{texts.description}</CardDescription> */} 
       </CardHeader>
       <CardContent className="space-y-6">
         {!telegramLink && (
@@ -207,9 +206,16 @@ export function TelegramVerificationStep({
 
         {telegramLink && (
           <div className="flex flex-col items-center gap-4">
-            <div className="bg-white p-4 rounded-xl">
+            {/* !!! ИЗМЕНЕНИЕ: QR-код становится кликабельной ссылкой !!! */}
+            <a
+              href={telegramLink}
+              target="_blank"
+              rel="noreferrer"
+              className="p-4 rounded-xl inline-block bg-white transition hover:scale-[1.01]"
+            >
               <QRCode value={telegramLink} size={180} />
-            </div>
+            </a>
+            {/* !!! КОНЕЦ ИЗМЕНЕНИЯ !!! */}
 
             <a
               href={telegramLink}
@@ -227,7 +233,9 @@ export function TelegramVerificationStep({
             </p>
           </div>
         )}
-
+        
+        {/* ... остальной код такой же ... */}
+        
         {status && (
           <div className="text-sm">
             {status.status === "pending" && !status.telegramVerified && (
