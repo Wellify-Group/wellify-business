@@ -1,4 +1,4 @@
-// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ ОШИБКИ SDK)
+// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ DB-ОШИБКИ)
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -64,9 +64,9 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // !!! ИСПРАВЛЕНИЕ: Используем listUsers без фильтров (ищем по всему списку) !!!
+    // 1. Ищем пользователя в Auth 
     const { data: userResponse, error: authUserError } =
-      await supabaseAdmin.auth.admin.listUsers(); // Убрали search и perPage
+      await supabaseAdmin.auth.admin.listUsers(); 
 
     if (authUserError) {
         console.error("[register-director] Error listing users", { error: authUserError.message });
@@ -90,18 +90,15 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = existingUser.id;
-    // !!! КОНЕЦ ИСПРАВЛЕНИЯ !!!
 
     // 2. Обновляем AUTH (для phone/phone_verified, если не обновил бот)
     const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         phone: phone.trim(),
         phone_confirm: true,
-        // Мы знаем, что email_confirm: true уже сработало на Шаге 2
     });
 
     if (updateAuthError) {
         console.warn("[register-director] Non-critical error updating auth phone/phone_confirm", { error: updateAuthError.message });
-        // Не критично, продолжаем
     }
 
     // 3. Ищем существующий профиль для businessId
@@ -113,7 +110,6 @@ export async function POST(request: NextRequest) {
 
     if (profileCheckError) {
         console.error("[register-director] Error checking existing profile for businessId", { error: profileCheckError.message });
-        // Не критично, продолжаем с генерацией нового ID
     }
 
     // 4. Генерируем businessId/companyCode (если их нет)
@@ -154,29 +150,48 @@ export async function POST(request: NextRequest) {
     });
 
     // 6. Upsert (Обновление/Создание) профиля
-    const { data: upsertedProfile, error: profileError } = await supabaseAdmin
+    // !!! ИСПРАВЛЕНИЕ: Убираем upsert и делаем UPDATE, затем INSERT для обхода ошибки OID !!!
+    const { error: updateProfileError } = await supabaseAdmin
       .from("profiles")
-      .upsert(profileDataMapped, { // Используем только маппированные данные
-        onConflict: "id",
-      })
-      .select()
-      .single();
+      .update(profileDataMapped)
+      .eq("id", userId); // Попытка обновить
 
-    if (profileError) {
-      console.error("[register-director] Final Error upserting profile", {
-        message: profileError.message,
-        details: profileError.details || profileError.hint || profileError.code,
-        userId,
-      });
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to create/update profile (Database Error)",
-          details: profileError.message || profileError.details || "Unknown database error",
-        },
-        { status: 500 }
-      );
+    if (updateProfileError) {
+      // Если обновление не удалось (профиля нет), делаем INSERT
+      const { error: insertError } = await supabaseAdmin
+        .from("profiles")
+        .insert(profileDataMapped);
+
+      if (insertError) {
+        // Если и INSERT не удался - это настоящая ошибка
+        console.error("[register-director] Final Error INSERTING profile", {
+          message: insertError.message,
+          details: insertError.details || insertError.hint || insertError.code,
+          userId,
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Failed to create/update profile (Database Error)",
+            details: insertError.message || insertError.details || "Unknown database error",
+          },
+          { status: 500 }
+        );
+      }
     }
+    // !!! КОНЕЦ ИСПРАВЛЕНИЯ !!!
+    
+    // 7. Повторная попытка входа (для создания сессии на клиенте)
+    const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: password,
+    });
+    
+    if (signInError) {
+        console.error("[register-director] Error signing in user after registration", { error: signInError.message });
+        // Не критично, пользователь сможет войти сам
+    }
+
 
     console.log("[register-director] Success", { userId, email: normalizedEmail });
 
