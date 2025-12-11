@@ -1,4 +1,4 @@
-// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ "locale")
+// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ "бизнес_ид")
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     // 3. Ищем существующий профиль для businessId
     const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from("profiles")
-      .select("бизнес_id, business_id, код_компании, company_code")
+      .select("business_id, код_компании, company_code") // Удалено "бизнес_ид"
       .eq("id", userId)
       .maybeSingle();
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Генерируем businessId/companyCode (если их нет)
-    const existingBusinessId = (existingProfile as any)?.["бизнес_ид"] || (existingProfile as any)?.business_id;
+    const existingBusinessId = (existingProfile as any)?.business_id; // Используем только английское поле
     const existingCompanyCode = (existingProfile as any)?.["код_компании"] || (existingProfile as any)?.company_code;
     
     const businessId = existingBusinessId || `biz-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -149,35 +149,31 @@ export async function POST(request: NextRequest) {
       emailVerified: true, // Полагаемся на Шаг 2
     });
 
-    // !!! ИСПРАВЛЕНИЕ "ФИО" и "locale" OID ОШИБОК !!!
-    // Создаем финальный объект, который не содержит проблемных русских полей
+    // !!! ИСПРАВЛЕНИЕ "бизнес_ид" и других полей OID ОШИБОК !!!
     const finalProfileData: Record<string, any> = {
         ...profileDataMapped,
-        // Добавляем английские поля, которые точно существуют
         id: userId,
         email: normalizedEmail,
         full_name: fullName, 
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         middle_name: middleName?.trim() || null,
-        // ИСПРАВЛЕНИЕ: Заменяем проблемное 'locale' на 'language' (предполагая, что это правильное поле)
         language: normalizedLocale, 
-        // Обязательные bool
         email_verified: true, 
         phone_verified: true, 
         updated_at: new Date().toISOString(),
-        
-        // Добавляем дату рождения, если она есть
         birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
+        // !!! ИСПРАВЛЕНИЕ: Используем только 'business_id' !!!
+        business_id: businessId, 
     };
     
-    // Удаляем проблемные русские/английские поля, которые могли быть добавлены mapProfileToDb и вызывают ошибку
+    // Удаляем все поля с русскими именами, которые могут вызывать конфликт
     delete finalProfileData.ФИО;
     delete finalProfileData.ф_и_о;
-    delete finalProfileData.locale; // Удаляем, т.к. заменили на 'language'
+    delete finalProfileData.locale;
+    delete finalProfileData.бизнес_ид; 
     
     // Убеждаемся, что businessId и companyCode присутствуют
-    finalProfileData.бизнес_ид = businessId;
     finalProfileData.код_компании = companyCode;
 
 
