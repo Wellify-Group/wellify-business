@@ -5,11 +5,17 @@ import QRCode from "react-qr-code";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 interface TelegramVerificationStepProps {
-  onVerified: () => void;           // что делать, когда Telegram подтверждён (например, перейти в дашборд)
-  language?: "ru" | "uk" | "en";    // язык интерфейса (по желанию)
+  onVerified: () => void; // что делать, когда Telegram подтверждён (например, перейти в дашборд)
+  language?: "ru" | "uk" | "en"; // язык интерфейса (по желанию)
 }
 
 type SessionStatus = {
@@ -18,11 +24,15 @@ type SessionStatus = {
   phone: string | null;
 };
 
-export function TelegramVerificationStep({ onVerified, language = "ru" }: TelegramVerificationStepProps) {
-  // Читаем переменную внутри компонента для корректной работы с Next.js
-  const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
-  
-  const [supabase] = useState<SupabaseClient>(() => createBrowserSupabaseClient());
+const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
+
+export function TelegramVerificationStep({
+  onVerified,
+  language = "ru",
+}: TelegramVerificationStepProps) {
+  const [supabase] = useState<SupabaseClient>(() =>
+    createBrowserSupabaseClient()
+  );
 
   const [loadingLink, setLoadingLink] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,37 +42,36 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
 
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [polling, setPolling] = useState(false);
-  const [hasAttempted, setHasAttempted] = useState(false); // Флаг для предотвращения повторных попыток
+
+  // флаг, чтобы не запускать создание сессии бесконечно
+  const [initialized, setInitialized] = useState(false);
 
   // 1. При первом рендере создаём registration_session через Railway
   useEffect(() => {
     if (!TELEGRAM_API_URL) {
-      const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-      const errorMessage = isProduction
-        ? "NEXT_PUBLIC_TELEGRAM_API_URL не настроен в переменных окружения на сервере (Vercel/Railway). Проверьте настройки деплоя."
-        : "NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local. Убедитесь, что вы перезапустили dev-сервер после добавления переменной.";
-      setError(errorMessage);
+      setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local");
       return;
     }
 
-    // Предотвращаем повторные попытки, если уже пытались или есть сессия
-    if (hasAttempted || loadingLink || sessionToken) return;
+    // если уже пытались создать сессию - не запускаем ещё раз
+    if (initialized || loadingLink || sessionToken) return;
 
     const createSession = async () => {
+      setLoadingLink(true);
+      setError(null);
+
       try {
-        setLoadingLink(true);
-        setError(null);
-        setHasAttempted(true); // Помечаем, что попытка была
+        console.log("TELEGRAM_API_URL:", TELEGRAM_API_URL);
 
         // Получаем текущего пользователя из Supabase (auth.users)
         const { data: userData, error: userError } = await supabase.auth.getUser();
 
         if (userError || !userData?.user) {
           console.error("getUser error:", userError);
-          setError("Не удалось получить текущего пользователя. Перезагрузите страницу и войдите заново.");
-          setLoadingLink(false);
-          // НЕ сбрасываем hasAttempted, чтобы не было повторных попыток
-          return;
+          setError(
+            "Не удалось получить текущего пользователя. Перезагрузите страницу и войдите заново."
+          );
+          return; // просто выходим, но initialized станет true в finally
         }
 
         const userId = userData.user.id;
@@ -70,15 +79,11 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
 
         if (!email) {
           setError("У пользователя отсутствует email. Проверьте регистрацию.");
-          setLoadingLink(false);
           return;
         }
 
         // Вызов нашего Railway backend: POST /telegram/link-session
-        const apiUrl = `${TELEGRAM_API_URL}/telegram/link-session`;
-        console.log("Запрос к Telegram API:", apiUrl);
-        
-        const resp = await fetch(apiUrl, {
+        const resp = await fetch(`${TELEGRAM_API_URL}/telegram/link-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -89,30 +94,30 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
         });
 
         if (!resp.ok) {
-          const errorText = await resp.text().catch(() => "Неизвестная ошибка");
-          console.error("link-session failed:", resp.status, errorText);
-          setError(`Не удалось создать сессию Telegram (${resp.status}). Проверьте, что бот на Railway работает. Ошибка: ${errorText}`);
-          setLoadingLink(false);
+          console.error("link-session failed:", resp.status);
+          setError("Не удалось создать сессию Telegram. Попробуйте позже.");
           return;
         }
 
-        const json = await resp.json() as { sessionToken: string; telegramLink: string };
+        const json = (await resp.json()) as {
+          sessionToken: string;
+          telegramLink: string;
+        };
 
         setSessionToken(json.sessionToken);
         setTelegramLink(json.telegramLink);
-        setLoadingLink(false);
         setPolling(true);
       } catch (e) {
         console.error("createSession error:", e);
         setError("Произошла ошибка при создании сессии Telegram.");
+      } finally {
         setLoadingLink(false);
+        setInitialized(true); // помечаем, что попытка была, чтобы не крутиться в цикле
       }
     };
 
     createSession();
-    // Убираем loadingLink и supabase из зависимостей, чтобы избежать бесконечного цикла
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [TELEGRAM_API_URL, language, sessionToken, hasAttempted]);
+  }, [supabase, language, initialized, loadingLink, sessionToken]);
 
   // 2. Polling статуса сессии раз в 3 секунды
   useEffect(() => {
@@ -122,13 +127,15 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
 
     const interval = setInterval(async () => {
       try {
-        const resp = await fetch(`${TELEGRAM_API_URL}/telegram/session-status/${sessionToken}`);
+        const resp = await fetch(
+          `${TELEGRAM_API_URL}/telegram/session-status/${sessionToken}`
+        );
         if (!resp.ok) {
           console.error("session-status failed:", resp.status);
           return;
         }
 
-        const json = await resp.json() as SessionStatus;
+        const json = (await resp.json()) as SessionStatus;
         setStatus(json);
 
         if (json.status === "completed" || json.telegramVerified) {
@@ -158,7 +165,7 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
     setError(null);
     setLoadingLink(false);
     setPolling(false);
-    setHasAttempted(false); // Сбрасываем флаг, чтобы можно было попробовать снова
+    setInitialized(false); // позволяем снова попробовать создать сессию
   };
 
   // Тексты в зависимости от языка (минимум)
@@ -255,11 +262,7 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
           </div>
         )}
 
-        {error && (
-          <div className="text-sm text-red-500">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-sm text-red-500">{error}</div>}
 
         {status?.status === "expired" && (
           <Button variant="outline" onClick={handleCreateNewLink}>
@@ -270,4 +273,3 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
     </Card>
   );
 }
-    
