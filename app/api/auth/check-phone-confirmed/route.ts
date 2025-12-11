@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     // Это гарантирует, что мы можем прочитать данные даже если RLS блокирует доступ
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('phone_verified')
+      .select('phone_verified, phone')
       .eq('id', userId)
       .single();
 
@@ -125,6 +125,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       phoneConfirmed,
+      phone: profile?.phone || null,
     });
   } catch (err: any) {
     console.error('[check-phone-confirmed] unexpected error', err);

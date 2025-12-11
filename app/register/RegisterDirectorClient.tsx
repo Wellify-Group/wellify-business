@@ -735,7 +735,8 @@ export default function RegisterDirectorClient() {
         // Продолжаем, если проверка не удалась
       }
 
-      // Проверяем phone_verified из БД
+      // Проверяем phone_verified из БД и получаем телефон
+      let userPhone: string | null = null;
       try {
         const phoneCheckRes = await fetch(
           `/api/auth/check-phone-confirmed?email=${encodeURIComponent(form.email.trim())}`,
@@ -754,16 +755,45 @@ export default function RegisterDirectorClient() {
             setFinishLoading(false);
             return;
           }
+          // Получаем телефон из ответа API
+          userPhone = phoneCheckData.phone || null;
         }
       } catch (phoneCheckError) {
         console.error("[register] Error checking phone status:", phoneCheckError);
         // Продолжаем, если проверка не удалась
       }
+
+      // Если телефон не получен из проверки, пытаемся получить из профиля
+      if (!userPhone && registeredUserId) {
+        try {
+          const profileRes = await fetch(`/api/auth/load-profile`);
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (profileData.success && profileData.user?.phone) {
+              userPhone = profileData.user.phone;
+            }
+          }
+        } catch (profileError) {
+          console.error("[register] Error loading profile:", profileError);
+        }
+      }
+
+      // Если телефон все еще не найден, используем из формы или возвращаем ошибку
+      if (!userPhone) {
+        userPhone = form.phone.trim() || null;
+        if (!userPhone) {
+          setFinishError(
+            "Не удалось получить номер телефона. Пожалуйста, вернитесь на предыдущий шаг."
+          );
+          setFinishLoading(false);
+          return;
+        }
+      }
       
       const registrationData = {
         email: form.email.trim(),
         password: baseData.password,
-        phone: form.phone.trim() || null, 
+        phone: userPhone, 
         firstName: baseData.firstName.trim(),
         lastName: baseData.lastName.trim(),
         middleName: baseData.middleName.trim(),
@@ -1167,23 +1197,7 @@ export default function RegisterDirectorClient() {
       }[localeForAPI];
 
       return (
-          <div className="space-y-6">
-              {/* Кнопка "Назад" в самом верху блока */}
-              <div className="flex justify-start -mt-2 -mx-2">
-                  <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => setStep(3)}
-                      disabled={finishLoading}
-                  >
-                      <ArrowLeft className="h-4 w-4 mr-1" />
-                      Назад
-                  </Button>
-              </div>
-              
-              <div className="flex flex-col items-center justify-center py-12 min-h-[400px]">
+          <div className="flex flex-col items-center justify-center py-12 min-h-[400px]">
                   <div className="flex flex-col items-center gap-6">
                   <div className="relative">
                       <CheckCircle2 className="h-24 w-24 text-emerald-500 animate-in fade-in zoom-in duration-500" />
@@ -1208,14 +1222,7 @@ export default function RegisterDirectorClient() {
                       size="lg"
                       disabled={finishLoading}
                   >
-                      {finishLoading ? (
-                          <span className="flex items-center gap-2">
-                              <span className="animate-spin">⏳</span>
-                              {texts.loading}
-                          </span>
-                      ) : (
-                          texts.button
-                      )}
+                      {finishLoading ? texts.loading : texts.button}
                   </Button>
                   
                   {finishError && (
@@ -1226,7 +1233,6 @@ export default function RegisterDirectorClient() {
                   )}
                   </div>
               </div>
-          </div>
       );
   };
 
@@ -1298,6 +1304,22 @@ export default function RegisterDirectorClient() {
       <Card className="w-full max-w-xl border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <CardHeader className="pb-4">
           {renderStepHeader()}
+          {/* Кнопка "Назад" только на шаге 4, над заголовком */}
+          {step === 4 && (
+            <div className="mb-4 flex justify-start">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setStep(3)}
+                disabled={finishLoading}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Назад
+              </Button>
+            </div>
+          )}
           <CardTitle className="text-xl font-semibold text-center">
             Создать аккаунт директора
           </CardTitle>
