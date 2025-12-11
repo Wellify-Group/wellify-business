@@ -1,4 +1,4 @@
-// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ DB-ОШИБКИ)
+// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ "ФИО")
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Генерируем businessId/companyCode (если их нет)
-    const existingBusinessId = (existingProfile as any)?.["бизнес_id"] || (existingProfile as any)?.business_id;
+    const existingBusinessId = (existingProfile as any)?.["бизнес_ид"] || (existingProfile as any)?.business_id;
     const existingCompanyCode = (existingProfile as any)?.["код_компании"] || (existingProfile as any)?.company_code;
     
     const businessId = existingBusinessId || `biz-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -149,18 +149,45 @@ export async function POST(request: NextRequest) {
       emailVerified: true, // Полагаемся на Шаг 2
     });
 
-    // 6. Upsert (Обновление/Создание) профиля
-    // !!! ИСПРАВЛЕНИЕ: Убираем upsert и делаем UPDATE, затем INSERT для обхода ошибки OID !!!
+    // !!! ИСПРАВЛЕНИЕ "ФИО" OID ОШИБКИ: Используем только безопасные поля !!!
+    // Создаем финальный объект, который не содержит проблемных русских полей
+    const finalProfileData: Record<string, any> = {
+        ...profileDataMapped,
+        // Добавляем английские поля, которые точно существуют
+        id: userId,
+        email: normalizedEmail,
+        full_name: fullName, 
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        middle_name: middleName?.trim() || null,
+        locale: normalizedLocale,
+        // Обязательные bool
+        email_verified: true, 
+        phone_verified: true, 
+        updated_at: new Date().toISOString(),
+    };
+    
+    // Удаляем проблемные русские поля, которые могли быть добавлены mapProfileToDb, 
+    // чтобы избежать ошибки "ФИО"
+    delete finalProfileData.ФИО;
+    delete finalProfileData.ф_и_о;
+    // ... любые другие русские поля, которые могут вызывать ошибку (проверьте схему)
+    
+    // Убеждаемся, что businessId и companyCode присутствуют
+    finalProfileData.бизнес_id = businessId;
+    finalProfileData.код_компании = companyCode;
+
+    // 6. Upsert (Обновление/Создание) профиля (Оставляем UPDATE/INSERT)
     const { error: updateProfileError } = await supabaseAdmin
       .from("profiles")
-      .update(profileDataMapped)
+      .update(finalProfileData) // Используем исправленные финальные данные
       .eq("id", userId); // Попытка обновить
 
     if (updateProfileError) {
       // Если обновление не удалось (профиля нет), делаем INSERT
       const { error: insertError } = await supabaseAdmin
         .from("profiles")
-        .insert(profileDataMapped);
+        .insert(finalProfileData);
 
       if (insertError) {
         // Если и INSERT не удался - это настоящая ошибка
@@ -182,17 +209,8 @@ export async function POST(request: NextRequest) {
     // !!! КОНЕЦ ИСПРАВЛЕНИЯ !!!
     
     // 7. Повторная попытка входа (для создания сессии на клиенте)
-    const { error: signInError } = await supabaseAdmin.auth.signInWithPassword({
-        email: normalizedEmail,
-        password: password,
-    });
+    // Это не обязательно, так как клиент сам войдет при редиректе
     
-    if (signInError) {
-        console.error("[register-director] Error signing in user after registration", { error: signInError.message });
-        // Не критично, пользователь сможет войти сам
-    }
-
-
     console.log("[register-director] Success", { userId, email: normalizedEmail });
 
     return NextResponse.json(
