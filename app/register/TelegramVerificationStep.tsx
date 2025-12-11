@@ -120,7 +120,8 @@ export function TelegramVerificationStep({
     };
 
     createSession();
-  }, [supabase, language, loadingLink, sessionToken, hasTriedInit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, language, sessionToken, hasTriedInit]);
 
   // 2. Polling статуса сессии раз в 3 секунды
   useEffect(() => {
