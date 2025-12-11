@@ -21,6 +21,18 @@ type SessionStatus = {
 export function TelegramVerificationStep({ onVerified, language = "ru" }: TelegramVerificationStepProps) {
   // Читаем переменную внутри компонента для корректной работы с Next.js
   const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
+  
+  // Детальная диагностика переменных окружения
+  useEffect(() => {
+    console.log("=== Диагностика переменных окружения ===");
+    console.log("NEXT_PUBLIC_TELEGRAM_API_URL:", TELEGRAM_API_URL);
+    console.log("Тип значения:", typeof TELEGRAM_API_URL);
+    console.log("Длина значения:", TELEGRAM_API_URL?.length);
+    console.log("Все NEXT_PUBLIC переменные:", Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC_')));
+    console.log("process.env.NEXT_PUBLIC_TELEGRAM_API_URL напрямую:", process.env.NEXT_PUBLIC_TELEGRAM_API_URL);
+    console.log("========================================");
+  }, []);
+  
   const [supabase] = useState<SupabaseClient>(() => createBrowserSupabaseClient());
 
   const [loadingLink, setLoadingLink] = useState(false);
