@@ -18,9 +18,9 @@ type SessionStatus = {
   phone: string | null;
 };
 
-const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
-
 export function TelegramVerificationStep({ onVerified, language = "ru" }: TelegramVerificationStepProps) {
+  // Читаем переменную внутри компонента для корректной работы с Next.js
+  const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
   const [supabase] = useState<SupabaseClient>(() => createBrowserSupabaseClient());
 
   const [loadingLink, setLoadingLink] = useState(false);
@@ -34,8 +34,11 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
 
   // 1. При первом рендере создаём registration_session через Railway
   useEffect(() => {
+    // Отладка: проверяем наличие переменной
+    console.log("TELEGRAM_API_URL:", TELEGRAM_API_URL);
+    
     if (!TELEGRAM_API_URL) {
-      setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local");
+      setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local. Убедитесь, что вы перезапустили dev-сервер после добавления переменной.");
       return;
     }
 
@@ -66,7 +69,10 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
         }
 
         // Вызов нашего Railway backend: POST /telegram/link-session
-        const resp = await fetch(`${TELEGRAM_API_URL}/telegram/link-session`, {
+        const apiUrl = `${TELEGRAM_API_URL}/telegram/link-session`;
+        console.log("Запрос к Telegram API:", apiUrl);
+        
+        const resp = await fetch(apiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -77,8 +83,9 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
         });
 
         if (!resp.ok) {
-          console.error("link-session failed:", resp.status);
-          setError("Не удалось создать сессию Telegram. Попробуйте позже.");
+          const errorText = await resp.text().catch(() => "Неизвестная ошибка");
+          console.error("link-session failed:", resp.status, errorText);
+          setError(`Не удалось создать сессию Telegram (${resp.status}). Проверьте, что бот на Railway работает. Ошибка: ${errorText}`);
           setLoadingLink(false);
           return;
         }
