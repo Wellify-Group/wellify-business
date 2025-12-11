@@ -227,7 +227,6 @@ export function TelegramVerificationStep({
 
       {telegramLink && (
         <div className="flex flex-col items-center gap-4">
-          
           <a
             href={telegramLink}
             target="_blank"
@@ -237,17 +236,6 @@ export function TelegramVerificationStep({
             <QRCode value={telegramLink} size={180} />
           </a>
 
-          <a
-            href={telegramLink}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full"
-          >
-            <Button className="w-full" size="lg">
-              {texts.buttonOpenTelegram}
-            </Button>
-          </a>
-
           <p className="whitespace-pre-line text-sm text-muted-foreground text-center">
             {texts.helpText}
           </p>
@@ -255,13 +243,18 @@ export function TelegramVerificationStep({
       )}
       
       {status && (
-        <div className="text-sm">
+        <div className="w-full">
           {status.status === "pending" && !status.phoneVerified && (
-            <span className="text-yellow-500">{texts.waiting}</span>
+            <div className="flex items-center justify-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 backdrop-blur-sm">
+              <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+              <span className="text-sm font-medium text-yellow-400">{texts.waiting}</span>
+            </div>
           )}
 
           {status.status === "expired" && (
-            <span className="text-red-500">{texts.expired}</span>
+            <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              <span>{texts.expired}</span>
+            </div>
           )}
         </div>
       )}

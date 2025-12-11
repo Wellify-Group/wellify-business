@@ -194,21 +194,33 @@ export default function RegisterDirectorClient() {
           phone: savedState.form?.phone || "",
         });
 
-        setEmailVerified(!!savedState.emailVerified);
-        setPhoneVerified(!!savedState.phoneVerified);
         setRegisteredUserId(savedState.registeredUserId ?? null);
         setRegisteredEmail(savedState.registeredEmail ?? null);
 
-        if (restoredStep === 4) { // Добавляем обработку для Шага 4
-            setStep(4);
+        if (restoredStep === 4) {
+          // На шаге 4: проверяем статусы из БД и восстанавливаем состояние
+          setStep(4);
+          setEmailVerified(!!savedState.emailVerified);
+          setPhoneVerified(!!savedState.phoneVerified);
+          setEmailStatus(savedState.emailVerified ? "verified" : "link_sent");
         } else if (restoredStep === 3) {
+          // На шаге 3: сбрасываем phoneVerified, чтобы поллинг мог работать
           setStep(3);
+          setEmailVerified(!!savedState.emailVerified);
+          setPhoneVerified(false); // Сбрасываем, чтобы поллинг проверил актуальный статус
           setEmailStatus(savedState.emailVerified ? "verified" : "link_sent");
         } else if (restoredStep === 2) {
+          // На шаге 2: восстанавливаем состояние email
           setStep(2);
+          setEmailVerified(!!savedState.emailVerified);
+          setPhoneVerified(false);
           setEmailStatus(savedState.emailVerified ? "verified" : "idle");
         } else {
+          // На шаге 1: сбрасываем все
           setStep(1);
+          setEmailVerified(false);
+          setPhoneVerified(false);
+          setEmailStatus("idle");
         }
       } catch (e) {
         console.error("[register] Error restoring state from sessionStorage", e);
@@ -339,8 +351,8 @@ export default function RegisterDirectorClient() {
   useEffect(() => {
     if (step !== 3) return;
     if (!form.email.trim()) return;
-    if (phoneVerified) return;
-
+    
+    // Проверяем статус из БД при монтировании, даже если phoneVerified уже true
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
     let hasStartedPolling = false;
@@ -371,6 +383,7 @@ export default function RegisterDirectorClient() {
 
         if (data.success === true && data.phoneConfirmed === true) {
           if (!cancelled) {
+            console.log("[register] Phone verified! Moving to step 4");
             setPhoneVerified(true);
             setPhoneStatus("verified");
             setFormError(null);
@@ -390,32 +403,22 @@ export default function RegisterDirectorClient() {
       }
     };
 
-    const initialDelay = setTimeout(() => {
-      if (!cancelled && !phoneVerified && step === 3) {
-        hasStartedPolling = true;
-        checkPhoneConfirmation();
-      }
-    }, 1000); // Начинаем проверку через 1 секунду после перехода на шаг 3
+    // Первая проверка сразу
+    checkPhoneConfirmation();
+    hasStartedPolling = true;
 
+    // Затем проверяем каждую секунду
     intervalId = setInterval(() => {
-      if (
-        !cancelled &&
-        !phoneVerified &&
-        step === 3 &&
-        hasStartedPolling
-      ) {
+      if (!cancelled && step === 3 && hasStartedPolling) {
         checkPhoneConfirmation();
-      } else if (phoneVerified && intervalId) {
-        clearInterval(intervalId);
       }
-    }, 1000); // Проверяем каждую секунду
+    }, 1000);
 
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
-      if (initialDelay) clearTimeout(initialDelay);
     };
-  }, [step, form.email, phoneVerified]);
+  }, [step, form.email]);
 
   // Таймер для resend email
   useEffect(() => {
@@ -1164,21 +1167,24 @@ export default function RegisterDirectorClient() {
       }[localeForAPI];
 
       return (
-          <CardContent className="space-y-6 flex flex-col items-center justify-center p-12 min-h-[400px] relative">
-              {/* Кнопка "Назад" вверху слева */}
-              <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-4 left-4 text-muted-foreground hover:text-foreground"
-                  onClick={() => setStep(3)}
-                  disabled={finishLoading}
-              >
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Назад
-              </Button>
+          <div className="space-y-6">
+              {/* Кнопка "Назад" в самом верху блока */}
+              <div className="flex justify-start -mt-2 -mx-2">
+                  <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => setStep(3)}
+                      disabled={finishLoading}
+                  >
+                      <ArrowLeft className="h-4 w-4 mr-1" />
+                      Назад
+                  </Button>
+              </div>
               
-              <div className="flex flex-col items-center gap-6">
+              <div className="flex flex-col items-center justify-center py-12 min-h-[400px]">
+                  <div className="flex flex-col items-center gap-6">
                   <div className="relative">
                       <CheckCircle2 className="h-24 w-24 text-emerald-500 animate-in fade-in zoom-in duration-500" />
                       <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
@@ -1218,8 +1224,9 @@ export default function RegisterDirectorClient() {
                           <span>{finishError}</span>
                       </div>
                   )}
+                  </div>
               </div>
-          </CardContent>
+          </div>
       );
   };
 
