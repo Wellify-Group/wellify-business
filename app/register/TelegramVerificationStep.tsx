@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/card";
 
 interface TelegramVerificationStepProps {
-  onVerified: () => void;           // что делать, когда Telegram подтвержден
-  language?: "ru" | "uk" | "en";    // язык интерфейса
-  userId: string;                   // id пользователя из Supabase
-  email: string;                    // email пользователя
+  onVerified: () => void;
+  language?: "ru" | "uk" | "en";
+  userId: string;
+  email: string;
 }
 
 type SessionStatus = {
@@ -41,19 +41,23 @@ export function TelegramVerificationStep({
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [polling, setPolling] = useState(false);
 
-  // 1. При первом рендере создаем registration_session через Railway
+  // Флаг, чтобы не дергать link-session бесконечно
+  const [initialized, setInitialized] = useState(false);
+
+  // 1. Создаем registration_session один раз
   useEffect(() => {
+    if (initialized) return; // уже пытались
     if (!TELEGRAM_API_URL) {
       setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local / Vercel");
+      setInitialized(true);
       return;
     }
 
     if (!userId || !email) {
       setError("Не удалось получить данные регистрации. Вернитесь на предыдущий шаг.");
+      setInitialized(true);
       return;
     }
-
-    if (loadingLink || sessionToken) return;
 
     const createSession = async () => {
       try {
@@ -73,7 +77,6 @@ export function TelegramVerificationStep({
         if (!resp.ok) {
           console.error("link-session failed:", resp.status);
           setError("Не удалось создать сессию Telegram. Попробуйте позже.");
-          setLoadingLink(false);
           return;
         }
 
@@ -84,19 +87,20 @@ export function TelegramVerificationStep({
 
         setSessionToken(json.sessionToken);
         setTelegramLink(json.telegramLink);
-        setLoadingLink(false);
         setPolling(true);
       } catch (e) {
         console.error("createSession error:", e);
         setError("Произошла ошибка при создании сессии Telegram.");
+      } finally {
         setLoadingLink(false);
+        setInitialized(true); // важно!
       }
     };
 
     createSession();
-  }, [userId, email, language, loadingLink, sessionToken]);
+  }, [initialized, userId, email, language]);
 
-  // 2. Polling статуса сессии раз в 3 секунды
+  // 2. Polling статуса сессии
   useEffect(() => {
     if (!TELEGRAM_API_URL) return;
     if (!sessionToken) return;
@@ -142,109 +146,19 @@ export function TelegramVerificationStep({
     setError(null);
     setLoadingLink(false);
     setPolling(false);
+    setInitialized(false); // позволяем эффекту заново создать сессию
   };
 
   const texts = {
-    ru: {
-      title: "Шаг 3. Подтверждение телефона через Telegram",
-      description:
-        "Откройте нашего бота WELLIFY business в Telegram, отправьте свой номер телефона и дождитесь автоматического завершения регистрации.",
-      waiting: "Ждем подтверждения в Telegram...",
-      verified: "Телефон подтвержден через Telegram. Завершаем регистрацию...",
-      expired: "Ссылка устарела. Создайте новую ссылку и попробуйте еще раз.",
-      buttonOpenTelegram: "Открыть Telegram",
-      buttonNewLink: "Создать новую ссылку",
-      helpText:
-        "1. Отсканируйте QR-код или нажмите кнопку \"Открыть Telegram\".\n2. Нажмите \"Старт\" в боте, если нужно.\n3. Нажмите кнопку \"Отправить номер телефона\".\n4. Вернитесь сюда, шаг завершится автоматически.",
-    },
-    uk: {
-      title: "Крок 3. Підтвердження телефону через Telegram",
-      description:
-        "Відкрийте наш бот WELLIFY business у Telegram, надішліть свій номер телефону та зачекайте автоматичного завершення реєстрації.",
-      waiting: "Чекаємо підтвердження в Telegram...",
-      verified: "Телефон підтверджено через Telegram. Завершуємо реєстрацію...",
-      expired: "Посилання застаріло. Створіть нове посилання та спробуйте ще раз.",
-      buttonOpenTelegram: "Відкрити Telegram",
-      buttonNewLink: "Створити нове посилання",
-      helpText:
-        "1. Відскануйте QR-код або натисніть кнопку \"Відкрити Telegram\".\n2. Натисніть \"Старт\" у боті, якщо потрібно.\n3. Натисніть кнопку \"Надіслати номер телефону\".\n4. Поверніться сюди, крок завершиться автоматично.",
-    },
-    en: {
-      title: "Step 3. Confirm your phone via Telegram",
-      description:
-        "Open our WELLIFY business bot in Telegram, send your phone number and wait until the registration is completed automatically.",
-      waiting: "Waiting for confirmation in Telegram...",
-      verified: "Phone confirmed via Telegram. Finishing registration...",
-      expired: "Link expired. Create a new link and try again.",
-      buttonOpenTelegram: "Open Telegram",
-      buttonNewLink: "Create new link",
-      helpText:
-        "1. Scan the QR code or click \"Open Telegram\".\n2. Press \"Start\" in the bot if needed.\n3. Press the button to send your phone number.\n4. Come back here, this step will finish automatically.",
-    },
+    ru: { /* как у тебя было */ },
+    uk: { /* ... */ },
+    en: { /* ... */ },
   }[language];
 
+  // разметку оставляешь как есть
   return (
     <Card className="max-w-xl mx-auto">
-      <CardHeader>
-        <CardTitle>{texts.title}</CardTitle>
-        <CardDescription>{texts.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {!telegramLink && (
-          <div className="text-sm text-muted-foreground">
-            {loadingLink
-              ? "Генерируем ссылку для Telegram..."
-              : "Готовим ссылку для Telegram..."}
-          </div>
-        )}
-
-        {telegramLink && (
-          <div className="flex flex-col items-center gap-4">
-            <div className="bg-white p-4 rounded-xl">
-              <QRCode value={telegramLink} size={180} />
-            </div>
-
-            <a
-              href={telegramLink}
-              target="_blank"
-              rel="noreferrer"
-              className="w-full"
-            >
-              <Button className="w-full" size="lg">
-                {texts.buttonOpenTelegram}
-              </Button>
-            </a>
-
-            <p className="whitespace-pre-line text-sm text-muted-foreground text-center">
-              {texts.helpText}
-            </p>
-          </div>
-        )}
-
-        {status && (
-          <div className="text-sm">
-            {status.status === "pending" && !status.telegramVerified && (
-              <span className="text-yellow-500">{texts.waiting}</span>
-            )}
-
-            {(status.status === "completed" || status.telegramVerified) && (
-              <span className="text-green-500">{texts.verified}</span>
-            )}
-
-            {status.status === "expired" && (
-              <span className="text-red-500">{texts.expired}</span>
-            )}
-          </div>
-        )}
-
-        {error && <div className="text-sm text-red-500">{error}</div>}
-
-        {status?.status === "expired" && (
-          <Button variant="outline" onClick={handleCreateNewLink}>
-            {texts.buttonNewLink}
-          </Button>
-        )}
-      </CardContent>
+      {/* ... остальной JSX без изменений ... */}
     </Card>
   );
 }
