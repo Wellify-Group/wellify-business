@@ -10,6 +10,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription, // Добавлено для нового UI
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
@@ -17,7 +18,8 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/components/language-provider";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
 
-type Step = 1 | 2 | 3;
+// !!! ИСПРАВЛЕНИЕ: ДОБАВЛЕНИЕ ШАГА 4 !!!
+type Step = 1 | 2 | 3 | 4;
 
 interface BaseData {
   firstName: string;
@@ -73,7 +75,9 @@ export default function RegisterDirectorClient() {
 
   // Телефон считается подтвержденным, когда шаг Telegram завершён
   const [phoneVerified, setPhoneVerified] = useState(false);
-  const [phoneStatus, setPhoneStatus] = useState<"idle" | "verifying" | "verified">("idle");
+  // Состояние phoneStatus больше не нужно, но оставим для совместимости в finishRegistration
+  const [phoneStatus, setPhoneStatus] = useState<"idle" | "verifying" | "verified">("idle"); 
+
 
   // Пользователь, созданный на шаге 2 (из ответа signUp)
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
@@ -195,7 +199,9 @@ export default function RegisterDirectorClient() {
         setRegisteredUserId(savedState.registeredUserId ?? null);
         setRegisteredEmail(savedState.registeredEmail ?? null);
 
-        if (restoredStep === 3) {
+        if (restoredStep === 4) { // Добавляем обработку для Шага 4
+            setStep(4);
+        } else if (restoredStep === 3) {
           setStep(3);
           setEmailStatus(savedState.emailVerified ? "verified" : "link_sent");
         } else if (restoredStep === 2) {
@@ -617,6 +623,7 @@ export default function RegisterDirectorClient() {
       setFinishLoading(true);
       setFinishError(null);
 
+      // Проверка, что e-mail подтвержден
       if (emailStatus !== "verified" || !emailVerified) {
         setFinishError(
           "E-mail должен быть подтверждён. Вернитесь на предыдущий шаг."
@@ -625,7 +632,8 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      if (phoneStatus !== "verified" || !phoneVerified) {
+      // Проверка, что телефон подтвержден (берем из состояния)
+      if (!phoneVerified) {
         setFinishError(
           "Телефон ещё не подтверждён через Telegram. Пожалуйста, завершите шаг в Telegram."
         );
@@ -633,9 +641,6 @@ export default function RegisterDirectorClient() {
         return;
       }
       
-      // Здесь phone: form.phone.trim() || null - это заглушка, 
-      // реальный phone уже в Supabase из Telegram.
-      // Мы полагаемся на то, что TelegramVerificationStep и bot уже записали phone в profiles.
       const registrationData = {
         email: form.email.trim(),
         password: baseData.password,
@@ -680,6 +685,7 @@ export default function RegisterDirectorClient() {
         localStorage.removeItem("register_email");
       }
 
+      // ФИНАЛЬНЫЙ РЕДИРЕКТ
       router.push("/dashboard/director");
     } catch (e: any) {
       console.error("finishRegistration error", e);
@@ -691,74 +697,19 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  // ВАЖНО: вызывается, когда TelegramVerificationStep сообщает, что всё успешно
-  const handleTelegramVerified = async () => {
+  // ВАЖНО: вызывается, когда TelegramVerificationStep видит успешное подтверждение
+  const handleTelegramVerified = () => {
     // В этом случае TelegramVerificationStep уже гарантировал, что profiles обновлен
+    // А Polling в TelegramVerificationStep остановился
     setPhoneStatus("verified");
     setPhoneVerified(true);
     setFormError(null);
     setFinishError(null);
-
-    // Вызываем завершение регистрации.
-    // Если онбординг завершается только при переходе на дашборд, это логично
-    await finishRegistration();
+    
+    // Переход на Шаг 4 для отображения успешного завершения
+    setStep(4);
   };
-
-  const steps = [
-    { id: 1, label: "Основные данные" },
-    { id: 2, label: "E-mail" },
-    { id: 3, label: "Telegram" }, // Изменено с "Телефон" на "Telegram"
-  ];
-
-  const renderStepHeader = () => (
-    <div className="mb-6">
-      <div className="mb-2 flex items-center gap-4">
-        {steps.map((s) => (
-          <div key={s.id} className="flex-1">
-            <div
-              className={`h-1.5 rounded-full transition-all ${
-                step >= s.id ? "bg-primary" : "bg-zinc-800"
-              }`}
-            />
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center justify-between text-[11px] text-zinc-400">
-        {steps.map((s) => (
-          <div key={s.id} className="flex-1 text-center">
-            {s.label}
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 text-center text-xs text-zinc-500">
-        Шаг {step} из 3
-      </div>
-    </div>
-  );
-
-  const renderAlerts = () => {
-    if (!formError && !formSuccess) {
-      return <div className="min-h-[44px]" />;
-    }
-
-    return (
-      <div className="space-y-2 min-h-[44px]">
-        {formError && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>{formError}</span>
-          </div>
-        )}
-        {formSuccess && (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
-            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            <span>{formSuccess}</span>
-          </div>
-        )}
-      </div>
-    );
-  };
-
+  
   const renderStep1 = () => (
     <form onSubmit={handleNextFromStep1} className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -1007,7 +958,7 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStep3 = () => {
+  const renderTelegramStep = () => {
     if (!registeredUserId || !registeredEmail) {
       return (
         <div className="space-y-4">
@@ -1030,47 +981,6 @@ export default function RegisterDirectorClient() {
           </div>
         </div>
       );
-    }
-
-    // Если телефон уже подтвержден (после предыдущей сессии) - показываем сообщение об успешном завершении
-    if (phoneVerified) {
-        return (
-            <div className="space-y-4">
-                <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/60 bg-emerald-500/15 px-4 py-3 text-sm text-emerald-200">
-                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                    <span>
-                        Телефон уже подтвержден через Telegram. Нажмите "Завершить регистрацию".
-                    </span>
-                </div>
-
-                {finishError && (
-                    <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                        <span>{finishError}</span>
-                    </div>
-                )}
-                
-                <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full md:w-auto"
-                        disabled={finishLoading}
-                        onClick={() => setStep(2)}
-                    >
-                        Назад
-                    </Button>
-                    <Button
-                        type="button"
-                        className="w-full md:w-auto"
-                        disabled={finishLoading || !phoneVerified}
-                        onClick={finishRegistration}
-                    >
-                        {finishLoading ? "Завершаем..." : "Завершить регистрацию"}
-                    </Button>
-                </div>
-            </div>
-        );
     }
 
     return (
@@ -1106,8 +1016,114 @@ export default function RegisterDirectorClient() {
           >
             Назад
           </Button>
-          {/* Кнопка "Завершить регистрацию" скрыта, так как флоу должен быть автоматическим */}
         </div>
+      </div>
+    );
+  };
+  
+  const renderStep4 = () => {
+      // Новый компонент успешного завершения
+      const texts = {
+          ru: {
+              title: "Поздравляем!",
+              description: "Регистрация успешно завершена.",
+              subtext: "Теперь вы можете перейти в свой дашборд и начать работу с сервисом.",
+              button: "Перейти в Дашборд",
+          },
+          uk: {
+              title: "Вітаємо!",
+              description: "Реєстрацію успішно завершено.",
+              subtext: "Тепер ви можете перейти до свого дашборду та почати роботу з сервісом.",
+              button: "Перейти до Дашборду",
+          },
+          en: {
+              title: "Congratulations!",
+              description: "Registration completed successfully.",
+              subtext: "You can now go to your dashboard and start using the service.",
+              button: "Go to Dashboard",
+          },
+      }[localeForAPI]; // Используем localeForAPI для выбора языка
+
+      return (
+          <CardContent className="space-y-6 flex flex-col items-center p-8">
+              <CheckCircle2 className="h-20 w-20 text-emerald-500" />
+              <CardTitle className="text-2xl text-center">
+                  {texts.title}
+              </CardTitle>
+              <CardDescription className="text-lg text-center">
+                  {texts.description}
+                  <p className="mt-2 text-sm text-muted-foreground">{texts.subtext}</p>
+              </CardDescription>
+              <Button
+                  onClick={finishRegistration} // Вызовет finishRegistration
+                  className="w-full md:w-auto mt-4"
+                  size="lg"
+                  disabled={finishLoading}
+              >
+                  {finishLoading ? "Завершаем..." : texts.button}
+              </Button>
+              {finishError && (
+                  <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>{finishError}</span>
+                  </div>
+              )}
+          </CardContent>
+      );
+  };
+
+
+  const steps = [
+    { id: 1, label: "Основные данные" },
+    { id: 2, label: "E-mail" },
+    { id: 3, label: "Telegram" },
+  ];
+
+  const renderStepHeader = () => (
+    <div className="mb-6">
+      <div className="mb-2 flex items-center gap-4">
+        {steps.map((s) => (
+          <div key={s.id} className="flex-1">
+            <div
+              className={`h-1.5 rounded-full transition-all ${
+                step >= s.id ? "bg-primary" : "bg-zinc-800"
+              }`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between text-[11px] text-zinc-400">
+        {steps.map((s) => (
+          <div key={s.id} className="flex-1 text-center">
+            {s.label}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 text-center text-xs text-zinc-500">
+        Шаг {step} из 3
+      </div>
+    </div>
+  );
+
+  const renderAlerts = () => {
+    if (!formError && !formSuccess) {
+      return <div className="min-h-[44px]" />;
+    }
+
+    return (
+      <div className="space-y-2 min-h-[44px]">
+        {formError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
+        {formSuccess && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            <span>{formSuccess}</span>
+          </div>
+        )}
       </div>
     );
   };
@@ -1133,7 +1149,8 @@ export default function RegisterDirectorClient() {
         <CardContent>
           {step === 1 && renderStep1()}
           {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
+          {step === 3 && renderTelegramStep()}
+          {step === 4 && renderStep4()}
         </CardContent>
       </Card>
     </main>

@@ -116,11 +116,13 @@ export function TelegramVerificationStep({
         const json = (await resp.json()) as SessionStatus;
         setStatus(json);
 
-        // УСЛОВИЕ ЗАВЕРШЕНИЯ: status === "completed" или phoneVerified === true
-        if (json.status === "completed" || json.phoneVerified) { 
+        // !!! ИСПРАВЛЕНИЕ: УСЛОВИЕ ЗАВЕРШЕНИЯ - СРАБАТЫВАЕТ СРАЗУ !!!
+        // Если телефон подтвержден в БД (phoneVerified: true), останавливаем Polling.
+        // UI перехватит статус.
+        if (json.phoneVerified) { 
           setPolling(false);
           clearInterval(interval);
-          // onVerified(); // НЕ вызываем finishRegistration сразу, ждем нажатия кнопки
+          // onVerified() будет вызван при нажатии на кнопку "Перейти в Дашборд"
         }
 
         if (json.status === "expired") {
@@ -134,7 +136,7 @@ export function TelegramVerificationStep({
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [sessionToken, polling]);
+  }, [sessionToken, polling]); 
 
   // 3. Пересоздать ссылку, если expired
   const handleCreateNewLink = () => {
@@ -192,7 +194,7 @@ export function TelegramVerificationStep({
   // =========================================================
   // КОМПОНЕНТ УСПЕШНОГО ЗАВЕРШЕНИЯ (Новый элемент UI)
   // =========================================================
-  if (status?.status === "completed" || status?.phoneVerified) {
+  if (status?.phoneVerified) {
     return (
       <CardContent className="space-y-6 flex flex-col items-center p-8">
         <CheckCircle2 className="h-20 w-20 text-emerald-500" />
