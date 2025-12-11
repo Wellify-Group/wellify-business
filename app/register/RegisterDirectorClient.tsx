@@ -27,7 +27,7 @@ interface BaseData {
 
 interface FormState {
   email: string;
-  phone: string; // пока оставляем, но телефон теперь приходит из Telegram/БД
+  phone: string; // оставляем поле, но для Telegram оно не используется
 }
 
 const SESSION_STORAGE_KEY = "wellify_register_state";
@@ -67,36 +67,25 @@ export default function RegisterDirectorClient() {
   >("idle");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(false);
-  const [confirmedUserId, setConfirmedUserId] = useState<string | undefined>(
-    undefined
-  );
-  // Таймер для повторной отправки письма (60 секунд)
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // СТАРЫЕ состояния для телефона (Twilio) пока оставляем, чтобы не ломать логику,
-  // но использовать их больше не будем
+  // Телефон – теперь будет подтверждаться через Telegram,
+  // но мы по-прежнему используем флаги phoneVerified/phoneStatus
+  // как "телефон подтверждён", только источник уже Telegram.
   const [phoneVerified, setPhoneVerified] = useState(false);
-  const [phoneStatus, setPhoneStatus] = useState<
-    "idle" | "verifying" | "verified"
-  >("idle");
-
-  // НОВОЕ состояние: подтверждение через Telegram
-  const [telegramVerified, setTelegramVerified] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState<"idle" | "verifying" | "verified">("idle");
 
   const [showPassword, setShowPassword] = useState(false);
 
-  // Состояние для завершения регистрации
   const [finishLoading, setFinishLoading] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
 
-  // Supabase клиент
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
-  // Функция для полной очистки состояния регистрации
+  // Полная очистка состояния регистрации
   const clearRegistrationState = () => {
     if (typeof window === "undefined") return;
 
-    // Очищаем sessionStorage
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
 
     localStorage.removeItem("register_in_progress");
@@ -119,12 +108,10 @@ export default function RegisterDirectorClient() {
     setEmailError(null);
     setEmailVerified(false);
     setPhoneVerified(false);
-    setTelegramVerified(false);
     setFormError(null);
     setFormSuccess(null);
     setFinishError(null);
 
-    // Выходим из сессии Supabase
     supabase.auth.signOut().catch((err) => {
       console.warn("Error signing out:", err);
     });
@@ -144,7 +131,6 @@ export default function RegisterDirectorClient() {
           phone: form.phone,
         },
         emailVerified,
-        // phoneVerified больше не критичен, но оставляем для совместимости
         phoneVerified,
       };
       sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
@@ -153,7 +139,7 @@ export default function RegisterDirectorClient() {
     }
   }, [step, baseData, form.email, form.phone, emailVerified, phoneVerified]);
 
-  // ========== ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ПРИ MOUNT ==========
+  // ========== ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ==========
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!isInitialMount.current) return;
@@ -183,7 +169,7 @@ export default function RegisterDirectorClient() {
           }
           setForm({
             email: savedState.form?.email || "",
-            phone: "",
+            phone: "", // телефон на шаге Telegram не нужен
           });
           setStep(3);
           setEmailStatus("link_sent");
@@ -227,7 +213,7 @@ export default function RegisterDirectorClient() {
     isInitialMount.current = false;
   }, [searchParams, router]);
 
-  // ========== ОЧИСТКА ПРИ УХОДЕ СО СТРАНИЦЫ ==========
+  // Очистка при уходе со страницы регистрации
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isInitialMount.current) return;
@@ -241,34 +227,20 @@ export default function RegisterDirectorClient() {
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
+
     if (step !== 2) {
       setEmailVerified(false);
       setEmailStatus("idle");
       setEmailError(null);
     }
-    // При уходе с шага 3 Telegram-верификацию не сбрасываем, но можно при необходимости
+    // На шаге 3 теперь телефон идёт через Telegram, но флаги оставляем как есть
   }, [step]);
 
-  // Авто-проверка e-mail через polling (оставляем без изменений)
+  // ===== ПОЛЛИНГ E-MAIL (оставляем как было) =====
   useEffect(() => {
-    if (emailStatus !== "link_sent") {
-      console.log("[register] Polling not started: emailStatus !== 'link_sent'", { emailStatus });
-      return;
-    }
-    if (!form.email.trim()) {
-      console.log("[register] Polling not started: email is empty");
-      return;
-    }
-    if (emailVerified) {
-      console.log("[register] Polling not started: email already verified");
-      return;
-    }
-
-    console.log("[register] 🚀 Starting email verification polling", {
-      email: form.email.trim(),
-      emailStatus,
-      emailVerified,
-    });
+    if (emailStatus !== "link_sent") return;
+    if (!form.email.trim()) return;
+    if (emailVerified) return;
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -279,10 +251,13 @@ export default function RegisterDirectorClient() {
         if (cancelled) return;
 
         const emailParam = encodeURIComponent(form.email.trim());
-        const res = await fetch(`/api/auth/check-email-confirmed?email=${emailParam}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
+        const res = await fetch(
+          `/api/auth/check-email-confirmed?email=${emailParam}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
 
         if (!res.ok) {
           if (res.status === 401) {
@@ -295,18 +270,13 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
-        console.log("[register] checkEmailConfirmation response", {
-          success: data.success,
-          emailConfirmed: data.emailConfirmed,
-          fullResponse: data,
-        });
-
         if (data.success === true && data.emailConfirmed === true) {
           if (!cancelled) {
-            console.log("[register] ✅ Email verified (email_verified = TRUE)!");
             setEmailStatus("verified");
             setEmailVerified(true);
-            setFormSuccess("Отлично! Ваша почта подтверждена, можете переходить к 3 шагу.");
+            setFormSuccess(
+              "Отлично! Ваша почта подтверждена, можете переходить к 3 шагу."
+            );
             setEmailError(null);
 
             if (intervalId) {
@@ -323,13 +293,6 @@ export default function RegisterDirectorClient() {
               localStorage.removeItem("register_email");
             }
           }
-        } else {
-          console.log("[register] ⏳ Email not confirmed yet, continuing polling...", {
-            email: form.email.trim(),
-            success: data.success,
-            emailConfirmed: data.emailConfirmed,
-            reason: data.reason,
-          });
         }
       } catch (e) {
         console.error("[register] checkEmailConfirmation exception", e);
@@ -339,14 +302,7 @@ export default function RegisterDirectorClient() {
     const initialDelay = setTimeout(() => {
       if (!cancelled && !emailVerified && emailStatus === "link_sent") {
         hasStartedPolling = true;
-        console.log("[register] 🔍 Starting first email check after delay");
         checkEmailConfirmation();
-      } else {
-        console.log("[register] ⚠️ First check skipped", {
-          cancelled,
-          emailVerified,
-          emailStatus,
-        });
       }
     }, 3000);
 
@@ -365,12 +321,8 @@ export default function RegisterDirectorClient() {
 
     return () => {
       cancelled = true;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      if (initialDelay) {
-        clearTimeout(initialDelay);
-      }
+      if (intervalId) clearInterval(intervalId);
+      if (initialDelay) clearTimeout(initialDelay);
     };
   }, [emailStatus, form.email, emailVerified]);
 
@@ -390,7 +342,7 @@ export default function RegisterDirectorClient() {
     return () => clearInterval(timerId);
   }, [resendCooldown]);
 
-  // Сохранение состояния регистрации в localStorage (оставляем как было)
+  // Сохранение состояния в localStorage (оставляем)
   useEffect(() => {
     if (step > 1 || form.email || form.phone) {
       const state = {
@@ -436,12 +388,9 @@ export default function RegisterDirectorClient() {
     setStep(2);
   };
 
-  // ====== EMAIL SIGNUP / SEND LINK ======
+  // Отправка письма с подтверждением e-mail
   const handleSendEmailLink = async () => {
-    if (emailStatus === "sending") {
-      console.warn("[register] handleSendEmailLink already in progress");
-      return;
-    }
+    if (emailStatus === "sending") return;
 
     let timeoutId: NodeJS.Timeout | null = null;
 
@@ -474,10 +423,7 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      console.log("[register] Checking if email already exists in database", {
-        email: form.email.trim(),
-      });
-
+      // Проверка, что email ещё не зарегистрирован
       try {
         const checkEmailRes = await fetch("/api/auth/check-email-exists", {
           method: "POST",
@@ -487,12 +433,7 @@ export default function RegisterDirectorClient() {
 
         if (checkEmailRes.ok) {
           const checkEmailData = await checkEmailRes.json();
-
           if (checkEmailData.exists === true) {
-            console.log("[register] Email already exists, blocking registration", {
-              email: form.email.trim(),
-            });
-
             if (timeoutId) clearTimeout(timeoutId);
             setEmailStatus("error");
             setEmailError(
@@ -500,17 +441,9 @@ export default function RegisterDirectorClient() {
             );
             return;
           }
-        } else {
-          console.warn(
-            "[register] Failed to check email existence, continuing registration",
-            { status: checkEmailRes.status }
-          );
         }
       } catch (checkError) {
-        console.warn(
-          "[register] Error checking email existence, continuing registration",
-          checkError
-        );
+        console.warn("[register] Error checking email existence", checkError);
       }
 
       const redirectTo =
@@ -530,11 +463,6 @@ export default function RegisterDirectorClient() {
 
       const birthDateFormatted = baseData.birthDate;
 
-      console.log("[register] Sending email verification", {
-        email: form.email.trim(),
-        redirectTo,
-      });
-
       const { data, error } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: baseData.password,
@@ -549,15 +477,6 @@ export default function RegisterDirectorClient() {
           },
           emailRedirectTo: redirectTo,
         },
-      });
-
-      console.log("[register] signUp response", {
-        hasData: !!data,
-        hasUser: !!data?.user,
-        userId: data?.user?.id,
-        email: data?.user?.email,
-        error: error?.message,
-        errorStatus: error?.status,
       });
 
       if (error) {
@@ -615,21 +534,8 @@ export default function RegisterDirectorClient() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) {
-        console.warn(
-          "[register] ⚠️ No session after signUp, email will be checked via email parameter"
-        );
-      } else {
-        console.log("[register] ✅ Session created after signUp", {
-          userId: session.user.id,
-        });
+        console.warn("[register] No session after signUp");
       }
-
-      console.log("[register] ✅ Email sent successfully", {
-        email: normalizedEmail,
-        userId: data.user.id,
-        emailConfirmed: !!data.user.email_confirmed_at,
-        hasSession: !!session,
-      });
     } catch (e: any) {
       console.error("[register] handleSendEmailLink exception", e);
       if (timeoutId) clearTimeout(timeoutId);
@@ -683,13 +589,11 @@ export default function RegisterDirectorClient() {
     setFormSuccess(null);
   };
 
-  // ========= ЗАВЕРШЕНИЕ РЕГИСТРАЦИИ =========
   const finishRegistration = async () => {
     try {
       setFinishLoading(true);
       setFinishError(null);
 
-      // 1. Email должен быть подтверждён
       if (emailStatus !== "verified" || !emailVerified) {
         setFinishError(
           "E-mail должен быть подтверждён. Вернитесь на предыдущий шаг."
@@ -698,14 +602,20 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // 2. Telegram уже подтвердил телефон и записал его в Supabase (telegram_verified = true)
-      // Мы доверяем этому шагу (TelegramVerificationStep вызывает finishRegistration только после успешной верификации).
+      // ТЕЛЕФОН: теперь мы считаем телефон подтверждённым,
+      // если Telegram завершил шаг (phoneStatus === "verified" и phoneVerified === true)
+      if (phoneStatus !== "verified" || !phoneVerified) {
+        setFinishError(
+          "Телефон ещё не подтверждён через Telegram. Пожалуйста, завершите шаг в Telegram."
+        );
+        setFinishLoading(false);
+        return;
+      }
 
       const registrationData = {
         email: form.email.trim(),
         password: baseData.password,
-        // телефон теперь берём из профиля на backend, но поле оставим опционально
-        phone: form.phone.trim() || undefined,
+        phone: form.phone.trim() || null, // реальный телефон уже в Supabase из Telegram
         firstName: baseData.firstName.trim(),
         lastName: baseData.lastName.trim(),
         middleName: baseData.middleName.trim(),
@@ -757,13 +667,22 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  const handleCompleteRegistration = finishRegistration;
-  const handleFinish = handleCompleteRegistration;
+  // ВАЖНО: вызывается, когда TelegramVerificationStep сообщает, что всё успешно
+  const handleTelegramVerified = async () => {
+    // С точки зрения регистрации это "телефон подтверждён"
+    setPhoneStatus("verified");
+    setPhoneVerified(true);
+    setFormError(null);
+    setFinishError(null);
+
+    // Автоматически завершаем регистрацию
+    await finishRegistration();
+  };
 
   const steps = [
     { id: 1, label: "Основные данные" },
     { id: 2, label: "E-mail" },
-    { id: 3, label: "Телефон" }, // по факту Telegram-подтверждение телефона
+    { id: 3, label: "Telegram" }, // меняем подпись
   ];
 
   const renderStepHeader = () => (
@@ -931,8 +850,7 @@ export default function RegisterDirectorClient() {
 
   const renderStep2 = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const isEmailValid =
-      form.email.trim() && emailRegex.test(form.email.trim());
+    const isEmailValid = form.email.trim() && emailRegex.test(form.email.trim());
 
     const isEmailInputDisabled =
       emailStatus === "sending" ||
@@ -1007,7 +925,6 @@ export default function RegisterDirectorClient() {
               variant="outline"
               className="flex-1"
               onClick={handleChangeEmail}
-              disabled={false}
             >
               Изменить e-mail
             </Button>
@@ -1065,10 +982,14 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  // ========== ШАГ 3: TELEGRAM ==========
   const renderStep3 = () => {
     return (
       <div className="space-y-4">
+        <TelegramVerificationStep
+          onVerified={handleTelegramVerified}
+          language={localeForAPI as "ru" | "uk" | "en"}
+        />
+
         {finishError && (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -1076,15 +997,12 @@ export default function RegisterDirectorClient() {
           </div>
         )}
 
-        {/* Основной компонент Telegram-верификации */}
-        <TelegramVerificationStep
-          language={localeForAPI}
-          onVerified={async () => {
-            // этот колбэк вызывается, когда Railway / Telegram подтвердили телефон
-            setTelegramVerified(true);
-            await finishRegistration();
-          }}
-        />
+        {formError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
 
         <div className="mt-4 flex flex-col gap-2 md:flex-row md:justify-between">
           <Button
@@ -1096,6 +1014,9 @@ export default function RegisterDirectorClient() {
           >
             Назад
           </Button>
+          {/* Кнопка "Завершить" больше не нужна:
+              теперь завершение регистрации происходит автоматически
+              внутри handleTelegramVerified */}
         </div>
       </div>
     );
