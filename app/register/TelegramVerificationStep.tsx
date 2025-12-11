@@ -1,3 +1,5 @@
+// app/register/TelegramVerificationStep.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,7 +26,7 @@ type SessionStatus = {
   phone: string | null;
 };
 
-const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
+// const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL; // Больше не нужен для прямого обращения
 
 export function TelegramVerificationStep({
   onVerified,
@@ -47,12 +49,7 @@ export function TelegramVerificationStep({
   // 1. Создаем registration_session один раз
   useEffect(() => {
     if (initialized) return; // уже пытались
-    if (!TELEGRAM_API_URL) {
-      setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local / Vercel");
-      setInitialized(true);
-      return;
-    }
-
+    
     if (!userId || !email) {
       setError("Не удалось получить данные регистрации. Вернитесь на предыдущий шаг.");
       setInitialized(true);
@@ -64,7 +61,8 @@ export function TelegramVerificationStep({
         setLoadingLink(true);
         setError(null);
 
-        const resp = await fetch(`${TELEGRAM_API_URL}/telegram/link-session`, {
+        // !!! ИЗМЕНЕНИЕ: Обращение к локальному API Route (посреднику) !!!
+        const resp = await fetch(`/api/telegram/link-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -73,10 +71,11 @@ export function TelegramVerificationStep({
             language,
           }),
         });
+        // !!! КОНЕЦ ИЗМЕНЕНИЯ !!!
 
         if (!resp.ok) {
           console.error("link-session failed:", resp.status);
-          setError("Не удалось создать сессию Telegram. Попробуйте позже.");
+          setError(`Не удалось создать сессию Telegram. Код ошибки: ${resp.status}. Попробуйте позже.`);
           return;
         }
 
@@ -90,12 +89,8 @@ export function TelegramVerificationStep({
         setPolling(true);
       } catch (e) {
         console.error("createSession error:", e);
-        // Проверяем, является ли ошибка CORS
-        if (e instanceof TypeError && e.message.includes("Failed to fetch")) {
-          setError("Ошибка подключения к серверу Telegram. Проверьте настройки CORS на сервере бота.");
-        } else {
-          setError("Произошла ошибка при создании сессии Telegram.");
-        }
+        // Теперь эта ошибка означает, что ПРОКСИ-МАРШРУТ Next.js не работает
+        setError("Произошла внутренняя ошибка при создании сессии Telegram.");
       } finally {
         setLoadingLink(false);
         setInitialized(true); // важно!
@@ -107,15 +102,17 @@ export function TelegramVerificationStep({
 
   // 2. Polling статуса сессии
   useEffect(() => {
-    if (!TELEGRAM_API_URL) return;
     if (!sessionToken) return;
     if (!polling) return;
 
     const interval = setInterval(async () => {
       try {
+        // !!! ИЗМЕНЕНИЕ: Обращение к локальному API Route (посреднику) !!!
         const resp = await fetch(
-          `${TELEGRAM_API_URL}/telegram/session-status/${sessionToken}`
+          `/api/telegram/session-status/${sessionToken}`
         );
+        // !!! КОНЕЦ ИЗМЕНЕНИЯ !!!
+        
         if (!resp.ok) {
           console.error("session-status failed:", resp.status);
           return;
