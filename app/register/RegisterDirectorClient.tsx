@@ -13,7 +13,7 @@ import {
   CardDescription, // Добавлено для нового UI
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/components/language-provider";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
@@ -1164,7 +1164,20 @@ export default function RegisterDirectorClient() {
       }[localeForAPI];
 
       return (
-          <CardContent className="space-y-6 flex flex-col items-center justify-center p-12 min-h-[400px]">
+          <CardContent className="space-y-6 flex flex-col items-center justify-center p-12 min-h-[400px] relative">
+              {/* Кнопка "Назад" вверху слева */}
+              <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-4 left-4 text-muted-foreground hover:text-foreground"
+                  onClick={() => setStep(3)}
+                  disabled={finishLoading}
+              >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Назад
+              </Button>
+              
               <div className="flex flex-col items-center gap-6">
                   <div className="relative">
                       <CheckCircle2 className="h-24 w-24 text-emerald-500 animate-in fade-in zoom-in duration-500" />
