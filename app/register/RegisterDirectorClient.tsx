@@ -1104,52 +1104,74 @@ export default function RegisterDirectorClient() {
   };
   
   const renderStep4 = () => {
-      // Новый компонент успешного завершения
+      // Компонент успешного завершения регистрации
       const texts = {
           ru: {
               title: "Поздравляем!",
               description: "Регистрация успешно завершена.",
-              subtext: "Теперь вы можете перейти в свой дашборд и начать работу с сервисом.",
+              subtext: "Вы успешно завершили регистрацию. Теперь вы можете перейти в свой дашборд и начать работу с сервисом.",
               button: "Перейти в Дашборд",
+              loading: "Завершаем...",
           },
           uk: {
               title: "Вітаємо!",
               description: "Реєстрацію успішно завершено.",
-              subtext: "Тепер ви можете перейти до свого дашборду та почати роботу з сервісом.",
+              subtext: "Ви успішно завершили реєстрацію. Тепер ви можете перейти до свого дашборду та почати роботу з сервісом.",
               button: "Перейти до Дашборду",
+              loading: "Завершуємо...",
           },
           en: {
               title: "Congratulations!",
               description: "Registration completed successfully.",
-              subtext: "You can now go to your dashboard and start using the service.",
+              subtext: "You have successfully completed registration. You can now go to your dashboard and start using the service.",
               button: "Go to Dashboard",
+              loading: "Completing...",
           },
-      }[localeForAPI]; // Используем localeForAPI для выбора языка
+      }[localeForAPI];
 
       return (
-          <CardContent className="space-y-6 flex flex-col items-center p-8">
-              <CheckCircle2 className="h-20 w-20 text-emerald-500" />
-              <CardTitle className="text-2xl text-center">
-                  {texts.title}
-              </CardTitle>
-              <CardDescription className="text-lg text-center">
-                  {texts.description}
-                  <p className="mt-2 text-sm text-muted-foreground">{texts.subtext}</p>
-              </CardDescription>
-              <Button
-                  onClick={finishRegistration} // Вызовет finishRegistration
-                  className="w-full md:w-auto mt-4"
-                  size="lg"
-                  disabled={finishLoading}
-              >
-                  {finishLoading ? "Завершаем..." : texts.button}
-              </Button>
-              {finishError && (
-                  <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                      <span>{finishError}</span>
+          <CardContent className="space-y-6 flex flex-col items-center justify-center p-12 min-h-[400px]">
+              <div className="flex flex-col items-center gap-6">
+                  <div className="relative">
+                      <CheckCircle2 className="h-24 w-24 text-emerald-500 animate-in fade-in zoom-in duration-500" />
+                      <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
                   </div>
-              )}
+                  
+                  <div className="text-center space-y-3">
+                      <CardTitle className="text-3xl font-bold text-center">
+                          {texts.title}
+                      </CardTitle>
+                      <CardDescription className="text-lg text-center max-w-md">
+                          {texts.description}
+                      </CardDescription>
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                          {texts.subtext}
+                      </p>
+                  </div>
+                  
+                  <Button
+                      onClick={finishRegistration}
+                      className="w-full md:w-auto mt-6 px-8 py-6 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                      size="lg"
+                      disabled={finishLoading}
+                  >
+                      {finishLoading ? (
+                          <span className="flex items-center gap-2">
+                              <span className="animate-spin">⏳</span>
+                              {texts.loading}
+                          </span>
+                      ) : (
+                          texts.button
+                      )}
+                  </Button>
+                  
+                  {finishError && (
+                      <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400 max-w-md">
+                          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                          <span>{finishError}</span>
+                      </div>
+                  )}
+              </div>
           </CardContent>
       );
   };

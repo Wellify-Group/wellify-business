@@ -2634,14 +2634,60 @@ export const useStore = create<AppState>()(
             return;
           }
 
+          // Для директоров: сначала пытаемся загрузить данные из Supabase
+          if (currentUser.role === 'director') {
+            try {
+              const profileResponse = await fetch('/api/auth/load-profile');
+              const profileData = await profileResponse.json();
+
+              if (profileResponse.ok && profileData.success && profileData.user) {
+                // Обновляем currentUser данными из Supabase
+                const supabaseUser = profileData.user;
+                set({
+                  currentUser: {
+                    ...currentUser,
+                    ...supabaseUser,
+                    // Сохраняем важные поля, которые могут быть в currentUser
+                    businessId: supabaseUser.businessId || currentUser.businessId,
+                    companyCode: supabaseUser.companyCode || currentUser.companyCode,
+                  },
+                  user: {
+                    ...currentUser,
+                    ...supabaseUser,
+                    businessId: supabaseUser.businessId || currentUser.businessId,
+                    companyCode: supabaseUser.companyCode || currentUser.companyCode,
+                  },
+                });
+                console.log('[Sync] Loaded profile from Supabase:', supabaseUser);
+              }
+            } catch (profileError) {
+              console.warn('[Sync] Failed to load profile from Supabase, falling back to file system:', profileError);
+            }
+          }
+
           const response = await fetch(`/api/sync?userId=${encodeURIComponent(currentUser.id)}&role=${encodeURIComponent(currentUser.role)}`);
           const data = await response.json();
 
           if (response.ok && data.success && data.data) {
             // OVERWRITE local state with fresh data from server
+            // Но сохраняем данные из Supabase, если они были загружены
+            const updatedUser = {
+              ...data.data.user,
+              // Если есть данные из Supabase, используем их для полей профиля
+              ...(currentUser.role === 'director' && {
+                firstName: (currentUser as any).firstName || data.data.user.name?.split(' ')[0],
+                lastName: (currentUser as any).lastName || data.data.user.name?.split(' ')[1],
+                middleName: (currentUser as any).middleName || data.data.user.name?.split(' ')[2],
+                phone: (currentUser as any).phone || data.data.user.phone,
+                dob: (currentUser as any).dob || data.data.user.dob,
+                email: (currentUser as any).email || data.data.user.email,
+                fullName: (currentUser as any).fullName || data.data.user.fullName,
+              }),
+            };
+
             set({
-              currentUser: data.data.user,
-              user: data.data.user,
+              currentUser: updatedUser,
+              user: updatedUser,
               locations: data.data.locations || [],
               employees: data.data.employees || [],
               shifts: data.data.shifts || [],
