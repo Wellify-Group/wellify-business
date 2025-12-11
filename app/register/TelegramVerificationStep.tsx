@@ -50,7 +50,11 @@ export function TelegramVerificationStep({ onVerified, language = "ru" }: Telegr
     console.log("TELEGRAM_API_URL:", TELEGRAM_API_URL);
     
     if (!TELEGRAM_API_URL) {
-      setError("NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local. Убедитесь, что вы перезапустили dev-сервер после добавления переменной.");
+      const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+      const errorMessage = isProduction
+        ? "NEXT_PUBLIC_TELEGRAM_API_URL не настроен в переменных окружения на сервере (Vercel/Railway). Проверьте настройки деплоя."
+        : "NEXT_PUBLIC_TELEGRAM_API_URL не настроен в .env.local. Убедитесь, что вы перезапустили dev-сервер после добавления переменной.";
+      setError(errorMessage);
       return;
     }
 
