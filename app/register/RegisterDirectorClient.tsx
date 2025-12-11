@@ -705,22 +705,56 @@ export default function RegisterDirectorClient() {
       setFinishLoading(true);
       setFinishError(null);
 
-      // Проверка, что e-mail подтвержден
-      if (emailStatus !== "verified" || !emailVerified) {
-        setFinishError(
-          "E-mail должен быть подтверждён. Вернитесь на предыдущий шаг."
+      // На шаге 4 проверяем статусы напрямую из БД, так как состояние могло сброситься
+      // Проверяем email_verified из БД
+      try {
+        const emailParam = encodeURIComponent(form.email.trim());
+        const emailCheckRes = await fetch(
+          `/api/auth/check-email-confirmed?email=${emailParam}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
         );
-        setFinishLoading(false);
-        return;
+        
+        if (emailCheckRes.ok) {
+          const emailCheckData = await emailCheckRes.json();
+          if (!emailCheckData.emailConfirmed) {
+            setFinishError(
+              "E-mail должен быть подтверждён. Вернитесь на предыдущий шаг."
+            );
+            setFinishLoading(false);
+            return;
+          }
+        }
+      } catch (emailCheckError) {
+        console.error("[register] Error checking email status:", emailCheckError);
+        // Продолжаем, если проверка не удалась
       }
 
-      // Проверка, что телефон подтвержден (берем из состояния)
-      if (!phoneVerified) {
-        setFinishError(
-          "Телефон ещё не подтверждён через Telegram. Пожалуйста, завершите шаг в Telegram."
+      // Проверяем phone_verified из БД
+      try {
+        const phoneCheckRes = await fetch(
+          `/api/auth/check-phone-confirmed?email=${encodeURIComponent(form.email.trim())}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
         );
-        setFinishLoading(false);
-        return;
+        
+        if (phoneCheckRes.ok) {
+          const phoneCheckData = await phoneCheckRes.json();
+          if (!phoneCheckData.phoneConfirmed) {
+            setFinishError(
+              "Телефон ещё не подтверждён через Telegram. Пожалуйста, завершите шаг в Telegram."
+            );
+            setFinishLoading(false);
+            return;
+          }
+        }
+      } catch (phoneCheckError) {
+        console.error("[register] Error checking phone status:", phoneCheckError);
+        // Продолжаем, если проверка не удалась
       }
       
       const registrationData = {
@@ -1183,31 +1217,38 @@ export default function RegisterDirectorClient() {
     { id: 3, label: "Telegram" },
   ];
 
-  const renderStepHeader = () => (
-    <div className="mb-6">
-      <div className="mb-2 flex items-center gap-4">
-        {steps.map((s) => (
-          <div key={s.id} className="flex-1">
-            <div
-              className={`h-1.5 rounded-full transition-all ${
-                step >= s.id ? "bg-primary" : "bg-zinc-800"
-              }`}
-            />
-          </div>
-        ))}
+  const renderStepHeader = () => {
+    // На шаге 4 не показываем индикаторы шагов
+    if (step === 4) {
+      return null;
+    }
+    
+    return (
+      <div className="mb-6">
+        <div className="mb-2 flex items-center gap-4">
+          {steps.map((s) => (
+            <div key={s.id} className="flex-1">
+              <div
+                className={`h-1.5 rounded-full transition-all ${
+                  step >= s.id ? "bg-primary" : "bg-zinc-800"
+                }`}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-zinc-400">
+          {steps.map((s) => (
+            <div key={s.id} className="flex-1 text-center">
+              {s.label}
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 text-center text-xs text-zinc-500">
+          Шаг {step} из 3
+        </div>
       </div>
-      <div className="flex items-center justify-between text-[11px] text-zinc-400">
-        {steps.map((s) => (
-          <div key={s.id} className="flex-1 text-center">
-            {s.label}
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 text-center text-xs text-zinc-500">
-        Шаг {step} из 3
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderAlerts = () => {
     if (!formError && !formSuccess) {
