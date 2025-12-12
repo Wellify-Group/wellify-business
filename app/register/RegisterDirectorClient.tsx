@@ -1,350 +1,223 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useState, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { Mail, Lock, Building2, User, Loader2 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { TelegramVerificationStep } from "./TelegramVerificationStep";
 
-type Step = 1 | 2 | 3 | 4;
+interface FormState {
+  email: string;
+  password: string;
+  fullName: string;
+  businessName: string;
+}
 
 export default function RegisterDirectorClient() {
   const router = useRouter();
   const { language } = useLanguage();
-  const supabase = createBrowserSupabaseClient();
 
-  const localeForAPI = language === "ua" ? "uk" : language;
-
-  const [step, setStep] = useState<Step>(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [showPassword, setShowPassword] = useState(false);
-
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    middleName: "",
-    birthDate: "",
+  const [form, setForm] = useState<FormState>({
     email: "",
     password: "",
-    passwordConfirm: "",
+    fullName: "",
+    businessName: "",
   });
 
-  const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
-  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // ---------------- STEP 1 ----------------
-  const handleStep1 = (e: FormEvent) => {
+  const handleChange =
+    (field: keyof FormState) =>
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setForm((prev) => ({ ...prev, [field]: e.target.value }));
+    };
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (
-      !form.firstName ||
-      !form.lastName ||
-      !form.middleName ||
-      !form.birthDate
-    ) {
-      setError("Заполните все обязательные поля.");
+    if (!form.email || !form.password) {
+      setError("Заполните e-mail и пароль.");
       return;
     }
 
-    if (form.password.length < 8) {
-      setError("Пароль должен быть не короче 8 символов.");
-      return;
-    }
-
-    if (form.password !== form.passwordConfirm) {
-      setError("Пароли не совпадают.");
-      return;
-    }
-
-    setStep(2);
-  };
-
-  // ---------------- STEP 2 ----------------
-  const handleSendEmail = async () => {
-    setError(null);
-    setLoading(true);
-
+    setIsSubmitting(true);
     try {
-      const redirectTo =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/email-confirmed`
-          : undefined;
-
-      const fullName = `${form.lastName} ${form.firstName} ${form.middleName}`;
-
-      const { data, error } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          data: {
-            first_name: form.firstName,
-            last_name: form.lastName,
-            middle_name: form.middleName,
-            full_name: fullName,
-            birth_date: form.birthDate,
-            language: localeForAPI,
-            role: "директор",
-          },
-          emailRedirectTo: redirectTo,
-        },
-      });
-
-      if (error || !data?.user) {
-        throw error ?? new Error("Не удалось создать пользователя");
-      }
-
-      setRegisteredUserId(data.user.id);
-      setRegisteredEmail(data.user.email ?? form.email);
-      setStep(3);
-    } catch (e: any) {
-      setError(e.message ?? "Ошибка отправки письма");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ---------------- STEP 4 ----------------
-  const finishRegistration = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/auth/register-director", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           email: form.email,
           password: form.password,
-          firstName: form.firstName,
-          lastName: form.lastName,
-          middleName: form.middleName,
-          birthDate: form.birthDate,
-          language: localeForAPI,
+          fullName: form.fullName || undefined,
+          businessName: form.businessName || undefined,
+          language,
         }),
       });
 
-      const json = await res.json();
+      const data = await res.json();
 
-      if (!res.ok || !json.success) {
-        throw new Error(json.error ?? "Ошибка завершения регистрации");
+      if (!res.ok || !data.success) {
+        setError(
+          data?.error ||
+            "Не удалось завершить регистрацию. Попробуйте ещё раз."
+        );
+        setIsSubmitting(false);
+        return;
       }
 
-      const { error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email: form.email,
-          password: form.password,
-        });
-
-      if (signInError) {
-        throw signInError;
-      }
-
-      router.push("/dashboard/director");
-    } catch (e: any) {
-      setError(e.message ?? "Ошибка регистрации");
-    } finally {
-      setLoading(false);
+      router.push("/login?registered=1");
+    } catch (err) {
+      console.error("Register error", err);
+      setError("Внутренняя ошибка. Попробуйте позже.");
+      setIsSubmitting(false);
     }
   };
 
-  // ---------------- RENDER ---------------- 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-xl rounded-3xl border border-zinc-800/60 bg-zinc-900/85 shadow-[0_24px_80px_rgba(0,0,0,0.85)] px-8 py-7">
-        <CardHeader className="mb-6">
-          <CardTitle className="text-center text-[22px] font-semibold text-zinc-50">
-            Регистрация директора
-          </CardTitle>
-          <CardDescription className="text-center text-sm text-zinc-400 mt-2">
-            Уже есть аккаунт?{" "}
-            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 hover:underline transition-colors">
-              Войти
-            </Link>
-          </CardDescription>
-        </CardHeader>
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-4">
+      <div className="relative w-full max-w-xl">
+        {/* подсветка позади карточки */}
+        <div className="pointer-events-none absolute -inset-x-10 -top-24 h-64 rounded-full bg-[radial-gradient(circle_at_top,_rgba(244,244,245,0.16),_transparent)] blur-3xl" />
 
-        <CardContent className="space-y-6">
-          {step === 1 && (
-            <form onSubmit={handleStep1} className="space-y-5">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-zinc-400">
-                  Имя <span className="text-red-400">*</span>
-                </span>
-                <input
-                  placeholder="Введите имя"
-                  value={form.firstName}
-                  onChange={(e) =>
-                    setForm({ ...form, firstName: e.target.value })
-                  }
-                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
-                />
-              </label>
+        <Card className="relative z-10 w-full rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent)] bg-zinc-950/80 shadow-[0_24px_80px_rgba(0,0,0,0.85)] backdrop-blur-xl">
+          <CardHeader className="px-8 pt-7 pb-3">
+            <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-zinc-50">
+              Регистрация директора
+            </CardTitle>
+            <CardDescription className="mt-2 text-center text-sm text-zinc-400">
+              Создайте аккаунт владельца бизнеса, чтобы управлять точками,
+              сменами и персоналом в WELLIFY business.
+            </CardDescription>
+          </CardHeader>
 
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-zinc-400">
-                  Отчество <span className="text-red-400">*</span>
-                </span>
-                <input
-                  placeholder="Введите отчество"
-                  value={form.middleName}
-                  onChange={(e) =>
-                    setForm({ ...form, middleName: e.target.value })
-                  }
-                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-zinc-400">
-                  Фамилия <span className="text-red-400">*</span>
-                </span>
-                <input
-                  placeholder="Введите фамилию"
-                  value={form.lastName}
-                  onChange={(e) =>
-                    setForm({ ...form, lastName: e.target.value })
-                  }
-                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-zinc-400">
-                  Дата рождения <span className="text-red-400">*</span>
-                </span>
-                <input
-                  type="date"
-                  value={form.birthDate}
-                  onChange={(e) =>
-                    setForm({ ...form, birthDate: e.target.value })
-                  }
-                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-zinc-400">
-                  Пароль <span className="text-red-400">*</span>
-                </span>
+          <CardContent className="px-8 pb-4 pt-3">
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {/* Имя директора */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                  Имя и фамилия директора
+                </label>
                 <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                    <User className="h-4 w-4 text-zinc-500" />
+                  </div>
                   <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Введите пароль"
-                    value={form.password}
-                    onChange={(e) =>
-                      setForm({ ...form, password: e.target.value })
-                    }
-                    className="h-11 w-full rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
+                    type="text"
+                    autoComplete="name"
+                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    placeholder="Например, Иван Петров"
+                    value={form.fullName}
+                    onChange={handleChange("fullName")}
                   />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
                 </div>
-              </label>
+              </div>
 
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-zinc-400">
-                  Подтвердите пароль <span className="text-red-400">*</span>
-                </span>
-                <input
-                  type="password"
-                  placeholder="Повторите пароль"
-                  value={form.passwordConfirm}
-                  onChange={(e) =>
-                    setForm({ ...form, passwordConfirm: e.target.value })
-                  }
-                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
-                />
-              </label>
+              {/* E-mail */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                  Рабочий e-mail
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                    <Mail className="h-4 w-4 text-zinc-500" />
+                  </div>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    placeholder="you@business.com"
+                    value={form.email}
+                    onChange={handleChange("email")}
+                  />
+                </div>
+              </div>
+
+              {/* Пароль */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                  Пароль
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                    <Lock className="h-4 w-4 text-zinc-500" />
+                  </div>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    placeholder="Минимум 8 символов"
+                    value={form.password}
+                    onChange={handleChange("password")}
+                  />
+                </div>
+              </div>
+
+              {/* Название бизнеса */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                  Название бизнеса
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                    <Building2 className="h-4 w-4 text-zinc-500" />
+                  </div>
+                  <input
+                    type="text"
+                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    placeholder="Например, WELLIFY Coffee"
+                    value={form.businessName}
+                    onChange={handleChange("businessName")}
+                  />
+                </div>
+              </div>
 
               {error && (
-                <div className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{error}</span>
-                </div>
+                <p className="text-xs text-rose-400/90">{error}</p>
               )}
 
-              <div className="mt-4 flex justify-end">
-                <Button 
-                  type="submit" 
-                  className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  Далее
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="mt-1 inline-flex h-10 w-full items-center justify-center rounded-xl bg-zinc-50 text-sm font-medium text-zinc-950 shadow-[0_10px_40px_rgba(0,0,0,0.65)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Регистрация...
+                  </>
+                ) : (
+                  "Зарегистрировать директора"
+                )}
+              </Button>
             </form>
-          )}
+          </CardContent>
 
-          {step === 2 && (
-            <>
-              <input
-                placeholder="E-mail"
-                value={form.email}
-                onChange={(e) =>
-                  setForm({ ...form, email: e.target.value })
-                }
-                className="input"
-              />
-              <Button
-                onClick={handleSendEmail}
-                disabled={loading}
-                className="w-full"
-              >
-                Отправить письмо
-              </Button>
-            </>
-          )}
-
-          {step === 3 && registeredUserId && registeredEmail && (
-            <TelegramVerificationStep
-              userId={registeredUserId}
-              email={registeredEmail}
-              language={localeForAPI}
-              onVerified={() => setStep(4)}
-            />
-          )}
-
-          {step === 4 && (
-            <div className="flex flex-col items-center gap-4">
-              <CheckCircle2 className="h-16 w-16 text-emerald-500" />
-              <p className="text-center">
-                Регистрация завершена. Переходим в дашборд.
-              </p>
-              <Button
-                onClick={finishRegistration}
-                disabled={loading}
-                className="w-full"
-              >
-                Перейти в дашборд
-              </Button>
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-center gap-2 text-red-500 text-sm">
-              <AlertCircle className="h-4 w-4" />
-              {error}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <CardFooter className="flex flex-col items-center gap-1 px-8 pb-6 pt-2">
+            <p className="text-xs text-zinc-500">
+              У вас уже есть аккаунт директора?
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="text-xs font-medium text-zinc-200 underline-offset-4 hover:underline"
+            >
+              Войти в WELLIFY business
+            </button>
+          </CardFooter>
+        </Card>
+      </div>
     </main>
   );
 }
