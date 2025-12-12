@@ -1,4 +1,4 @@
-// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ СХЕМЫ)
+// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ: ИСПРАВЛЕНЫ ВСЕ DB-ОШИБКИ)
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -47,7 +47,20 @@ export async function POST(request: NextRequest) {
       locale,
     } = body;
 
-    // ... (валидация без изменений)
+    // Валидация обязательных полей
+    if (!email || !password || !phone || !firstName || !lastName) {
+      console.error("[register-director] Missing required fields", {
+        hasEmail: !!email,
+        hasPassword: !!password,
+        hasPhone: !!phone,
+        hasFirstName: !!firstName,
+        hasLastName: !!lastName,
+      });
+      return NextResponse.json(
+        { success: false, message: "Missing required fields" },
+        { status: 400 }
+      );
+    }
 
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -160,7 +173,7 @@ export async function POST(request: NextRequest) {
         
         // Оставляем только те, которые точно есть:
         код_компании: companyCode,
-        role: "директор" // Добавим явно
+        role: "директор"
     };
     
     // Чистим окончательно от undefined

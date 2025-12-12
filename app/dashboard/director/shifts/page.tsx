@@ -33,7 +33,7 @@ export default function ShiftsPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Subtitle */}
         <p className="text-sm text-muted-foreground">
-          История смен и отчеты
+          {t("dashboard.nav_shifts")}
         </p>
 
         {/* Stats Summary */}

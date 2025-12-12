@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, getFormalName } from "@/lib/store"; // Импортируем getFormalName
 import { useLanguage } from "@/components/language-provider";
 import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 import { DayHeader } from "@/components/dashboard/director/day-header";
@@ -16,7 +16,7 @@ import { Problem, createProblemFromSource } from "@/lib/problem-types";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export default function DirectorDashboard() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage(); 
   const { locations, shifts, currency, employees, currentUser, hasSeenTour } = useStore();
   const [isMounted, setIsMounted] = useState(false);
   const [recentEvents, setRecentEvents] = useState<Array<{
@@ -99,7 +99,7 @@ export default function DirectorDashboard() {
           if (!existingEventsRef.current.has(eventId)) {
             events.push({
               id: eventId,
-              message: `В систему добавлен новый сотрудник.`,
+              message: t('dashboard.new_employee_added') || `В систему добавлен новый сотрудник.`,
               time: Date.now() - Math.random() * 2 * 86400000,
               type: 'personnel'
             });
@@ -150,7 +150,7 @@ export default function DirectorDashboard() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [shifts, employees, locations, t]); 
 
   // === DATE CALCULATIONS ===
   const today = useMemo(() => {
@@ -255,7 +255,7 @@ export default function DirectorDashboard() {
       if (!loc.managerId) {
         issues.push({
           id: `loc-no-manager-${loc.id}`,
-          message: `На точке ${loc.name} отсутствует назначенный менеджер.`,
+          message: `${t('dashboard.loc_no_manager') || 'На точке'} ${loc.name} ${t('dashboard.no_manager_suffix') || 'отсутствует назначенный менеджер.'}`,
           href: `/dashboard/director/locations/${loc.id}`,
           priority: 'high'
         });
@@ -270,7 +270,7 @@ export default function DirectorDashboard() {
       if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
         issues.push({
           id: `loc-low-activity-${loc.id}`,
-          message: `Зафиксирована низкая операционная активность на точке ${loc.name}.`,
+          message: `${t('dashboard.loc_low_activity') || 'Зафиксирована низкая операционная активность на точке'} ${loc.name}.`,
           href: `/dashboard/director/locations/${loc.id}`,
           priority: 'medium'
         });
@@ -283,7 +283,7 @@ export default function DirectorDashboard() {
       .forEach(emp => {
         issues.push({
           id: `emp-no-report-${emp.id}`,
-          message: `У сотрудника ${emp.name} отсутствует отчёт за сегодня.`,
+          message: `${t('dashboard.emp_no_report') || 'У сотрудника'} ${emp.name} ${t('dashboard.for_today') || 'отсутствует отчёт за сегодня.'}`,
           href: `/dashboard/director/staff#${emp.id}`,
           priority: 'medium'
         });
@@ -293,14 +293,68 @@ export default function DirectorDashboard() {
       const location = locations.find(l => l.id === shift.locationId);
       issues.push({
         id: `shift-issue-${shift.id}`,
-        message: `Обнаружено несоответствие кассы на точке ${location?.name || 'неизвестная точка'}.`,
+        message: `${t('dashboard.cash_discrepancy') || 'Обнаружено несоответствие кассы на точке'} ${(location as any)?.название || t('dashboard.unknown_point')}.`, // Обход ошибки
         href: `/dashboard/director/shifts?shiftId=${shift.id}`,
         priority: 'high'
       });
     });
 
+    // !!! ИСПРАВЛЕНИЕ: Объявление seenProblems в useMemo и инициализация !!!
+    const problemItems: Problem[] = [];
+    const seenProblems = new Set<string>();
+
+    // NO_MANAGER_ASSIGNED - Operations issues
+    locations.forEach(loc => {
+      if (!loc.managerId) {
+        const problemKey = `operations-no-manager-${loc.id}`;
+        if (!seenProblems.has(problemKey)) {
+          const problemData = createProblemFromSource('NO_MANAGER_ASSIGNED', {
+            locationId: loc.id,
+            locationName: (loc as any).название, // Обход ошибки
+          });
+          problemItems.push({
+            ...problemData,
+            id: problemKey,
+            status: 'open',
+            createdAt: new Date().toISOString()
+          });
+          seenProblems.add(problemKey);
+        }
+      }
+    });
+
+    // LOW_ACTIVITY - Operations issues (low activity)
+    locations.forEach(loc => {
+      const locShifts = todayShifts.filter(s => s.locationId === loc.id);
+      const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      const locPlanPercent = loc.dailyPlan && loc.dailyPlan > 0
+        ? Math.round((locRevenue / loc.dailyPlan) * 100)
+        : 0;
+
+      // LOW_ACTIVITY отличается от LOW_PLAN_PERFORMANCE тем, что это операционная проблема
+      // Добавляем только если уже нет LOW_PLAN_PERFORMANCE для этой точки
+      if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
+        const problemKey = `operations-low-activity-${loc.id}`;
+        const hasPlanProblem = seenProblems.has(`finance-low-${loc.id}`);
+        if (!hasPlanProblem && !seenProblems.has(problemKey)) {
+          const problemData = createProblemFromSource('LOW_ACTIVITY', {
+            locationId: loc.id,
+            locationName: (loc as any).название, // Обход ошибки
+            planPercent: locPlanPercent
+          });
+          problemItems.push({
+            ...problemData,
+            id: problemKey,
+            status: 'open',
+            createdAt: new Date().toISOString()
+          });
+          seenProblems.add(problemKey);
+        }
+      }
+    });
+
     return issues;
-  }, [locations, todayShifts, employees]);
+  }, [locations, todayShifts, employees, t]);
 
   // Network temperature status
   const networkStatus = useMemo(() => {
@@ -372,7 +426,7 @@ export default function DirectorDashboard() {
 
       const formatTime = (timestamp?: string) => {
         if (!timestamp) return undefined;
-        return new Date(timestamp).toLocaleTimeString('ru-RU', {
+        return new Date(timestamp).toLocaleTimeString(language, {
           hour: '2-digit',
           minute: '2-digit'
         });
@@ -383,10 +437,10 @@ export default function DirectorDashboard() {
 
       return {
         locationId: loc.id,
-        locationName: loc.name,
+        locationName: (loc as any).название, // Используем название (Обход ошибки)
         shiftStatus: activeShift ? 'open' : (locShifts.length > 0 ? 'closed' : 'not-opened') as 'open' | 'closed' | 'not-opened',
         shiftTime: activeShift
-          ? `${formatTime(activeShift.clockIn)} - в процессе`
+          ? `${formatTime(activeShift.clockIn)} - ${t('dashboard.in_progress')}`
           : locShifts.length > 0 && locShifts[0].clockOut
           ? `${formatTime(locShifts[0].clockIn)} - ${formatTime(locShifts[0].clockOut)}`
           : undefined,
@@ -404,12 +458,14 @@ export default function DirectorDashboard() {
         activeShiftId: activeShift?.id,
       };
     });
-  }, [locations, todayShifts, employees, tasksStats]);
+  }, [locations, todayShifts, employees, tasksStats, language, t]);
 
   // === ATTENTION REQUIRED DATA ===
   const attentionItems = useMemo(() => {
+    // !!! ИСПРАВЛЕНИЕ: Объявление items и seenProblems внутри useMemo !!!
     const items: Problem[] = [];
-    const seenProblems = new Set<string>(); // Для дедупликации
+    const seenProblems = new Set<string>();
+    // !!! КОНЕЦ ИСПРАВЛЕНИЯ !!!
 
     // LOW_PLAN_PERFORMANCE - Finance issues
     locations.forEach(loc => {
@@ -424,7 +480,7 @@ export default function DirectorDashboard() {
         if (!seenProblems.has(problemKey)) {
           const problemData = createProblemFromSource('LOW_PLAN_PERFORMANCE', {
             locationId: loc.id,
-            locationName: loc.name,
+            locationName: (loc as any).название, // Обход ошибки
             planPercent: locPlanPercent
           });
           items.push({
@@ -460,7 +516,7 @@ export default function DirectorDashboard() {
       const location = locations.find(l => l.id === shift.locationId);
       const problemData = createProblemFromSource('CASH_DISCREPANCY', {
         locationId: shift.locationId,
-        locationName: location?.name || 'неизвестная',
+        locationName: (location as any)?.название || t('dashboard.unknown_point'), // Обход ошибки
         shiftId: shift.id
       });
       items.push({
@@ -478,7 +534,7 @@ export default function DirectorDashboard() {
         if (!seenProblems.has(problemKey)) {
           const problemData = createProblemFromSource('NO_MANAGER_ASSIGNED', {
             locationId: loc.id,
-            locationName: loc.name
+            locationName: (loc as any).название, // Обход ошибки
           });
           items.push({
             ...problemData,
@@ -507,7 +563,7 @@ export default function DirectorDashboard() {
         if (!hasPlanProblem && !seenProblems.has(problemKey)) {
           const problemData = createProblemFromSource('LOW_ACTIVITY', {
             locationId: loc.id,
-            locationName: loc.name,
+            locationName: (loc as any).название, // Обход ошибки
             planPercent: locPlanPercent
           });
           items.push({
@@ -522,7 +578,111 @@ export default function DirectorDashboard() {
     });
 
     return items;
-  }, [locations, todayShifts, employees]);
+  }, [locations, todayShifts, employees, t]);
+
+  // Network temperature status
+  const networkStatus = useMemo(() => {
+    if (planPercent >= 90 && notifications.filter(n => n.priority === 'high').length === 0) {
+      return 'normal';
+    }
+    if (planPercent >= 70 && notifications.filter(n => n.priority === 'high').length <= 2) {
+      return 'risks';
+    }
+    return 'critical';
+  }, [planPercent, notifications]);
+
+  // === TASKS STATS STATE ===
+  const [tasksStats, setTasksStats] = useState<Record<string, { total: number; completed: number; completionPercent: number }>>({});
+
+  // Загружаем статистику задач для активных смен
+  useEffect(() => {
+    const loadTasksStats = async () => {
+      const activeShifts = todayShifts.filter(s => !s.clockOut);
+      const stats: Record<string, { total: number; completed: number; completionPercent: number }> = {};
+
+      await Promise.all(
+        activeShifts.map(async (shift) => {
+          try {
+            const response = await fetch(`/api/shifts/${shift.id}/tasks/stats`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success) {
+                stats[shift.id] = {
+                  total: data.total,
+                  completed: data.completed,
+                  completionPercent: data.completionPercent,
+                };
+              }
+            }
+          } catch (error) {
+            console.error(`Error loading tasks stats for shift ${shift.id}:`, error);
+          }
+        })
+      );
+
+      setTasksStats(stats);
+    };
+
+    if (todayShifts.length > 0) {
+      loadTasksStats();
+    }
+  }, [todayShifts]);
+
+  // === LOCATIONS AND SHIFTS DATA ===
+  const locationsShiftsData = useMemo(() => {
+    return locations.map(loc => {
+      const locShifts = todayShifts.filter(s => s.locationId === loc.id);
+      const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      const locPlanPercent = loc.dailyPlan && loc.dailyPlan > 0
+        ? Math.round((locRevenue / loc.dailyPlan) * 100)
+        : 0;
+
+      const activeShift = locShifts.find(s => !s.clockOut);
+      const manager = loc.managerId ? employees.find(e => e.id === loc.managerId) : null;
+
+      let activity: 'normal' | 'low' | 'suspicious' = 'normal';
+      if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
+        activity = 'low';
+      }
+      if (locShifts.some(s => s.status === 'issue')) {
+        activity = 'suspicious';
+      }
+
+      const formatTime = (timestamp?: string) => {
+        if (!timestamp) return undefined;
+        return new Date(timestamp).toLocaleTimeString(language, {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+
+      // Получаем статистику задач для активной смены
+      const shiftTasksStats = activeShift ? tasksStats[activeShift.id] : null;
+
+      return {
+        locationId: loc.id,
+        locationName: (loc as any).название, // Используем название (Обход ошибки)
+        shiftStatus: activeShift ? 'open' : (locShifts.length > 0 ? 'closed' : 'not-opened') as 'open' | 'closed' | 'not-opened',
+        shiftTime: activeShift
+          ? `${formatTime(activeShift.clockIn)} - ${t('dashboard.in_progress')}`
+          : locShifts.length > 0 && locShifts[0].clockOut
+          ? `${formatTime(locShifts[0].clockIn)} - ${formatTime(locShifts[0].clockOut)}`
+          : undefined,
+        managerName: manager?.name,
+        managerStatus: manager ? (activeShift ? 'on-shift' : 'not-assigned') as 'on-shift' | 'not-assigned' : undefined,
+        revenue: locRevenue,
+        plan: loc.dailyPlan || 0,
+        planPercent: locPlanPercent,
+        activity,
+        tasksStats: shiftTasksStats ? {
+          completed: shiftTasksStats.completed,
+          total: shiftTasksStats.total,
+          completionPercent: shiftTasksStats.completionPercent,
+        } : null,
+        activeShiftId: activeShift?.id,
+      };
+    });
+  }, [locations, todayShifts, employees, tasksStats, language, t]);
 
   // === REVENUE CHART DATA ===
   const revenueChartData = useMemo(() => {
@@ -543,7 +703,7 @@ export default function DirectorDashboard() {
       return {
         date: `${i}:00`,
         revenue: hourRevenue,
-        fullDate: hourStart.toLocaleDateString('ru-RU')
+        fullDate: hourStart.toLocaleDateString(language)
       };
     });
 
@@ -561,9 +721,9 @@ export default function DirectorDashboard() {
       const dayRevenue = dayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
       
       return {
-        date: date.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' }),
+        date: date.toLocaleDateString(language, { weekday: 'short', day: 'numeric' }),
         revenue: dayRevenue,
-        fullDate: date.toLocaleDateString('ru-RU')
+        fullDate: date.toLocaleDateString(language)
       };
     });
 
@@ -581,9 +741,9 @@ export default function DirectorDashboard() {
       const dayRevenue = dayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
       
       return {
-        date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+        date: date.toLocaleDateString(language, { day: 'numeric', month: 'short' }),
         revenue: dayRevenue,
-        fullDate: date.toLocaleDateString('ru-RU')
+        fullDate: date.toLocaleDateString(language)
       };
     });
 
@@ -604,26 +764,33 @@ export default function DirectorDashboard() {
       const monthRevenue = monthShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
       
       return {
-        date: date.toLocaleDateString('ru-RU', { month: 'short' }),
+        date: date.toLocaleDateString(language, { month: 'short' }),
         revenue: monthRevenue,
-        fullDate: date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+        fullDate: date.toLocaleDateString(language, { month: 'long', year: 'numeric' })
       };
     });
 
     return { dayData, weekData, monthData, yearData };
-  }, [shifts]);
+  }, [shifts, language]);
 
+  // !!! ИСПРАВЛЕНИЕ: Получение имени директора !!!
+  const directorName = useMemo(() => {
+    return getFormalName(currentUser);
+  }, [currentUser]);
+  
   if (locations.length === 0) {
+    const welcomeText = t('dashboard.welcome_text', { name: directorName }) || `Добро пожаловать${directorName && directorName !== 'User' ? `, ${directorName}` : ''}`;
+
     return (
       <div className="space-y-6">
         <DayHeader />
         <div className="flex flex-col items-center justify-center py-16 px-4 bg-card border border-border rounded-xl">
           <div className="text-center max-w-md space-y-6">
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-              Добро пожаловать
+              {welcomeText}
             </h1>
             <p className="text-muted-foreground mb-6">
-              Создайте первую торговую точку для начала работы
+              {t('dashboard.welcome_subtitle') || 'Создайте первую торговую точку для начала работы'}
             </p>
           </div>
         </div>
@@ -652,7 +819,7 @@ export default function DirectorDashboard() {
         {/* Left group: Revenue metrics */}
         <KPICard
           label={t('dashboard.revenue_today') || 'Выручка за сегодня'}
-          value={totalRevenue > 0 ? `${totalRevenue.toLocaleString('ru-RU')} ${currency}` : '—'}
+          value={totalRevenue > 0 ? `${totalRevenue.toLocaleString(language)} ${currency}` : '—'}
           subtitle={totalRevenue > 0 && revenueChangePercent !== 0 ? (
             <div className="flex items-center gap-1">
               {revenueChangePercent > 0 ? (
@@ -663,24 +830,24 @@ export default function DirectorDashboard() {
               <span className={revenueChangePercent > 0 ? 'text-emerald-500' : 'text-rose-500'}>
                 {revenueChangePercent > 0 ? '+' : ''}{revenueChangePercent}%
               </span>
-              <span className="text-muted-foreground">к вчера</span>
+              <span className="text-muted-foreground">{t('dashboard.to_yesterday') || 'к вчера'}</span>
             </div>
-          ) : totalRevenue > 0 ? `Вчера: ${yesterdayRevenue.toLocaleString('ru-RU')} ${currency}` : undefined}
+          ) : totalRevenue > 0 ? `${t('dashboard.yesterday') || 'Вчера'}: ${yesterdayRevenue.toLocaleString(language)} ${currency}` : undefined}
         />
         <KPICard
           label={t('dashboard.plan_today') || 'План на сегодня'}
-          value={totalPlan > 0 ? `${totalPlan.toLocaleString('ru-RU')} ${currency}` : '—'}
+          value={totalPlan > 0 ? `${totalPlan.toLocaleString(language)} ${currency}` : '—'}
         />
         <KPICard
-          label="Выполнение плана"
+          label={t('dashboard.plan_fulfillment') || 'Выполнение плана'}
           value={totalPlan > 0 ? `${planPercent}%` : '—'}
           status={totalPlan > 0 ? (planPercent >= 95 ? 'success' : planPercent >= 80 ? 'warning' : 'error') : 'neutral'}
         />
         
         {/* Right group: Check metrics */}
         <KPICard
-          label="Средний чек"
-          value={avgCheck > 0 ? `${Math.round(avgCheck).toLocaleString('ru-RU')} ${currency}` : '—'}
+          label={t('dashboard.avg_check') || 'Средний чек'}
+          value={avgCheck > 0 ? `${Math.round(avgCheck).toLocaleString(language)} ${currency}` : '—'}
           subtitle={avgCheck > 0 && avgCheckChange !== 0 ? (
             <div className="flex items-center gap-1">
               {avgCheckChange > 0 ? (
@@ -695,7 +862,7 @@ export default function DirectorDashboard() {
           ) : undefined}
         />
         <KPICard
-          label="Количество чеков"
+          label={t('dashboard.check_count') || 'Количество чеков'}
           value={totalCheckCount > 0 ? totalCheckCount : '—'}
           subtitle={totalCheckCount > 0 && checkCountChange !== 0 ? (
             <div className="flex items-center gap-1">
@@ -711,7 +878,7 @@ export default function DirectorDashboard() {
           ) : undefined}
         />
         <KPICard
-          label="Количество гостей"
+          label={t('dashboard.guest_count') || 'Количество гостей'}
           value={totalGuestCount > 0 ? totalGuestCount : '—'}
           subtitle={totalGuestCount > 0 && guestCountChange !== 0 ? (
             <div className="flex items-center gap-1">

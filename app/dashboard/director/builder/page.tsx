@@ -14,7 +14,7 @@ export default function FormBuilder() {
       {/* LEFT: SETTINGS */}
       <div className="space-y-6 overflow-y-auto">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('dashboard.report_builder') || 'Конструктор отчёта'}</h1>
+          <h1 className="text-2xl font-bold text-white">{t("dashboard.nav_builder")}</h1>
           <p className="text-zinc-400">Настройте, что видит сотрудник при закрытии смены.</p>
         </div>
         <div className="bg-surface-elevated border border-white/10 rounded-2xl p-6 space-y-6 shadow-[0_0_20px_rgba(0,0,0,0.45)]">

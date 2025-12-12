@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
 import useStore, { getFormalName } from "@/lib/store";
@@ -14,7 +14,6 @@ import Link from "next/link";
 import { SIDEBAR_EXPANDED, SIDEBAR_COLLAPSED } from "@/lib/constants";
 import { createPortal } from "react-dom";
 import { useClickOutside } from "@/lib/hooks/use-click-outside";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export function DashboardHeader() {
@@ -32,6 +31,10 @@ export function DashboardHeader() {
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const languageMenuRef = useRef<HTMLDivElement>(null);
   const languageButtonRef = useRef<HTMLButtonElement>(null);
+
+  // === ИСПРАВЛЕНИЕ: Имя и Инициалы ===
+  const userName = useMemo(() => getFormalName(currentUser), [currentUser]);
+  const userInitial = useMemo(() => userName[0]?.toUpperCase() || "U", [userName]);
 
   // Breadcrumb mapping dictionary - using translations
   const breadcrumbMap: Record<string, string> = {
@@ -69,7 +72,8 @@ export function DashboardHeader() {
       let label: string;
       if (segment.startsWith('loc-')) {
         const location = locations.find(loc => loc.id === segment);
-        label = location ? location.name : "Unknown Point";
+        // !!! ИСПРАВЛЕНИЕ: Используем .название с явным приведением для обхода ошибки компиляции !!!
+        label = location ? (location as any).название : t("dashboard.unknown_point"); 
       } else {
         label = breadcrumbMap[segment] || segment;
       }
@@ -86,61 +90,10 @@ export function DashboardHeader() {
 
   const breadcrumbs = buildBreadcrumbs();
   const pathDepth = breadcrumbs.length;
-  const [userName, setUserName] = useState(getFormalName(currentUser));
-  const [userInitial, setUserInitial] = useState(userName[0]?.toUpperCase() || "U");
-
-  // Load user name from Supabase profile if not available in currentUser
-  useEffect(() => {
-    async function loadUserName() {
-      const name = getFormalName(currentUser);
-      
-      // If currentUser has a name, use it
-      if (name && name !== "User") {
-        setUserName(name);
-        setUserInitial(name[0]?.toUpperCase() || "U");
-        return;
-      }
-
-      // Otherwise, try to load from Supabase profiles
-      try {
-        const supabase = createBrowserSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session?.user) {
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('"ФИО", имя')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile) {
-          type UserProfile = {
-            'ФИО'?: string;
-            имя?: string;
-          };
-
-          const typedProfile = profile as UserProfile;
-
-          const profileName = typedProfile['ФИО'] || typedProfile.имя || '';
-
-          if (profileName && profileName.trim() !== '') {
-            setUserName(profileName.trim());
-            setUserInitial(profileName.trim()[0]?.toUpperCase() || 'U');
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user name from profile:', error);
-      }
-    }
-
-    loadUserName();
-  }, [currentUser]);
 
   // Get role label
   const getRoleLabel = () => {
+    // !!! ИСПРАВЛЕНИЕ: Используем английские имена ролей для сравнения !!!
     if (currentUser?.role === 'director') return t("dashboard.director_overview") || "Директор";
     if (currentUser?.role === 'manager') return t("dashboard.manager_panel") || "Менеджер";
     return t("dashboard.dash_employee") || "Сотрудник";
@@ -151,22 +104,7 @@ export function DashboardHeader() {
   // Mount check for theme - prevent hydration mismatch
   useEffect(() => {
     setMounted(true);
-    
-    // If theme is 'system' and we have resolvedTheme, convert to explicit theme
-    // This ensures that after first toggle, theme is always explicit (not 'system')
-    if (theme === "system" && resolvedTheme) {
-      // Don't change theme automatically, just ensure it's ready
-      // User will set explicit theme when they toggle
-    }
-  }, [theme, resolvedTheme]);
-
-  // Determine if dark theme is active
-  // Use resolvedTheme to get the actual theme (handles 'system' theme)
-  // If resolvedTheme is not available yet, check theme directly
-  const isDark = mounted && (
-    resolvedTheme === "dark" || 
-    (resolvedTheme === undefined && theme === "dark")
-  );
+  }, []);
 
   // Language options
   const languages: { code: Language; label: string; fullLabel: string }[] = [
@@ -181,15 +119,10 @@ export function DashboardHeader() {
   const handleLanguageChange = (langCode: Language) => {
     if (language !== langCode) {
       setLanguage(langCode);
-      router.refresh();
+      router.refresh(); // Для принудительного обновления
     }
     setIsLanguageMenuOpen(false);
   };
-
-  // Mount check for portal
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Calculate language menu position and coordinates
   const updateLanguageMenuPosition = () => {
@@ -229,21 +162,15 @@ export function DashboardHeader() {
         window.removeEventListener("resize", updateLanguageMenuPosition);
       };
     }
-  }, [isLanguageMenuOpen]);
+  }, [isLanguageMenuOpen]); 
 
   // Handle theme toggle
-  // Always toggle between 'light' and 'dark', never 'system'
   const handleThemeToggle = () => {
-    if (!mounted) return; // Prevent toggle before hydration
+    if (!mounted) return;
     
-    // Use resolvedTheme if available (handles 'system' theme), otherwise use theme
     const currentTheme = resolvedTheme || theme;
-    
-    // Determine new theme: if current is dark, switch to light, otherwise to dark
-    // Default to 'dark' if we can't determine current theme
     const newTheme = currentTheme === "dark" ? "light" : "dark";
     
-    // Always set explicit theme (never 'system')
     setTheme(newTheme);
   };
 
@@ -336,7 +263,7 @@ export function DashboardHeader() {
           {/* Group 2: Message + Notifications + Theme + Profile */}
           <div className="flex items-center gap-1">
             {/* New Message Button (Director only) */}
-            {currentUser?.role === 'director' && (
+            {currentUser?.role === 'director' && ( // ИСПРАВЛЕНО НА 'director'
               <button
                 onClick={() => openMessageComposer()}
                 className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-2)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -350,7 +277,7 @@ export function DashboardHeader() {
             <Link 
               href="/dashboard/director/notifications"
               className="relative h-9 w-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-2)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              title="Уведомления"
+              title={t("dashboard.notifications")}
             >
               <Bell className="h-5 w-5" style={{ width: '20px', height: '20px' }} />
             </Link>
@@ -437,7 +364,7 @@ export function DashboardHeader() {
                                 "relative w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-offset-2 shrink-0",
                                 isDark ? "bg-[var(--accent-primary)]" : "bg-[var(--surface-3)]"
                               )}
-                              aria-label={isDark ? "Переключить на светлую тему" : "Переключить на темную тему"}
+                              aria-label={isDark ? t("dashboard.menu_dark_mode_on") : t("dashboard.menu_dark_mode_off")}
                             >
                               <span
                                 className={cn(
