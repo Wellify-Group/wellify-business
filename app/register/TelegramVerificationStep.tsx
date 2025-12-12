@@ -146,32 +146,65 @@ export function TelegramVerificationStep({
     if (!sessionToken || !polling) return;
 
     let cancelled = false;
-    const intervalId = setInterval(async () => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const poll = async () => {
       if (cancelled) return;
 
       try {
         const resp = await fetch(`/api/telegram/session-status/${sessionToken}`);
         if (!resp.ok) return;
 
-        const json = (await resp.json()) as SessionStatus;
-        setStatus(json);
+        const raw = await resp.json();
+        console.log("[telegram] raw session-status", raw);
 
-        if (json.phoneVerified) {
+        const normalized: SessionStatus = {
+          status:
+            (raw.status as SessionStatus["status"]) ||
+            (raw.sessionStatus as SessionStatus["status"]) ||
+            (raw.phone_verified ? "completed" : "pending"),
+          phone:
+            raw.phone ??
+            raw.phone_number ??
+            raw.phoneNumber ??
+            raw.telegram_phone ??
+            null,
+          phoneVerified:
+            raw.phoneVerified ??
+            raw.phone_verified ??
+            raw.phoneConfirmed ??
+            raw.phone_confirmed ??
+            false,
+        };
+
+        setStatus(normalized);
+
+        if (normalized.phoneVerified) {
           setPhoneVerified(true);
-          clearInterval(intervalId);
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
         }
 
-        if (json.status === "expired") {
-          clearInterval(intervalId);
+        if (normalized.status === "expired") {
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
         }
       } catch (e) {
         console.error("[telegram] session-status error", e);
       }
-    }, 3000);
+    };
+
+    // первый запрос быстро, затем интервал
+    poll();
+    intervalId = setInterval(poll, 3000);
 
     return () => {
       cancelled = true;
-      clearInterval(intervalId);
+      if (intervalId) clearInterval(intervalId);
     };
   }, [sessionToken, polling]);
 
@@ -183,14 +216,13 @@ export function TelegramVerificationStep({
   };
 
   const handleCreateNewLink = () => {
-    // Перезапуск компонента «по-простому»
     setSessionToken(null);
     setTelegramLink(null);
     setStatus(null);
     setPhoneVerified(false);
     setError(null);
     setPolling(false);
-    // эффект создания сессии сработает снова, т.к. зависимостей по состоянию нет
+    // useEffect с userId/email/language перезапустит создание сессии
   };
 
   // 3. Успешное подтверждение телефона

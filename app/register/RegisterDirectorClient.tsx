@@ -20,12 +20,13 @@ import {
   ArrowLeft,
   ArrowRight,
   AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 interface PersonalForm {
   firstName: string;
@@ -299,8 +300,9 @@ export default function RegisterDirectorClient() {
   };
 
   const handleTelegramVerified = async () => {
-    // вызываться только после реального phone_verified
-    await finishRegistration();
+    // Переходим на шаг 4 - успешное завершение
+    setStep(4);
+    setMaxStepReached(4);
   };
 
   // ---------- polling e-mail confirmation ----------
@@ -601,6 +603,39 @@ export default function RegisterDirectorClient() {
     );
   };
 
+  const renderStep4 = () => (
+    <div className="flex flex-col items-center gap-6 py-8 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
+        <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-xl font-semibold text-zinc-50">
+          Регистрация завершена успешно!
+        </h3>
+        <p className="max-w-md text-sm text-zinc-400">
+          Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business.
+        </p>
+      </div>
+      <Button
+        onClick={finishRegistration}
+        disabled={isSubmitting}
+        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Переход в дашборд...
+          </>
+        ) : (
+          <>
+            Перейти в дашборд
+            <ArrowRight className="h-4 w-4" />
+          </>
+        )}
+      </Button>
+    </div>
+  );
+
   // ---------- main render ----------
 
   return (
@@ -623,11 +658,12 @@ export default function RegisterDirectorClient() {
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
           </CardContent>
 
           <CardFooter className="relative flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
             <div className="flex items-center gap-2">
-              {step > 1 && (
+              {step > 1 && step < 4 && (
                 <button
                   type="button"
                   onClick={handleBack}
