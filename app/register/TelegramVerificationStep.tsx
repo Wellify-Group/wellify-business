@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2 } from "lucide-react";
 import {
+  Card,
   CardContent,
+  CardHeader,
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface TelegramVerificationStepProps {
   onVerified: () => void;
@@ -30,7 +32,7 @@ export function TelegramVerificationStep({
   userId,
   email,
 }: TelegramVerificationStepProps) {
-  const [loadingLink, setLoadingLink] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -38,41 +40,31 @@ export function TelegramVerificationStep({
 
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [polling, setPolling] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
-  // флаг, чтобы не дёргать создание сессии бесконечно
-  const [initialized, setInitialized] = useState(false);
-
-  // 1. Создаём registration_session один раз
+  // Создаём registration_session один раз
   useEffect(() => {
-    if (initialized) return;
-
     if (!userId || !email) {
       setError(
-        "Не удалось получить данные регистрации. Вернитесь на предыдущий шаг."
+        "Не удалось получить данные регистрации. Вернитесь к предыдущему шагу."
       );
-      setInitialized(true);
       return;
     }
 
     const createSession = async () => {
       try {
-        setLoadingLink(true);
+        setLoading(true);
         setError(null);
 
         const resp = await fetch("/api/telegram/link-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId,
-            email,
-            language,
-          }),
+          body: JSON.stringify({ userId, email, language }),
         });
 
         if (!resp.ok) {
-          console.error("link-session failed:", resp.status);
           setError(
-            `Не удалось создать сессию Telegram. Код ошибки: ${resp.status}. Попробуйте позже.`
+            `Не удалось создать сессию Telegram. Код ошибки: ${resp.status}.`
           );
           return;
         }
@@ -86,29 +78,24 @@ export function TelegramVerificationStep({
         setTelegramLink(json.telegramLink);
         setPolling(true);
       } catch (e) {
-        console.error("createSession error:", e);
-        setError(
-          "Произошла внутренняя ошибка при создании сессии Telegram. Попробуйте позже."
-        );
+        console.error("link-session error", e);
+        setError("Произошла внутренняя ошибка при создании сессии Telegram.");
       } finally {
-        setLoadingLink(false);
-        setInitialized(true);
+        setLoading(false);
       }
     };
 
     createSession();
-  }, [initialized, userId, email, language]);
+  }, [userId, email, language]);
 
-  // 2. Polling статуса сессии
+  // Polling статуса – главное место, где отслеживаем phoneVerified
   useEffect(() => {
-    if (!sessionToken || !polling) return;
+    if (!sessionToken) return;
+    if (!polling) return;
 
     const interval = setInterval(async () => {
       try {
-        const resp = await fetch(
-          `/api/telegram/session-status/${sessionToken}`
-        );
-
+        const resp = await fetch(`/api/telegram/session-status/${sessionToken}`);
         if (!resp.ok) {
           console.error("session-status failed:", resp.status);
           return;
@@ -117,165 +104,183 @@ export function TelegramVerificationStep({
         const json = (await resp.json()) as SessionStatus;
         setStatus(json);
 
-        // ключевой критерий завершения - телефон подтверждён в БД
+        // КРИТИЧНО: как только phoneVerified === true – считаем шаг завершён
         if (json.phoneVerified) {
+          setIsVerified(true);
           setPolling(false);
           clearInterval(interval);
-          // переход в дашборд делаем по кнопке
         }
 
         if (json.status === "expired") {
           setPolling(false);
           clearInterval(interval);
           setError(
-            "Сессия истекла. Нажмите кнопку ниже, чтобы создать новую ссылку."
+            "Ссылка истекла. Нажмите «Создать новую ссылку», чтобы начать заново."
           );
         }
       } catch (e) {
-        console.error("session-status error:", e);
+        console.error("session-status error", e);
       }
     }, 3000);
 
     return () => clearInterval(interval);
   }, [sessionToken, polling]);
 
-  // 3. Пересоздание ссылки при истечении сессии
   const handleCreateNewLink = () => {
+    // Принудительный ресет шага
     setSessionToken(null);
     setTelegramLink(null);
     setStatus(null);
     setError(null);
-    setLoadingLink(false);
+    setIsVerified(false);
     setPolling(false);
-    setInitialized(false);
+
+    // Триггернём useEffect ещё раз через смену userId/email мы не можем,
+    // поэтому просто перезагрузим страницу – шаг 3 всё равно отдельный этап.
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
   };
 
   const texts = {
     ru: {
       title: "Шаг 3. Подтверждение телефона через Telegram",
       description:
-        "Откройте нашего бота WELLIFY business в Telegram, отправьте свой номер телефона и дождитесь автоматического завершения регистрации.",
-      waiting: "Ждём подтверждения в Telegram...",
-      verified: "Телефон подтверждён. Вы можете завершить регистрацию.",
-      expired: "Ссылка устарела. Создайте новую ссылку и попробуйте ещё раз.",
-      buttonOpenTelegram: "Открыть Telegram",
-      buttonNewLink: "Создать новую ссылку",
-      buttonDashboard: "Перейти в Дашборд",
-      helpText:
-        "1. Отсканируйте QR-код или нажмите кнопку «Открыть Telegram».\n2. Нажмите «Старт» в боте (если нужно).\n3. Нажмите кнопку «Отправить номер телефона».\n4. Вернитесь сюда – шаг завершится автоматически.",
+        "Откройте бота WELLIFY business, отправьте свой номер телефона и завершите регистрацию.",
+      waiting: "Ждём подтверждения телефона в Telegram…",
+      verifiedTitle: "Телефон подтверждён",
+      verifiedText:
+        "Номер телефона директора успешно подтверждён. Можно переходить к работе в системе.",
+      openBot: "Открыть бота в Telegram",
+      newLink: "Создать новую ссылку",
+      goDashboard: "Перейти в дашборд",
     },
     uk: {
       title: "Крок 3. Підтвердження телефону через Telegram",
       description:
-        "Відкрийте наш бот WELLIFY business у Telegram, надішліть свій номер телефону та зачекайте автоматичного завершення реєстрації.",
-      waiting: "Чекаємо підтвердження в Telegram...",
-      verified: "Телефон підтверджено. Ви можете завершити реєстрацію.",
-      expired: "Посилання застаріло. Створіть нове посилання та спробуйте ще раз.",
-      buttonOpenTelegram: "Відкрити Telegram",
-      buttonNewLink: "Створити нове посилання",
-      buttonDashboard: "Перейти до Дашборду",
-      helpText:
-        "1. Відскануйте QR-код або натисніть кнопку «Відкрити Telegram».\n2. Натисніть «Старт» у боті (якщо потрібно).\n3. Натисніть кнопку «Надіслати номер телефону».\n4. Поверніться сюди – крок завершиться автоматично.",
+        "Відкрийте бота WELLIFY business, надішліть свій номер телефону та завершіть реєстрацію.",
+      waiting: "Чекаємо підтвердження телефону в Telegram…",
+      verifiedTitle: "Телефон підтверджено",
+      verifiedText:
+        "Номер телефону директора успішно підтверджено. Можна переходити до роботи в системі.",
+      openBot: "Відкрити бота в Telegram",
+      newLink: "Створити нове посилання",
+      goDashboard: "Перейти до дашборду",
     },
     en: {
-      title: "Step 3. Confirm your phone via Telegram",
+      title: "Step 3. Confirm phone via Telegram",
       description:
-        "Open our WELLIFY business bot in Telegram, send your phone number and wait until the registration is completed automatically.",
-      waiting: "Waiting for confirmation in Telegram...",
-      verified: "Phone confirmed. You can finish registration.",
-      expired: "Link expired. Create a new link and try again.",
-      buttonOpenTelegram: "Open Telegram",
-      buttonNewLink: "Create new link",
-      buttonDashboard: "Go to Dashboard",
-      helpText:
-        "1. Scan the QR code or click “Open Telegram”.\n2. Press “Start” in the bot (if needed).\n3. Press the button to send your phone number.\n4. Come back here – this step will finish automatically.",
+        "Open the WELLIFY business bot, send your phone number and finish the registration.",
+      waiting: "Waiting for phone confirmation in Telegram…",
+      verifiedTitle: "Phone confirmed",
+      verifiedText:
+        "Director’s phone number has been confirmed. You can go to the dashboard.",
+      openBot: "Open bot in Telegram",
+      newLink: "Create new link",
+      goDashboard: "Go to dashboard",
     },
   }[language];
 
-  // 4. Экран успешного завершения (телефон подтверждён)
-  if (status?.phoneVerified) {
+  // Состояние "всё подтверждено" – отдельный компактный экран
+  if (isVerified) {
     return (
-      <CardContent className="space-y-6 flex flex-col items-center p-8">
-        <CheckCircle2 className="h-20 w-20 text-emerald-500" />
-        <CardTitle className="text-2xl text-center">
-          Регистрация завершена!
-        </CardTitle>
-        <CardDescription className="text-lg text-center">
-          Ваш телефон успешно подтверждён. Теперь можно перейти в дашборд
-          директора.
-        </CardDescription>
-        <Button
-          onClick={onVerified}
-          className="w-full md:w-auto mt-4"
-          size="lg"
-        >
-          {texts.buttonDashboard}
-        </Button>
-      </CardContent>
+      <Card className="border border-emerald-500/30 bg-[rgba(3,84,63,0.15)]">
+        <CardHeader className="text-center space-y-3">
+          <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-400" />
+          <CardTitle className="text-xl text-emerald-50">
+            {texts.verifiedTitle}
+          </CardTitle>
+          <CardDescription className="text-sm text-emerald-200">
+            {texts.verifiedText}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-3 pb-7">
+          <Button
+            size="lg"
+            className="w-full max-w-xs rounded-full bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+            onClick={onVerified}
+          >
+            {texts.goDashboard}
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
-  // 5. Основной UI шага
+  // Обычное состояние шага
   return (
-    <CardContent className="space-y-6">
-      {!telegramLink && (
-        <div className="text-sm text-muted-foreground">
-          {loadingLink
-            ? "Генерируем ссылку для Telegram..."
-            : "Подготовка ссылки для Telegram..."}
-        </div>
-      )}
+    <Card className="border border-zinc-800/80 bg-zinc-950/80">
+      <CardHeader className="space-y-2 text-center">
+        <CardTitle className="text-lg font-semibold text-zinc-50">
+          {texts.title}
+        </CardTitle>
+        <CardDescription className="text-sm text-zinc-400">
+          {texts.description}
+        </CardDescription>
+      </CardHeader>
 
-      {telegramLink && (
-        <div className="flex flex-col items-center gap-4">
-          <a
-            href={telegramLink}
-            target="_blank"
-            rel="noreferrer"
-            className="p-4 rounded-xl inline-block bg-white transition hover:scale-[1.01]"
-          >
-            <QRCode value={telegramLink} size={180} />
-          </a>
+      <CardContent className="space-y-5 pb-6">
+        {error && (
+          <div className="flex items-start gap-2 rounded-2xl border border-rose-700/70 bg-rose-950/80 px-3 py-2 text-xs text-rose-100">
+            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
-          <CardTitle className="text-center text-xl">
-            {texts.title}
-          </CardTitle>
-          <CardDescription className="text-center">
-            {texts.description}
-          </CardDescription>
+        {telegramLink && (
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/90 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.7)]">
+              <QRCode value={telegramLink} size={190} />
+            </div>
 
-          <p className="whitespace-pre-line text-sm text-muted-foreground text-center">
-            {texts.helpText}
+            <Button
+              type="button"
+              className="w-full max-w-xs rounded-full bg-[var(--accent-primary,#2563eb)] text-sm font-semibold text-white shadow-[0_18px_60px_rgba(37,99,235,0.6)] hover:bg-[var(--accent-primary-hover,#1d4ed8)]"
+              onClick={() =>
+                window.open(telegramLink, "_blank", "noopener,noreferrer")
+              }
+            >
+              {texts.openBot}
+            </Button>
+
+            <p className="text-[11px] leading-relaxed text-zinc-500 text-center max-w-sm">
+              1. Отсканируйте QR-код или нажмите кнопку выше. <br />
+              2. Нажмите «Старт» в боте (если нужно). <br />
+              3. Нажмите «Отправить номер телефона». <br />
+              4. Вернитесь сюда – шаг завершится автоматически.
+            </p>
+          </div>
+        )}
+
+        {!telegramLink && !error && (
+          <p className="text-center text-xs text-zinc-500">
+            {loading
+              ? "Готовим ссылку для Telegram..."
+              : "Ожидаем создание ссылки для Telegram..."}
           </p>
-        </div>
-      )}
+        )}
 
-      {status && (
-        <div className="w-full">
-          {status.status === "pending" && !status.phoneVerified && (
-            <div className="flex items-center justify-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 backdrop-blur-sm">
-              <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
-              <span className="text-sm font-medium text-yellow-400">
-                {texts.waiting}
-              </span>
+        {status?.status === "pending" && !status.phoneVerified && (
+          <div className="mt-2 w-full rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-xs font-medium text-amber-300">
+            {texts.waiting}
+          </div>
+        )}
+
+        {status?.status === "expired" && (
+          <div className="space-y-3">
+            <div className="w-full rounded-full border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-center text-xs font-medium text-rose-200">
+              Ссылка устарела. Создайте новую и повторите попытку.
             </div>
-          )}
-
-          {status.status === "expired" && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-              <span>{texts.expired}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {error && <div className="text-sm text-red-500">{error}</div>}
-
-      {status?.status === "expired" && (
-        <Button variant="outline" onClick={handleCreateNewLink}>
-          {texts.buttonNewLink}
-        </Button>
-      )}
-    </CardContent>
+            <Button
+              variant="outline"
+              className="w-full max-w-xs rounded-full border-zinc-700/80 bg-zinc-900/80 text-xs"
+              onClick={handleCreateNewLink}
+            >
+              {texts.newLink}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

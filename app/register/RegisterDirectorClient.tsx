@@ -53,6 +53,10 @@ export default function RegisterDirectorClient() {
   });
 
   const [email, setEmail] = useState("");
+  // почта, по которой реально идёт подтверждение (фиксируется в момент signUp)
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(
+    null
+  );
 
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -145,6 +149,7 @@ export default function RegisterDirectorClient() {
       return;
     }
 
+    setEmailVerified(false);
     setEmailStatus("sending");
     setIsSubmitting(true);
 
@@ -210,8 +215,11 @@ export default function RegisterDirectorClient() {
         return;
       }
 
+      const normalizedEmail = (data.user.email || email).trim();
+
       setRegisteredUserId(data.user.id);
-      setRegisteredUserEmail(data.user.email ?? email.trim());
+      setRegisteredUserEmail(normalizedEmail);
+      setVerificationEmail(normalizedEmail);
 
       setEmailStatus("link_sent");
     } catch (err) {
@@ -300,7 +308,7 @@ export default function RegisterDirectorClient() {
   };
 
   const handleTelegramVerified = async () => {
-    // TelegramVerificationStep вызывает это только когда телефон реально подтверждён
+    // TelegramVerificationStep вызывает это только когда телефон действительно подтверждён
     await finishRegistration();
   };
 
@@ -308,7 +316,7 @@ export default function RegisterDirectorClient() {
 
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
-    if (!email.trim()) return;
+    if (!verificationEmail) return;
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -319,7 +327,7 @@ export default function RegisterDirectorClient() {
       try {
         const res = await fetch(
           `/api/auth/check-email-confirmed?email=${encodeURIComponent(
-            email.trim()
+            verificationEmail
           )}`
         );
 
@@ -355,7 +363,7 @@ export default function RegisterDirectorClient() {
       clearTimeout(initial);
       if (intervalId) clearInterval(intervalId);
     };
-  }, [emailStatus, email]);
+  }, [emailStatus, verificationEmail]);
 
   // ---------- render helpers ----------
 
@@ -534,10 +542,15 @@ export default function RegisterDirectorClient() {
           <input
             type="email"
             autoComplete="email"
-            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)] disabled:opacity-60"
             placeholder="you@business.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={
+              emailStatus === "sending" ||
+              emailStatus === "link_sent" ||
+              emailStatus === "verified"
+            }
           />
         </div>
       </div>
@@ -656,7 +669,7 @@ export default function RegisterDirectorClient() {
               {step === 2 && (
                 <button
                   type="button"
-                  onClick={(e) => {
+                  onClick={() => {
                     const form = document.getElementById(
                       "step2-form"
                     ) as HTMLFormElement | null;
@@ -665,7 +678,9 @@ export default function RegisterDirectorClient() {
                     }
                   }}
                   disabled={
-                    isSubmitting || emailStatus === "sending" || emailStatus === "link_sent"
+                    isSubmitting ||
+                    emailStatus === "sending" ||
+                    emailStatus === "link_sent"
                   }
                   className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
