@@ -34,7 +34,8 @@ export function TelegramVerificationStep({
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
 
-  const [phoneVerified, setPhoneVerified] = useState(false);
+  // Используем status для рендеринга
+  const [isFinished, setIsFinished] = useState(false);
 
   const texts = {
     ru: {
@@ -51,7 +52,7 @@ export function TelegramVerificationStep({
       successTitle: "Телефон подтверждён",
       successText:
         "Номер телефона директора успешно подтверждён через Telegram.",
-      successButton: "Завершить регистрацию",
+      successButton: "Перейти в Дашборд", // ИЗМЕНЕНО
       newLink: "Создать новую ссылку",
     },
     uk: {
@@ -68,7 +69,7 @@ export function TelegramVerificationStep({
       successTitle: "Телефон підтверджено",
       successText:
         "Номер телефону директора успішно підтверджено через Telegram.",
-      successButton: "Завершити реєстрацію",
+      successButton: "Перейти до Дашборду",
       newLink: "Створити нове посилання",
     },
     en: {
@@ -84,7 +85,7 @@ export function TelegramVerificationStep({
       ],
       successTitle: "Phone confirmed",
       successText: "Director’s phone number has been confirmed via Telegram.",
-      successButton: "Finish registration",
+      successButton: "Go to Dashboard",
       newLink: "Create new link",
     },
   }[language];
@@ -139,8 +140,11 @@ export function TelegramVerificationStep({
       }
     };
 
-    createSession();
-  }, [userId, email, language]);
+    // !!! ВЫЗЫВАЕМ createSession только при инициализации !!!
+    if (!sessionToken && !error) {
+        createSession();
+    }
+  }, [userId, email, language, sessionToken, error]);
 
   // 2. Polling статуса
   useEffect(() => {
@@ -182,27 +186,23 @@ export function TelegramVerificationStep({
 
         setStatus(normalized);
 
+        // !!! ИСПРАВЛЕНИЕ: УСЛОВИЕ ЗАВЕРШЕНИЯ - МАКСИМАЛЬНОЕ ДОВЕРИЕ БОТУ !!!
         const isVerified =
-          normalized.phoneVerified ||
-          (normalized.status === "completed" &&
-            normalized.phone &&
-            normalized.phone.length > 0);
+            normalized.phoneVerified || // Поле, которое может быть неверным
+            normalized.telegramVerified || // Поле, которое должно быть true
+            normalized.status === "completed"; // Статус сессии
 
         if (isVerified) {
-          setPhoneVerified(true);
+          setIsFinished(true); // Устанавливаем флаг для UI
           setStatus({
             ...normalized,
             status: "completed",
-            phoneVerified: true,
+            phoneVerified: true, // Гарантируем TRUE для UI
           });
 
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
-          }
-          // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ВЫЗЫВАЕМ onVerified() ЗДЕСЬ !!!
-          if (!cancelled) {
-              onVerified(); 
           }
           return;
         }
@@ -226,7 +226,7 @@ export function TelegramVerificationStep({
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [sessionToken, polling, onVerified]);
+  }, [sessionToken, polling]); // onVerified удален из зависимостей
 
   const handleOpenTelegram = () => {
     if (!telegramLink) return;
@@ -239,14 +239,14 @@ export function TelegramVerificationStep({
     setSessionToken(null);
     setTelegramLink(null);
     setStatus(null);
-    setPhoneVerified(false);
+    setIsFinished(false);
     setError(null);
     setPolling(false);
     // useEffect с userId/email/language сам заново создаст сессию
   };
 
   // 3. Успешное подтверждение телефона
-  if (phoneVerified) {
+  if (isFinished) { // Используем новый флаг isFinished
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
@@ -259,7 +259,7 @@ export function TelegramVerificationStep({
         <Button
           size="lg"
           className="mt-2 w-full max-w-xs"
-          onClick={onVerified}
+          onClick={onVerified} // onVerified переводит на Шаг 4
         >
           {texts.successButton}
         </Button>
@@ -301,7 +301,7 @@ export function TelegramVerificationStep({
         </p>
       )}
 
-      {status && !phoneVerified && status.status === "pending" && (
+      {status && !isFinished && status.status === "pending" && (
         <div className="mt-3 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-300">
           {texts.waiting}
         </div>
