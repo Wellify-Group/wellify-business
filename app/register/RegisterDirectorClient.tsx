@@ -53,10 +53,6 @@ export default function RegisterDirectorClient() {
   });
 
   const [email, setEmail] = useState("");
-  // почта, по которой реально идёт подтверждение (фиксируется в момент signUp)
-  const [verificationEmail, setVerificationEmail] = useState<string | null>(
-    null
-  );
 
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -149,7 +145,6 @@ export default function RegisterDirectorClient() {
       return;
     }
 
-    setEmailVerified(false);
     setEmailStatus("sending");
     setIsSubmitting(true);
 
@@ -215,11 +210,8 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      const normalizedEmail = (data.user.email || email).trim();
-
       setRegisteredUserId(data.user.id);
-      setRegisteredUserEmail(normalizedEmail);
-      setVerificationEmail(normalizedEmail);
+      setRegisteredUserEmail(data.user.email ?? email.trim());
 
       setEmailStatus("link_sent");
     } catch (err) {
@@ -282,7 +274,6 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // автоматический вход
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: registeredUserEmail,
         password: personal.password,
@@ -308,7 +299,7 @@ export default function RegisterDirectorClient() {
   };
 
   const handleTelegramVerified = async () => {
-    // TelegramVerificationStep вызывает это только когда телефон действительно подтверждён
+    // вызываться только после реального phone_verified
     await finishRegistration();
   };
 
@@ -316,7 +307,7 @@ export default function RegisterDirectorClient() {
 
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
-    if (!verificationEmail) return;
+    if (!email.trim()) return;
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -327,7 +318,7 @@ export default function RegisterDirectorClient() {
       try {
         const res = await fetch(
           `/api/auth/check-email-confirmed?email=${encodeURIComponent(
-            verificationEmail
+            email.trim()
           )}`
         );
 
@@ -363,7 +354,7 @@ export default function RegisterDirectorClient() {
       clearTimeout(initial);
       if (intervalId) clearInterval(intervalId);
     };
-  }, [emailStatus, verificationEmail]);
+  }, [emailStatus, email]);
 
   // ---------- render helpers ----------
 
@@ -403,21 +394,33 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStepTitle = () => (
-    <>
-      <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-zinc-50">
-        Создать аккаунт директора
-      </CardTitle>
-      <CardDescription className="mt-2 text-center text-sm leading-relaxed text-zinc-400">
-        {step === 1 &&
-          "Укажите личные данные директора и задайте пароль для входа."}
-        {step === 2 &&
-          "Укажите рабочий e-mail, мы отправим письмо для подтверждения доступа в WELLIFY business."}
-        {step === 3 &&
-          "Подтвердите номер телефона директора через Telegram, чтобы завершить регистрацию и защитить аккаунт."}
-      </CardDescription>
-    </>
-  );
+  const renderStepTitle = () => {
+    let descriptionText: string | null = null;
+
+    if (step === 1) {
+      descriptionText =
+        "Укажите личные данные директора и задайте пароль для входа.";
+    } else if (step === 2) {
+      descriptionText =
+        "Укажите рабочий e-mail, мы отправим письмо для подтверждения доступа в WELLIFY business.";
+    } else {
+      // для шага 3 описание убираем, чтобы не дублировать текст про подтверждение телефона
+      descriptionText = null;
+    }
+
+    return (
+      <>
+        <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-zinc-50">
+          Создать аккаунт директора
+        </CardTitle>
+        {descriptionText && (
+          <CardDescription className="mt-2 text-center text-sm leading-relaxed text-zinc-400">
+            {descriptionText}
+          </CardDescription>
+        )}
+      </>
+    );
+  };
 
   const renderStep1 = () => (
     <div className="space-y-4">
@@ -542,15 +545,10 @@ export default function RegisterDirectorClient() {
           <input
             type="email"
             autoComplete="email"
-            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)] disabled:opacity-60"
+            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
             placeholder="you@business.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={
-              emailStatus === "sending" ||
-              emailStatus === "link_sent" ||
-              emailStatus === "verified"
-            }
           />
         </div>
       </div>
@@ -592,18 +590,13 @@ export default function RegisterDirectorClient() {
     }
 
     return (
-      <div className="space-y-5">
+      <div className="space-y-4">
         <TelegramVerificationStep
           onVerified={handleTelegramVerified}
           language={localeForAPI as "ru" | "uk" | "en"}
           userId={registeredUserId}
           email={registeredUserEmail}
         />
-
-        <div className="pt-1 text-center text-[11px] text-zinc-500">
-          После подтверждения телефона в Telegram и нажатия кнопки продолжения
-          регистрация директора будет завершена автоматически.
-        </div>
       </div>
     );
   };
