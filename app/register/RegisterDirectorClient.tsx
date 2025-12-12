@@ -160,17 +160,17 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  // ---------------- RENDER ----------------
+  // ---------------- RENDER ---------------- 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-center">
+      <div className="w-full max-w-xl rounded-3xl border border-zinc-800/60 bg-zinc-900/85 shadow-[0_24px_80px_rgba(0,0,0,0.85)] px-8 py-7">
+        <CardHeader className="mb-6">
+          <CardTitle className="text-center text-[22px] font-semibold text-zinc-50">
             Регистрация директора
           </CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription className="text-center text-sm text-zinc-400 mt-2">
             Уже есть аккаунт?{" "}
-            <Link href="/auth/login" className="underline">
+            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 hover:underline transition-colors">
               Войти
             </Link>
           </CardDescription>
@@ -178,72 +178,117 @@ export default function RegisterDirectorClient() {
 
         <CardContent className="space-y-6">
           {step === 1 && (
-            <form onSubmit={handleStep1} className="space-y-4">
-              <input
-                placeholder="Имя"
-                value={form.firstName}
-                onChange={(e) =>
-                  setForm({ ...form, firstName: e.target.value })
-                }
-                className="input"
-              />
-              <input
-                placeholder="Отчество"
-                value={form.middleName}
-                onChange={(e) =>
-                  setForm({ ...form, middleName: e.target.value })
-                }
-                className="input"
-              />
-              <input
-                placeholder="Фамилия"
-                value={form.lastName}
-                onChange={(e) =>
-                  setForm({ ...form, lastName: e.target.value })
-                }
-                className="input"
-              />
-              <input
-                type="date"
-                value={form.birthDate}
-                onChange={(e) =>
-                  setForm({ ...form, birthDate: e.target.value })
-                }
-                className="input"
-              />
-
-              <div className="relative">
+            <form onSubmit={handleStep1} className="space-y-5">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-zinc-400">
+                  Имя <span className="text-red-400">*</span>
+                </span>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Пароль"
-                  value={form.password}
+                  placeholder="Введите имя"
+                  value={form.firstName}
                   onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
+                    setForm({ ...form, firstName: e.target.value })
                   }
-                  className="input pr-10"
+                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
                 />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                  onClick={() => setShowPassword(!showPassword)}
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-zinc-400">
+                  Отчество <span className="text-red-400">*</span>
+                </span>
+                <input
+                  placeholder="Введите отчество"
+                  value={form.middleName}
+                  onChange={(e) =>
+                    setForm({ ...form, middleName: e.target.value })
+                  }
+                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-zinc-400">
+                  Фамилия <span className="text-red-400">*</span>
+                </span>
+                <input
+                  placeholder="Введите фамилию"
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm({ ...form, lastName: e.target.value })
+                  }
+                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-zinc-400">
+                  Дата рождения <span className="text-red-400">*</span>
+                </span>
+                <input
+                  type="date"
+                  value={form.birthDate}
+                  onChange={(e) =>
+                    setForm({ ...form, birthDate: e.target.value })
+                  }
+                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-zinc-400">
+                  Пароль <span className="text-red-400">*</span>
+                </span>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Введите пароль"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                    className="h-11 w-full rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-zinc-400">
+                  Подтвердите пароль <span className="text-red-400">*</span>
+                </span>
+                <input
+                  type="password"
+                  placeholder="Повторите пароль"
+                  value={form.passwordConfirm}
+                  onChange={(e) =>
+                    setForm({ ...form, passwordConfirm: e.target.value })
+                  }
+                  className="h-11 rounded-2xl border border-zinc-800/70 bg-zinc-900/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none ring-0 focus:bg-zinc-900/80 focus:border-blue-500/80 transition-all"
+                />
+              </label>
+
+              {error && (
+                <div className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-400 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="mt-4 flex justify-end">
+                <Button 
+                  type="submit" 
+                  className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-blue-500 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </button>
+                  Далее
+                </Button>
               </div>
-
-              <input
-                type="password"
-                placeholder="Подтвердите пароль"
-                value={form.passwordConfirm}
-                onChange={(e) =>
-                  setForm({ ...form, passwordConfirm: e.target.value })
-                }
-                className="input"
-              />
-
-              <Button type="submit" className="w-full">
-                Далее
-              </Button>
             </form>
           )}
 
