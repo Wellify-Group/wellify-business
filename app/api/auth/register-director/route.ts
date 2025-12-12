@@ -1,4 +1,4 @@
-// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ "бизнес_ид")
+// app/api/auth/register-director/route.ts (ФИНАЛЬНАЯ ВЕРСИЯ С ИСПРАВЛЕНИЕМ "бизнес_ид" - РУССКИЕ БУКВЫ)
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     // 3. Ищем существующий профиль для businessId
     const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from("profiles")
-      .select("business_id, код_компании, company_code") // Удалено "бизнес_ид"
+      .select("код_компании, company_code") // Оставили только существующие/критичные
       .eq("id", userId)
       .maybeSingle();
 
@@ -112,11 +112,10 @@ export async function POST(request: NextRequest) {
         console.error("[register-director] Error checking existing profile for businessId", { error: profileCheckError.message });
     }
 
-    // 4. Генерируем businessId/companyCode (если их нет)
-    const existingBusinessId = (existingProfile as any)?.business_id; // Используем только английское поле
+    // 4. Генерируем companyCode (businessId мы больше не привязываем к profiles!)
     const existingCompanyCode = (existingProfile as any)?.["код_компании"] || (existingProfile as any)?.company_code;
     
-    const businessId = existingBusinessId || `biz-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const businessId = `biz-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const companyCode = existingCompanyCode || generateCompanyCode();
 
     // 5. Формируем финальные данные профиля
@@ -140,7 +139,7 @@ export async function POST(request: NextRequest) {
       fullName,
       shortName,
       role: "директор",
-      businessId,
+      businessId: businessId,
       companyCode,
       jobTitle: "владелец",
       active: true,
@@ -149,7 +148,7 @@ export async function POST(request: NextRequest) {
       emailVerified: true, // Полагаемся на Шаг 2
     });
 
-    // !!! ИСПРАВЛЕНИЕ "бизнес_ид" и других полей OID ОШИБОК !!!
+    // !!! ИСПРАВЛЕНИЕ: Перевод на РУССКИЕ БУКВЫ "бизнес_ид" и удаление всех проблемных полей !!!
     const finalProfileData: Record<string, any> = {
         ...profileDataMapped,
         id: userId,
@@ -163,18 +162,20 @@ export async function POST(request: NextRequest) {
         phone_verified: true, 
         updated_at: new Date().toISOString(),
         birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
-        // !!! ИСПРАВЛЕНИЕ: Используем только 'business_id' !!!
-        business_id: businessId, 
+        
+        // !!! ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Используем поле 'бизнес_ид' (русские буквы) !!!
+        бизнес_ид: businessId, 
+        код_компании: companyCode,
+
+        // УДАЛЯЕМ ВСЕ ПРОБЛЕМНЫЕ АНГЛИЙСКИЕ/ДУБЛИРУЮЩИЕ ПОЛЯ
+        business_id: undefined, 
+        locale: undefined, 
+        ФИО: undefined,
+        ф_и_о: undefined,
     };
     
-    // Удаляем все поля с русскими именами, которые могут вызывать конфликт
-    delete finalProfileData.ФИО;
-    delete finalProfileData.ф_и_о;
-    delete finalProfileData.locale;
-    delete finalProfileData.бизнес_ид; 
-    
-    // Убеждаемся, что businessId и companyCode присутствуют
-    finalProfileData.код_компании = companyCode;
+    // Чистим окончательно от undefined
+    Object.keys(finalProfileData).forEach(key => finalProfileData[key] === undefined && delete finalProfileData[key]);
 
 
     // 6. Upsert (Обновление/Создание) профиля (Оставляем UPDATE/INSERT)
@@ -207,9 +208,6 @@ export async function POST(request: NextRequest) {
       }
     }
     // !!! КОНЕЦ ИСПРАВЛЕНИЯ !!!
-    
-    // 7. Повторная попытка входа (для создания сессии на клиенте)
-    // Это не обязательно, так как клиент сам войдет при редиректе
     
     console.log("[register-director] Success", { userId, email: normalizedEmail });
 
