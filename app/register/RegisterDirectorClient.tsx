@@ -15,9 +15,9 @@ import { Mail, Lock, Building2, User, Loader2 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 
 interface FormState {
+  fullName: string;
   email: string;
   password: string;
-  fullName: string;
   businessName: string;
 }
 
@@ -26,9 +26,9 @@ export default function RegisterDirectorClient() {
   const { language } = useLanguage();
 
   const [form, setForm] = useState<FormState>({
+    fullName: "",
     email: "",
     password: "",
-    fullName: "",
     businessName: "",
   });
 
@@ -46,7 +46,7 @@ export default function RegisterDirectorClient() {
     setError(null);
 
     if (!form.email || !form.password) {
-      setError("Заполните e-mail и пароль.");
+      setError("Укажите рабочий e-mail и пароль.");
       return;
     }
 
@@ -54,9 +54,7 @@ export default function RegisterDirectorClient() {
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: form.email,
           password: form.password,
@@ -86,27 +84,35 @@ export default function RegisterDirectorClient() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-4">
-      <div className="relative w-full max-w-xl">
-        {/* подсветка позади карточки */}
-        <div className="pointer-events-none absolute -inset-x-10 -top-24 h-64 rounded-full bg-[radial-gradient(circle_at_top,_rgba(244,244,245,0.16),_transparent)] blur-3xl" />
+    <main className="flex min-h-screen items-start justify-center bg-[radial-gradient(circle_at_top,_#020617,_#020617)] px-4 pt-28 pb-10">
+      <div className="relative w-full max-w-2xl">
+        {/* мягкая подсветка за карточкой */}
+        <div className="pointer-events-none absolute -inset-x-16 -top-32 h-64 rounded-full bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.22),_transparent)] blur-3xl" />
 
-        <Card className="relative z-10 w-full rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent)] bg-zinc-950/80 shadow-[0_24px_80px_rgba(0,0,0,0.85)] backdrop-blur-xl">
-          <CardHeader className="px-8 pt-7 pb-3">
-            <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-zinc-50">
+        <Card className="relative z-10 w-full rounded-[32px] border border-[rgba(148,163,184,0.35)] bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.96),_rgba(9,9,11,0.98))] shadow-[0_30px_120px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+          <CardHeader className="px-10 pt-8 pb-5">
+            <div className="mb-3 flex items-center justify-center">
+              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-300">
+                Шаг 1 · Основные данные директора
+              </span>
+            </div>
+
+            <CardTitle className="text-center text-[24px] font-semibold tracking-tight text-zinc-50">
               Регистрация директора
             </CardTitle>
-            <CardDescription className="mt-2 text-center text-sm text-zinc-400">
+
+            <CardDescription className="mt-2 text-center text-sm leading-relaxed text-zinc-400">
               Создайте аккаунт владельца бизнеса, чтобы управлять точками,
-              сменами и персоналом в WELLIFY business.
+              сменами и персоналом в WELLIFY business. На первом шаге укажите
+              данные директора и базовую информацию о компании.
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="px-8 pb-4 pt-3">
+          <CardContent className="px-10 pb-4 pt-2">
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* Имя директора */}
+              {/* Имя и фамилия директора */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
                   Имя и фамилия директора
                 </label>
                 <div className="relative">
@@ -116,7 +122,7 @@ export default function RegisterDirectorClient() {
                   <input
                     type="text"
                     autoComplete="name"
-                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    className="h-11 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
                     placeholder="Например, Иван Петров"
                     value={form.fullName}
                     onChange={handleChange("fullName")}
@@ -124,9 +130,9 @@ export default function RegisterDirectorClient() {
                 </div>
               </div>
 
-              {/* E-mail */}
+              {/* Рабочий e-mail */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
                   Рабочий e-mail
                 </label>
                 <div className="relative">
@@ -136,7 +142,7 @@ export default function RegisterDirectorClient() {
                   <input
                     type="email"
                     autoComplete="email"
-                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    className="h-11 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
                     placeholder="you@business.com"
                     value={form.email}
                     onChange={handleChange("email")}
@@ -146,8 +152,8 @@ export default function RegisterDirectorClient() {
 
               {/* Пароль */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
-                  Пароль
+                <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  Пароль для входа
                 </label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -156,7 +162,7 @@ export default function RegisterDirectorClient() {
                   <input
                     type="password"
                     autoComplete="new-password"
-                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    className="h-11 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
                     placeholder="Минимум 8 символов"
                     value={form.password}
                     onChange={handleChange("password")}
@@ -166,7 +172,7 @@ export default function RegisterDirectorClient() {
 
               {/* Название бизнеса */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
                   Название бизнеса
                 </label>
                 <div className="relative">
@@ -175,7 +181,7 @@ export default function RegisterDirectorClient() {
                   </div>
                   <input
                     type="text"
-                    className="h-10 w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none focus:ring-0"
+                    className="h-11 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
                     placeholder="Например, WELLIFY Coffee"
                     value={form.businessName}
                     onChange={handleChange("businessName")}
@@ -184,18 +190,20 @@ export default function RegisterDirectorClient() {
               </div>
 
               {error && (
-                <p className="text-xs text-rose-400/90">{error}</p>
+                <p className="text-xs leading-snug text-rose-400/90">
+                  {error}
+                </p>
               )}
 
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="mt-1 inline-flex h-10 w-full items-center justify-center rounded-xl bg-zinc-50 text-sm font-medium text-zinc-950 shadow-[0_10px_40px_rgba(0,0,0,0.65)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+                className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--accent-primary,#2563eb)] text-sm font-semibold text-white shadow-[0_18px_60px_rgba(37,99,235,0.55)] transition hover:bg-[var(--accent-primary-hover,#1d4ed8)] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Регистрация...
+                    Регистрируем директора...
                   </>
                 ) : (
                   "Зарегистрировать директора"
@@ -204,7 +212,7 @@ export default function RegisterDirectorClient() {
             </form>
           </CardContent>
 
-          <CardFooter className="flex flex-col items-center gap-1 px-8 pb-6 pt-2">
+          <CardFooter className="flex flex-col items-center gap-1 px-10 pb-7 pt-2">
             <p className="text-xs text-zinc-500">
               У вас уже есть аккаунт директора?
             </p>
