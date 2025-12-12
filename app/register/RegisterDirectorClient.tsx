@@ -11,7 +11,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Calendar, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
+import { User, Calendar, Mail, Lock, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 
 type Step = 1 | 2 | 3;
@@ -347,7 +347,7 @@ export default function RegisterDirectorClient() {
   );
 
   const renderStep2 = () => (
-    <form className="space-y-5" onSubmit={handleSubmitStep2}>
+    <form id="step2-form" className="space-y-5" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
           Рабочий e-mail
@@ -372,23 +372,6 @@ export default function RegisterDirectorClient() {
           Этот адрес будет использоваться для входа, уведомлений по сменам и
           восстановления доступа.
         </p>
-      </div>
-
-      <div className="pt-2">
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-[var(--accent-primary,#2563eb)] text-sm font-semibold text-white shadow-[0_18px_60px_rgba(37,99,235,0.55)] transition hover:bg-[var(--accent-primary-hover,#1d4ed8)] disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Создаём аккаунт директора...
-            </>
-          ) : (
-            "Создать аккаунт директора"
-          )}
-        </Button>
       </div>
     </form>
   );
@@ -467,8 +450,6 @@ export default function RegisterDirectorClient() {
   return (
     <main className="flex min-h-screen items-start justify-center bg-background px-4 pt-28 pb-10">
       <div className="relative w-full max-w-3xl">
-        <div className="pointer-events-none absolute -inset-x-24 -top-32 h-64 rounded-full bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.22),_transparent)] blur-3xl" />
-
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
@@ -487,20 +468,20 @@ export default function RegisterDirectorClient() {
             {step === 3 && renderStep3()}
           </CardContent>
 
-          <CardFooter className="flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
+          <CardFooter className="relative flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
             <div className="flex items-center gap-2">
               {step > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="inline-flex items-center gap-1 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-3 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800/80"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800/80 transition-colors"
                 >
-                  <ArrowLeft className="h-3 w-3" />
+                  <ArrowLeft className="h-4 w-4" />
                   Назад
                 </button>
               )}
             </div>
-            <div className="flex-1 flex items-center justify-center text-[11px]">
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-[11px]">
               <span className="text-zinc-500">Уже есть аккаунт? </span>
               <button
                 type="button"
@@ -510,7 +491,43 @@ export default function RegisterDirectorClient() {
                 Войти
               </button>
             </div>
-            <div className="w-[100px]"></div>
+            <div className="flex items-center gap-2">
+              {step === 1 && (
+                <button
+                  type="button"
+                  onClick={handleNextFromStep1}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
+                >
+                  Далее
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+              {step === 2 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    const form = document.getElementById('step2-form') as HTMLFormElement;
+                    if (form) {
+                      form.requestSubmit();
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Создание...
+                    </>
+                  ) : (
+                    <>
+                      Далее
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </CardFooter>
         </Card>
       </div>
