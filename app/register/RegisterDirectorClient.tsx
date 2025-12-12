@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -11,8 +11,19 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Calendar, Mail, Lock, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
+import {
+  User,
+  Calendar,
+  Mail,
+  Lock,
+  Loader2,
+  ArrowLeft,
+  ArrowRight,
+  AlertCircle,
+} from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { TelegramVerificationStep } from "./TelegramVerificationStep";
 
 type Step = 1 | 2 | 3;
 
@@ -24,25 +35,6 @@ interface PersonalForm {
   password: string;
   passwordConfirm: string;
 }
-
-interface RegisterResponse {
-  success: boolean;
-  error?: string;
-  errorCode?: string;
-  user?: {
-    id: string;
-    email: string;
-    fullName?: string;
-    role?: string;
-  };
-  business?: {
-    id: string;
-    name: string;
-    companyCode: string;
-  };
-}
-
-const telegramAppUrl = process.env.NEXT_PUBLIC_TELEGRAM_APP_URL;
 
 export default function RegisterDirectorClient() {
   const router = useRouter();
@@ -61,12 +53,26 @@ export default function RegisterDirectorClient() {
   });
 
   const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [registerError, setRegisterError] = useState<string | null>(null);
-  const [registerSuccess, setRegisterSuccess] = useState(false);
+
+  const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
   const [registeredUserEmail, setRegisteredUserEmail] = useState<string | null>(
     null
   );
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // e-mail verification
+  const [emailStatus, setEmailStatus] = useState<
+    "idle" | "sending" | "link_sent" | "verified" | "error"
+  >("idle");
+  const [emailVerified, setEmailVerified] = useState(false);
+
+  const [supabase] = useState(() => createBrowserSupabaseClient());
+
+  const localeForAPI =
+    language === "ua" ? "uk" : (language as "ru" | "uk" | "en" | string);
 
   // ---------- helpers ----------
 
@@ -106,13 +112,40 @@ export default function RegisterDirectorClient() {
 
   const handleSubmitStep2 = async (e: FormEvent) => {
     e.preventDefault();
+    await handleSendEmailLink();
+  };
+
+  const handleSendEmailLink = async () => {
+    if (emailStatus === "sending" || emailStatus === "link_sent") return;
+
     setRegisterError(null);
 
     if (!email.trim()) {
       setRegisterError("Укажите рабочий e-mail.");
+      setEmailStatus("error");
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setRegisterError("Введите корректный e-mail адрес.");
+      setEmailStatus("error");
+      return;
+    }
+
+    if (
+      !personal.firstName.trim() ||
+      !personal.lastName.trim() ||
+      !personal.password
+    ) {
+      setRegisterError(
+        "Пожалуйста, заполните личные данные и пароль на шаге 1."
+      );
+      setEmailStatus("error");
+      return;
+    }
+
+    setEmailStatus("sending");
     setIsSubmitting(true);
 
     try {
@@ -124,43 +157,68 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      const payload = {
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/email-confirmed`
+          : `${
+              process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
+            }/email-confirmed`;
+
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: personal.password,
-        fullName: fullName || undefined,
-        firstName: personal.firstName.trim() || undefined,
-        lastName: personal.lastName.trim() || undefined,
-        middleName: personal.middleName.trim() || undefined,
-        birthDate: personal.birthDate || undefined,
-        language,
-      };
-
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        options: {
+          data: {
+            first_name: personal.firstName.trim(),
+            last_name: personal.lastName.trim(),
+            middle_name: personal.middleName.trim() || null,
+            full_name: fullName || null,
+            birth_date: personal.birthDate || null,
+            locale: localeForAPI,
+          },
+          emailRedirectTo: redirectTo,
+        },
       });
 
-      const data: RegisterResponse = await res.json();
-
-      if (!res.ok || !data.success) {
-        setRegisterError(
-          data?.error ||
-            "Не удалось создать аккаунт директора. Попробуйте ещё раз."
-        );
-        setIsSubmitting(false);
+      if (error) {
+        console.error("[register] signUp error", error);
+        setEmailStatus("error");
+        const msg = error.message?.toLowerCase() || "";
+        if (
+          msg.includes("already") ||
+          msg.includes("exists") ||
+          msg.includes("registered")
+        ) {
+          setRegisterError(
+            "Этот e-mail уже зарегистрирован. Попробуйте войти в систему."
+          );
+        } else {
+          setRegisterError(
+            error.message ||
+              "Не удалось отправить письмо. Попробуйте ещё раз позже."
+          );
+        }
         return;
       }
 
-      setRegisterSuccess(true);
-      setRegisteredUserEmail(data.user?.email || email.trim());
-      setIsSubmitting(false);
+      if (!data?.user) {
+        console.error("[register] signUp returned no user", { data });
+        setEmailStatus("error");
+        setRegisterError(
+          "Не удалось создать учетную запись. Попробуйте ещё раз."
+        );
+        return;
+      }
 
-      setStep(3);
-      setMaxStepReached(3);
+      setRegisteredUserId(data.user.id);
+      setRegisteredUserEmail(data.user.email ?? email.trim());
+
+      setEmailStatus("link_sent");
     } catch (err) {
-      console.error("Register error", err);
+      console.error("[register] handleSendEmailLink error", err);
+      setEmailStatus("error");
       setRegisterError("Внутренняя ошибка. Попробуйте позже.");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -171,8 +229,133 @@ export default function RegisterDirectorClient() {
   };
 
   const canGoToStep = (target: Step) => {
-    return target <= maxStepReached;
+    if (target === 1) return true;
+    if (target === 2) return maxStepReached >= 2;
+    if (target === 3) return emailVerified && maxStepReached >= 3;
+    return false;
   };
+
+  const finishRegistration = async () => {
+    try {
+      setIsSubmitting(true);
+      setRegisterError(null);
+
+      if (!emailVerified || !registeredUserEmail) {
+        setRegisterError(
+          "E-mail должен быть подтвержден по ссылке из письма, прежде чем завершать регистрацию."
+        );
+        return;
+      }
+
+      const payload = {
+        email: registeredUserEmail,
+        password: personal.password,
+        firstName: personal.firstName.trim(),
+        lastName: personal.lastName.trim(),
+        middleName: personal.middleName.trim() || null,
+        birthDate: personal.birthDate || null,
+        locale: localeForAPI,
+      };
+
+      const res = await fetch("/api/auth/register-director", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        const msg =
+          data?.message ||
+          data?.error ||
+          "Не удалось завершить регистрацию директора.";
+        setRegisterError(msg);
+        return;
+      }
+
+      // автоматический вход
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: registeredUserEmail,
+        password: personal.password,
+      });
+
+      if (signInError) {
+        console.warn("[register] signIn error", signInError);
+        setRegisterError(
+          "Аккаунт создан, но не удалось выполнить вход. Попробуйте войти вручную."
+        );
+        return;
+      }
+
+      router.push("/dashboard/director");
+    } catch (e) {
+      console.error("finishRegistration error", e);
+      setRegisterError(
+        "Неизвестная ошибка при завершении регистрации. Попробуйте позже."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleTelegramVerified = async () => {
+    // TelegramVerificationStep вызывает это только когда телефон реально подтверждён
+    await finishRegistration();
+  };
+
+  // ---------- polling e-mail confirmation ----------
+
+  useEffect(() => {
+    if (emailStatus !== "link_sent") return;
+    if (!email.trim()) return;
+
+    let cancelled = false;
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const check = async () => {
+      if (cancelled) return;
+
+      try {
+        const res = await fetch(
+          `/api/auth/check-email-confirmed?email=${encodeURIComponent(
+            email.trim()
+          )}`
+        );
+
+        if (!res.ok) {
+          return;
+        }
+
+        const data = await res.json();
+
+        if (data.success && data.emailConfirmed) {
+          setEmailStatus("verified");
+          setEmailVerified(true);
+          setRegisterError(null);
+
+          setStep(3);
+          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+        }
+      } catch (e) {
+        console.error("[register] check-email-confirmed error", e);
+      }
+    };
+
+    const initial = setTimeout(check, 3000);
+    intervalId = setInterval(check, 1500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initial);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [emailStatus, email]);
 
   // ---------- render helpers ----------
 
@@ -212,14 +395,6 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStepBadge = () => (
-    <div className="mb-2 flex items-center justify-center">
-      <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-300">
-        Шаг {step} из 3
-      </span>
-    </div>
-  );
-
   const renderStepTitle = () => (
     <>
       <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-zinc-50">
@@ -229,7 +404,7 @@ export default function RegisterDirectorClient() {
         {step === 1 &&
           "Укажите личные данные директора и задайте пароль для входа."}
         {step === 2 &&
-          "Укажите рабочий e-mail, на который будут приходить уведомления и доступ в WELLIFY business."}
+          "Укажите рабочий e-mail, мы отправим письмо для подтверждения доступа в WELLIFY business."}
         {step === 3 &&
           "Подтвердите номер телефона директора через Telegram, чтобы завершить регистрацию и защитить аккаунт."}
       </CardDescription>
@@ -367,94 +542,63 @@ export default function RegisterDirectorClient() {
         </div>
       </div>
 
-      <div className="mt-2 flex flex-col gap-2 text-xs text-zinc-500">
+      <div className="mt-2 flex flex-col gap-1 text-xs text-zinc-500">
         <p>
           Этот адрес будет использоваться для входа, уведомлений по сменам и
           восстановления доступа.
         </p>
+        {emailStatus === "link_sent" && (
+          <p className="text-emerald-400">
+            Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
+            после чего мы автоматически продолжим регистрацию.
+          </p>
+        )}
+        {emailStatus === "verified" && (
+          <p className="text-emerald-400">
+            E-mail подтвержден. Можно переходить к шагу Telegram.
+          </p>
+        )}
       </div>
     </form>
   );
 
-  const renderStep3 = () => (
-    <div className="space-y-5">
-      <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 text-sm text-zinc-200">
-        <p className="font-medium mb-2">
-          Шаг 3. Подтверждение телефона через Telegram
-        </p>
-        <p className="text-zinc-400 mb-2">
-          Откройте нашего бота WELLIFY business в Telegram, отправьте свой номер
-          телефона и дождитесь автоматического завершения регистрации.
-        </p>
-        {registeredUserEmail && (
-          <p className="text-xs text-zinc-500">
-            Аккаунт директора успешно создан для e-mail:{" "}
-            <span className="font-semibold text-zinc-200">
-              {registeredUserEmail}
+  const renderStep3 = () => {
+    if (!registeredUserId || !registeredUserEmail) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+            <AlertCircle className="mt-0.5 h-4 w-4" />
+            <span>
+              Не удалось получить данные регистрации. Вернитесь на шаг 2,
+              отправьте письмо ещё раз и подтвердите e-mail по ссылке из
+              письма.
             </span>
-            .
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        {telegramAppUrl ? (
-          <>
-            <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/70 p-4 text-sm text-zinc-200">
-              <p className="mb-1 font-medium">Откройте бота в Telegram</p>
-              <p className="text-xs text-zinc-400 mb-3">
-                Наведите камеру на QR-код или нажмите кнопку ниже, чтобы
-                открыть бота WELLIFY business в Telegram.
-              </p>
-              {/* Здесь можно потом встроить реальный QR-код */}
-              <div className="flex items-center justify-center rounded-xl border border-dashed border-zinc-700/80 bg-zinc-900/60 py-8 text-xs text-zinc-500">
-                QR-код будет отображаться здесь
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              onClick={() => {
-                window.open(telegramAppUrl, "_blank", "noopener,noreferrer");
-              }}
-              className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-[var(--accent-primary,#2563eb)] text-sm font-semibold text-white shadow-[0_18px_60px_rgba(37,99,235,0.55)] transition hover:bg-[var(--accent-primary-hover,#1d4ed8)]"
-            >
-              Открыть бота в Telegram
-            </Button>
-          </>
-        ) : (
-          <div className="rounded-2xl border border-rose-800/70 bg-rose-950/80 p-4 text-xs text-rose-100">
-            <p className="font-semibold mb-1">
-              NEXT_PUBLIC_TELEGRAM_APP_URL не настроен в .env.local
-            </p>
-            <p className="text-rose-200/80">
-              Добавьте переменную окружения{" "}
-              <span className="font-mono text-[11px]">
-                NEXT_PUBLIC_TELEGRAM_APP_URL
-              </span>{" "}
-              с ссылкой на бота WELLIFY business в Telegram и пересоберите
-              приложение, чтобы включить этот шаг.
-            </p>
           </div>
-        )}
-      </div>
+        </div>
+      );
+    }
 
-      <div className="pt-1 text-center text-[11px] text-zinc-500">
-        После подтверждения телефона регистрация директора будет завершена.
+    return (
+      <div className="space-y-5">
+        <TelegramVerificationStep
+          onVerified={handleTelegramVerified}
+          language={localeForAPI as "ru" | "uk" | "en"}
+          userId={registeredUserId}
+          email={registeredUserEmail}
+        />
+
+        <div className="pt-1 text-center text-[11px] text-zinc-500">
+          После подтверждения телефона в Telegram и нажатия кнопки продолжения
+          регистрация директора будет завершена автоматически.
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ---------- main render ----------
 
   return (
-    <main 
-      className="flex min-h-[calc(100vh-72px)] items-center justify-center px-4 py-10" 
-      style={{ 
-        marginTop: '72px',
-        backgroundColor: 'var(--color-background)'
-      }}
-    >
+    <main className="flex min-h-screen items-start justify-center bg-background px-4 pt-28 pb-10">
       <div className="relative w-full max-w-3xl">
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
@@ -464,8 +608,9 @@ export default function RegisterDirectorClient() {
 
           <CardContent className="px-10 pb-4 pt-1">
             {registerError && (
-              <div className="mb-4 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
-                {registerError}
+              <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+                <AlertCircle className="mt-0.5 h-4 w-4" />
+                <span>{registerError}</span>
               </div>
             )}
 
@@ -491,8 +636,8 @@ export default function RegisterDirectorClient() {
               <span className="text-zinc-500">Уже есть аккаунт? </span>
               <button
                 type="button"
-                onClick={() => router.push("/login")}
-                className="font-medium text-zinc-200 underline-offset-4 hover:underline"
+                onClick={() => router.push("/auth/login")}
+                className="ml-1 font-medium text-zinc-200 underline-offset-4 hover:underline"
               >
                 Войти
               </button>
@@ -512,19 +657,25 @@ export default function RegisterDirectorClient() {
                 <button
                   type="button"
                   onClick={(e) => {
-                    const form = document.getElementById('step2-form') as HTMLFormElement;
+                    const form = document.getElementById(
+                      "step2-form"
+                    ) as HTMLFormElement | null;
                     if (form) {
                       form.requestSubmit();
                     }
                   }}
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting || emailStatus === "sending" || emailStatus === "link_sent"
+                  }
                   className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isSubmitting ? (
+                  {isSubmitting || emailStatus === "sending" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Создание...
+                      Отправляем...
                     </>
+                  ) : emailStatus === "link_sent" ? (
+                    <>Ждём подтверждения…</>
                   ) : (
                     <>
                       Далее
