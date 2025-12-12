@@ -465,14 +465,13 @@ export default function RegisterDirectorClient() {
   // ---------- main render ----------
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-[radial-gradient(circle_at_top,_#020617,_#020617)] px-4 pt-28 pb-10">
+    <main className="flex min-h-screen items-start justify-center bg-background px-4 pt-28 pb-10">
       <div className="relative w-full max-w-3xl">
         <div className="pointer-events-none absolute -inset-x-24 -top-32 h-64 rounded-full bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.22),_transparent)] blur-3xl" />
 
-        <Card className="relative z-10 w-full rounded-[32px] border border-[rgba(148,163,184,0.35)] bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.96),_rgba(9,9,11,0.98))] shadow-[0_30px_120px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+        <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
-            {renderStepBadge()}
             {renderStepTitle()}
           </CardHeader>
 
@@ -501,8 +500,8 @@ export default function RegisterDirectorClient() {
                 </button>
               )}
             </div>
-            <div className="text-right text-[11px]">
-              <div className="text-zinc-500">Уже есть аккаунт?</div>
+            <div className="flex-1 flex items-center justify-center text-[11px]">
+              <span className="text-zinc-500">Уже есть аккаунт? </span>
               <button
                 type="button"
                 onClick={() => router.push("/login")}
@@ -511,6 +510,7 @@ export default function RegisterDirectorClient() {
                 Войти
               </button>
             </div>
+            <div className="w-[100px]"></div>
           </CardFooter>
         </Card>
       </div>
