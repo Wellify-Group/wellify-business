@@ -15,7 +15,8 @@ interface TelegramVerificationStepProps {
 type SessionStatus = {
   status: "pending" | "completed" | "expired";
   phone: string | null;
-  phoneVerified: boolean;
+  phoneVerified?: boolean;
+  telegramVerified?: boolean;
 };
 
 const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
@@ -162,7 +163,7 @@ export function TelegramVerificationStep({
           status:
             (raw.status as SessionStatus["status"]) ||
             (raw.sessionStatus as SessionStatus["status"]) ||
-            (raw.phone_verified ? "completed" : "pending"),
+            "pending",
           phone:
             raw.phone ??
             raw.phone_number ??
@@ -175,16 +176,31 @@ export function TelegramVerificationStep({
             raw.phoneConfirmed ??
             raw.phone_confirmed ??
             false,
+          telegramVerified:
+            raw.telegramVerified ?? raw.telegram_verified ?? false,
         };
 
         setStatus(normalized);
 
-        if (normalized.phoneVerified) {
+        const isVerified =
+          normalized.phoneVerified ||
+          (normalized.status === "completed" &&
+            normalized.phone &&
+            normalized.phone.length > 0);
+
+        if (isVerified) {
           setPhoneVerified(true);
+          setStatus({
+            ...normalized,
+            status: "completed",
+            phoneVerified: true,
+          });
+
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
+          return;
         }
 
         if (normalized.status === "expired") {
@@ -198,7 +214,7 @@ export function TelegramVerificationStep({
       }
     };
 
-    // первый запрос быстро, затем интервал
+    // первый запрос сразу, потом интервал
     poll();
     intervalId = setInterval(poll, 3000);
 
@@ -222,7 +238,7 @@ export function TelegramVerificationStep({
     setPhoneVerified(false);
     setError(null);
     setPolling(false);
-    // useEffect с userId/email/language перезапустит создание сессии
+    // useEffect с userId/email/language сам заново создаст сессию
   };
 
   // 3. Успешное подтверждение телефона
