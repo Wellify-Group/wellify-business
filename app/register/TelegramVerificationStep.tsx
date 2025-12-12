@@ -1,9 +1,16 @@
+// app/register/TelegramVerificationStep.tsx (ФИНАЛЬНЫЙ КОД - ИСПРАВЛЕНО УСЛОВИЕ ЗАВЕРШЕНИЯ)
+
 "use client";
 
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  CardContent,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"; // Добавляем импорты, которые использовались в новом UI
 
 interface TelegramVerificationStepProps {
   onVerified: () => void;
@@ -34,8 +41,7 @@ export function TelegramVerificationStep({
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
 
-  // Используем status для рендеринга
-  const [isFinished, setIsFinished] = useState(false);
+  const [isFinished, setIsFinished] = useState(false); // Используем isFinished для рендеринга
 
   const texts = {
     ru: {
@@ -49,10 +55,10 @@ export function TelegramVerificationStep({
         "Нажмите «Отправить номер телефона».",
         "Дождитесь подтверждения и вернитесь сюда.",
       ],
-      successTitle: "Телефон подтверждён",
+      successTitle: "Поздравляем!", // Изменено
       successText:
-        "Номер телефона директора успешно подтверждён через Telegram.",
-      successButton: "Перейти в Дашборд", // ИЗМЕНЕНО
+        "Регистрация успешно завершена. Теперь вы можете перейти в свой дашборд и начать работу с сервисом.", // Изменено
+      successButton: "Перейти в Дашборд", // Изменено
       newLink: "Создать новую ссылку",
     },
     uk: {
@@ -66,9 +72,9 @@ export function TelegramVerificationStep({
         "Натисніть «Надіслати номер телефону».",
         "Дочекайтеся підтвердження та поверніться сюди.",
       ],
-      successTitle: "Телефон підтверджено",
+      successTitle: "Вітаємо!",
       successText:
-        "Номер телефону директора успішно підтверджено через Telegram.",
+        "Реєстрацію успішно завершено. Тепер ви можете перейти до свого дашборду та почати роботу з сервісом.",
       successButton: "Перейти до Дашборду",
       newLink: "Створити нове посилання",
     },
@@ -83,8 +89,8 @@ export function TelegramVerificationStep({
         "Press “Send phone number”.",
         "Wait for confirmation and return here.",
       ],
-      successTitle: "Phone confirmed",
-      successText: "Director’s phone number has been confirmed via Telegram.",
+      successTitle: "Congratulations!",
+      successText: "Registration completed successfully. You can now go to your dashboard and start using the service.",
       successButton: "Go to Dashboard",
       newLink: "Create new link",
     },
@@ -140,7 +146,6 @@ export function TelegramVerificationStep({
       }
     };
 
-    // !!! ВЫЗЫВАЕМ createSession только при инициализации !!!
     if (!sessionToken && !error) {
         createSession();
     }
@@ -186,11 +191,11 @@ export function TelegramVerificationStep({
 
         setStatus(normalized);
 
-        // !!! ИСПРАВЛЕНИЕ: УСЛОВИЕ ЗАВЕРШЕНИЯ - МАКСИМАЛЬНОЕ ДОВЕРИЕ БОТУ !!!
         const isVerified =
-            normalized.phoneVerified || // Поле, которое может быть неверным
-            normalized.telegramVerified || // Поле, которое должно быть true
-            normalized.status === "completed"; // Статус сессии
+          normalized.phoneVerified ||
+          (normalized.status === "completed" &&
+            normalized.phone &&
+            normalized.phone.length > 0);
 
         if (isVerified) {
           setIsFinished(true); // Устанавливаем флаг для UI
@@ -203,6 +208,10 @@ export function TelegramVerificationStep({
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
+          }
+          // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ВЫЗЫВАЕМ onVerified() ЗДЕСЬ !!!
+          if (!cancelled) {
+              onVerified(); 
           }
           return;
         }
@@ -226,7 +235,7 @@ export function TelegramVerificationStep({
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [sessionToken, polling]); // onVerified удален из зависимостей
+  }, [sessionToken, polling, onVerified]); // onVerified добавлен
 
   const handleOpenTelegram = () => {
     if (!telegramLink) return;
@@ -246,7 +255,7 @@ export function TelegramVerificationStep({
   };
 
   // 3. Успешное подтверждение телефона
-  if (isFinished) { // Используем новый флаг isFinished
+  if (isFinished) { // Используем isFinished для рендеринга
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
@@ -259,7 +268,7 @@ export function TelegramVerificationStep({
         <Button
           size="lg"
           className="mt-2 w-full max-w-xs"
-          onClick={onVerified} // onVerified переводит на Шаг 4
+          onClick={onVerified} // Вызовет handleTelegramVerified, который переведет на Шаг 4
         >
           {texts.successButton}
         </Button>
