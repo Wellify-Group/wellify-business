@@ -1,29 +1,29 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, User, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
+import React from "react";
+import { useRouter } from "next/navigation";
+import { useLanguage } from "@/components/language-provider";
+import { ChevronRight, AlertTriangle, Circle } from "lucide-react";
 
-interface LocationShiftData {
+// Тип данных для строки таблицы (то, что ты собираешь в DirectorDashboard)
+export interface LocationShiftData {
   locationId: string;
   locationName: string;
-  shiftStatus: 'open' | 'closed' | 'not-opened';
+  shiftStatus: "open" | "closed" | "not-opened";
   shiftTime?: string;
   managerName?: string;
-  managerStatus?: 'on-shift' | 'not-assigned';
+  managerStatus?: "on-shift" | "not-assigned";
   revenue: number;
   plan: number;
   planPercent: number;
-  activity: 'normal' | 'low' | 'suspicious';
-  tasksStats?: {
-    completed: number;
-    total: number;
-    completionPercent: number;
-  } | null;
+  activity: "normal" | "low" | "suspicious";
+  tasksStats:
+    | {
+        completed: number;
+        total: number;
+        completionPercent: number;
+      }
+    | null;
   activeShiftId?: string;
 }
 
@@ -32,151 +32,290 @@ interface LocationsShiftsTableProps {
   currency: string;
 }
 
-export function LocationsShiftsTable({ data, currency }: LocationsShiftsTableProps) {
-  const getActivityIndicator = (activity: string) => {
-    switch (activity) {
-      case 'normal':
-        return <TrendingUp className="h-4 w-4 text-emerald-500" />;
-      case 'low':
-        return <TrendingDown className="h-4 w-4 text-amber-500" />;
-      case 'suspicious':
-        return <Minus className="h-4 w-4 text-rose-500" />;
+export function LocationsShiftsTable({
+  data,
+  currency,
+}: LocationsShiftsTableProps) {
+  const router = useRouter();
+  const { t, language } = useLanguage();
+
+  const formatCurrency = (value: number) =>
+    value.toLocaleString(language, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+
+  const getShiftStatusLabel = (status: LocationShiftData["shiftStatus"]) => {
+    switch (status) {
+      case "open":
+        return t("dashboard.shift_status_open") || "Смена открыта";
+      case "closed":
+        return t("dashboard.shift_status_closed") || "Смена закрыта";
+      case "not-opened":
       default:
-        return null;
+        return t("dashboard.shift_status_not_opened") || "Смена не открыта";
     }
   };
 
-  const getActivityLabel = (activity: string) => {
-    switch (activity) {
-      case 'normal':
-        return 'Норма';
-      case 'low':
-        return 'Низкая';
-      case 'suspicious':
-        return 'Подозрительная';
+  const getShiftStatusBadgeClass = (
+    status: LocationShiftData["shiftStatus"],
+  ) => {
+    switch (status) {
+      case "open":
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+      case "closed":
+        return "bg-slate-500/10 text-slate-300 border-slate-500/30";
+      case "not-opened":
       default:
-        return '-';
+        return "bg-amber-500/10 text-amber-400 border-amber-500/30";
     }
+  };
+
+  const getActivityDotClass = (activity: LocationShiftData["activity"]) => {
+    switch (activity) {
+      case "normal":
+        return "text-emerald-500";
+      case "low":
+        return "text-amber-400";
+      case "suspicious":
+      default:
+        return "text-rose-500";
+    }
+  };
+
+  const getActivityLabel = (activity: LocationShiftData["activity"]) => {
+    switch (activity) {
+      case "normal":
+        return t("dashboard.activity_normal") || "Нормальная активность";
+      case "low":
+        return t("dashboard.activity_low") || "Низкая активность";
+      case "suspicious":
+      default:
+        return t("dashboard.activity_suspicious") || "Подозрительная активность";
+    }
+  };
+
+  const handleRowClick = (row: LocationShiftData) => {
+    // Клик по строке ведёт на страницу точки
+    router.push(`/dashboard/director/locations/${row.locationId}`);
   };
 
   return (
-    <Card className="p-3">
-      <h3 className="text-lg font-semibold text-foreground mb-3">Точки и смены</h3>
-      <div className="max-h-[600px] overflow-y-auto">
-        <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="py-2 text-xs font-semibold">Точка</TableHead>
-            <TableHead className="py-2 text-xs font-semibold">Смена</TableHead>
-            <TableHead className="py-2 text-xs font-semibold">Менеджер</TableHead>
-            <TableHead className="py-2 text-xs font-semibold">Выручка / План</TableHead>
-            <TableHead className="py-2 text-xs font-semibold">Задачи</TableHead>
-            <TableHead className="py-2 text-xs font-semibold">Активность</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                Нет данных о точках
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((row) => (
-              <TableRow key={row.locationId} className="hover:bg-muted/50">
-                <TableCell className="py-2">
-                  <Link
-                    href={`/dashboard/director/locations/${row.locationId}`}
-                    className="flex items-center gap-2 hover:text-primary transition-colors"
-                  >
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{row.locationName}</span>
-                  </Link>
-                </TableCell>
-                <TableCell className="py-2">
-                  {row.shiftStatus === 'open' && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="success" className="text-xs">Открыта</Badge>
-                      {row.shiftTime && (
-                        <span className="text-xs text-muted-foreground">{row.shiftTime}</span>
-                      )}
-                    </div>
-                  )}
-                  {row.shiftStatus === 'closed' && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">Закрыта</Badge>
-                      {row.shiftTime && (
-                        <span className="text-xs text-muted-foreground">{row.shiftTime}</span>
-                      )}
-                    </div>
-                  )}
-                  {row.shiftStatus === 'not-opened' && (
-                    <Badge variant="error" className="text-xs">Смена не открыта</Badge>
-                  )}
-                </TableCell>
-                <TableCell className="py-2">
+    <div className="bg-[var(--surface-1)] border border-[var(--border-color)] rounded-xl shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-[var(--border-color)] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+            {t("dashboard.table_locations_shifts") || "Точки и смены сегодня"}
+          </h2>
+        </div>
+        <span className="text-xs text-[var(--text-tertiary)]">
+          {t("dashboard.table_locations_count") || "Точек"}: {data.length}
+        </span>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-[var(--surface-2)]/80">
+            <tr className="text-xs text-[var(--text-tertiary)]">
+              <th className="px-4 py-2 text-left font-medium">
+                {t("dashboard.col_location") || "Точка"}
+              </th>
+              <th className="px-4 py-2 text-left font-medium">
+                {t("dashboard.col_manager") || "Менеджер"}
+              </th>
+              <th className="px-4 py-2 text-left font-medium">
+                {t("dashboard.col_shift") || "Смена"}
+              </th>
+              <th className="px-4 py-2 text-right font-medium">
+                {t("dashboard.col_revenue") || "Выручка"}
+              </th>
+              <th className="px-4 py-2 text-right font-medium">
+                {t("dashboard.col_plan") || "План, %"}
+              </th>
+              <th className="px-4 py-2 text-left font-medium">
+                {t("dashboard.col_activity") || "Активность"}
+              </th>
+              <th className="px-4 py-2 text-left font-medium">
+                {t("dashboard.col_tasks") || "Задачи смены"}
+              </th>
+              <th className="px-4 py-2" />
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-[var(--border-color)]">
+            {data.length === 0 && (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="px-4 py-6 text-center text-xs text-[var(--text-tertiary)]"
+                >
+                  {t("dashboard.no_locations_today") ||
+                    "На сегодня нет активных точек или смен."}
+                </td>
+              </tr>
+            )}
+
+            {data.map((row) => (
+              <tr
+                key={row.locationId}
+                className="group cursor-pointer hover:bg-[var(--surface-2)]/70 transition-colors"
+                onClick={() => handleRowClick(row)}
+              >
+                {/* Точка */}
+                <td className="px-4 py-3 align-top">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-[var(--text-primary)]">
+                      {row.locationName}
+                    </span>
+                    <span className="text-xs text-[var(--text-tertiary)]">
+                      ID: {row.locationId}
+                    </span>
+                  </div>
+                </td>
+
+                {/* Менеджер */}
+                <td className="px-4 py-3 align-top">
                   {row.managerName ? (
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{row.managerName}</span>
-                      {row.managerStatus === 'on-shift' && (
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      )}
-                      {row.managerStatus === 'not-assigned' && (
-                        <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span className="text-sm text-[var(--text-primary)]">
+                        {row.managerName}
+                      </span>
+                      {row.managerStatus && (
+                        <span className="text-xs text-[var(--text-tertiary)]">
+                          {row.managerStatus === "on-shift"
+                            ? t("dashboard.manager_on_shift") || "На смене"
+                            : t("dashboard.manager_not_assigned") ||
+                              "Не на смене"}
+                        </span>
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-rose-500" />
-                      <span className="text-sm text-rose-500 font-medium">Не назначен</span>
+                    <div className="flex items-center gap-1 text-xs text-amber-400">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>
+                        {t("dashboard.no_manager_short") || "Менеджер не назначен"}
+                      </span>
                     </div>
                   )}
-                </TableCell>
-                <TableCell className="py-2">
-                  <div className="space-y-1.5 min-w-[120px]">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        {row.revenue.toLocaleString('ru-RU')} {currency}
+                </td>
+
+                {/* Статус смены */}
+                <td className="px-4 py-3 align-top">
+                  <div className="flex flex-col gap-1">
+                    <span
+                      className={[
+                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                        getShiftStatusBadgeClass(row.shiftStatus),
+                      ].join(" ")}
+                    >
+                      {getShiftStatusLabel(row.shiftStatus)}
+                    </span>
+                    {row.shiftTime && (
+                      <span className="text-xs text-[var(--text-tertiary)]">
+                        {row.shiftTime}
                       </span>
-                      <span className="text-muted-foreground">
-                        / {row.plan.toLocaleString('ru-RU')} {currency}
-                      </span>
-                    </div>
-                    <Progress value={row.planPercent} />
-                    <div className="text-xs text-muted-foreground">
-                      {row.planPercent}%
-                    </div>
+                    )}
                   </div>
-                </TableCell>
-                <TableCell className="py-2">
-                  {row.tasksStats && row.tasksStats.total > 0 ? (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {row.tasksStats.completed} из {row.tasksStats.total} ({row.tasksStats.completionPercent}%)
+                </td>
+
+                {/* Выручка */}
+                <td className="px-4 py-3 align-top text-right">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">
+                      {formatCurrency(row.revenue)} {currency}
+                    </span>
+                    {row.plan > 0 && (
+                      <span className="text-[11px] text-[var(--text-tertiary)]">
+                        {t("dashboard.plan_short") || "план"}:{" "}
+                        {formatCurrency(row.plan)} {currency}
                       </span>
+                    )}
+                  </div>
+                </td>
+
+                {/* Выполнение плана */}
+                <td className="px-4 py-3 align-top text-right">
+                  {row.plan > 0 ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-sm font-medium text-[var(--text-primary)]">
+                        {row.planPercent}%
+                      </span>
+                      <div className="w-20 h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${
+                            row.planPercent >= 95
+                              ? "bg-emerald-500"
+                              : row.planPercent >= 70
+                              ? "bg-amber-400"
+                              : "bg-rose-500"
+                          }`}
+                          style={{
+                            width: `${Math.max(
+                              0,
+                              Math.min(100, row.planPercent),
+                            )}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                  ) : row.shiftStatus === 'open' ? (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  ) : null}
-                </TableCell>
-                <TableCell className="py-2">
-                  <div className="flex items-center gap-2">
-                    {getActivityIndicator(row.activity)}
-                    <span className="text-sm text-muted-foreground">
+                  ) : (
+                    <span className="text-xs text-[var(--text-tertiary)]">
+                      {t("dashboard.no_plan") || "План не задан"}
+                    </span>
+                  )}
+                </td>
+
+                {/* Активность */}
+                <td className="px-4 py-3 align-top">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Circle className={`h-2.5 w-2.5 ${getActivityDotClass(row.activity)}`} />
+                    <span className="text-[var(--text-secondary)]">
                       {getActivityLabel(row.activity)}
                     </span>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                </td>
+
+                {/* Задачи смены */}
+                <td className="px-4 py-3 align-top">
+                  {row.tasksStats ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-[var(--text-secondary)]">
+                        {t("dashboard.tasks_completed") || "Выполнено"}:{" "}
+                        {row.tasksStats.completed}/{row.tasksStats.total}
+                      </span>
+                      <div className="w-24 h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-sky-500"
+                          style={{
+                            width: `${Math.max(
+                              0,
+                              Math.min(100, row.tasksStats.completionPercent),
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-[var(--text-tertiary)]">
+                      {t("dashboard.no_tasks_stats") ||
+                        "Нет данных по задачам смены"}
+                    </span>
+                  )}
+                </td>
+
+                {/* Стрелка */}
+                <td className="px-3 py-3 align-top text-right">
+                  <ChevronRight className="h-4 w-4 text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </Card>
+    </div>
   );
 }
 
-
+// На всякий случай даём и default-экспорт,
+// чтобы не сломать старые импорты, если где-то они были.
+export default LocationsShiftsTable;

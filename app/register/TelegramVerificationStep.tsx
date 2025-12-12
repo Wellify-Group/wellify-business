@@ -1,5 +1,3 @@
-// app/register/TelegramVerificationStep.tsx (обновленный код для UI)
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,9 +5,7 @@ import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import {
-  Card,
   CardContent,
-  CardHeader,
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
@@ -25,7 +21,7 @@ type SessionStatus = {
   status: "pending" | "completed" | "expired";
   telegramVerified: boolean;
   phone: string | null;
-  phoneVerified: boolean; // Добавлено для точности
+  phoneVerified: boolean;
 };
 
 export function TelegramVerificationStep({
@@ -43,15 +39,17 @@ export function TelegramVerificationStep({
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [polling, setPolling] = useState(false);
 
-  // Флаг, чтобы не дергать link-session бесконечно
+  // флаг, чтобы не дёргать создание сессии бесконечно
   const [initialized, setInitialized] = useState(false);
 
-  // 1. Создаем registration_session один раз
+  // 1. Создаём registration_session один раз
   useEffect(() => {
-    if (initialized) return; // уже пытались
-    
+    if (initialized) return;
+
     if (!userId || !email) {
-      setError("Не удалось получить данные регистрации. Вернитесь на предыдущий шаг.");
+      setError(
+        "Не удалось получить данные регистрации. Вернитесь на предыдущий шаг."
+      );
       setInitialized(true);
       return;
     }
@@ -61,7 +59,7 @@ export function TelegramVerificationStep({
         setLoadingLink(true);
         setError(null);
 
-        const resp = await fetch(`/api/telegram/link-session`, {
+        const resp = await fetch("/api/telegram/link-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -73,7 +71,9 @@ export function TelegramVerificationStep({
 
         if (!resp.ok) {
           console.error("link-session failed:", resp.status);
-          setError(`Не удалось создать сессию Telegram. Код ошибки: ${resp.status}. Попробуйте позже.`);
+          setError(
+            `Не удалось создать сессию Telegram. Код ошибки: ${resp.status}. Попробуйте позже.`
+          );
           return;
         }
 
@@ -87,10 +87,12 @@ export function TelegramVerificationStep({
         setPolling(true);
       } catch (e) {
         console.error("createSession error:", e);
-        setError("Произошла внутренняя ошибка при создании сессии Telegram.");
+        setError(
+          "Произошла внутренняя ошибка при создании сессии Telegram. Попробуйте позже."
+        );
       } finally {
         setLoadingLink(false);
-        setInitialized(true); // важно!
+        setInitialized(true);
       }
     };
 
@@ -99,15 +101,14 @@ export function TelegramVerificationStep({
 
   // 2. Polling статуса сессии
   useEffect(() => {
-    if (!sessionToken) return;
-    if (!polling) return;
+    if (!sessionToken || !polling) return;
 
     const interval = setInterval(async () => {
       try {
         const resp = await fetch(
           `/api/telegram/session-status/${sessionToken}`
         );
-        
+
         if (!resp.ok) {
           console.error("session-status failed:", resp.status);
           return;
@@ -116,19 +117,19 @@ export function TelegramVerificationStep({
         const json = (await resp.json()) as SessionStatus;
         setStatus(json);
 
-        // !!! ИСПРАВЛЕНИЕ: УСЛОВИЕ ЗАВЕРШЕНИЯ - СРАБАТЫВАЕТ СРАЗУ !!!
-        // Если телефон подтвержден в БД (phoneVerified: true), останавливаем Polling.
-        // UI перехватит статус.
-        if (json.phoneVerified) { 
+        // ключевой критерий завершения - телефон подтверждён в БД
+        if (json.phoneVerified) {
           setPolling(false);
           clearInterval(interval);
-          // onVerified() будет вызван при нажатии на кнопку "Перейти в Дашборд"
+          // переход в дашборд делаем по кнопке
         }
 
         if (json.status === "expired") {
           setPolling(false);
           clearInterval(interval);
-          setError("Сессия истекла. Нажмите кнопку ниже, чтобы создать новую ссылку.");
+          setError(
+            "Сессия истекла. Нажмите кнопку ниже, чтобы создать новую ссылку."
+          );
         }
       } catch (e) {
         console.error("session-status error:", e);
@@ -136,9 +137,9 @@ export function TelegramVerificationStep({
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [sessionToken, polling]); 
+  }, [sessionToken, polling]);
 
-  // 3. Пересоздать ссылку, если expired
+  // 3. Пересоздание ссылки при истечении сессии
   const handleCreateNewLink = () => {
     setSessionToken(null);
     setTelegramLink(null);
@@ -146,7 +147,7 @@ export function TelegramVerificationStep({
     setError(null);
     setLoadingLink(false);
     setPolling(false);
-    setInitialized(false); // позволяем эффекту заново создать сессию
+    setInitialized(false);
   };
 
   const texts = {
@@ -161,7 +162,7 @@ export function TelegramVerificationStep({
       buttonNewLink: "Создать новую ссылку",
       buttonDashboard: "Перейти в Дашборд",
       helpText:
-        "1. Отсканируйте QR-код или нажмите кнопку \"Открыть Telegram\".\n2. Нажмите \"Старт\" в боте (если нужно).\n3. Нажмите кнопку \"Отправить номер телефона\".\n4. Вернитесь сюда – шаг будет завершен.",
+        "1. Отсканируйте QR-код или нажмите кнопку «Открыть Telegram».\n2. Нажмите «Старт» в боте (если нужно).\n3. Нажмите кнопку «Отправить номер телефона».\n4. Вернитесь сюда – шаг завершится автоматически.",
     },
     uk: {
       title: "Крок 3. Підтвердження телефону через Telegram",
@@ -174,7 +175,7 @@ export function TelegramVerificationStep({
       buttonNewLink: "Створити нове посилання",
       buttonDashboard: "Перейти до Дашборду",
       helpText:
-        "1. Відскануйте QR-код або натисніть кнопку \"Відкрити Telegram\".\n2. Натисніть \"Старт\" у боті (якщо потрібно).\n3. Натисніть кнопку \"Надіслати номер телефону\".\n4. Поверніться сюди – крок буде завершено.",
+        "1. Відскануйте QR-код або натисніть кнопку «Відкрити Telegram».\n2. Натисніть «Старт» у боті (якщо потрібно).\n3. Натисніть кнопку «Надіслати номер телефону».\n4. Поверніться сюди – крок завершиться автоматично.",
     },
     en: {
       title: "Step 3. Confirm your phone via Telegram",
@@ -187,25 +188,24 @@ export function TelegramVerificationStep({
       buttonNewLink: "Create new link",
       buttonDashboard: "Go to Dashboard",
       helpText:
-        "1. Scan the QR code or click \"Open Telegram\".\n2. Press \"Start\" in the bot (if needed).\n3. Press the button to send your phone number.\n4. Come back here – this step will finish.",
+        "1. Scan the QR code or click “Open Telegram”.\n2. Press “Start” in the bot (if needed).\n3. Press the button to send your phone number.\n4. Come back here – this step will finish automatically.",
     },
   }[language];
 
-  // =========================================================
-  // КОМПОНЕНТ УСПЕШНОГО ЗАВЕРШЕНИЯ (Новый элемент UI)
-  // =========================================================
+  // 4. Экран успешного завершения (телефон подтверждён)
   if (status?.phoneVerified) {
     return (
       <CardContent className="space-y-6 flex flex-col items-center p-8">
         <CheckCircle2 className="h-20 w-20 text-emerald-500" />
         <CardTitle className="text-2xl text-center">
-            Регистрация завершена!
+          Регистрация завершена!
         </CardTitle>
         <CardDescription className="text-lg text-center">
-            Ваш телефон успешно подтвержден.
+          Ваш телефон успешно подтверждён. Теперь можно перейти в дашборд
+          директора.
         </CardDescription>
         <Button
-          onClick={onVerified} // Вызовет finishRegistration
+          onClick={onVerified}
           className="w-full md:w-auto mt-4"
           size="lg"
         >
@@ -215,6 +215,7 @@ export function TelegramVerificationStep({
     );
   }
 
+  // 5. Основной UI шага
   return (
     <CardContent className="space-y-6">
       {!telegramLink && (
@@ -236,18 +237,27 @@ export function TelegramVerificationStep({
             <QRCode value={telegramLink} size={180} />
           </a>
 
+          <CardTitle className="text-center text-xl">
+            {texts.title}
+          </CardTitle>
+          <CardDescription className="text-center">
+            {texts.description}
+          </CardDescription>
+
           <p className="whitespace-pre-line text-sm text-muted-foreground text-center">
             {texts.helpText}
           </p>
         </div>
       )}
-      
+
       {status && (
         <div className="w-full">
           {status.status === "pending" && !status.phoneVerified && (
             <div className="flex items-center justify-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 backdrop-blur-sm">
               <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
-              <span className="text-sm font-medium text-yellow-400">{texts.waiting}</span>
+              <span className="text-sm font-medium text-yellow-400">
+                {texts.waiting}
+              </span>
             </div>
           )}
 

@@ -3,15 +3,27 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
-import useStore, { getFormalName } from "@/lib/store";
+import { useStore, getFormalName } from "@/lib/store"; // ИСПРАВЛЕНО: именованный useStore
 import { useTheme } from "next-themes";
 import { Language } from "@/lib/translations";
-import { Menu, Bell, ChevronDown, LogOut, Settings, PenSquare, ChevronRight, ArrowLeft, User, Globe, Check, Moon } from "lucide-react";
+import {
+  Menu,
+  Bell,
+  ChevronDown,
+  LogOut,
+  PenSquare,
+  ChevronRight,
+  ArrowLeft,
+  User,
+  Globe,
+  Check,
+  Moon,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WeatherWidget } from "./weather-widget";
 import { NavbarClock } from "./navbar-clock";
 import Link from "next/link";
-import { SIDEBAR_EXPANDED, SIDEBAR_COLLAPSED } from "@/lib/constants";
+import { SIDEBAR_EXPANDED, SIDEBAR_COLLAPSED } from "@/lib/constants"; // пока можно оставить, даже если не используется
 import { createPortal } from "react-dom";
 import { useClickOutside } from "@/lib/hooks/use-click-outside";
 import { cn } from "@/lib/utils";
@@ -21,167 +33,186 @@ export function DashboardHeader() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, logout, toggleSidebar, openMessageComposer, locations, isSidebarCollapsed } = useStore();
+
+  const {
+    currentUser,
+    logout,
+    toggleSidebar,
+    openMessageComposer,
+    locations,
+    isSidebarCollapsed,
+  } = useStore();
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
-  const [languageMenuPosition, setLanguageMenuPosition] = useState<'bottom' | 'top'>('bottom');
-  const [languageMenuCoords, setLanguageMenuCoords] = useState({ top: 0, left: 0, width: 0 });
+  const [languageMenuPosition, setLanguageMenuPosition] =
+    useState<"bottom" | "top">("bottom");
+  const [languageMenuCoords, setLanguageMenuCoords] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   const [mounted, setMounted] = useState(false);
+
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const languageMenuRef = useRef<HTMLDivElement>(null);
   const languageButtonRef = useRef<HTMLButtonElement>(null);
 
-  // === ИСПРАВЛЕНИЕ: Имя и Инициалы ===
+  // Имя и инициалы
   const userName = useMemo(() => getFormalName(currentUser), [currentUser]);
-  const userInitial = useMemo(() => userName[0]?.toUpperCase() || "U", [userName]);
+  const userInitial = useMemo(
+    () => userName[0]?.toUpperCase() || "U",
+    [userName]
+  );
 
-  // Breadcrumb mapping dictionary - using translations
+  // Флаг темы (для тумблера)
+  const isDark = useMemo(
+    () => (resolvedTheme || theme) === "dark",
+    [resolvedTheme, theme]
+  );
+
+  // Карта для хлебных крошек
   const breadcrumbMap: Record<string, string> = {
-    'director': t("dashboard.nav_overview"),
-    'locations': t("dashboard.nav_locations"),
-    'staff': t("dashboard.nav_staff"),
-    'shifts': t("dashboard.nav_shifts"),
-    'analytics': t("dashboard.route_analytics"),
-    'finance': t("dashboard.nav_finance"),
-    'feed': t("dashboard.sec_feed"),
-    'builder': t("dashboard.nav_builder"),
-    'settings': t("dashboard.nav_settings"),
-    'revenue': t("dashboard.dash_revenue"),
-    'plan_percent': t("dashboard.dash_plan") + ' %',
-    'check_count': t("dashboard.dash_checks"),
-    'location': t("dashboard.route_location"),
+    director: t("dashboard.nav_overview"),
+    locations: t("dashboard.nav_locations"),
+    staff: t("dashboard.nav_staff"),
+    shifts: t("dashboard.nav_shifts"),
+    analytics: t("dashboard.route_analytics"),
+    finance: t("dashboard.nav_finance"),
+    feed: t("dashboard.sec_feed"),
+    builder: t("dashboard.nav_builder"),
+    settings: t("dashboard.nav_settings"),
+    revenue: t("dashboard.dash_revenue"),
+    plan_percent: t("dashboard.dash_plan") + " %",
+    check_count: t("dashboard.dash_checks"),
+    location: t("dashboard.route_location"),
   };
 
-  // Build breadcrumbs from pathname
   const buildBreadcrumbs = () => {
     if (!pathname) return [];
-    
-    const segments = pathname.split('/').filter(Boolean);
-    // Remove 'dashboard' segment
+
+    const segments = pathname.split("/").filter(Boolean);
+    // убираем "dashboard"
     const relevantSegments = segments.slice(1);
-    
-    const breadcrumbs: Array<{ label: string; href: string; isLast: boolean }> = [];
-    let currentPath = '/dashboard';
-    
+
+    const breadcrumbs: Array<{
+      label: string;
+      href: string;
+      isLast: boolean;
+    }> = [];
+    let currentPath = "/dashboard";
+
     relevantSegments.forEach((segment, index) => {
       currentPath += `/${segment}`;
       const isLast = index === relevantSegments.length - 1;
-      
-      // Check if segment is a location ID (starts with 'loc-')
+
       let label: string;
-      if (segment.startsWith('loc-')) {
-        const location = locations.find(loc => loc.id === segment);
-        // !!! ИСПРАВЛЕНИЕ: Используем .название с явным приведением для обхода ошибки компиляции !!!
-        label = location ? (location as any).название : t("dashboard.unknown_point"); 
+      if (segment.startsWith("loc-")) {
+        const location = locations.find((loc) => loc.id === segment);
+        // ИСПРАВЛЕНО: используем нормальное поле name
+        label = location ? location.name : t("dashboard.unknown_point");
       } else {
         label = breadcrumbMap[segment] || segment;
       }
-      
+
       breadcrumbs.push({
         label,
         href: currentPath,
-        isLast
+        isLast,
       });
     });
-    
+
     return breadcrumbs;
   };
 
   const breadcrumbs = buildBreadcrumbs();
   const pathDepth = breadcrumbs.length;
 
-  // Get role label
   const getRoleLabel = () => {
-    // !!! ИСПРАВЛЕНИЕ: Используем английские имена ролей для сравнения !!!
-    if (currentUser?.role === 'director') return t("dashboard.director_overview") || "Директор";
-    if (currentUser?.role === 'manager') return t("dashboard.manager_panel") || "Менеджер";
+    if (currentUser?.role === "director")
+      return t("dashboard.director_overview") || "Директор";
+    if (currentUser?.role === "manager")
+      return t("dashboard.manager_panel") || "Менеджер";
     return t("dashboard.dash_employee") || "Сотрудник";
   };
 
   const roleLabel = getRoleLabel();
-  
-  // Mount check for theme - prevent hydration mismatch
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Language options
+  // Языки
   const languages: { code: Language; label: string; fullLabel: string }[] = [
     { code: "ru", label: "RU", fullLabel: t("dashboard.menu_lang_russian") },
     { code: "ua", label: "UA", fullLabel: t("dashboard.menu_lang_ukrainian") },
     { code: "en", label: "EN", fullLabel: t("dashboard.menu_lang_english") },
   ];
 
-  const currentLanguage = languages.find(lang => lang.code === language) || languages[0];
+  const currentLanguage =
+    languages.find((lang) => lang.code === language) || languages[0];
 
-  // Handle language change
   const handleLanguageChange = (langCode: Language) => {
     if (language !== langCode) {
       setLanguage(langCode);
-      router.refresh(); // Для принудительного обновления
+      router.refresh();
     }
     setIsLanguageMenuOpen(false);
   };
 
-  // Calculate language menu position and coordinates
+  // Позиция подменю языков
   const updateLanguageMenuPosition = () => {
     if (isLanguageMenuOpen && languageButtonRef.current) {
       const buttonRect = languageButtonRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - buttonRect.bottom;
       const spaceAbove = buttonRect.top;
-      const menuHeight = 120; // Approximate height of language menu (3 items)
-      
-      // If not enough space below but enough above, open upward
+      const menuHeight = 120;
+
       const openUpward = spaceBelow < menuHeight && spaceAbove > menuHeight;
-      setLanguageMenuPosition(openUpward ? 'top' : 'bottom');
-      
-      // Calculate coordinates for fixed positioning
-      const top = openUpward 
-        ? buttonRect.top - menuHeight - 4 // 4px gap
-        : buttonRect.bottom + 4; // 4px gap
-      
+      setLanguageMenuPosition(openUpward ? "top" : "bottom");
+
+      const top = openUpward
+        ? buttonRect.top - menuHeight - 4
+        : buttonRect.bottom + 4;
+
       setLanguageMenuCoords({
         top,
         left: buttonRect.left,
-        width: buttonRect.width
+        width: buttonRect.width,
       });
     }
   };
 
   useEffect(() => {
     updateLanguageMenuPosition();
-    
+
     if (isLanguageMenuOpen) {
-      // Update position on scroll/resize
       window.addEventListener("scroll", updateLanguageMenuPosition, true);
       window.addEventListener("resize", updateLanguageMenuPosition);
-      
+
       return () => {
         window.removeEventListener("scroll", updateLanguageMenuPosition, true);
         window.removeEventListener("resize", updateLanguageMenuPosition);
       };
     }
-  }, [isLanguageMenuOpen]); 
+  }, [isLanguageMenuOpen]);
 
-  // Handle theme toggle
   const handleThemeToggle = () => {
     if (!mounted) return;
-    
     const currentTheme = resolvedTheme || theme;
     const newTheme = currentTheme === "dark" ? "light" : "dark";
-    
     setTheme(newTheme);
   };
 
-  // Close profile menu on outside click
+  // Закрытие меню профиля
   useClickOutside(
     [profileButtonRef as React.RefObject<HTMLElement>, profileMenuRef],
     () => setIsProfileOpen(false),
     isProfileOpen
   );
 
-  // Close language menu on outside click
+  // Закрытие меню языков
   useClickOutside(
     [languageButtonRef as React.RefObject<HTMLElement>, languageMenuRef],
     () => setIsLanguageMenuOpen(false),
@@ -189,44 +220,47 @@ export function DashboardHeader() {
   );
 
   return (
-    <header 
-      id="dashboard-header" 
-      data-tour="header" 
+    <header
+      id="dashboard-header"
+      data-tour="header"
       className="bg-[var(--surface-1)] border-b border-[var(--border-color)] h-14 flex-shrink-0"
     >
-      <div 
+      <div
         className="flex items-center justify-between h-full"
-        style={{ 
-          paddingLeft: '24px',
-          paddingRight: '24px'
+        style={{
+          paddingLeft: "24px",
+          paddingRight: "24px",
         }}
       >
-        {/* Left Side: Menu Toggle + Breadcrumbs/Title */}
+        {/* Left side */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {/* Menu Toggle Button */}
+          {/* Sidebar toggle */}
           <button
             onClick={toggleSidebar}
             className="p-2 hover:bg-[var(--surface-2)] rounded-lg transition-colors flex-shrink-0"
             aria-label="Toggle sidebar"
           >
-            <Menu className="h-5 w-5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" style={{ width: '20px', height: '20px' }} />
+            <Menu className="h-5 w-5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" />
           </button>
 
-          {/* Back Button (for deep pages) */}
+          {/* Back button */}
           {pathDepth > 2 && (
             <button
               onClick={() => router.back()}
               className="p-2 hover:bg-[var(--surface-2)] rounded-lg transition-colors flex-shrink-0"
               aria-label={t("back_to_home")}
             >
-              <ArrowLeft className="h-5 w-5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" style={{ width: '20px', height: '20px' }} />
+              <ArrowLeft className="h-5 w-5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" />
             </button>
           )}
 
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-1.5 text-sm min-w-0">
             {breadcrumbs.map((crumb, index) => (
-              <div key={crumb.href} className="flex items-center gap-1.5 min-w-0">
+              <div
+                key={crumb.href}
+                className="flex items-center gap-1.5 min-w-0"
+              >
                 {index > 0 && (
                   <ChevronRight className="h-3.5 w-3.5 text-[var(--text-tertiary)] flex-shrink-0" />
                 )}
@@ -247,48 +281,44 @@ export function DashboardHeader() {
           </nav>
         </div>
 
-        {/* Right Side: Clock + Weather | Message + Notifications + Theme + Profile */}
+        {/* Right side */}
         <div className="navbar-right flex items-center gap-3">
-          {/* Group 1: Clock + Weather */}
+          {/* Clock + Weather */}
           <div className="hidden md:flex items-center gap-4">
-            {/* Clock */}
             <NavbarClock />
-            {/* Weather Widget */}
             <WeatherWidget />
           </div>
 
-          {/* Vertical Separator */}
           <div className="hidden md:block h-5 w-[1px] bg-[var(--border-color)]" />
 
-          {/* Group 2: Message + Notifications + Theme + Profile */}
           <div className="flex items-center gap-1">
-            {/* New Message Button (Director only) */}
-            {currentUser?.role === 'director' && ( // ИСПРАВЛЕНО НА 'director'
+            {/* New message (director only) */}
+            {currentUser?.role === "director" && (
               <button
                 onClick={() => openMessageComposer()}
                 className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-2)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 title={t("dashboard.msg_new_message")}
               >
-                <PenSquare className="h-5 w-5" style={{ width: '20px', height: '20px' }} />
+                <PenSquare className="h-5 w-5" />
               </button>
             )}
 
-            {/* Notification Bell */}
-            <Link 
+            {/* Notifications */}
+            <Link
               href="/dashboard/director/notifications"
               className="relative h-9 w-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-2)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               title={t("dashboard.notifications")}
             >
-              <Bell className="h-5 w-5" style={{ width: '20px', height: '20px' }} />
+              <Bell className="h-5 w-5" />
             </Link>
 
-            {/* User Profile Dropdown */}
+            {/* Profile dropdown */}
             <div className="relative">
               <button
                 ref={profileButtonRef}
                 id="user-profile-trigger"
                 onClick={() => {
-                  setIsLanguageMenuOpen(false); // Close language menu if open
+                  setIsLanguageMenuOpen(false);
                   setIsProfileOpen(!isProfileOpen);
                 }}
                 className="flex items-center gap-2 p-1.5 hover:bg-[var(--surface-2)] rounded-lg transition-colors"
@@ -296,63 +326,69 @@ export function DashboardHeader() {
                 <div className="w-8 h-8 rounded-full bg-[var(--accent-primary)]/20 flex items-center justify-center text-[var(--accent-primary)] font-bold text-sm">
                   {userInitial}
                 </div>
-                <ChevronDown className={`h-4 w-4 text-[var(--text-secondary)] transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`h-4 w-4 text-[var(--text-secondary)] transition-transform ${
+                    isProfileOpen ? "rotate-180" : ""
+                  }`}
+                />
               </button>
 
-              {/* Profile Dropdown Menu */}
               <AnimatePresence>
                 {isProfileOpen && (
                   <>
-                    {/* Backdrop */}
                     <div
                       className="fixed inset-0 z-[9998]"
                       onClick={() => setIsProfileOpen(false)}
                     />
-                    
-                    {/* Dropdown */}
                     <motion.div
                       ref={profileMenuRef}
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 top-full mt-2 w-64 bg-[var(--surface-1)] backdrop-blur-sm border border-[var(--border-color)] rounded-xl shadow-xl z-[9999] overflow-visible"
+                      className="absolute right-0 top-full mt-2 w-64 bg-[var(--surface-1)] backdrop-blur-sm border border-[var(--border-color)] rounded-xl shadow-xl z-[9999]"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* User Block */}
-                      <div className="p-4 border-b border-[var(--border-color)] rounded-t-xl overflow-hidden">
-                        <p className="text-base font-semibold text-[var(--text-primary)]">{userName}</p>
+                      {/* User block */}
+                      <div className="p-4 border-b border-[var(--border-color)] rounded-t-xl">
+                        <p className="text-base font-semibold text-[var(--text-primary)]">
+                          {userName}
+                        </p>
                         <p className="text-xs text-[var(--text-tertiary)] mt-1">
                           {roleLabel}
                         </p>
                       </div>
-                      
-                      <div className="flex flex-col p-2 overflow-hidden">
+
+                      <div className="flex flex-col p-2">
                         {/* Profile */}
                         <button
                           onClick={() => {
                             setIsProfileOpen(false);
                             router.push("/dashboard/director/settings");
                           }}
-                          className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md cursor-pointer"
+                          className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md"
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center">
-                              <User className="h-4 w-4 text-[var(--text-secondary)]" style={{ width: '16px', height: '16px' }} />
+                              <User className="h-4 w-4 text-[var(--text-secondary)]" />
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">{t("dashboard.profile")}</span>
+                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">
+                              {t("dashboard.profile")}
+                            </span>
                           </div>
                         </button>
 
-                        {/* Dark Mode Toggle */}
-                        <div 
+                        {/* Dark mode toggle */}
+                        <div
                           className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md cursor-pointer"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center">
-                              <Moon className="h-4 w-4 text-[var(--text-secondary)]" style={{ width: '16px', height: '16px' }} />
+                              <Moon className="h-4 w-4 text-[var(--text-secondary)]" />
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">{t("dashboard.menu_dark_mode")}</span>
+                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">
+                              {t("dashboard.menu_dark_mode")}
+                            </span>
                           </div>
                           {mounted ? (
                             <button
@@ -362,9 +398,15 @@ export function DashboardHeader() {
                               }}
                               className={cn(
                                 "relative w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-offset-2 shrink-0",
-                                isDark ? "bg-[var(--accent-primary)]" : "bg-[var(--surface-3)]"
+                                isDark
+                                  ? "bg-[var(--accent-primary)]"
+                                  : "bg-[var(--surface-3)]"
                               )}
-                              aria-label={isDark ? t("dashboard.menu_dark_mode_on") : t("dashboard.menu_dark_mode_off")}
+                              aria-label={
+                                isDark
+                                  ? t("dashboard.menu_dark_mode_on")
+                                  : t("dashboard.menu_dark_mode_off")
+                              }
                             >
                               <span
                                 className={cn(
@@ -380,26 +422,29 @@ export function DashboardHeader() {
                           )}
                         </div>
 
-                        {/* Language Selector */}
+                        {/* Language selector */}
                         <button
                           ref={languageButtonRef}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setIsProfileOpen(false); // Close profile menu if open
+                            setIsProfileOpen(false);
                             setIsLanguageMenuOpen(!isLanguageMenuOpen);
                           }}
-                          className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md cursor-pointer"
+                          className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md"
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center shrink-0">
-                              <Globe className="h-4 w-4 text-[var(--text-secondary)]" style={{ width: '16px', height: '16px' }} />
+                              <Globe className="h-4 w-4 text-[var(--text-secondary)]" />
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">{t("dashboard.menu_interface_language")}</span>
+                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">
+                              {t("dashboard.menu_interface_language")}
+                            </span>
                           </div>
-                          <span className="text-xs font-medium text-[var(--text-tertiary)] shrink-0">{currentLanguage.label}</span>
+                          <span className="text-xs font-medium text-[var(--text-tertiary)] shrink-0">
+                            {currentLanguage.label}
+                          </span>
                         </button>
 
-                        {/* Separator */}
                         <div className="h-px bg-[var(--border-color)] my-1 mx-4" />
 
                         {/* Logout */}
@@ -409,13 +454,15 @@ export function DashboardHeader() {
                             setIsProfileOpen(false);
                             router.push("/login");
                           }}
-                          className="flex items-center justify-between px-4 py-3 text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors rounded-md cursor-pointer"
+                          className="flex items-center justify-between px-4 py-3 text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors rounded-md"
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center">
-                              <LogOut className="h-4 w-4" style={{ width: '16px', height: '16px' }} />
+                              <LogOut className="h-4 w-4" />
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3">{t("logout")}</span>
+                            <span className="text-sm font-medium flex-1 text-left ml-3">
+                              {t("logout")}
+                            </span>
                           </div>
                         </button>
                       </div>
@@ -428,69 +475,85 @@ export function DashboardHeader() {
         </div>
       </div>
 
-      {/* Language Submenu Portal */}
-      {mounted && isLanguageMenuOpen && createPortal(
-        <div 
-          className="fixed inset-0 pointer-events-none z-[10000]"
-          onClick={() => setIsLanguageMenuOpen(false)}
-        >
-          <AnimatePresence>
-            <motion.div
-              ref={languageMenuRef}
-              initial={{ opacity: 0, y: languageMenuPosition === 'top' ? 5 : -5, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: languageMenuPosition === 'top' ? 5 : -5, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
-              style={{
-                position: 'fixed',
-                top: `${languageMenuCoords.top}px`,
-                left: `${languageMenuCoords.left}px`,
-                width: `${languageMenuCoords.width}px`,
-                background:
-                  resolvedTheme === "dark"
-                    ? "rgba(15, 23, 42, 0.7)"
-                    : "rgba(255, 255, 255, 0.7)",
-                backdropFilter: "blur(20px) saturate(180%)",
-                WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                border:
-                  resolvedTheme === "dark"
-                    ? "1px solid rgba(255, 255, 255, 0.1)"
-                    : "1px solid rgba(255, 255, 255, 0.3)",
-                boxShadow:
-                  resolvedTheme === "dark"
-                    ? "0 8px 32px 0 rgba(0, 0, 0, 0.3)"
-                    : "0 8px 32px 0 rgba(0, 0, 0, 0.1)",
-              }}
-              className="pointer-events-auto rounded-lg max-h-[200px] overflow-y-auto custom-scroll"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => handleLanguageChange(lang.code)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-all rounded-lg mx-1 my-0.5 ${
-                    language === lang.code
-                      ? resolvedTheme === "dark"
-                        ? "bg-white/10 text-[var(--text-primary)] backdrop-blur-sm"
-                        : "bg-white/60 text-[var(--text-primary)] backdrop-blur-sm"
-                      : resolvedTheme === "dark"
-                      ? "text-[var(--text-secondary)] hover:bg-white/5 backdrop-blur-sm"
-                      : "text-[var(--text-secondary)] hover:bg-white/40 backdrop-blur-sm"
-                  }`}
-                >
-                  <span className={language === lang.code ? "font-medium text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}>
-                    {lang.fullLabel}
-                  </span>
-                  {language === lang.code && (
-                    <Check className="h-4 w-4 text-[var(--accent-primary)]" />
-                  )}
-                </button>
-              ))}
-            </motion.div>
-          </AnimatePresence>
-        </div>,
-        document.body
-      )}
+      {/* Языковое подменю через портал */}
+      {mounted &&
+        isLanguageMenuOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 pointer-events-none z-[10000]"
+            onClick={() => setIsLanguageMenuOpen(false)}
+          >
+            <AnimatePresence>
+              <motion.div
+                ref={languageMenuRef}
+                initial={{
+                  opacity: 0,
+                  y: languageMenuPosition === "top" ? 5 : -5,
+                  scale: 0.95,
+                }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{
+                  opacity: 0,
+                  y: languageMenuPosition === "top" ? 5 : -5,
+                  scale: 0.95,
+                }}
+                transition={{ duration: 0.15 }}
+                style={{
+                  position: "fixed",
+                  top: `${languageMenuCoords.top}px`,
+                  left: `${languageMenuCoords.left}px`,
+                  width: `${languageMenuCoords.width}px`,
+                  background:
+                    resolvedTheme === "dark"
+                      ? "rgba(15, 23, 42, 0.7)"
+                      : "rgba(255, 255, 255, 0.7)",
+                  backdropFilter: "blur(20px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                  border:
+                    resolvedTheme === "dark"
+                      ? "1px solid rgba(255, 255, 255, 0.1)"
+                      : "1px solid rgba(255, 255, 255, 0.3)",
+                  boxShadow:
+                    resolvedTheme === "dark"
+                      ? "0 8px 32px 0 rgba(0, 0, 0, 0.3)"
+                      : "0 8px 32px 0 rgba(0, 0, 0, 0.1)",
+                }}
+                className="pointer-events-auto rounded-lg max-h-[200px] overflow-y-auto custom-scroll"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {languages.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-all rounded-lg mx-1 my-0.5 ${
+                      language === lang.code
+                        ? resolvedTheme === "dark"
+                          ? "bg-white/10 text-[var(--text-primary)] backdrop-blur-sm"
+                          : "bg-white/60 text-[var(--text-primary)] backdrop-blur-sm"
+                        : resolvedTheme === "dark"
+                        ? "text-[var(--text-secondary)] hover:bg-white/5 backdrop-blur-sm"
+                        : "text-[var(--text-secondary)] hover:bg-white/40 backdrop-blur-sm"
+                    }`}
+                  >
+                    <span
+                      className={
+                        language === lang.code
+                          ? "font-medium text-[var(--text-primary)]"
+                          : "text-[var(--text-secondary)]"
+                      }
+                    >
+                      {lang.fullLabel}
+                    </span>
+                    {language === lang.code && (
+                      <Check className="h-4 w-4 text-[var(--accent-primary)]" />
+                    )}
+                  </button>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </div>,
+          document.body
+        )}
     </header>
   );
 }

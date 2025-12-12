@@ -1,16 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { mapProfileToDb } from '@/lib/types/profile';
+// app/api/auth/register/route.ts
 
-export const runtime = 'nodejs';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-// Функция для создания админ-клиента Supabase
+export const runtime = "nodejs";
+
+// Админ-клиент Supabase (service role)
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase environment variables');
+    throw new Error("Missing Supabase environment variables");
   }
 
   return createClient(supabaseUrl, supabaseServiceRoleKey, {
@@ -21,200 +22,271 @@ function getSupabaseAdmin() {
   });
 }
 
+// Простая генерация кода компании
+function generateCompanyCode() {
+  const part = () => Math.floor(1000 + Math.random() * 9000);
+  return `${part()}-${part()}-${part()}-${part()}`;
+}
+
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+
   try {
-    const supabaseAdmin = getSupabaseAdmin();
     const body = await request.json();
-    const { email, password, fullName } = body;
 
-    // === Валидация ===
-    if (!email || !password || !fullName) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // === Проверяем, существует ли пользователь с таким email ===
-    const normalizedEmail = email.toLowerCase().trim();
-    
-    // Проверяем через admin API, существует ли пользователь
-    const { data: existingUsers, error: listError } = 
-      await supabaseAdmin.auth.admin.listUsers();
-    
-    if (listError) {
-      console.error('Error checking existing users:', listError);
-    } else {
-      const exists = existingUsers?.users?.find(
-        (u) => u.email?.toLowerCase() === normalizedEmail
-      );
-      
-      if (exists) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'User with this email already exists',
-            errorCode: 'EMAIL_ALREADY_REGISTERED'
-          },
-          { status: 409 }
-        );
-      }
-    }
-
-    // === Генерируем код компании и ID бизнеса ===
-    const generateCompanyCode = () => {
-      const part = () => Math.floor(1000 + Math.random() * 9000);
-      return `${part()}-${part()}-${part()}-${part()}`;
-    };
-
-    const companyCode = generateCompanyCode();
-    const businessId = `biz-${Date.now()}`;
-
-    // Короткое имя для профиля
-    const shortName =
-      fullName.trim().split(' ')[0] || fullName.trim() || 'Директор';
-
-    // === Создаём пользователя в Supabase Auth через signUp ===
-    const { data, error: signUpError } = await supabaseAdmin.auth.signUp({
-      email: normalizedEmail,
+    const {
+      email,
       password,
-      options: {
-        data: {
-          fullName,
-          role: 'директор',
-          businessId,
-          companyCode,
-        },
-      },
-    });
+      fullName,
+      firstName,
+      lastName,
+      middleName,
+      birthDate,
+      language,
+      businessName,
+    } = body ?? {};
 
-    // Обработка ошибок регистрации
+    // === Валидация базовых полей ===
+    if (!email || !password) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Missing required fields",
+          errorCode: "VALIDATION_ERROR",
+        },
+        { status: 400 },
+      );
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+
+    // Имя директора
+    const safeFirstName =
+      (firstName && String(firstName).trim()) ||
+      (fullName && String(fullName).trim().split(" ")[0]) ||
+      "Директор";
+
+    const safeLastName =
+      (lastName && String(lastName).trim()) || null;
+
+    const safeMiddleName =
+      (middleName && String(middleName).trim()) || null;
+
+    const safeFullName =
+      (fullName && String(fullName).trim()) ||
+      [safeFirstName, safeLastName].filter(Boolean).join(" ") ||
+      "Директор";
+
+    const safeLanguage = (language && String(language)) || "ru";
+    const safeBusinessName =
+      (businessName && String(businessName).trim()) || "Мой бизнес";
+
+    // === Генерируем код компании ===
+    const companyCode = generateCompanyCode();
+
+    // === РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ В AUTH ===
+    const { data: signUpData, error: signUpError } =
+      await supabaseAdmin.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            // поля, которые заберёт триггер handle_new_user
+            first_name: safeFirstName,
+            last_name: safeLastName,
+            middle_name: safeMiddleName,
+            full_name: safeFullName,
+            birth_date: birthDate || null,
+            role: "директор",
+            language: safeLanguage,
+          },
+        },
+      });
+
     if (signUpError) {
-      console.error('Supabase signUp error:', signUpError);
-      
-      // Проверяем, что email уже зарегистрирован
+      console.error("Supabase signUp error:", signUpError);
+
+      const msg = (signUpError.message || "").toLowerCase();
+
       if (
-        signUpError.message?.toLowerCase().includes('already registered') ||
-        signUpError.message?.toLowerCase().includes('user already registered') ||
-        signUpError.message?.toLowerCase().includes('already exists')
+        msg.includes("already registered") ||
+        msg.includes("user already registered") ||
+        msg.includes("already exists")
       ) {
         return NextResponse.json(
-          { 
-            success: false, 
-            error: 'User with this email already exists',
-            errorCode: 'EMAIL_ALREADY_REGISTERED'
+          {
+            success: false,
+            error: "User with this email already exists",
+            errorCode: "EMAIL_ALREADY_REGISTERED",
           },
-          { status: 409 }
+          { status: 409 },
         );
       }
 
-      // Другие ошибки
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Registration failed',
-          errorCode: 'REGISTER_UNKNOWN_ERROR'
+        {
+          success: false,
+          error: "Registration failed",
+          errorCode: "REGISTER_UNKNOWN_ERROR",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    if (!data?.user) {
-      console.error('No user returned from signUp');
+    const user = signUpData?.user;
+
+    if (!user || !user.id) {
+      console.error("No user returned from signUp");
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Registration failed',
-          errorCode: 'REGISTER_UNKNOWN_ERROR'
+        {
+          success: false,
+          error: "Registration failed",
+          errorCode: "REGISTER_UNKNOWN_ERROR",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    const user = data.user;
+    const userId = user.id as string;
 
-    // === Обновляем профиль в public.profiles ===
-    // Supabase автоматически создает профиль через триггер, поэтому используем только UPDATE
-    // Используем типизированный маппинг для обновления профиля
-    const profileData = mapProfileToDb({
-      id: user.id,
-      email: user.email,
-      fullName: fullName,
-      shortName: shortName,
-      role: 'директор',
-      businessId: businessId,
-      companyCode: companyCode,
-      jobTitle: 'владелец',
-      active: true,
-    });
+    // === ЖДЁМ/ПРОВЕРЯЕМ НАЛИЧИЕ ПРОФИЛЯ (его создаёт триггер handle_new_user) ===
+    const { data: profileRow, error: profileSelectError } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single();
 
-    // Удаляем id из данных для UPDATE (id используется только в .eq())
-    const { id, ...updateData } = profileData;
+    if (profileSelectError || !profileRow) {
+      console.error("Profile select error after signUp:", profileSelectError);
 
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .update(updateData)
-      .eq('id', user.id);
-
-    if (profileError) {
-      console.error('Supabase profile update error:', profileError);
-      
-      // Если профиль не обновился, удаляем пользователя из auth, чтобы избежать "висящих" аккаунтов
+      // Чистим auth-пользователя, чтобы не висел "битый" аккаунт
       try {
-        await supabaseAdmin.auth.admin.deleteUser(user.id);
-        console.log('Deleted user from auth due to profile update failure');
+        await supabaseAdmin.auth.admin.deleteUser(userId);
       } catch (deleteError) {
-        console.error('Failed to delete user from auth:', deleteError);
-      }
-      
-      // Проверяем, может ли это быть ошибка (профиль не найден)
-      if (
-        profileError.message?.toLowerCase().includes('not found') ||
-        profileError.message?.toLowerCase().includes('no rows') ||
-        profileError.code === 'PGRST116' // PostgREST no rows returned
-      ) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'User with this email already exists',
-            errorCode: 'EMAIL_ALREADY_REGISTERED'
-          },
-          { status: 409 }
+        console.error(
+          "Failed to delete user after profileSelectError:",
+          deleteError,
         );
       }
-      
+
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Не удалось создать профиль пользователя. Попробуйте позже или обратитесь в поддержку.',
-          errorCode: 'PROFILE_CREATION_FAILED',
-          details: profileError.message
+        {
+          success: false,
+          error: "Failed to create user profile",
+          errorCode: "PROFILE_CREATION_FAILED",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    // === Ответ клиенту ===
+    // === СОЗДАЁМ БИЗНЕС В businesses ===
+    // ВАЖНО: русские колонки берём через индексный доступ и any,
+    // чтобы TS не пытался типизировать их и не падал.
+    const { data: businessRowRaw, error: businessError } = await supabaseAdmin
+      .from("businesses")
+      .insert({
+        owner_profile_id: userId,
+        // колонки с кириллицей
+        название: safeBusinessName,
+        код_компании: companyCode,
+      } as any)
+      .select("id, название, код_компании")
+      .single();
+
+    if (businessError || !businessRowRaw) {
+      console.error("Create business error:", businessError);
+
+      // Откатываем пользователя и профиль
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+      } catch (deleteError) {
+        console.error("Failed to delete user after businessError:", deleteError);
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to create business",
+          errorCode: "BUSINESS_CREATION_FAILED",
+        },
+        { status: 500 },
+      );
+    }
+
+    const businessRow = businessRowRaw as any;
+    const businessId = String(businessRow.id);
+    const businessNameDb = businessRow["название"] as string | undefined;
+    const businessCompanyCodeDb =
+      businessRow["код_компании"] as string | undefined;
+
+    // === СОЗДАЁМ ЗАПИСЬ В staff ДЛЯ ДИРЕКТОРА ===
+    const { error: staffError } = await supabaseAdmin.from("staff").insert({
+      profile_id: userId,
+      business_id: businessId,
+      // колонки с кириллицей - тоже через any, но TS их не трогает,
+      // потому что объект без жёсткой типизации
+      роль: "директор",
+      должность: "владелец",
+      активен: true,
+    } as any);
+
+    if (staffError) {
+      console.error("Create staff (director) error:", staffError);
+
+      // Откатываем бизнес и пользователя
+      try {
+        await supabaseAdmin.from("businesses").delete().eq("id", businessId);
+      } catch (bizDeleteError) {
+        console.error(
+          "Failed to delete business after staffError:",
+          bizDeleteError,
+        );
+      }
+
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+      } catch (deleteError) {
+        console.error("Failed to delete user after staffError:", deleteError);
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to create staff record",
+          errorCode: "STAFF_CREATION_FAILED",
+        },
+        { status: 500 },
+      );
+    }
+
+    // === УСПЕШНЫЙ ОТВЕТ ===
     return NextResponse.json(
       {
         success: true,
         user: {
-          id: user.id,
+          id: userId,
           email: user.email,
-          fullName,
-          role: 'director',
-          businessId,
-          companyCode,
+          fullName: safeFullName,
+          role: "director", // фронту отдаём английское значение
         },
-        companyCode,
+        business: {
+          id: businessId,
+          name: businessNameDb ?? safeBusinessName,
+          companyCode: businessCompanyCodeDb ?? companyCode,
+        },
+        companyCode: businessCompanyCodeDb ?? companyCode,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error (unexpected):", error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
+      {
+        success: false,
+        error: "Internal server error",
+        errorCode: "INTERNAL_ERROR",
+      },
+      { status: 500 },
     );
   }
 }
