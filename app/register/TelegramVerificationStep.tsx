@@ -200,6 +200,10 @@ export function TelegramVerificationStep({
             clearInterval(intervalId);
             intervalId = null;
           }
+          // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ВЫЗЫВАЕМ onVerified() ЗДЕСЬ !!!
+          if (!cancelled) {
+              onVerified(); 
+          }
           return;
         }
 
@@ -222,7 +226,7 @@ export function TelegramVerificationStep({
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [sessionToken, polling]);
+  }, [sessionToken, polling, onVerified]);
 
   const handleOpenTelegram = () => {
     if (!telegramLink) return;
