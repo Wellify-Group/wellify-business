@@ -3,6 +3,10 @@
 // URL бота из .env
 const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
 
+// !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ОТКЛЮЧАЕМ КЭШИРОВАНИЕ !!!
+export const dynamic = "force-dynamic"; 
+export const runtime = "nodejs"; // Опционально, но лучше добавить
+
 export async function GET(request: Request, { params }: { params: { sessionToken: string } }) {
     if (!TELEGRAM_API_URL) {
         return new Response(JSON.stringify({ error: "Configuration Error" }), {
@@ -18,6 +22,8 @@ export async function GET(request: Request, { params }: { params: { sessionToken
         const resp = await fetch(`${TELEGRAM_API_URL}/telegram/session-status/${sessionToken}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
+            // !!! ДОПОЛНИТЕЛЬНОЕ ИСПРАВЛЕНИЕ: УБРАТЬ CACHE (Fetch API) !!!
+            cache: 'no-store',
         });
 
         // Получаем ответ от Railway
