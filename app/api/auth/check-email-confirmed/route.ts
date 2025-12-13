@@ -75,6 +75,15 @@ export async function GET(req: Request) {
       Boolean((user as any).confirmed_at) ||
       Boolean((user.user_metadata as any)?.email_verified);
 
+    console.log("[check-email-confirmed] User check:", {
+      email: normalizedEmail,
+      userId: user.id,
+      email_confirmed_at: (user as any).email_confirmed_at,
+      confirmed_at: (user as any).confirmed_at,
+      email_verified: (user.user_metadata as any)?.email_verified,
+      emailConfirmed,
+    });
+
     return NextResponse.json(
       { success: true, emailConfirmed },
       { status: 200 }

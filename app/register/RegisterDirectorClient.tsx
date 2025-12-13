@@ -325,8 +325,10 @@ export default function RegisterDirectorClient() {
         }
 
         const data = await res.json();
+        console.log("[register] check-email-confirmed response", data);
 
         if (data.success && data.emailConfirmed) {
+          console.log("[register] Email confirmed, moving to step 3");
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
@@ -344,6 +346,7 @@ export default function RegisterDirectorClient() {
       }
     };
 
+    console.log("[register] Starting email confirmation polling");
     const initial = setTimeout(check, 3000);
     intervalId = setInterval(check, 1500);
 
