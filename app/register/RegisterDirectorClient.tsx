@@ -244,48 +244,28 @@ export default function RegisterDirectorClient() {
       setIsSubmitting(true);
       setRegisterError(null);
 
-      if (!emailVerified || !registeredUserEmail) {
-        setRegisterError(
-          "E-mail должен быть подтвержден по ссылке из письма, прежде чем завершать регистрацию."
-        );
+      // Если мы на шаге 4, значит все уже готово - просто делаем вход
+      if (!registeredUserEmail || !personal.password) {
+        setRegisterError("Не удалось получить данные для входа.");
         return;
       }
 
-      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request: ГАРАНТИРУЕМ null для необязательных полей и добавляем phone !!!
-      if (!verifiedPhone) {
-        setRegisterError("Телефон не подтвержден. Вернитесь на предыдущий шаг.");
-        return;
+      // Обновляем role в профиле
+      if (registeredUserId) {
+        try {
+          await fetch("/api/auth/update-role", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: registeredUserId, role: "директор" }),
+          });
+          // Не критично, если не удалось - продолжаем
+        } catch (updateErr) {
+          console.warn("[register] Error updating role:", updateErr);
+          // Не критично, продолжаем
+        }
       }
 
-      const payload = {
-        email: registeredUserEmail,
-        password: personal.password,
-        phone: verifiedPhone, // ОБЯЗАТЕЛЬНОЕ ПОЛЕ
-        firstName: personal.firstName.trim(),
-        lastName: personal.lastName.trim(),
-        middleName: personal.middleName.trim() || null, // ГАРАНТИРУЕМ null
-        birthDate: personal.birthDate || null, // ГАРАНТИРУЕМ null
-        locale: localeForAPI,
-      };
-      // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
-
-      const res = await fetch("/api/auth/register-director", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data?.success) {
-        const msg =
-          data?.message ||
-          data?.error ||
-          "Не удалось завершить регистрацию директора.";
-        setRegisterError(msg);
-        return;
-      }
-
+      // Просто делаем вход - регистрация уже завершена
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: registeredUserEmail,
         password: personal.password,
@@ -294,16 +274,17 @@ export default function RegisterDirectorClient() {
       if (signInError) {
         console.warn("[register] signIn error", signInError);
         setRegisterError(
-          "Аккаунт создан, но не удалось выполнить вход. Попробуйте войти вручную."
+          "Не удалось выполнить вход. Попробуйте войти вручную."
         );
         return;
       }
 
+      // Сразу редирект в дашборд
       router.push("/dashboard/director");
     } catch (e) {
       console.error("finishRegistration error", e);
       setRegisterError(
-        "Неизвестная ошибка при завершении регистрации. Попробуйте позже."
+        "Неизвестная ошибка. Попробуйте войти вручную."
       );
     } finally {
       setIsSubmitting(false);
