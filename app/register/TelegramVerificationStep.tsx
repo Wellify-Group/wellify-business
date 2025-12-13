@@ -148,9 +148,9 @@ export function TelegramVerificationStep({
     }
   }, [userId, email, language, sessionToken, error]);
 
-  // 2. Polling статуса - проверяем telegram_verified в профиле
+  // 2. Polling статуса
   useEffect(() => {
-    if (!userId || !polling) return;
+    if (!sessionToken || !polling) return;
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -159,36 +159,75 @@ export function TelegramVerificationStep({
       if (cancelled) return;
 
       try {
-        // Проверяем telegram_verified в профиле
-        const resp = await fetch(`/api/auth/check-telegram-verified?userId=${userId}`);
+        const resp = await fetch(`/api/telegram/session-status/${sessionToken}`);
         if (!resp.ok) return;
 
-        const data = await resp.json();
-        
-        if (data.success && data.telegramVerified) {
-          // telegram_verified стал true - сразу переходим на шаг 4
+        const raw = await resp.json();
+        console.log("[telegram] raw session-status", raw);
+
+        const normalized: SessionStatus = {
+          status:
+            (raw.status as SessionStatus["status"]) ||
+            (raw.sessionStatus as SessionStatus["status"]) ||
+            "pending",
+          phone:
+            raw.phone ??
+            raw.phone_number ??
+            raw.phoneNumber ??
+            raw.telegram_phone ??
+            null,
+          phoneVerified:
+            raw.phoneVerified ??
+            raw.phone_verified ??
+            raw.phoneConfirmed ??
+            raw.phone_confirmed ??
+            false,
+          telegramVerified:
+            raw.telegramVerified ?? raw.telegram_verified ?? false,
+        };
+
+        setStatus(normalized);
+
+        // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: УСЛОВИЕ ЗАВЕРШЕНИЯ - МАКСИМАЛЬНОЕ ДОВЕРИЕ БОТУ !!!
+        // Если Bot сказал "completed" (что он делает сразу после записи в БД), переходим.
+        const isVerified = normalized.status === "completed"; 
+
+        if (isVerified) {
+          setStatus({
+            ...normalized,
+            status: "completed",
+            phoneVerified: true, // Гарантируем TRUE для UI
+          });
+
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
-          // Вызываем onVerified с номером телефона из профиля
-          onVerified(data.phone || undefined);
+          // Сразу вызываем onVerified с номером телефона
+          onVerified(normalized.phone || undefined);
           return;
         }
+
+        if (normalized.status === "expired") {
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+        }
       } catch (e) {
-        console.error("[telegram] check-telegram-verified error", e);
+        console.error("[telegram] session-status error", e);
       }
     };
 
-    // первый запрос сразу, потом интервал каждые 2 секунды
+    // первый запрос сразу, потом интервал
     poll();
-    intervalId = setInterval(poll, 2000);
+    intervalId = setInterval(poll, 3000);
 
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [userId, polling, onVerified]);
+  }, [sessionToken, polling, onVerified]);
 
   const handleOpenTelegram = () => {
     if (!telegramLink) return;
@@ -241,9 +280,26 @@ export function TelegramVerificationStep({
         </p>
       )}
 
-      {polling && (
+      {status && status.status === "pending" && (
         <div className="mt-3 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-300">
           {texts.waiting}
+        </div>
+      )}
+
+      {status && status.status === "expired" && (
+        <div className="mt-3 flex flex-col items-center gap-2 text-center">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-600/50 bg-amber-950/70 px-3 py-1.5 text-[11px] text-amber-200">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>{texts.expired}</span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCreateNewLink}
+          >
+            {texts.newLink}
+          </Button>
         </div>
       )}
 

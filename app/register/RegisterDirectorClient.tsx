@@ -244,12 +244,48 @@ export default function RegisterDirectorClient() {
       setIsSubmitting(true);
       setRegisterError(null);
 
-      if (!registeredUserEmail) {
-        setRegisterError("E-mail не найден. Вернитесь на предыдущий шаг.");
+      if (!emailVerified || !registeredUserEmail) {
+        setRegisterError(
+          "E-mail должен быть подтвержден по ссылке из письма, прежде чем завершать регистрацию."
+        );
         return;
       }
 
-      // Просто делаем вход - профиль уже создан ботом, данные уже в БД
+      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request: ГАРАНТИРУЕМ null для необязательных полей и добавляем phone !!!
+      if (!verifiedPhone) {
+        setRegisterError("Телефон не подтвержден. Вернитесь на предыдущий шаг.");
+        return;
+      }
+
+      const payload = {
+        email: registeredUserEmail,
+        password: personal.password,
+        phone: verifiedPhone, // ОБЯЗАТЕЛЬНОЕ ПОЛЕ
+        firstName: personal.firstName.trim(),
+        lastName: personal.lastName.trim(),
+        middleName: personal.middleName.trim() || null, // ГАРАНТИРУЕМ null
+        birthDate: personal.birthDate || null, // ГАРАНТИРУЕМ null
+        locale: localeForAPI,
+      };
+      // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
+
+      const res = await fetch("/api/auth/register-director", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        const msg =
+          data?.message ||
+          data?.error ||
+          "Не удалось завершить регистрацию директора.";
+        setRegisterError(msg);
+        return;
+      }
+
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: registeredUserEmail,
         password: personal.password,
@@ -258,12 +294,11 @@ export default function RegisterDirectorClient() {
       if (signInError) {
         console.warn("[register] signIn error", signInError);
         setRegisterError(
-          "Не удалось выполнить вход. Попробуйте войти вручную."
+          "Аккаунт создан, но не удалось выполнить вход. Попробуйте войти вручную."
         );
         return;
       }
 
-      // Данные из профиля подтянутся автоматически через Supabase
       router.push("/dashboard/director");
     } catch (e) {
       console.error("finishRegistration error", e);
