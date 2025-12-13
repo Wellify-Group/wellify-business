@@ -148,9 +148,9 @@ export function TelegramVerificationStep({
     }
   }, [userId, email, language, sessionToken, error]);
 
-  // 2. Polling статуса
+  // 2. Polling статуса - проверяем telegram_verified в профиле
   useEffect(() => {
-    if (!sessionToken || !polling) return;
+    if (!userId || !polling) return;
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -159,75 +159,36 @@ export function TelegramVerificationStep({
       if (cancelled) return;
 
       try {
-        const resp = await fetch(`/api/telegram/session-status/${sessionToken}`);
+        // Проверяем telegram_verified в профиле
+        const resp = await fetch(`/api/auth/check-telegram-verified?userId=${userId}`);
         if (!resp.ok) return;
 
-        const raw = await resp.json();
-        console.log("[telegram] raw session-status", raw);
-
-        const normalized: SessionStatus = {
-          status:
-            (raw.status as SessionStatus["status"]) ||
-            (raw.sessionStatus as SessionStatus["status"]) ||
-            "pending",
-          phone:
-            raw.phone ??
-            raw.phone_number ??
-            raw.phoneNumber ??
-            raw.telegram_phone ??
-            null,
-          phoneVerified:
-            raw.phoneVerified ??
-            raw.phone_verified ??
-            raw.phoneConfirmed ??
-            raw.phone_confirmed ??
-            false,
-          telegramVerified:
-            raw.telegramVerified ?? raw.telegram_verified ?? false,
-        };
-
-        setStatus(normalized);
-
-        // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: УСЛОВИЕ ЗАВЕРШЕНИЯ - МАКСИМАЛЬНОЕ ДОВЕРИЕ БОТУ !!!
-        // Если Bot сказал "completed" (что он делает сразу после записи в БД), переходим.
-        const isVerified = normalized.status === "completed"; 
-
-        if (isVerified) {
-          setStatus({
-            ...normalized,
-            status: "completed",
-            phoneVerified: true, // Гарантируем TRUE для UI
-          });
-
+        const data = await resp.json();
+        
+        if (data.success && data.telegramVerified) {
+          // telegram_verified стал true - сразу переходим на шаг 4
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
-          // Сразу вызываем onVerified с номером телефона
-          onVerified(normalized.phone || undefined);
+          // Вызываем onVerified с номером телефона из профиля
+          onVerified(data.phone || undefined);
           return;
         }
-
-        if (normalized.status === "expired") {
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-        }
       } catch (e) {
-        console.error("[telegram] session-status error", e);
+        console.error("[telegram] check-telegram-verified error", e);
       }
     };
 
-    // первый запрос сразу, потом интервал
+    // первый запрос сразу, потом интервал каждые 2 секунды
     poll();
-    intervalId = setInterval(poll, 3000);
+    intervalId = setInterval(poll, 2000);
 
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [sessionToken, polling]); // onVerified удален из зависимостей
+  }, [userId, polling, onVerified]);
 
   const handleOpenTelegram = () => {
     if (!telegramLink) return;
@@ -280,28 +241,12 @@ export function TelegramVerificationStep({
         </p>
       )}
 
-      {status && status.status === "pending" && (
+      {polling && (
         <div className="mt-3 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-300">
           {texts.waiting}
         </div>
       )}
 
-      {status && status.status === "expired" && (
-        <div className="mt-3 flex flex-col items-center gap-2 text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-600/50 bg-amber-950/70 px-3 py-1.5 text-[11px] text-amber-200">
-            <AlertCircle className="h-3.5 w-3.5" />
-            <span>{texts.expired}</span>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCreateNewLink}
-          >
-            {texts.newLink}
-          </Button>
-        </div>
-      )}
 
       {error && (
         <div className="mt-3 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
