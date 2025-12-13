@@ -2,8 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { mapProfileToDb } from "@/lib/types/profile";
-import { randomUUID } from "crypto"; 
+import { mapProfileToDb } from "@/lib/types/profile"; 
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -48,8 +47,8 @@ export async function POST(request: NextRequest) {
       locale,
     } = body;
 
-    // Валидация обязательных полей (phone может быть пустым, если бот уже обновил его)
-    if (!email || !password || !firstName || !lastName) {
+    // Валидация обязательных полей
+    if (!email || !password || !phone || !firstName || !lastName) {
       console.error("[register-director] Missing required fields", {
         hasEmail: !!email,
         hasPassword: !!password,
@@ -92,34 +91,9 @@ export async function POST(request: NextRequest) {
 
     const userId = existingUser.id;
 
-    // 2. Проверяем, есть ли уже профиль (для получения phone и кода компании, если есть)
-    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
-      .from("profiles")
-      .select("код_компании, company_code, phone")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (profileCheckError) {
-        console.error("[register-director] Error checking existing profile", { error: profileCheckError.message });
-    }
-
-    // 3. Определяем финальный phone (приоритет: из профиля > из запроса)
-    const finalPhone = (existingProfile as any)?.phone || phone?.trim() || "";
-    
-    if (!finalPhone) {
-        console.error("[register-director] Phone is required but not found", {
-            phoneFromRequest: phone,
-            phoneFromProfile: (existingProfile as any)?.phone,
-        });
-        return NextResponse.json(
-            { success: false, message: "Phone number is required. Please complete Telegram verification." },
-            { status: 400 }
-        );
-    }
-
-    // 4. Обновляем AUTH (для phone/phone_verified, если не обновил бот)
+    // 2. Обновляем AUTH (для phone/phone_verified, если не обновил бот)
     const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        phone: finalPhone,
+        phone: phone.trim(),
         phone_confirm: true,
     });
 
@@ -127,14 +101,25 @@ export async function POST(request: NextRequest) {
         console.warn("[register-director] Non-critical error updating auth phone/phone_confirm", { error: updateAuthError.message });
     }
 
-    // 5. Генерируем companyCode и Business ID 
+    // 3. Проверяем, есть ли уже профиль (для получения кода компании, если есть)
+    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+      .from("profiles")
+      .select("код_компании, company_code")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileCheckError) {
+        console.error("[register-director] Error checking existing profile", { error: profileCheckError.message });
+    }
+
+    // 4. Генерируем companyCode и Business ID 
     const existingCompanyCode = (existingProfile as any)?.["код_компании"] || (existingProfile as any)?.company_code;
     
-    // Генерируем UUID для нового бизнеса (соответствует схеме БД: id uuid primary key default gen_random_uuid())
-    const businessId = randomUUID();
+    // Генерируем ID для нового бизнеса (он будет создан)
+    const businessId = `biz-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`; 
     const companyCode = existingCompanyCode || generateCompanyCode();
 
-    // 6. Формируем финальные данные профиля
+    // 5. Формируем финальные данные профиля
     const fullName = [lastName.trim(), firstName.trim(), middleName?.trim()]
       .filter(Boolean)
       .join(" ");
@@ -159,7 +144,7 @@ export async function POST(request: NextRequest) {
       companyCode,
       jobTitle: "владелец",
       active: true,
-      phone: finalPhone,
+      phone: phone.trim(),
       phoneVerified: true,
       emailVerified: true, 
     });
@@ -195,7 +180,7 @@ export async function POST(request: NextRequest) {
     Object.keys(finalProfileData).forEach(key => finalProfileData[key] === undefined && delete finalProfileData[key]);
 
 
-    // 7. Upsert (Обновление/Создание) профиля (UPDATE/INSERT)
+    // 6. Upsert (Обновление/Создание) профиля (UPDATE/INSERT)
     const { error: updateProfileError } = await supabaseAdmin
       .from("profiles")
       .update(finalProfileData) 
