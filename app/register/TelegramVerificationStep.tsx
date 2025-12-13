@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"; 
 
 interface TelegramVerificationStepProps {
-  onVerified: () => void;
+  onVerified: (phone?: string) => void;
   language?: "ru" | "uk" | "en";
   userId: string;
   email: string;
@@ -39,7 +39,6 @@ export function TelegramVerificationStep({
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
 
-  const [isFinished, setIsFinished] = useState(false); // Используем isFinished для рендеринга
 
   const texts = {
     ru: {
@@ -194,7 +193,6 @@ export function TelegramVerificationStep({
         const isVerified = normalized.status === "completed"; 
 
         if (isVerified) {
-          setIsFinished(true); // Устанавливаем флаг для UI
           setStatus({
             ...normalized,
             status: "completed",
@@ -205,7 +203,8 @@ export function TelegramVerificationStep({
             clearInterval(intervalId);
             intervalId = null;
           }
-          // onVerified() вызывается при нажатии на кнопку "Перейти в Дашборд"
+          // Сразу вызываем onVerified с номером телефона
+          onVerified(normalized.phone || undefined);
           return;
         }
 
@@ -241,32 +240,10 @@ export function TelegramVerificationStep({
     setSessionToken(null);
     setTelegramLink(null);
     setStatus(null);
-    setIsFinished(false);
     setError(null);
     setPolling(false);
   };
 
-  // 3. Успешное подтверждение телефона
-  if (isFinished) { // Используем isFinished для рендеринга
-    return (
-      <div className="flex flex-col items-center gap-4 py-6 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
-          <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-zinc-50">
-          {texts.successTitle}
-        </h3>
-        <p className="max-w-md text-sm text-zinc-400">{texts.successText}</p>
-        <Button
-          size="lg"
-          className="mt-2 w-full max-w-xs"
-          onClick={onVerified} // Вызовет handleTelegramVerified -> finishRegistration
-        >
-          {texts.successButton}
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center gap-4 py-4">
@@ -303,7 +280,7 @@ export function TelegramVerificationStep({
         </p>
       )}
 
-      {status && !isFinished && status.status === "pending" && (
+      {status && status.status === "pending" && (
         <div className="mt-3 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-300">
           {texts.waiting}
         </div>

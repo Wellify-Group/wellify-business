@@ -63,6 +63,7 @@ export default function RegisterDirectorClient() {
   const [registeredUserEmail, setRegisteredUserEmail] = useState<string | null>(
     null
   );
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -250,10 +251,16 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request: ГАРАНТИРУЕМ null для необязательных полей !!!
+      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request: ГАРАНТИРУЕМ null для необязательных полей и добавляем phone !!!
+      if (!verifiedPhone) {
+        setRegisterError("Телефон не подтвержден. Вернитесь на предыдущий шаг.");
+        return;
+      }
+
       const payload = {
         email: registeredUserEmail,
         password: personal.password,
+        phone: verifiedPhone, // ОБЯЗАТЕЛЬНОЕ ПОЛЕ
         firstName: personal.firstName.trim(),
         lastName: personal.lastName.trim(),
         middleName: personal.middleName.trim() || null, // ГАРАНТИРУЕМ null
@@ -303,7 +310,11 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  const handleTelegramVerified = async () => {
+  const handleTelegramVerified = async (phone?: string) => {
+    // Сохраняем подтвержденный телефон
+    if (phone) {
+      setVerifiedPhone(phone);
+    }
     // Переходим на шаг 4 - успешное завершение
     setStep(4);
     setMaxStepReached(4);
