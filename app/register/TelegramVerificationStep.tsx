@@ -280,9 +280,10 @@ export function TelegramVerificationStep({
             <QRCode value={telegramLink} size={200} />
           </button>
 
-          <p className="max-w-md text-center text-xs text-zinc-400">
+          {/* !!! ИСПРАВЛЕНИЕ: Удаляем дублирующий текст-описание (openHint) !!! */}
+          {/* <p className="max-w-md text-center text-xs text-zinc-400">
             {texts.openHint}
-          </p>
+          </p> */}
 
           <ol className="mt-1 space-y-1 text-[11px] text-zinc-500">
             {texts.steps.map((line, idx) => (

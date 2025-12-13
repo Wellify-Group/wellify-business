@@ -1,4 +1,4 @@
-// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - ИСПРАВЛЕНА 400 ОШИБКА)
+// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - ИСПРАВЛЕНИЕ 400 Bad Request и UI)
 
 "use client";
 
@@ -250,7 +250,7 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request !!!
+      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request: ГАРАНТИРУЕМ null для необязательных полей !!!
       const payload = {
         email: registeredUserEmail,
         password: personal.password,
