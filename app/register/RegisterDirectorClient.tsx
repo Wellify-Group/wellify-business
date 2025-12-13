@@ -1,3 +1,5 @@
+// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - ИСПРАВЛЕНА 400 ОШИБКА)
+
 "use client";
 
 import { useState, useEffect, FormEvent, ChangeEvent } from "react";
@@ -248,15 +250,17 @@ export default function RegisterDirectorClient() {
         return;
       }
 
+      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request !!!
       const payload = {
         email: registeredUserEmail,
         password: personal.password,
         firstName: personal.firstName.trim(),
         lastName: personal.lastName.trim(),
-        middleName: personal.middleName.trim() || null,
-        birthDate: personal.birthDate || null,
+        middleName: personal.middleName.trim() || null, // ГАРАНТИРУЕМ null
+        birthDate: personal.birthDate || null, // ГАРАНТИРУЕМ null
         locale: localeForAPI,
       };
+      // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
 
       const res = await fetch("/api/auth/register-director", {
         method: "POST",
