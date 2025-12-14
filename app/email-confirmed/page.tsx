@@ -39,19 +39,19 @@ export default function EmailConfirmedPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="relative w-full max-w-xl">
-        <div className="relative overflow-hidden rounded-[32px] border border-border bg-card px-6 py-8 shadow-[var(--shadow-modal)] sm:px-10 sm:py-12">
-          <div className="flex flex-col items-center space-y-5 text-center sm:space-y-6">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-              <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <div className="relative w-full max-w-md">
+        <div className="relative overflow-hidden rounded-[32px] border border-border bg-card px-6 py-6 shadow-[var(--shadow-modal)] sm:px-8 sm:py-8">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 dark:bg-emerald-500/10">
+              <CheckCircle2 className="h-12 w-12 text-emerald-400 dark:text-emerald-400" />
             </div>
 
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               {texts.title}
             </h1>
 
-            <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground sm:text-base">
               {texts.message}
             </p>
 

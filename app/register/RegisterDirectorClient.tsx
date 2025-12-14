@@ -43,9 +43,11 @@ export default function RegisterDirectorClient() {
   const router = useRouter();
   const { language } = useLanguage();
 
-  const [step, setStep] = useState<Step>(1);
-  const [maxStepReached, setMaxStepReached] = useState<Step>(1);
+  // Состояние шагов регистрации
+  const [step, setStep] = useState<Step>(1); // Текущий активный шаг
+  const [maxStepReached, setMaxStepReached] = useState<Step>(1); // Максимальный достигнутый шаг (для блокировки недоступных шагов)
 
+  // Данные формы шага 1: личные данные директора
   const [personal, setPersonal] = useState<PersonalForm>({
     firstName: "",
     middleName: "",
@@ -55,19 +57,23 @@ export default function RegisterDirectorClient() {
     passwordConfirm: "",
   });
 
+  // Данные шага 2: рабочий e-mail
   const [email, setEmail] = useState("");
 
+  // Состояние ошибок регистрации
   const [registerError, setRegisterError] = useState<string | null>(null);
 
+  // Данные зарегистрированного пользователя (сохраняются после signUp)
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
   const [registeredUserEmail, setRegisteredUserEmail] = useState<string | null>(
     null
   );
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
 
+  // Флаг процесса отправки формы
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // e-mail verification
+  // Состояние верификации e-mail
   const [emailStatus, setEmailStatus] = useState<
     "idle" | "sending" | "link_sent" | "verified" | "error"
   >("idle");
@@ -78,14 +84,16 @@ export default function RegisterDirectorClient() {
   const localeForAPI =
     language === "ua" ? "uk" : (language as "ru" | "uk" | "en" | string);
 
-  // ---------- helpers ----------
+  // ---------- Обработчики событий ----------
 
+  // Обработчик изменения полей формы личных данных
   const handlePersonalChange =
     (field: keyof PersonalForm) =>
     (e: ChangeEvent<HTMLInputElement>) => {
       setPersonal((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
+  // Валидация и переход со шага 1 (личные данные) на шаг 2 (e-mail)
   const handleNextFromStep1 = () => {
     setRegisterError(null);
 
@@ -114,11 +122,13 @@ export default function RegisterDirectorClient() {
     setMaxStepReached((prev) => (prev < 2 ? 2 : prev));
   };
 
+  // Обработчик отправки формы шага 2 (e-mail)
   const handleSubmitStep2 = async (e: FormEvent) => {
     e.preventDefault();
     await handleSendEmailLink();
   };
 
+  // Отправка письма для подтверждения e-mail через Supabase Auth
   const handleSendEmailLink = async () => {
     if (emailStatus === "sending" || emailStatus === "link_sent") return;
 
@@ -227,11 +237,13 @@ export default function RegisterDirectorClient() {
     }
   };
 
+  // Возврат на предыдущий шаг
   const handleBack = () => {
     setRegisterError(null);
     setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
   };
 
+  // Проверка доступности перехода на указанный шаг
   const canGoToStep = (target: Step) => {
     if (target === 1) return true;
     if (target === 2) return maxStepReached >= 2;
@@ -239,6 +251,13 @@ export default function RegisterDirectorClient() {
     return false;
   };
 
+  /**
+   * Завершение регистрации и переход в дашборд
+   * Проверяет два условия:
+   * 1. phone должен быть заполнен в профиле
+   * 2. telegram_verified должен быть true
+   * Если оба условия выполнены - сразу редирект в дашборд
+   */
   const finishRegistration = async () => {
     try {
       setIsSubmitting(true);
@@ -250,7 +269,7 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // Проверяем или восстанавливаем сессию
+      // Проверяем или восстанавливаем сессию пользователя
       let { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       // Если сессии нет, пытаемся восстановить её через signIn
@@ -277,7 +296,7 @@ export default function RegisterDirectorClient() {
 
       const userId = session.user.id;
 
-      // Проверяем профиль: phone и telegram_verified
+      // Загружаем профиль из БД для проверки phone и telegram_verified
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("phone, telegram_verified")
@@ -290,20 +309,19 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // Проверяем два условия:
-      // 1. phone должен быть заполнен
-      // 2. telegram_verified должен быть true
+      // Проверка условия 1: phone должен быть заполнен
       if (!profile?.phone || profile.phone.trim() === "") {
         setRegisterError("Номер телефона не подтвержден. Пожалуйста, завершите верификацию Telegram.");
         return;
       }
 
+      // Проверка условия 2: telegram_verified должен быть true
       if (!profile?.telegram_verified) {
         setRegisterError("Telegram не подтвержден. Пожалуйста, завершите верификацию Telegram.");
         return;
       }
 
-      // Оба условия выполнены - сразу редирект в дашборд
+      // Оба условия выполнены - сразу редирект в дашборд директора
       router.push("/dashboard/director");
     } catch (e) {
       console.error("finishRegistration error", e);
@@ -315,18 +333,24 @@ export default function RegisterDirectorClient() {
     }
   };
 
+  // Обработчик успешной верификации Telegram
   const handleTelegramVerified = async (phone?: string) => {
     // Сохраняем подтвержденный телефон
     if (phone) {
       setVerifiedPhone(phone);
     }
-    // Переходим на шаг 4 - успешное завершение
+    // Переходим на шаг 4 - успешное завершение регистрации
     setStep(4);
     setMaxStepReached(4);
   };
 
-  // ---------- polling e-mail confirmation ----------
+  // ---------- Polling подтверждения e-mail ----------
 
+  /**
+   * Polling для проверки подтверждения e-mail
+   * После отправки письма проверяет статус подтверждения каждые 1.5 секунды
+   * При подтверждении автоматически переходит на шаг 3 (Telegram)
+   */
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
     if (!email.trim()) return;
@@ -357,9 +381,11 @@ export default function RegisterDirectorClient() {
           setEmailVerified(true);
           setRegisterError(null);
 
+          // Переход на шаг 3 (Telegram верификация)
           setStep(3);
           setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
 
+          // Останавливаем polling после подтверждения
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
@@ -371,6 +397,7 @@ export default function RegisterDirectorClient() {
     };
 
     console.log("[register] Starting email confirmation polling");
+    // Первая проверка через 3 секунды, затем каждые 1.5 секунды
     const initial = setTimeout(check, 3000);
     intervalId = setInterval(check, 1500);
 
@@ -381,8 +408,13 @@ export default function RegisterDirectorClient() {
     };
   }, [emailStatus, email]);
 
-  // ---------- render helpers ----------
+  // ---------- Функции рендеринга UI ----------
 
+  /**
+   * Рендер вкладок шагов регистрации
+   * Показывает три шага: Основные данные, E-mail, Telegram
+   * Активный шаг подсвечивается, недоступные шаги блокируются
+   */
   const renderTabs = () => {
     const tabs: { id: Step; label: string }[] = [
       { id: 1, label: "Основные данные" },
@@ -419,6 +451,9 @@ export default function RegisterDirectorClient() {
     );
   };
 
+  /**
+   * Рендер заголовка и описания текущего шага
+   */
   const renderStepTitle = () => {
     let descriptionText: string | null = null;
 
@@ -429,7 +464,7 @@ export default function RegisterDirectorClient() {
       descriptionText =
         "Укажите рабочий e-mail, мы отправим письмо для подтверждения доступа в WELLIFY business.";
     } else {
-      // для шага 3 описание убираем, чтобы не дублировать текст про подтверждение телефона
+      // Для шага 3 описание убираем, чтобы не дублировать текст про подтверждение телефона
       descriptionText = null;
     }
 
@@ -447,6 +482,10 @@ export default function RegisterDirectorClient() {
     );
   };
 
+  /**
+   * Рендер шага 1: Личные данные директора
+   * Поля: Имя, Отчество, Фамилия, Дата рождения, Пароль, Подтверждение пароля
+   */
   const renderStep1 = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -557,6 +596,10 @@ export default function RegisterDirectorClient() {
     </div>
   );
 
+  /**
+   * Рендер шага 2: Подтверждение e-mail
+   * Поле ввода e-mail с отправкой письма для подтверждения
+   */
   const renderStep2 = () => (
     <form id="step2-form" className="space-y-5" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
@@ -598,6 +641,10 @@ export default function RegisterDirectorClient() {
     </form>
   );
 
+  /**
+   * Рендер шага 3: Верификация Telegram
+   * Показывает компонент TelegramVerificationStep для подтверждения телефона через Telegram бота
+   */
   const renderStep3 = () => {
     if (!registeredUserId || !registeredUserEmail) {
       return (
@@ -626,6 +673,10 @@ export default function RegisterDirectorClient() {
     );
   };
 
+  /**
+   * Рендер шага 4: Успешное завершение регистрации
+   * Показывает сообщение об успехе и кнопку перехода в дашборд
+   */
   const renderStep4 = () => (
     <div className="flex flex-col items-center gap-6 py-8 text-center">
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
@@ -659,7 +710,8 @@ export default function RegisterDirectorClient() {
     </div>
   );
 
-  // ---------- main render ----------
+  // ---------- Основной рендер компонента ----------
+  // Главный контейнер: центрирование по вертикали и горизонтали
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
@@ -670,22 +722,38 @@ export default function RegisterDirectorClient() {
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className={`px-10 pb-4 pt-1 ${step === 2 ? 'flex items-center justify-center min-h-[400px]' : ''}`}>
-            {registerError && (
-              <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
-                <AlertCircle className="mt-0.5 h-4 w-4" />
-                <span>{registerError}</span>
-              </div>
-            )}
+          <CardContent className="px-10 pb-4 pt-1 flex items-center justify-center min-h-[400px]">
+            <div className="w-full max-w-2xl">
+              {registerError && (
+                <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+                  <AlertCircle className="mt-0.5 h-4 w-4" />
+                  <span>{registerError}</span>
+                </div>
+              )}
 
-            {step === 1 && renderStep1()}
-            {step === 2 && (
-              <div className="w-full max-w-md">
-                {renderStep2()}
-              </div>
-            )}
-            {step === 3 && renderStep3()}
-            {step === 4 && renderStep4()}
+              {step === 1 && (
+                <div className="flex justify-center">
+                  <div className="w-full max-w-2xl">
+                    {renderStep1()}
+                  </div>
+                </div>
+              )}
+              {step === 2 && (
+                <div className="flex justify-center">
+                  <div className="w-full max-w-md">
+                    {renderStep2()}
+                  </div>
+                </div>
+              )}
+              {step === 3 && (
+                <div className="flex justify-center">
+                  <div className="w-full max-w-md">
+                    {renderStep3()}
+                  </div>
+                </div>
+              )}
+              {step === 4 && renderStep4()}
+            </div>
           </CardContent>
 
           <CardFooter className="relative flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
