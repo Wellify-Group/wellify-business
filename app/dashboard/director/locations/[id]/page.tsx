@@ -971,6 +971,7 @@ function TeamTab({ location, manager, staff, employees, users, onAssignManager, 
 function ScheduleTab({ location, onUpdate }: any) {
   const { t } = useLanguage();
   
+  // Define DAYS array - must be defined before useState
   const DAYS = [
     { key: 'mon' as const, label: t("dashboard.weekdays.monday") },
     { key: 'tue' as const, label: t("dashboard.weekdays.tuesday") },
@@ -979,7 +980,7 @@ function ScheduleTab({ location, onUpdate }: any) {
     { key: 'fri' as const, label: t("dashboard.weekdays.friday") },
     { key: 'sat' as const, label: t("dashboard.weekdays.saturday") },
     { key: 'sun' as const, label: t("dashboard.weekdays.sunday") }
-  ];
+  ] as const;
   
   const [schedule, setSchedule] = useState(() => {
     const currentSchedule = location.schedule || {};
