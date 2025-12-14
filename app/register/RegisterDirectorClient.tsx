@@ -331,7 +331,7 @@ export default function RegisterDirectorClient() {
       }
 
       // Загружаем профиль через API endpoint (обходит RLS через admin клиент)
-      const profileResponse = await fetch('/api/auth/load-profile', {
+      let profileResponse = await fetch('/api/auth/load-profile', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -339,10 +339,36 @@ export default function RegisterDirectorClient() {
         },
       });
       
+      // Если получили 401, пытаемся восстановить сессию и повторить запрос
       if (profileResponse.status === 401) {
-        console.error("[register] Not authenticated in finishRegistration");
-        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
-        return;
+        console.log("[register] Got 401, attempting to restore session and retry...");
+        
+        // Пытаемся восстановить сессию через signIn
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: registeredUserEmail,
+          password: personal.password,
+        });
+
+        if (signInError || !signInData?.user) {
+          console.error("[register] Failed to restore session in finishRegistration", signInError);
+          setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+          return;
+        }
+
+        // Повторяем запрос профиля после восстановления сессии
+        profileResponse = await fetch('/api/auth/load-profile', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (profileResponse.status === 401) {
+          console.error("[register] Still not authenticated after restore");
+          setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+          return;
+        }
       }
       
       if (!profileResponse.ok) {
