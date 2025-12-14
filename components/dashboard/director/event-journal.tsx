@@ -40,10 +40,10 @@ export function EventJournal({ events }: EventJournalProps) {
   };
 
   const typeColors = {
-    finance: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-    incident: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-    personnel: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-    other: 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+    finance: 'bg-primary/10 text-primary border-primary/20',
+    incident: 'bg-[color:var(--color-danger)]/10 text-[color:var(--color-danger)] border-[color:var(--color-danger)]/20',
+    personnel: 'bg-accent/10 text-accent border-accent/20',
+    other: 'bg-muted/50 text-muted-foreground border-border/50'
   };
 
   return (

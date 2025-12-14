@@ -15,9 +15,9 @@ interface KPICardProps {
 
 export function KPICard({ label, value, subtitle, status, className }: KPICardProps) {
   const statusColors = {
-    success: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-    warning: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-    error: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+    success: 'bg-[color:var(--color-success)]/10 text-[color:var(--color-success)] border-[color:var(--color-success)]/20',
+    warning: 'bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)] border-[color:var(--color-warning)]/20',
+    error: 'bg-[color:var(--color-danger)]/10 text-[color:var(--color-danger)] border-[color:var(--color-danger)]/20',
     neutral: 'bg-muted/50 text-muted-foreground border-border/50'
   };
 

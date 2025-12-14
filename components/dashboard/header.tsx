@@ -59,12 +59,32 @@ export function DashboardHeader() {
   const languageMenuRef = useRef<HTMLDivElement>(null);
   const languageButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Имя и инициалы
-  const userName = useMemo(() => getFormalName(currentUser), [currentUser]);
-  const userInitial = useMemo(
-    () => userName[0]?.toUpperCase() || "U",
-    [userName]
-  );
+  // Имя и инициалы - используем данные из профиля
+  const userName = useMemo(() => {
+    if (!currentUser) return "User";
+    
+    // Приоритет: fullName > составленное из частей > name
+    if (currentUser.fullName) {
+      return currentUser.fullName;
+    }
+    
+    const parts: string[] = [];
+    if (currentUser.firstName) parts.push(currentUser.firstName);
+    if (currentUser.middleName) parts.push(currentUser.middleName);
+    if (currentUser.lastName) parts.push(currentUser.lastName);
+    
+    if (parts.length > 0) {
+      return parts.join(" ");
+    }
+    
+    return currentUser.name || "User";
+  }, [currentUser]);
+  
+  const userInitial = useMemo(() => {
+    if (!userName || userName === "User") return "U";
+    // Берем первую букву имени
+    return userName.trim()[0]?.toUpperCase() || "U";
+  }, [userName]);
 
   // Флаг темы (для тумблера)
   const isDark = useMemo(
@@ -130,11 +150,18 @@ export function DashboardHeader() {
   const pathDepth = breadcrumbs.length;
 
   const getRoleLabel = () => {
-    if (currentUser?.role === "director")
-      return t("dashboard.director_overview") || "Директор";
-    if (currentUser?.role === "manager")
-      return t("dashboard.manager_panel") || "Менеджер";
-    return t("dashboard.dash_employee") || "Сотрудник";
+    if (!currentUser?.role) return t("dashboard.dash_employee") || "Сотрудник";
+    
+    switch (currentUser.role) {
+      case "director":
+        return t("dashboard.director_overview") || "Директор";
+      case "manager":
+        return t("dashboard.manager_panel") || "Менеджер";
+      case "employee":
+        return t("dashboard.dash_employee") || "Сотрудник";
+      default:
+        return t("dashboard.dash_employee") || "Сотрудник";
+    }
   };
 
   const roleLabel = getRoleLabel();
@@ -222,7 +249,7 @@ export function DashboardHeader() {
     <header
       id="dashboard-header"
       data-tour="header"
-      className="bg-[var(--surface-1)] border-b border-[var(--border-color)] h-14 flex-shrink-0"
+      className="bg-card border-b border-border h-14 flex-shrink-0 shadow-[var(--shadow-navbar)]"
     >
       <div
         className="flex items-center justify-between h-full"
@@ -236,20 +263,20 @@ export function DashboardHeader() {
           {/* Sidebar toggle */}
           <button
             onClick={toggleSidebar}
-            className="p-2 hover:bg-[var(--surface-2)] rounded-lg transition-colors flex-shrink-0"
+            className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
             aria-label="Toggle sidebar"
           >
-            <Menu className="h-5 w-5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" />
+            <Menu className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
           </button>
 
           {/* Back button */}
           {pathDepth > 2 && (
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-[var(--surface-2)] rounded-lg transition-colors flex-shrink-0"
+              className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
               aria-label={t("back_to_home")}
             >
-              <ArrowLeft className="h-5 w-5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors" />
+              <ArrowLeft className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
             </button>
           )}
 
@@ -261,16 +288,16 @@ export function DashboardHeader() {
                 className="flex items-center gap-1.5 min-w-0"
               >
                 {index > 0 && (
-                  <ChevronRight className="h-3.5 w-3.5 text-[var(--text-tertiary)] flex-shrink-0" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 )}
                 {crumb.isLast ? (
-                  <span className="font-bold text-[var(--text-primary)] truncate">
+                  <span className="font-bold text-foreground truncate">
                     {crumb.label}
                   </span>
                 ) : (
                   <Link
                     href={crumb.href}
-                    className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors truncate"
+                    className="text-muted-foreground hover:text-foreground transition-colors truncate"
                   >
                     {crumb.label}
                   </Link>
@@ -288,14 +315,14 @@ export function DashboardHeader() {
             <WeatherWidget />
           </div>
 
-          <div className="hidden md:block h-5 w-[1px] bg-[var(--border-color)]" />
+          <div className="hidden md:block h-5 w-[1px] bg-border" />
 
           <div className="flex items-center gap-1">
             {/* New message (director only) */}
             {currentUser?.role === "director" && (
               <button
                 onClick={() => openMessageComposer()}
-                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-2)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                 title={t("dashboard.msg_new_message")}
               >
                 <PenSquare className="h-5 w-5" />
@@ -305,7 +332,7 @@ export function DashboardHeader() {
             {/* Notifications */}
             <Link
               href="/dashboard/director/notifications"
-              className="relative h-9 w-9 flex items-center justify-center rounded-full hover:bg-[var(--surface-2)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              className="relative h-9 w-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
               title={t("dashboard.notifications")}
             >
               <Bell className="h-5 w-5" />
@@ -320,13 +347,13 @@ export function DashboardHeader() {
                   setIsLanguageMenuOpen(false);
                   setIsProfileOpen(!isProfileOpen);
                 }}
-                className="flex items-center gap-2 p-1.5 hover:bg-[var(--surface-2)] rounded-lg transition-colors"
+                className="flex items-center gap-2 p-1.5 hover:bg-muted rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-[var(--accent-primary)]/20 flex items-center justify-center text-[var(--accent-primary)] font-bold text-sm">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
                   {userInitial}
                 </div>
                 <ChevronDown
-                  className={`h-4 w-4 text-[var(--text-secondary)] transition-transform ${
+                  className={`h-4 w-4 text-muted-foreground transition-transform ${
                     isProfileOpen ? "rotate-180" : ""
                   }`}
                 />
@@ -344,15 +371,15 @@ export function DashboardHeader() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 top-full mt-2 w-64 bg-[var(--surface-1)] backdrop-blur-sm border border-[var(--border-color)] rounded-xl shadow-xl z-[9999]"
+                      className="absolute right-0 top-full mt-2 w-64 bg-card backdrop-blur-sm border border-border rounded-xl shadow-[var(--shadow-floating)] z-[9999]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {/* User block */}
-                      <div className="p-4 border-b border-[var(--border-color)] rounded-t-xl">
-                        <p className="text-base font-semibold text-[var(--text-primary)]">
+                      <div className="p-4 border-b border-border rounded-t-xl">
+                        <p className="text-base font-semibold text-foreground">
                           {userName}
                         </p>
-                        <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {roleLabel}
                         </p>
                       </div>
@@ -364,13 +391,13 @@ export function DashboardHeader() {
                             setIsProfileOpen(false);
                             router.push("/dashboard/director/settings");
                           }}
-                          className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md"
+                          className="flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md"
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center">
-                              <User className="h-4 w-4 text-[var(--text-secondary)]" />
+                              <User className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">
+                            <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
                               {t("dashboard.profile")}
                             </span>
                           </div>
@@ -378,14 +405,14 @@ export function DashboardHeader() {
 
                         {/* Dark mode toggle */}
                         <div
-                          className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md cursor-pointer"
+                          className="flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md cursor-pointer"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center">
-                              <Moon className="h-4 w-4 text-[var(--text-secondary)]" />
+                              <Moon className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">
+                            <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
                               {t("dashboard.menu_dark_mode")}
                             </span>
                           </div>
@@ -396,10 +423,10 @@ export function DashboardHeader() {
                                 handleThemeToggle();
                               }}
                               className={cn(
-                                "relative w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-offset-2 shrink-0",
+                                "relative w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0",
                                 isDark
-                                  ? "bg-[var(--accent-primary)]"
-                                  : "bg-[var(--surface-3)]"
+                                  ? "bg-primary"
+                                  : "bg-muted"
                               )}
                               aria-label={
                                 isDark
@@ -415,7 +442,7 @@ export function DashboardHeader() {
                               />
                             </button>
                           ) : (
-                            <div className="relative w-11 h-6 rounded-full bg-[var(--surface-3)] shrink-0">
+                            <div className="relative w-11 h-6 rounded-full bg-muted shrink-0">
                               <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm" />
                             </div>
                           )}
@@ -433,22 +460,22 @@ export function DashboardHeader() {
                               setIsLanguageMenuOpen(true);
                             }, 0);
                           }}
-                          className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md"
+                          className="flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md"
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center shrink-0">
-                              <Globe className="h-4 w-4 text-[var(--text-secondary)]" />
+                              <Globe className="h-4 w-4 text-muted-foreground" />
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-[var(--text-primary)]">
+                            <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
                               {t("dashboard.menu_interface_language")}
                             </span>
                           </div>
-                          <span className="text-xs font-medium text-[var(--text-tertiary)] shrink-0">
+                          <span className="text-xs font-medium text-muted-foreground shrink-0">
                             {currentLanguage.label}
                           </span>
                         </button>
 
-                        <div className="h-px bg-[var(--border-color)] my-1 mx-4" />
+                        <div className="h-px bg-border my-1 mx-4" />
 
                         {/* Logout */}
                         <button
@@ -457,7 +484,7 @@ export function DashboardHeader() {
                             setIsProfileOpen(false);
                             router.push("/login");
                           }}
-                          className="flex items-center justify-between px-4 py-3 text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors rounded-md"
+                          className="flex items-center justify-between px-4 py-3 text-destructive hover:bg-destructive/10 transition-colors rounded-md"
                         >
                           <div className="flex items-center flex-1">
                             <div className="w-8 flex justify-center">
@@ -506,20 +533,15 @@ export function DashboardHeader() {
                   top: `${languageMenuCoords.top}px`,
                   left: `${languageMenuCoords.left}px`,
                   width: `${languageMenuCoords.width}px`,
-                  background:
-                    resolvedTheme === "dark"
-                      ? "rgba(15, 23, 42, 0.7)"
-                      : "rgba(255, 255, 255, 0.7)",
+                  background: resolvedTheme === "dark" 
+                    ? "hsl(var(--popover) / 0.7)" 
+                    : "hsl(var(--popover) / 0.7)",
                   backdropFilter: "blur(20px) saturate(180%)",
                   WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                  border:
-                    resolvedTheme === "dark"
-                      ? "1px solid rgba(255, 255, 255, 0.1)"
-                      : "1px solid rgba(255, 255, 255, 0.3)",
-                  boxShadow:
-                    resolvedTheme === "dark"
-                      ? "0 8px 32px 0 rgba(0, 0, 0, 0.3)"
-                      : "0 8px 32px 0 rgba(0, 0, 0, 0.1)",
+                  border: `1px solid hsl(var(--border) / 0.5)`,
+                  boxShadow: resolvedTheme === "dark"
+                    ? "var(--shadow-floating)"
+                    : "var(--shadow-soft)",
                 }}
                 className="pointer-events-auto rounded-lg max-h-[200px] overflow-y-auto custom-scroll"
                 onClick={(e) => e.stopPropagation()}
@@ -530,25 +552,21 @@ export function DashboardHeader() {
                     onClick={() => handleLanguageChange(lang.code)}
                     className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-all rounded-lg mx-1 my-0.5 ${
                       language === lang.code
-                        ? resolvedTheme === "dark"
-                          ? "bg-white/10 text-[var(--text-primary)] backdrop-blur-sm"
-                          : "bg-white/60 text-[var(--text-primary)] backdrop-blur-sm"
-                        : resolvedTheme === "dark"
-                        ? "text-[var(--text-secondary)] hover:bg-white/5 backdrop-blur-sm"
-                        : "text-[var(--text-secondary)] hover:bg-white/40 backdrop-blur-sm"
+                        ? "bg-primary/10 text-foreground backdrop-blur-sm"
+                        : "text-muted-foreground hover:bg-muted/50 backdrop-blur-sm"
                     }`}
                   >
                     <span
                       className={
                         language === lang.code
-                          ? "font-medium text-[var(--text-primary)]"
-                          : "text-[var(--text-secondary)]"
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground"
                       }
                     >
                       {lang.fullLabel}
                     </span>
                     {language === lang.code && (
-                      <Check className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <Check className="h-4 w-4 text-primary" />
                     )}
                   </button>
                 ))}

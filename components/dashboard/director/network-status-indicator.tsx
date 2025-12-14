@@ -16,28 +16,28 @@ export function NetworkStatusIndicator({ status, problemCount }: NetworkStatusIn
       text: 'День в норме',
       description: 'Все показатели находятся в пределах нормы',
       icon: CheckCircle2,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-950/20',
-      borderColor: 'border-emerald-200 dark:border-emerald-800',
-      badgeColor: 'bg-emerald-500'
+      color: 'text-[color:var(--color-success)]',
+      bgColor: 'bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20',
+      borderColor: 'border-[color:var(--color-success)]/20 dark:border-[color:var(--color-success)]/30',
+      badgeColor: 'bg-[color:var(--color-success)]'
     },
     risks: {
       text: 'Есть риски',
       description: 'Требуется внимание к некоторым показателям',
       icon: AlertTriangle,
-      color: 'text-amber-500',
-      bgColor: 'bg-amber-50 dark:bg-amber-950/20',
-      borderColor: 'border-amber-200 dark:border-amber-800',
-      badgeColor: 'bg-amber-500'
+      color: 'text-[color:var(--color-warning)]',
+      bgColor: 'bg-[color:var(--color-warning)]/10 dark:bg-[color:var(--color-warning)]/20',
+      borderColor: 'border-[color:var(--color-warning)]/20 dark:border-[color:var(--color-warning)]/30',
+      badgeColor: 'bg-[color:var(--color-warning)]'
     },
     critical: {
       text: 'Критично',
       description: 'Обнаружены критические проблемы',
       icon: XCircle,
-      color: 'text-rose-500',
-      bgColor: 'bg-rose-50 dark:bg-rose-950/20',
-      borderColor: 'border-rose-200 dark:border-rose-800',
-      badgeColor: 'bg-rose-500'
+      color: 'text-[color:var(--color-danger)]',
+      bgColor: 'bg-[color:var(--color-danger)]/10 dark:bg-[color:var(--color-danger)]/20',
+      borderColor: 'border-[color:var(--color-danger)]/20 dark:border-[color:var(--color-danger)]/30',
+      badgeColor: 'bg-[color:var(--color-danger)]'
     }
   };
 
@@ -67,7 +67,7 @@ export function NetworkStatusIndicator({ status, problemCount }: NetworkStatusIn
           </div>
         </div>
         <Badge 
-          className={cn("text-sm px-3 py-1", config.badgeColor, "text-white")}
+          className={cn("text-sm px-3 py-1", config.badgeColor, "text-primary-foreground")}
         >
           {problemCount}
         </Badge>

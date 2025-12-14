@@ -32,11 +32,20 @@ export const NavbarClock = () => {
     weekdayRaw.charAt(0).toUpperCase() +
     weekdayRaw.slice(1).replace(".", "").slice(0, 2);
 
+  // Форматируем дату согласно языку
+  const formattedDate = now.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
-    <div className="flex items-center gap-1.5 text-sm font-medium text-[var(--text-primary)]">
-      <span className="tabular-nums">{time}</span>
-      <span className="text-[var(--text-tertiary)]">•</span>
-      <span className="text-[var(--text-secondary)]">{weekday}</span>
+    <div className="flex items-center gap-2 text-sm">
+      <span className="tabular-nums font-medium text-foreground">{time}</span>
+      <span className="text-muted-foreground">•</span>
+      <span className="text-muted-foreground">{weekday}</span>
+      <span className="hidden lg:inline text-muted-foreground">•</span>
+      <span className="hidden lg:inline text-muted-foreground text-xs">{formattedDate}</span>
     </div>
   );
 };

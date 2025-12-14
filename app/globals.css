@@ -342,23 +342,23 @@
 
 /* Sidebar styles */
 .sidebar {
-  background-color: var(--sidebar-bg);
-  border-right: 1px solid var(--border-color);
+  background-color: hsl(var(--card));
+  border-right: 1px solid hsl(var(--border));
 }
 
 .sidebar-item {
-  color: var(--text-secondary);
+  color: hsl(var(--muted-foreground));
   transition: all 0.15s ease;
 }
 
 .sidebar-item:hover {
-  background-color: var(--surface-2);
-  color: var(--text-primary);
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .sidebar-item-active {
-  background-color: var(--surface-3);
-  color: var(--text-primary);
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .sidebar-item__label {

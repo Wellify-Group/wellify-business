@@ -62,24 +62,24 @@ export function LocationsShiftsTable({
   ) => {
     switch (status) {
       case "open":
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+        return "bg-[color:var(--color-success)]/10 text-[color:var(--color-success)] border-[color:var(--color-success)]/30";
       case "closed":
-        return "bg-slate-500/10 text-slate-300 border-slate-500/30";
+        return "bg-muted/50 text-muted-foreground border-border/50";
       case "not-opened":
       default:
-        return "bg-amber-500/10 text-amber-400 border-amber-500/30";
+        return "bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)] border-[color:var(--color-warning)]/30";
     }
   };
 
   const getActivityDotClass = (activity: LocationShiftData["activity"]) => {
     switch (activity) {
       case "normal":
-        return "text-emerald-500";
+        return "text-[color:var(--color-success)]";
       case "low":
-        return "text-amber-400";
+        return "text-[color:var(--color-warning)]";
       case "suspicious":
       default:
-        return "text-rose-500";
+        return "text-[color:var(--color-danger)]";
     }
   };
 
@@ -142,12 +142,12 @@ export function LocationsShiftsTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-[var(--border-color)]">
+          <tbody className="divide-y divide-border">
             {data.length === 0 && (
               <tr>
                 <td
                   colSpan={8}
-                  className="px-4 py-6 text-center text-xs text-[var(--text-tertiary)]"
+                  className="px-4 py-6 text-center text-xs text-muted-foreground"
                 >
                   {t("dashboard.no_locations_today") ||
                     "На сегодня нет активных точек или смен."}
@@ -158,16 +158,16 @@ export function LocationsShiftsTable({
             {data.map((row) => (
               <tr
                 key={row.locationId}
-                className="group cursor-pointer hover:bg-[var(--surface-2)]/70 transition-colors"
+                className="group cursor-pointer hover:bg-muted/30 transition-colors"
                 onClick={() => handleRowClick(row)}
               >
                 {/* Точка */}
                 <td className="px-4 py-3 align-top">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-[var(--text-primary)]">
+                    <span className="text-sm font-medium text-foreground">
                       {row.locationName}
                     </span>
-                    <span className="text-xs text-[var(--text-tertiary)]">
+                    <span className="text-xs text-muted-foreground">
                       ID: {row.locationId}
                     </span>
                   </div>
@@ -177,11 +177,11 @@ export function LocationsShiftsTable({
                 <td className="px-4 py-3 align-top">
                   {row.managerName ? (
                     <div className="flex flex-col">
-                      <span className="text-sm text-[var(--text-primary)]">
+                      <span className="text-sm text-foreground">
                         {row.managerName}
                       </span>
                       {row.managerStatus && (
-                        <span className="text-xs text-[var(--text-tertiary)]">
+                        <span className="text-xs text-muted-foreground">
                           {row.managerStatus === "on-shift"
                             ? t("dashboard.manager_on_shift") || "На смене"
                             : t("dashboard.manager_not_assigned") ||
@@ -190,7 +190,7 @@ export function LocationsShiftsTable({
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 text-xs text-amber-400">
+                    <div className="flex items-center gap-1 text-xs text-[color:var(--color-warning)]">
                       <AlertTriangle className="h-3 w-3" />
                       <span>
                         {t("dashboard.no_manager_short") || "Менеджер не назначен"}
@@ -211,7 +211,7 @@ export function LocationsShiftsTable({
                       {getShiftStatusLabel(row.shiftStatus)}
                     </span>
                     {row.shiftTime && (
-                      <span className="text-xs text-[var(--text-tertiary)]">
+                      <span className="text-xs text-muted-foreground">
                         {row.shiftTime}
                       </span>
                     )}
@@ -221,11 +221,11 @@ export function LocationsShiftsTable({
                 {/* Выручка */}
                 <td className="px-4 py-3 align-top text-right">
                   <div className="flex flex-col items-end">
-                    <span className="text-sm font-semibold text-[var(--text-primary)]">
+                    <span className="text-sm font-semibold text-foreground">
                       {formatCurrency(row.revenue)} {currency}
                     </span>
                     {row.plan > 0 && (
-                      <span className="text-[11px] text-[var(--text-tertiary)]">
+                      <span className="text-[11px] text-muted-foreground">
                         {t("dashboard.plan_short") || "план"}:{" "}
                         {formatCurrency(row.plan)} {currency}
                       </span>
@@ -237,17 +237,17 @@ export function LocationsShiftsTable({
                 <td className="px-4 py-3 align-top text-right">
                   {row.plan > 0 ? (
                     <div className="flex flex-col items-end gap-1">
-                      <span className="text-sm font-medium text-[var(--text-primary)]">
+                      <span className="text-sm font-medium text-foreground">
                         {row.planPercent}%
                       </span>
-                      <div className="w-20 h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
+                      <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
                             row.planPercent >= 95
-                              ? "bg-emerald-500"
+                              ? "bg-[color:var(--color-success)]"
                               : row.planPercent >= 70
-                              ? "bg-amber-400"
-                              : "bg-rose-500"
+                              ? "bg-[color:var(--color-warning)]"
+                              : "bg-[color:var(--color-danger)]"
                           }`}
                           style={{
                             width: `${Math.max(
@@ -259,7 +259,7 @@ export function LocationsShiftsTable({
                       </div>
                     </div>
                   ) : (
-                    <span className="text-xs text-[var(--text-tertiary)]">
+                    <span className="text-xs text-muted-foreground">
                       {t("dashboard.no_plan") || "План не задан"}
                     </span>
                   )}
@@ -269,7 +269,7 @@ export function LocationsShiftsTable({
                 <td className="px-4 py-3 align-top">
                   <div className="flex items-center gap-2 text-xs">
                     <Circle className={`h-2.5 w-2.5 ${getActivityDotClass(row.activity)}`} />
-                    <span className="text-[var(--text-secondary)]">
+                    <span className="text-muted-foreground">
                       {getActivityLabel(row.activity)}
                     </span>
                   </div>
@@ -279,13 +279,13 @@ export function LocationsShiftsTable({
                 <td className="px-4 py-3 align-top">
                   {row.tasksStats ? (
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs text-[var(--text-secondary)]">
+                      <span className="text-xs text-muted-foreground">
                         {t("dashboard.tasks_completed") || "Выполнено"}:{" "}
                         {row.tasksStats.completed}/{row.tasksStats.total}
                       </span>
-                      <div className="w-24 h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
+                      <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-sky-500"
+                          className="h-full rounded-full bg-primary"
                           style={{
                             width: `${Math.max(
                               0,
@@ -296,7 +296,7 @@ export function LocationsShiftsTable({
                       </div>
                     </div>
                   ) : (
-                    <span className="text-xs text-[var(--text-tertiary)]">
+                    <span className="text-xs text-muted-foreground">
                       {t("dashboard.no_tasks_stats") ||
                         "Нет данных по задачам смены"}
                     </span>
@@ -305,7 +305,7 @@ export function LocationsShiftsTable({
 
                 {/* Стрелка */}
                 <td className="px-3 py-3 align-top text-right">
-                  <ChevronRight className="h-4 w-4 text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </td>
               </tr>
             ))}

@@ -10,12 +10,12 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = "default", padding = "md", children, ...props }, ref) => {
-    const baseStyles = "rounded-xl text-[var(--text-primary)]";
+    const baseStyles = "rounded-xl text-foreground";
     
     const variants = {
-      default: "bg-[var(--surface-1)] border border-[var(--border-color)] shadow-sm",
-      outlined: "bg-[var(--surface-1)] border-2 border-[var(--border-strong)]",
-      elevated: "bg-[var(--surface-1)] border border-[var(--border-color)] shadow-lg",
+      default: "bg-card border border-border shadow-[var(--shadow-card)]",
+      outlined: "bg-card border-2 border-[color:var(--color-border-strong)]",
+      elevated: "bg-card border border-border shadow-[var(--shadow-floating)]",
     };
 
     const paddings = {
@@ -61,7 +61,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight text-[var(--text-primary)]", className)}
+    className={cn("text-lg font-semibold leading-none tracking-tight text-foreground", className)}
     {...props}
   />
 ));
@@ -73,7 +73,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-[var(--text-secondary)]", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));

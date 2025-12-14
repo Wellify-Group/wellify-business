@@ -755,7 +755,7 @@ export default function DirectorDashboard() {
             </p>
             <Link
               href="/dashboard/director/locations?action=new"
-              className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-6 py-3 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-floating)] transition hover:bg-[var(--primary)]/90"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-floating)] transition hover:bg-primary/90"
             >
               Создать точку
             </Link>
@@ -790,15 +790,15 @@ export default function DirectorDashboard() {
             totalRevenue > 0 && revenueChangePercent !== 0 ? (
               <div className="flex items-center gap-1">
                 {revenueChangePercent > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-rose-500" />
+                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
                 )}
                 <span
                   className={
                     revenueChangePercent > 0
-                      ? "text-emerald-500"
-                      : "text-rose-500"
+                      ? "text-[color:var(--color-success)]"
+                      : "text-[color:var(--color-danger)]"
                   }
                 >
                   {revenueChangePercent > 0 ? "+" : ""}
@@ -847,15 +847,15 @@ export default function DirectorDashboard() {
             avgCheck > 0 && avgCheckChange !== 0 ? (
               <div className="flex items-center gap-1">
                 {avgCheckChange > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-rose-500" />
+                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
                 )}
                 <span
                   className={
                     avgCheckChange > 0
-                      ? "text-emerald-500"
-                      : "text-rose-500"
+                      ? "text-[color:var(--color-success)]"
+                      : "text-[color:var(--color-danger)]"
                   }
                 >
                   {avgCheckChange > 0 ? "+" : ""}
@@ -872,15 +872,15 @@ export default function DirectorDashboard() {
             totalCheckCount > 0 && checkCountChange !== 0 ? (
               <div className="flex items-center gap-1">
                 {checkCountChange > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-rose-500" />
+                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
                 )}
                 <span
                   className={
                     checkCountChange > 0
-                      ? "text-emerald-500"
-                      : "text-rose-500"
+                      ? "text-[color:var(--color-success)]"
+                      : "text-[color:var(--color-danger)]"
                   }
                 >
                   {checkCountChange > 0 ? "+" : ""}
@@ -897,15 +897,15 @@ export default function DirectorDashboard() {
             totalGuestCount > 0 && guestCountChange !== 0 ? (
               <div className="flex items-center gap-1">
                 {guestCountChange > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
+                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-rose-500" />
+                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
                 )}
                 <span
                   className={
                     guestCountChange > 0
-                      ? "text-emerald-500"
-                      : "text-rose-500"
+                      ? "text-[color:var(--color-success)]"
+                      : "text-[color:var(--color-danger)]"
                   }
                 >
                   {guestCountChange > 0 ? "+" : ""}

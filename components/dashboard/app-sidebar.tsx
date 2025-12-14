@@ -34,7 +34,7 @@ export function AppSidebar() {
   const baseHref = isManager ? '/dashboard/manager' : '/dashboard/director';
   
   const allMenuItems: Array<{ name: string; href: string; icon: any; id: string; roles?: string[] }> = [
-    { name: t("dashboard.nav_overview"), href: baseHref, icon: LayoutDashboard, id: "nav-overview" },
+    { name: t("dashboard.nav_overview"), href: "/dashboard/director", icon: LayoutDashboard, id: "nav-overview" },
     ...(!isManager ? [
       { name: t("dashboard.nav_locations"), href: "/dashboard/director/locations", icon: MapPin, id: "nav-locations" },
       { name: t("dashboard.nav_staff"), href: "/dashboard/director/staff", icon: Users, id: "nav-staff" },
@@ -75,10 +75,9 @@ export function AppSidebar() {
       {/* Logo Section */}
       <div 
         className={cn(
-          "sidebar-logo flex items-center border-b flex-shrink-0",
+          "sidebar-logo flex items-center border-b border-border flex-shrink-0",
           isSidebarCollapsed ? "h-14 justify-center px-0" : "h-14 px-3"
         )}
-        style={{ borderColor: 'var(--border-color)' }}
       >
         {isSidebarCollapsed ? (
           <Link href="/dashboard/director" className="w-12 h-12 flex items-center justify-center">
@@ -141,8 +140,7 @@ export function AppSidebar() {
 
       {/* Divider */}
       <div 
-        className="border-t flex-shrink-0"
-        style={{ borderColor: 'var(--border-color)' }}
+        className="border-t border-border flex-shrink-0"
       />
 
       {/* Footer Actions */}

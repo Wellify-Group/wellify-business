@@ -137,9 +137,9 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
   };
 
   const severityColors = {
-    critical: 'text-rose-500',
-    warning: 'text-amber-500',
-    info: 'text-blue-500'
+    critical: 'text-[color:var(--color-danger)]',
+    warning: 'text-[color:var(--color-warning)]',
+    info: 'text-primary'
   };
 
   const statusConfig = {
@@ -147,19 +147,19 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
       text: 'День в норме',
       description: 'Все показатели находятся в пределах нормы',
       icon: CheckCircle2,
-      color: 'text-emerald-500'
+      color: 'text-[color:var(--color-success)]'
     },
     risks: {
       text: 'Есть риски',
       description: 'Требуется внимание к некоторым показателям',
       icon: AlertTriangle,
-      color: 'text-amber-500'
+      color: 'text-[color:var(--color-warning)]'
     },
     critical: {
       text: 'Критично',
       description: 'Обнаружены критические проблемы',
       icon: XCircle,
-      color: 'text-rose-500'
+      color: 'text-[color:var(--color-danger)]'
     }
   };
 
@@ -371,7 +371,7 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.2 }}
-                className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-emerald-700 dark:text-emerald-400"
+                className="flex items-center gap-2 px-3 py-2 bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20 border border-[color:var(--color-success)]/20 dark:border-[color:var(--color-success)]/30 rounded-lg text-sm text-[color:var(--color-success)]"
               >
                 <CheckCircle className="h-4 w-4 flex-shrink-0" />
                 <span>Проблема помечена как решённая</span>
@@ -433,12 +433,12 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
                       }}
                       className={cn(
                         "group flex items-start gap-3 p-3 rounded-lg hover:bg-muted transition-colors relative overflow-hidden",
-                        isResolving && "bg-emerald-50 dark:bg-emerald-950/20"
+                        isResolving && "bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20"
                       )}
                     >
                       {/* Pin icon */}
                       {problem.isPinned && (
-                        <Pin className="h-3 w-3 text-amber-500 absolute top-2 right-10" />
+                        <Pin className="h-3 w-3 text-[color:var(--color-warning)] absolute top-2 right-10" />
                       )}
 
                       <AlertTriangle className={cn(
@@ -462,7 +462,7 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
                             {typeLabels[problem.category]}
                           </Badge>
                           {problem.isPinned && (
-                            <Badge variant="outline" className="text-xs text-amber-600">
+                            <Badge variant="outline" className="text-xs text-[color:var(--color-warning)]">
                               <Pin className="h-3 w-3 mr-1" />
                               Закреплено
                             </Badge>
@@ -529,7 +529,7 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => handleResolve(problem)}
-                            className="text-emerald-600 dark:text-emerald-400"
+                            className="text-[color:var(--color-success)]"
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Пометить как решённое

@@ -13,9 +13,9 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
       default: "bg-primary text-primary-foreground",
       outline: "border border-border bg-transparent",
       secondary: "bg-secondary text-secondary-foreground",
-      success: "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20",
-      warning: "bg-amber-500/10 text-amber-500 border border-amber-500/20",
-      error: "bg-rose-500/10 text-rose-500 border border-rose-500/20",
+      success: "bg-[color:var(--color-success)]/10 text-[color:var(--color-success)] border border-[color:var(--color-success)]/20",
+      warning: "bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)] border border-[color:var(--color-warning)]/20",
+      error: "bg-[color:var(--color-danger)]/10 text-[color:var(--color-danger)] border border-[color:var(--color-danger)]/20",
     };
 
     return (
