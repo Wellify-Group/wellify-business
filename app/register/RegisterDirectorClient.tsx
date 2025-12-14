@@ -851,7 +851,7 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                <User className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
+                <User className="h-3.5 w-3.5 text-[color:var(--color-success)] opacity-70" />
               </div>
               <input
                 type="text"
@@ -898,7 +898,7 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative group">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center z-10">
-                <Calendar className="h-4 w-4 text-muted-foreground/60 group-focus-within:text-teal-400/80 transition-colors duration-200" />
+                <Calendar className="h-4 w-4 text-[color:var(--color-success)] opacity-70" />
               </div>
               <input
                 type="text"
@@ -920,7 +920,7 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                <Lock className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
+                <Lock className="h-3.5 w-3.5 text-[color:var(--color-success)] opacity-70" />
               </div>
               <input
                 type="password"
@@ -965,7 +965,7 @@ export default function RegisterDirectorClient() {
         </label>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-            <Mail className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
+            <Mail className="h-3.5 w-3.5 text-[color:var(--color-success)] opacity-70" />
           </div>
           <input
             type="email"

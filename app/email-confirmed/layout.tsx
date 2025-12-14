@@ -44,29 +44,6 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
       }
     }
 
-    // Добавляем inline script в head для немедленного применения темы (до рендера)
-    const script = document.createElement('script');
-    script.id = 'email-confirmed-theme-script';
-    script.textContent = `
-      (function() {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const bgColor = isDark ? '#050B13' : '#F8FAFC';
-        const textColor = isDark ? '#E2E8F0' : '#0F172A';
-        if (document.documentElement) {
-          document.documentElement.style.backgroundColor = bgColor;
-        }
-        if (document.body) {
-          document.body.style.backgroundColor = bgColor;
-          document.body.style.color = textColor;
-        }
-      })();
-    `;
-    
-    // Вставляем скрипт в начало head для немедленного выполнения
-    if (!document.getElementById('email-confirmed-theme-script')) {
-      document.head.insertBefore(script, document.head.firstChild);
-    }
-
     // Скрываем навбар и футер через CSS
     // Добавляем адаптацию к системной теме браузера
     const style = document.createElement('style');
@@ -74,18 +51,25 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
     style.textContent = `
       nav { display: none !important; }
       footer { display: none !important; }
-      body { overflow: hidden !important; }
-      html { overflow: hidden !important; }
+      body { 
+        overflow: hidden !important; 
+        background-color: ${bgColor} !important;
+        color: ${textColor} !important;
+      }
+      html { 
+        overflow: hidden !important;
+        background-color: ${bgColor} !important;
+      }
       
       /* Адаптация к системной теме браузера */
       :root {
-        --email-confirmed-bg: #F8FAFC;
-        --email-confirmed-card-bg: #FFFFFF;
-        --email-confirmed-border: #E2E8F0;
-        --email-confirmed-text: #0F172A;
-        --email-confirmed-muted: #64748B;
-        --email-confirmed-primary: #2563EB;
-        --email-confirmed-primary-hover: #1D4ED8;
+        --email-confirmed-bg: ${isDark ? '#050B13' : '#F8FAFC'};
+        --email-confirmed-card-bg: ${isDark ? '#0B1320' : '#FFFFFF'};
+        --email-confirmed-border: ${isDark ? 'rgba(148, 163, 184, 0.24)' : '#E2E8F0'};
+        --email-confirmed-text: ${isDark ? '#E2E8F0' : '#0F172A'};
+        --email-confirmed-muted: ${isDark ? '#94A3B8' : '#64748B'};
+        --email-confirmed-primary: ${isDark ? '#3B82F6' : '#2563EB'};
+        --email-confirmed-primary-hover: ${isDark ? '#2563EB' : '#1D4ED8'};
       }
       
       @media (prefers-color-scheme: dark) {
@@ -97,6 +81,18 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-muted: #94A3B8;
           --email-confirmed-primary: #3B82F6;
           --email-confirmed-primary-hover: #2563EB;
+        }
+      }
+      
+      @media (prefers-color-scheme: light) {
+        :root {
+          --email-confirmed-bg: #F8FAFC;
+          --email-confirmed-card-bg: #FFFFFF;
+          --email-confirmed-border: #E2E8F0;
+          --email-confirmed-text: #0F172A;
+          --email-confirmed-muted: #64748B;
+          --email-confirmed-primary: #2563EB;
+          --email-confirmed-primary-hover: #1D4ED8;
         }
       }
     `;
@@ -116,10 +112,6 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
       if (metaSupportedColorSchemes.parentNode) {
         document.head.removeChild(metaSupportedColorSchemes);
       }
-      const scriptToRemove = document.getElementById('email-confirmed-theme-script');
-      if (scriptToRemove) {
-        document.head.removeChild(scriptToRemove);
-      }
       const styleToRemove = document.getElementById('email-confirmed-styles');
       if (styleToRemove) {
         document.head.removeChild(styleToRemove);
@@ -133,9 +125,10 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
   }, []);
 
   // Определяем тему для inline styles (синхронно, если window доступен)
+  // Используем темную тему по умолчанию, чтобы избежать мигания
   const isDark = typeof window !== 'undefined' 
     ? window.matchMedia('(prefers-color-scheme: dark)').matches 
-    : false;
+    : true; // По умолчанию темная, чтобы избежать мигания
   
   const bgColor = isDark ? '#050B13' : '#F8FAFC';
   const textColor = isDark ? '#E2E8F0' : '#0F172A';
