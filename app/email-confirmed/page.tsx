@@ -16,27 +16,64 @@ export default function EmailConfirmedPage() {
 
   // Показываем контент сразу, без ожидания монтирования
   // Это предотвращает мигание и промежуточные состояния
+  // Используем CSS переменные для адаптации к системной теме браузера
   return (
     <div className="flex h-full w-full items-center justify-center px-4 py-8">
       <div className="relative w-full max-w-md">
-        <div className="relative overflow-hidden rounded-[32px] border border-border bg-card px-6 py-6 shadow-[var(--shadow-modal)] sm:px-8 sm:py-8">
-          <div className="flex flex-col items-center space-y-4 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20">
-              <CheckCircle2 className="h-12 w-12 text-[color:var(--color-success)]" />
+        <div 
+          className="relative overflow-hidden rounded-[32px] border px-6 py-5 shadow-[var(--shadow-modal)] sm:px-8 sm:py-6"
+          style={{
+            backgroundColor: 'var(--email-confirmed-card-bg, #FFFFFF)',
+            borderColor: 'var(--email-confirmed-border, #E2E8F0)',
+          }}
+        >
+          <div className="flex flex-col items-center space-y-3 text-center">
+            <div 
+              className="flex h-16 w-16 items-center justify-center rounded-full"
+              style={{
+                backgroundColor: 'rgba(34, 197, 94, 0.1)', // success color with opacity
+              }}
+            >
+              <CheckCircle2 
+                className="h-10 w-10"
+                style={{
+                  color: '#22c55e', // --color-success
+                }}
+              />
             </div>
 
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            <h1 
+              className="text-2xl font-semibold tracking-tight sm:text-3xl"
+              style={{
+                color: 'var(--email-confirmed-text, #0F172A)',
+              }}
+            >
               {t<string>("email_confirmed_title")}
             </h1>
 
-            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p 
+              className="max-w-sm text-sm leading-relaxed sm:text-base"
+              style={{
+                color: 'var(--email-confirmed-muted, #64748B)',
+              }}
+            >
               {t<string>("email_confirmed_message")}
             </p>
 
             <button
               type="button"
               onClick={handleClose}
-              className="mt-2 inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-semibold tracking-wide text-primary-foreground shadow-[var(--shadow-floating)] transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="mt-1 inline-flex h-11 items-center justify-center rounded-full px-8 text-sm font-semibold tracking-wide shadow-[var(--shadow-floating)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              style={{
+                backgroundColor: 'var(--email-confirmed-primary, #2563EB)',
+                color: '#F8FAFC',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary-hover, #1D4ED8)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary, #2563EB)';
+              }}
             >
               {t<string>("email_confirmed_close_button")}
             </button>

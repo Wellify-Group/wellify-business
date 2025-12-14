@@ -655,9 +655,11 @@ export default function RegisterDirectorClient() {
 
     return (
       <>
-        <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
-          {t<string>("register_title")}
-        </CardTitle>
+        {step === 1 && (
+          <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
+            {t<string>("register_title")}
+          </CardTitle>
+        )}
         {descriptionText && (
           <CardDescription className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
             {descriptionText}
@@ -735,107 +737,78 @@ export default function RegisterDirectorClient() {
       return `${year}-${month}-${day}`;
     };
 
-    // Обработчик для поля даты рождения
+    // Упрощенный обработчик для поля даты рождения
     const handleBirthDateChange = (e: ChangeEvent<HTMLInputElement>) => {
       let value = e.target.value;
       
-      // Удаляем все кроме цифр и точек
-      value = value.replace(/[^\d.]/g, "");
+      // Удаляем все кроме цифр
+      const digitsOnly = value.replace(/\D/g, "");
       
-      // Ограничиваем общую длину
-      if (value.length > 10) {
-        value = value.slice(0, 10);
-      }
+      // Ограничиваем до 8 цифр (ДДММГГГГ)
+      const limitedDigits = digitsOnly.slice(0, 8);
       
-      // Разбиваем на части
-      const parts = value.split(".");
-      let day = parts[0] || "";
-      let month = parts[1] || "";
-      let year = parts[2] || "";
-      
-      // Ограничиваем длину каждой части
-      day = day.slice(0, 2);
-      month = month.slice(0, 2);
-      year = year.slice(0, 4);
-      
-      // Автоматически добавляем точку после дня, если введено 2+ цифры подряд
-      if (day.length >= 2 && !value.includes(".") && value.length > 2) {
-        const remaining = value.slice(2);
-        if (remaining) {
-          month = remaining.slice(0, 2);
+      // Форматируем: ДД.ММ.ГГГГ
+      let formattedValue = "";
+      if (limitedDigits.length > 0) {
+        // День (первые 2 цифры)
+        const day = limitedDigits.slice(0, 2);
+        formattedValue = day;
+        
+        if (limitedDigits.length > 2) {
+          // Месяц (следующие 2 цифры)
+          const month = limitedDigits.slice(2, 4);
+          formattedValue += "." + month;
+          
+          if (limitedDigits.length > 4) {
+            // Год (остальные цифры, до 4)
+            const year = limitedDigits.slice(4, 8);
+            formattedValue += "." + year;
+          }
         }
       }
-      
-      // Автоматически добавляем точку после месяца, если введено 2+ цифры
-      if (month.length >= 2 && parts.length === 2) {
-        const monthPart = value.split(".")[1];
-        if (monthPart && monthPart.length > 2) {
-          year = monthPart.slice(2, 6);
-        }
-      }
-      
-      // Собираем значение
-      let formattedValue = day;
-      if (month || (day.length >= 2 && value.includes("."))) {
-        formattedValue += "." + month;
-      }
-      if (year || (month.length >= 2 && parts.length >= 2)) {
-        formattedValue += "." + year;
-      }
-      
-      // Автоматически добавляем ведущие нули для дня, когда пользователь начинает вводить месяц
-      const finalParts = formattedValue.split(".");
-      if (finalParts.length >= 2 && finalParts[0].length === 1) {
-        // Если день состоит из одной цифры и пользователь начал вводить месяц, добавляем ведущий ноль
-        finalParts[0] = finalParts[0].padStart(2, "0");
-      }
-      if (finalParts.length >= 3 && finalParts[1].length === 1) {
-        // Если месяц состоит из одной цифры и пользователь начал вводить год, добавляем ведущий ноль
-        finalParts[1] = finalParts[1].padStart(2, "0");
-      }
-      
-      formattedValue = finalParts.join(".");
       
       // Обновляем отображаемое значение
       setDisplayDate(formattedValue);
       
-      // Парсим в YYYY-MM-DD только если дата полностью введена
-      const checkParts = formattedValue.split(".");
-      const hasDay = checkParts[0] && checkParts[0].length > 0;
-      const hasMonth = checkParts[1] && checkParts[1].length > 0;
-      const hasYear = checkParts[2] && checkParts[2].length === 4;
-      
-      if (hasDay && hasMonth && hasYear) {
-        // Нормализуем: добавляем ведущие нули для дня и месяца (на случай если они ещё не добавлены)
-        const normalizedDay = checkParts[0].padStart(2, "0");
-        const normalizedMonth = checkParts[1].padStart(2, "0");
-        const normalizedYear = checkParts[2];
-        const normalizedValue = `${normalizedDay}.${normalizedMonth}.${normalizedYear}`;
+      // Парсим в YYYY-MM-DD только если дата полностью введена (8 цифр)
+      if (limitedDigits.length === 8) {
+        const day = limitedDigits.slice(0, 2);
+        const month = limitedDigits.slice(2, 4);
+        const year = limitedDigits.slice(4, 8);
         
-        // Обновляем отображаемое значение с нормализованными значениями
-        if (normalizedValue !== formattedValue) {
-          setDisplayDate(normalizedValue);
-        }
+        const dayNum = parseInt(day, 10);
+        const monthNum = parseInt(month, 10);
+        const yearNum = parseInt(year, 10);
         
-        const parsedDate = parseDateFromDisplay(normalizedValue);
-        if (parsedDate) {
-          // Проверяем валидность года (1920 - текущий год)
-          const yearNum = parseInt(normalizedYear, 10);
-          const currentYear = new Date().getFullYear();
-          const minYear = 1920;
+        // Проверяем валидность
+        if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12) {
+          const date = new Date(yearNum, monthNum - 1, dayNum);
           
-          if (yearNum >= minYear && yearNum <= currentYear) {
-            setPersonal((prev) => ({ ...prev, birthDate: parsedDate }));
+          // Проверяем, что дата валидна (например, не 31.02)
+          if (
+            date.getDate() === dayNum &&
+            date.getMonth() === monthNum - 1 &&
+            date.getFullYear() === yearNum
+          ) {
+            // Проверяем год (1920 - текущий год)
+            const currentYear = new Date().getFullYear();
+            const minYear = 1920;
+            
+            if (yearNum >= minYear && yearNum <= currentYear) {
+              // Форматируем в YYYY-MM-DD
+              const isoDate = `${yearNum}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+              setPersonal((prev) => ({ ...prev, birthDate: isoDate }));
+            } else {
+              setPersonal((prev) => ({ ...prev, birthDate: "" }));
+            }
           } else {
-            // Год вне диапазона - очищаем birthDate
             setPersonal((prev) => ({ ...prev, birthDate: "" }));
           }
         } else {
-          // Если дата невалидна, очищаем birthDate
           setPersonal((prev) => ({ ...prev, birthDate: "" }));
         }
       } else {
-        // Если дата неполная или поле очищено, очищаем birthDate
+        // Если дата неполная, очищаем birthDate
         setPersonal((prev) => ({ ...prev, birthDate: "" }));
       }
     };
@@ -907,6 +880,11 @@ export default function RegisterDirectorClient() {
                 onChange={handleBirthDateChange}
                 maxLength={10}
               />
+              {displayDate && displayDate.length < 10 && (
+                <p className="mt-1 text-xs text-muted-foreground/70">
+                  {t<string>("register_field_birth_date_hint") || "Введите 8 цифр: день, месяц, год"}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -956,7 +934,7 @@ export default function RegisterDirectorClient() {
    * Поле ввода e-mail с отправкой письма для подтверждения
    */
   const renderStep2 = () => (
-    <form id="step2-form" className="space-y-4" onSubmit={handleSubmitStep2}>
+    <form id="step2-form" className="space-y-3" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {t<string>("register_field_work_email")}
@@ -976,7 +954,7 @@ export default function RegisterDirectorClient() {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 text-xs text-muted-foreground">
+      <div className="mt-2 flex flex-col gap-1.5 text-xs text-muted-foreground">
         <p>
           {t<string>("register_email_hint")}
         </p>
@@ -1045,8 +1023,8 @@ export default function RegisterDirectorClient() {
     }
 
     return (
-      <div className="space-y-4">
-        <div className="mb-4 rounded-xl border border-border/50 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+      <div className="space-y-3">
+        <div className="mb-2 rounded-xl border border-border/50 bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground">
           <p>
             {t<string>("register_telegram_hint")}
           </p>
@@ -1110,7 +1088,10 @@ export default function RegisterDirectorClient() {
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className="px-8 py-0 flex items-center justify-center min-h-[300px]">
+          <CardContent className={cn(
+            "px-8 py-0 flex items-center justify-center",
+            step === 2 ? "min-h-[200px]" : step === 3 ? "min-h-[350px]" : "min-h-[300px]"
+          )}>
             <div className="w-full">
               {registerError && (
                 <div className={cn(
@@ -1229,7 +1210,7 @@ export default function RegisterDirectorClient() {
                     onClick={handleNextFromStep1}
                     className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
                   >
-                    Далее
+                    {t<string>("register_btn_next")}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 )}
