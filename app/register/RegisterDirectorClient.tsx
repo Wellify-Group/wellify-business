@@ -634,11 +634,10 @@ export default function RegisterDirectorClient() {
           Создать аккаунт директора
         </CardTitle>
         {descriptionText && (
-          <CardDescription className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
+          <CardDescription className="mt-2 md:mt-3 text-center text-sm leading-relaxed text-muted-foreground">
             {descriptionText}
           </CardDescription>
         )}
-        {descriptionText && <div className="mt-4"></div>}
       </>
     );
   };
@@ -670,17 +669,19 @@ export default function RegisterDirectorClient() {
   }, [personal.birthDate]);
 
   const renderStep1 = () => {
-    // Функция для парсинга ДД.ММ.ГГГГ в YYYY-MM-DD
+    // Функция для парсинга ДД.ММ.ГГГГ в YYYY-MM-DD (принимает числа без ведущих нулей)
     const parseDateFromDisplay = (displayStr: string): string | null => {
       if (!displayStr || displayStr.trim() === "") return null;
       const parts = displayStr.split(".");
       if (parts.length !== 3) return null;
       
+      // Нормализуем: добавляем ведущие нули для дня и месяца
       const day = parts[0].trim().padStart(2, "0");
       const month = parts[1].trim().padStart(2, "0");
       const year = parts[2].trim();
       
-      if (day.length !== 2 || month.length !== 2 || year.length !== 4) {
+      // Проверяем, что год состоит из 4 цифр
+      if (year.length !== 4) {
         return null;
       }
       
@@ -716,32 +717,89 @@ export default function RegisterDirectorClient() {
       // Удаляем все кроме цифр и точек
       value = value.replace(/[^\d.]/g, "");
       
-      // Ограничиваем длину до 10 символов (ДД.ММ.ГГГГ)
+      // Ограничиваем общую длину
       if (value.length > 10) {
         value = value.slice(0, 10);
       }
       
-      // Автоматически добавляем точки после дня и месяца
-      if (value.length > 2 && value[2] !== ".") {
-        value = value.slice(0, 2) + "." + value.slice(2);
+      // Разбиваем на части
+      const parts = value.split(".");
+      let day = parts[0] || "";
+      let month = parts[1] || "";
+      let year = parts[2] || "";
+      
+      // Ограничиваем длину каждой части
+      day = day.slice(0, 2);
+      month = month.slice(0, 2);
+      year = year.slice(0, 4);
+      
+      // Автоматически добавляем точку после дня, если введено 2+ цифры подряд
+      if (day.length >= 2 && !value.includes(".") && value.length > 2) {
+        const remaining = value.slice(2);
+        if (remaining) {
+          month = remaining.slice(0, 2);
+        }
       }
-      if (value.length > 5 && value[5] !== ".") {
-        value = value.slice(0, 5) + "." + value.slice(5);
+      
+      // Автоматически добавляем точку после месяца, если введено 2+ цифры
+      if (month.length >= 2 && parts.length === 2) {
+        const monthPart = value.split(".")[1];
+        if (monthPart && monthPart.length > 2) {
+          year = monthPart.slice(2, 6);
+        }
       }
+      
+      // Собираем значение
+      let formattedValue = day;
+      if (month || (day.length >= 2 && value.includes("."))) {
+        formattedValue += "." + month;
+      }
+      if (year || (month.length >= 2 && parts.length >= 2)) {
+        formattedValue += "." + year;
+      }
+      
+      // Автоматически добавляем ведущие нули для дня, когда пользователь начинает вводить месяц
+      const finalParts = formattedValue.split(".");
+      if (finalParts.length >= 2 && finalParts[0].length === 1) {
+        // Если день состоит из одной цифры и пользователь начал вводить месяц, добавляем ведущий ноль
+        finalParts[0] = finalParts[0].padStart(2, "0");
+      }
+      if (finalParts.length >= 3 && finalParts[1].length === 1) {
+        // Если месяц состоит из одной цифры и пользователь начал вводить год, добавляем ведущий ноль
+        finalParts[1] = finalParts[1].padStart(2, "0");
+      }
+      
+      formattedValue = finalParts.join(".");
       
       // Обновляем отображаемое значение
-      setDisplayDate(value);
+      setDisplayDate(formattedValue);
       
-      // Парсим в YYYY-MM-DD только если дата полностью введена (10 символов: ДД.ММ.ГГГГ)
-      if (value.length === 10) {
-        const parsedDate = parseDateFromDisplay(value);
+      // Парсим в YYYY-MM-DD только если дата полностью введена
+      const checkParts = formattedValue.split(".");
+      const hasDay = checkParts[0] && checkParts[0].length > 0;
+      const hasMonth = checkParts[1] && checkParts[1].length > 0;
+      const hasYear = checkParts[2] && checkParts[2].length === 4;
+      
+      if (hasDay && hasMonth && hasYear) {
+        // Нормализуем: добавляем ведущие нули для дня и месяца (на случай если они ещё не добавлены)
+        const normalizedDay = checkParts[0].padStart(2, "0");
+        const normalizedMonth = checkParts[1].padStart(2, "0");
+        const normalizedYear = checkParts[2];
+        const normalizedValue = `${normalizedDay}.${normalizedMonth}.${normalizedYear}`;
+        
+        // Обновляем отображаемое значение с нормализованными значениями
+        if (normalizedValue !== formattedValue) {
+          setDisplayDate(normalizedValue);
+        }
+        
+        const parsedDate = parseDateFromDisplay(normalizedValue);
         if (parsedDate) {
           // Проверяем валидность года (1920 - текущий год)
-          const year = parseInt(value.split(".")[2], 10);
+          const yearNum = parseInt(normalizedYear, 10);
           const currentYear = new Date().getFullYear();
           const minYear = 1920;
           
-          if (year >= minYear && year <= currentYear) {
+          if (yearNum >= minYear && yearNum <= currentYear) {
             setPersonal((prev) => ({ ...prev, birthDate: parsedDate }));
           } else {
             // Год вне диапазона - очищаем birthDate
@@ -758,8 +816,8 @@ export default function RegisterDirectorClient() {
     };
 
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-2.5 md:gap-3 md:grid-cols-3">
           <div className="space-y-1.5 md:col-span-1">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Имя
@@ -806,7 +864,7 @@ export default function RegisterDirectorClient() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2.5 md:gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Дата рождения
@@ -828,7 +886,7 @@ export default function RegisterDirectorClient() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2.5 md:gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Пароль
@@ -873,7 +931,7 @@ export default function RegisterDirectorClient() {
    * Поле ввода e-mail с отправкой письма для подтверждения
    */
   const renderStep2 = () => (
-    <form id="step2-form" className="space-y-4" onSubmit={handleSubmitStep2}>
+    <form id="step2-form" className="space-y-3" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Рабочий e-mail
@@ -893,16 +951,47 @@ export default function RegisterDirectorClient() {
         </div>
       </div>
 
-      <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
+      <div className="mt-2 flex flex-col gap-2 text-xs text-muted-foreground">
         <p>
           Этот адрес будет использоваться для входа, уведомлений по сменам и
           восстановления доступа.
         </p>
         {emailStatus === "link_sent" && (
-          <p className="text-emerald-400">
-            Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
-            после чего мы автоматически продолжим регистрацию.
-          </p>
+          <>
+            <p className="text-blue-400 flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Ожидаем подтверждения e-mail…
+            </p>
+            <p className="text-muted-foreground/80">
+              Письмо с подтверждением отправлено. Перейдите по ссылке в письме.
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                // Форсируем проверку подтверждения
+                try {
+                  const res = await fetch("/api/auth/check-email-confirmed", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email }),
+                  });
+                  const data = await res.json();
+                  if (data.success && data.emailConfirmed) {
+                    setEmailStatus("verified");
+                    setEmailVerified(true);
+                    setRegisterError(null);
+                    setStep(3);
+                    setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+                  }
+                } catch (e) {
+                  console.error("[register] Manual email check error", e);
+                }
+              }}
+              className="mt-1 inline-flex items-center justify-center rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors self-start"
+            >
+              Я подтвердил e-mail
+            </button>
+          </>
         )}
         {emailStatus === "verified" && (
           <p className="text-emerald-400">
@@ -935,6 +1024,11 @@ export default function RegisterDirectorClient() {
 
     return (
       <div className="space-y-4">
+        <div className="mb-4 rounded-xl border border-border/50 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          <p>
+            Telegram нужен для уведомлений, смен и поддержки. Подключить можно сейчас или позже в настройках.
+          </p>
+        </div>
         <TelegramVerificationStep
           onVerified={handleTelegramVerified}
           language={localeForAPI as "ru" | "uk" | "en"}
@@ -1035,7 +1129,7 @@ export default function RegisterDirectorClient() {
             </div>
           </CardContent>
 
-          <CardFooter className="relative flex items-center justify-between px-4 md:px-8 pb-4 md:pb-6 pt-3 text-xs text-muted-foreground">
+          <CardFooter className="relative flex items-center justify-between px-4 md:px-8 pb-4 md:pb-6 pt-4 md:pt-5 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               {step > 1 && step < 4 && (
                 <button
@@ -1085,7 +1179,7 @@ export default function RegisterDirectorClient() {
                     emailStatus === "sending" ||
                     emailStatus === "link_sent"
                   }
-                  className="inline-flex items-center justify-center min-h-[44px] rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                  className="inline-flex items-center justify-center h-11 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
                   {isSubmitting || emailStatus === "sending" ? (
                     <>

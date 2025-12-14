@@ -10,12 +10,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 export function Navbar() {
   const { t } = useLanguage();
   const nav = t<TranslationTree["nav"]>("nav");
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const isDashboard = pathname?.startsWith("/dashboard");
   const isEmailConfirmed = pathname === "/auth/email-confirmed" || pathname === "/email-confirmed";
@@ -92,23 +94,42 @@ export function Navbar() {
               </button>
             </Link>
 
-            {/* Кнопка "Создать аккаунт" - премиальный стиль с новыми токенами */}
-            <Link href="/register">
-              <button
-                className="inline-flex items-center justify-center gap-2 px-6 h-12 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                style={{
-                  background: "var(--color-brand)",
-                  color: "var(--color-text-inverse)",
-                  boxShadow: isDark
-                    ? "var(--shadow-floating)"
-                    : "var(--shadow-soft)",
-                  borderRadius: "var(--radius-pill)",
-                }}
-              >
-                {nav.createAccount}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
+            {/* Кнопка "Создать аккаунт" или "Открыть дашборд" в зависимости от авторизации */}
+            {user ? (
+              <Link href="/dashboard/director">
+                <button
+                  className="inline-flex items-center justify-center gap-2 px-6 h-12 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{
+                    background: "var(--color-brand)",
+                    color: "var(--color-text-inverse)",
+                    boxShadow: isDark
+                      ? "var(--shadow-floating)"
+                      : "var(--shadow-soft)",
+                    borderRadius: "var(--radius-pill)",
+                  }}
+                >
+                  Открыть дашборд
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </Link>
+            ) : (
+              <Link href="/register">
+                <button
+                  className="inline-flex items-center justify-center gap-2 px-6 h-12 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{
+                    background: "var(--color-brand)",
+                    color: "var(--color-text-inverse)",
+                    boxShadow: isDark
+                      ? "var(--shadow-floating)"
+                      : "var(--shadow-soft)",
+                    borderRadius: "var(--radius-pill)",
+                  }}
+                >
+                  {nav.createAccount}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

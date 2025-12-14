@@ -737,37 +737,33 @@ export default function DirectorDashboard() {
     const greetingName = directorGreeting && directorGreeting !== "User" ? directorGreeting : "";
 
     return (
-      <div className="space-y-6">
-        <DayHeader />
-        <div className="flex flex-col items-center justify-center py-12 px-4 bg-card border border-border rounded-xl">
-          <div className="text-center max-w-md space-y-5">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Шаг 1
-              </p>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-                {welcomeText}
-              </h1>
-              {greetingName && (
-                <p className="text-xl font-semibold text-foreground">
-                  {greetingName}
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--navbar-height)-40px)] px-4 py-8">
+        <div className="w-full max-w-xl space-y-6">
+          <DayHeader />
+          <div className="flex flex-col items-center justify-center py-8 px-4 bg-card border border-border rounded-xl">
+            <div className="text-center max-w-md space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-primary uppercase tracking-wider">
+                  Шаг 1
                 </p>
-              )}
-            </div>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {t("dashboard.welcome_subtitle") ||
-                "Создайте первую торговую точку для начала работы"}
-            </p>
-            <div className="space-y-3 pt-2">
-              <Link
-                href="/dashboard/director/locations?action=new"
-                className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[var(--shadow-floating)] transition hover:bg-primary/90 hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px]"
-              >
-                {t("dashboard.create_point")}
-              </Link>
-              <p className="text-xs text-muted-foreground/80">
-                После создания точки появится статистика и аналитика
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+                  {welcomeText} {greetingName}
+                </h1>
+              </div>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                Создайте первую торговую точку, чтобы начать работу.
               </p>
+              <div className="space-y-3 pt-2">
+                <Link
+                  href="/dashboard/director/locations?action=new"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 py-4 text-lg font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
+                >
+                  {t("dashboard.create_point") || "Создать точку"}
+                </Link>
+                <p className="text-xs text-muted-foreground/80 max-w-sm mx-auto">
+                  После создания точки вы увидите онлайн-выручку, смены и сотрудников в одном кабинете.
+                </p>
+              </div>
             </div>
           </div>
         </div>
