@@ -737,78 +737,107 @@ export default function RegisterDirectorClient() {
       return `${year}-${month}-${day}`;
     };
 
-    // Упрощенный обработчик для поля даты рождения
+    // Обработчик для поля даты рождения
     const handleBirthDateChange = (e: ChangeEvent<HTMLInputElement>) => {
       let value = e.target.value;
       
-      // Удаляем все кроме цифр
-      const digitsOnly = value.replace(/\D/g, "");
+      // Удаляем все кроме цифр и точек
+      value = value.replace(/[^\d.]/g, "");
       
-      // Ограничиваем до 8 цифр (ДДММГГГГ)
-      const limitedDigits = digitsOnly.slice(0, 8);
+      // Ограничиваем общую длину
+      if (value.length > 10) {
+        value = value.slice(0, 10);
+      }
       
-      // Форматируем: ДД.ММ.ГГГГ
-      let formattedValue = "";
-      if (limitedDigits.length > 0) {
-        // День (первые 2 цифры)
-        const day = limitedDigits.slice(0, 2);
-        formattedValue = day;
-        
-        if (limitedDigits.length > 2) {
-          // Месяц (следующие 2 цифры)
-          const month = limitedDigits.slice(2, 4);
-          formattedValue += "." + month;
-          
-          if (limitedDigits.length > 4) {
-            // Год (остальные цифры, до 4)
-            const year = limitedDigits.slice(4, 8);
-            formattedValue += "." + year;
-          }
+      // Разбиваем на части
+      const parts = value.split(".");
+      let day = parts[0] || "";
+      let month = parts[1] || "";
+      let year = parts[2] || "";
+      
+      // Ограничиваем длину каждой части
+      day = day.slice(0, 2);
+      month = month.slice(0, 2);
+      year = year.slice(0, 4);
+      
+      // Автоматически добавляем точку после дня, если введено 2+ цифры подряд
+      if (day.length >= 2 && !value.includes(".") && value.length > 2) {
+        const remaining = value.slice(2);
+        if (remaining) {
+          month = remaining.slice(0, 2);
         }
       }
+      
+      // Автоматически добавляем точку после месяца, если введено 2+ цифры
+      if (month.length >= 2 && parts.length === 2) {
+        const monthPart = value.split(".")[1];
+        if (monthPart && monthPart.length > 2) {
+          year = monthPart.slice(2, 6);
+        }
+      }
+      
+      // Собираем значение
+      let formattedValue = day;
+      if (month || (day.length >= 2 && value.includes("."))) {
+        formattedValue += "." + month;
+      }
+      if (year || (month.length >= 2 && parts.length >= 2)) {
+        formattedValue += "." + year;
+      }
+      
+      // Автоматически добавляем ведущие нули для дня, когда пользователь начинает вводить месяц
+      const finalParts = formattedValue.split(".");
+      if (finalParts.length >= 2 && finalParts[0].length === 1) {
+        // Если день состоит из одной цифры и пользователь начал вводить месяц, добавляем ведущий ноль
+        finalParts[0] = finalParts[0].padStart(2, "0");
+      }
+      if (finalParts.length >= 3 && finalParts[1].length === 1) {
+        // Если месяц состоит из одной цифры и пользователь начал вводить год, добавляем ведущий ноль
+        finalParts[1] = finalParts[1].padStart(2, "0");
+      }
+      
+      formattedValue = finalParts.join(".");
       
       // Обновляем отображаемое значение
       setDisplayDate(formattedValue);
       
-      // Парсим в YYYY-MM-DD только если дата полностью введена (8 цифр)
-      if (limitedDigits.length === 8) {
-        const day = limitedDigits.slice(0, 2);
-        const month = limitedDigits.slice(2, 4);
-        const year = limitedDigits.slice(4, 8);
+      // Парсим в YYYY-MM-DD только если дата полностью введена
+      const checkParts = formattedValue.split(".");
+      const hasDay = checkParts[0] && checkParts[0].length > 0;
+      const hasMonth = checkParts[1] && checkParts[1].length > 0;
+      const hasYear = checkParts[2] && checkParts[2].length === 4;
+      
+      if (hasDay && hasMonth && hasYear) {
+        // Нормализуем: добавляем ведущие нули для дня и месяца (на случай если они ещё не добавлены)
+        const normalizedDay = checkParts[0].padStart(2, "0");
+        const normalizedMonth = checkParts[1].padStart(2, "0");
+        const normalizedYear = checkParts[2];
+        const normalizedValue = `${normalizedDay}.${normalizedMonth}.${normalizedYear}`;
         
-        const dayNum = parseInt(day, 10);
-        const monthNum = parseInt(month, 10);
-        const yearNum = parseInt(year, 10);
+        // Обновляем отображаемое значение с нормализованными значениями
+        if (normalizedValue !== formattedValue) {
+          setDisplayDate(normalizedValue);
+        }
         
-        // Проверяем валидность
-        if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12) {
-          const date = new Date(yearNum, monthNum - 1, dayNum);
+        const parsedDate = parseDateFromDisplay(normalizedValue);
+        if (parsedDate) {
+          // Проверяем валидность года (1920 - текущий год)
+          const yearNum = parseInt(normalizedYear, 10);
+          const currentYear = new Date().getFullYear();
+          const minYear = 1920;
           
-          // Проверяем, что дата валидна (например, не 31.02)
-          if (
-            date.getDate() === dayNum &&
-            date.getMonth() === monthNum - 1 &&
-            date.getFullYear() === yearNum
-          ) {
-            // Проверяем год (1920 - текущий год)
-            const currentYear = new Date().getFullYear();
-            const minYear = 1920;
-            
-            if (yearNum >= minYear && yearNum <= currentYear) {
-              // Форматируем в YYYY-MM-DD
-              const isoDate = `${yearNum}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-              setPersonal((prev) => ({ ...prev, birthDate: isoDate }));
-            } else {
-              setPersonal((prev) => ({ ...prev, birthDate: "" }));
-            }
+          if (yearNum >= minYear && yearNum <= currentYear) {
+            setPersonal((prev) => ({ ...prev, birthDate: parsedDate }));
           } else {
+            // Год вне диапазона - очищаем birthDate
             setPersonal((prev) => ({ ...prev, birthDate: "" }));
           }
         } else {
+          // Если дата невалидна, очищаем birthDate
           setPersonal((prev) => ({ ...prev, birthDate: "" }));
         }
       } else {
-        // Если дата неполная, очищаем birthDate
+        // Если дата неполная или поле очищено, очищаем birthDate
         setPersonal((prev) => ({ ...prev, birthDate: "" }));
       }
     };
@@ -880,11 +909,6 @@ export default function RegisterDirectorClient() {
                 onChange={handleBirthDateChange}
                 maxLength={10}
               />
-              {displayDate && displayDate.length < 10 && (
-                <p className="mt-1 text-xs text-muted-foreground/70">
-                  {t<string>("register_field_birth_date_hint") || "Введите 8 цифр: день, месяц, год"}
-                </p>
-              )}
             </div>
           </div>
         </div>

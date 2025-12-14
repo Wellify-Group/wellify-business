@@ -2,9 +2,15 @@
 
 import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
+import { useEffect } from "react";
 
 export default function EmailConfirmedPage() {
-  const { t } = useLanguage();
+  const { t, setLanguage } = useLanguage();
+  
+  // Устанавливаем украинский язык для этой страницы
+  useEffect(() => {
+    setLanguage('ua');
+  }, [setLanguage]);
 
   const handleClose = () => {
     if (window.opener) {

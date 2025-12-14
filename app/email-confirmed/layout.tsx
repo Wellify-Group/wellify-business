@@ -6,9 +6,22 @@ import { ReactNode, useEffect } from "react";
  * Layout для страницы подтверждения e-mail
  * Скрывает навбар и футер через CSS, использует fixed positioning для полного перекрытия
  * Адаптируется к системной теме браузера через prefers-color-scheme
+ * Применяет стили синхронно для предотвращения мигания темы
  */
 export default function EmailConfirmedLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
+    // Определяем тему синхронно
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Устанавливаем цвета сразу, без ожидания CSS
+    const bgColor = isDark ? '#050B13' : '#F8FAFC';
+    const textColor = isDark ? '#E2E8F0' : '#0F172A';
+    
+    // Применяем стили немедленно к body и html
+    document.body.style.backgroundColor = bgColor;
+    document.body.style.color = textColor;
+    document.documentElement.style.backgroundColor = bgColor;
+    
     // Добавляем мета-теги для поддержки светлой и темной темы
     const metaColorScheme = document.createElement('meta');
     metaColorScheme.name = 'color-scheme';
@@ -20,10 +33,38 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
     
     // Проверяем, не добавлены ли уже эти мета-теги
     if (!document.querySelector('meta[name="color-scheme"]')) {
-      document.head.appendChild(metaColorScheme);
+      document.head.insertBefore(metaColorScheme, document.head.firstChild);
     }
     if (!document.querySelector('meta[name="supported-color-schemes"]')) {
-      document.head.appendChild(metaSupportedColorSchemes);
+      const existingColorScheme = document.querySelector('meta[name="color-scheme"]');
+      if (existingColorScheme && existingColorScheme.nextSibling) {
+        document.head.insertBefore(metaSupportedColorSchemes, existingColorScheme.nextSibling);
+      } else {
+        document.head.appendChild(metaSupportedColorSchemes);
+      }
+    }
+
+    // Добавляем inline script в head для немедленного применения темы (до рендера)
+    const script = document.createElement('script');
+    script.id = 'email-confirmed-theme-script';
+    script.textContent = `
+      (function() {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const bgColor = isDark ? '#050B13' : '#F8FAFC';
+        const textColor = isDark ? '#E2E8F0' : '#0F172A';
+        if (document.documentElement) {
+          document.documentElement.style.backgroundColor = bgColor;
+        }
+        if (document.body) {
+          document.body.style.backgroundColor = bgColor;
+          document.body.style.color = textColor;
+        }
+      })();
+    `;
+    
+    // Вставляем скрипт в начало head для немедленного выполнения
+    if (!document.getElementById('email-confirmed-theme-script')) {
+      document.head.insertBefore(script, document.head.firstChild);
     }
 
     // Скрываем навбар и футер через CSS
@@ -68,16 +109,16 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
     
     document.head.appendChild(style);
     
-    // Устанавливаем цвет фона body через CSS переменную
-    document.body.style.backgroundColor = 'var(--email-confirmed-bg)';
-    document.body.style.color = 'var(--email-confirmed-text)';
-    
     return () => {
       if (metaColorScheme.parentNode) {
         document.head.removeChild(metaColorScheme);
       }
       if (metaSupportedColorSchemes.parentNode) {
         document.head.removeChild(metaSupportedColorSchemes);
+      }
+      const scriptToRemove = document.getElementById('email-confirmed-theme-script');
+      if (scriptToRemove) {
+        document.head.removeChild(scriptToRemove);
       }
       const styleToRemove = document.getElementById('email-confirmed-styles');
       if (styleToRemove) {
@@ -87,15 +128,24 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
       document.documentElement.style.overflow = '';
       document.body.style.backgroundColor = '';
       document.body.style.color = '';
+      document.documentElement.style.backgroundColor = '';
     };
   }, []);
+
+  // Определяем тему для inline styles (синхронно, если window доступен)
+  const isDark = typeof window !== 'undefined' 
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches 
+    : false;
+  
+  const bgColor = isDark ? '#050B13' : '#F8FAFC';
+  const textColor = isDark ? '#E2E8F0' : '#0F172A';
 
   return (
     <div 
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       style={{
-        backgroundColor: 'var(--email-confirmed-bg, #F8FAFC)',
-        color: 'var(--email-confirmed-text, #0F172A)',
+        backgroundColor: bgColor,
+        color: textColor,
       }}
     >
       {children}
