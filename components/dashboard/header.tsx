@@ -349,8 +349,15 @@ export function DashboardHeader() {
                 }}
                 className="flex items-center gap-2 p-1.5 hover:bg-muted rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
-                  {userInitial}
+                <div className="flex flex-col items-end">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+                    {userInitial}
+                  </div>
+                  {userName && userName !== "User" && (
+                    <span className="text-xs text-muted-foreground mt-0.5 leading-tight max-w-[120px] truncate">
+                      {userName}
+                    </span>
+                  )}
                 </div>
                 <ChevronDown
                   className={`h-4 w-4 text-muted-foreground transition-transform ${

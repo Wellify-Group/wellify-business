@@ -10,7 +10,7 @@ export default function NotFound() {
   const { t } = useLanguage();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC] dark:bg-background px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -23,10 +23,10 @@ export default function NotFound() {
         
         <h1 className="text-6xl font-bold text-foreground">404</h1>
         <h2 className="text-2xl font-semibold text-foreground">
-          Страница не найдена
+          {t("not_found_title") || "Страница не найдена"}
         </h2>
         <p className="text-muted-foreground">
-          К сожалению, запрашиваемая страница не существует или была перемещена.
+          {t("not_found_description") || "К сожалению, запрашиваемая страница не существует или была перемещена."}
         </p>
         
         <div className="pt-4">
@@ -34,10 +34,10 @@ export default function NotFound() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="inline-flex items-center gap-2 rounded-[20px] bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-[0_10px_35px_rgba(0,0,0,0.07)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.2)]"
+              className="inline-flex items-center gap-2 rounded-[20px] bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-[var(--shadow-floating)]"
             >
               <Home className="h-4 w-4" />
-              На главную
+              {t("not_found_back_home") || "На главную"}
             </motion.button>
           </Link>
         </div>

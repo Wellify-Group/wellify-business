@@ -45,8 +45,8 @@ export default function EmailConfirmedPage() {
       <div className="relative w-full max-w-md">
         <div className="relative overflow-hidden rounded-[32px] border border-border bg-card px-6 py-6 shadow-[var(--shadow-modal)] sm:px-8 sm:py-8">
           <div className="flex flex-col items-center space-y-4 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-              <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20">
+              <CheckCircle2 className="h-12 w-12 text-[color:var(--color-success)]" />
             </div>
 
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">

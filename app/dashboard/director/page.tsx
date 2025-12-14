@@ -740,30 +740,30 @@ export default function DirectorDashboard() {
     const greetingName = directorGreeting && directorGreeting !== "User" ? directorGreeting : "";
 
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-var(--navbar-height))] px-4 py-12">
-        <div className="w-full max-w-2xl">
+      <div className="flex items-center justify-center min-h-[calc(100vh-var(--navbar-height))] px-4">
+        <div className="w-full max-w-3xl mx-auto">
           <DayHeader />
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="mt-8 flex flex-col items-center justify-center py-10 px-8 bg-card border border-border rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.4)]"
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="mt-8 flex flex-col items-center justify-center py-8 px-10 bg-card border border-border rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.4)]"
           >
             {/* Прогресс индикатор */}
-            <div className="w-full mb-6">
+            <div className="w-full mb-5">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-primary/70 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-primary/70 uppercase tracking-[0.15em]">
                   Шаг 1 из 3
                 </span>
                 <span className="text-xs text-muted-foreground/60">33%</span>
               </div>
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
+              <div className="h-0.5 bg-muted rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-full" style={{ width: '33%' }}></div>
               </div>
             </div>
 
-            <div className="text-center max-w-lg space-y-5">
-              <div className="space-y-3">
+            <div className="text-center max-w-xl space-y-4">
+              <div className="space-y-2">
                 <p className="text-xs font-semibold text-primary/70 uppercase tracking-[0.15em]">
                   Шаг 1
                 </p>
@@ -776,17 +776,17 @@ export default function DirectorDashboard() {
                   </h2>
                 )}
               </div>
-              <p className="text-muted-foreground text-lg leading-relaxed">
+              <p className="text-muted-foreground text-base leading-relaxed">
                 Создайте первую торговую точку, чтобы начать работу.
               </p>
-              <div className="space-y-4 pt-2">
+              <div className="space-y-3 pt-1">
                 <Link
                   href="/dashboard/director/locations?action=new"
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-10 py-4 text-lg font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-12 py-4 text-lg font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
                 >
                   {t("dashboard.create_point") || "Создать точку"}
                 </Link>
-                <p className="text-xs text-muted-foreground/70 leading-snug max-w-md mx-auto">
+                <p className="text-xs text-muted-foreground/60 leading-tight max-w-md mx-auto">
                   После создания точки вы увидите онлайн-выручку, смены и сотрудников в одном кабинете.
                 </p>
               </div>

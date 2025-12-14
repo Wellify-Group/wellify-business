@@ -196,8 +196,8 @@ function SlideSpeed({ direction }: { direction: number }) {
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className="flex flex-col items-center gap-4 py-8 text-center"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15">
-              <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20">
+              <CheckCircle2 className="h-12 w-12 text-[color:var(--color-success)]" />
             </div>
             <p className="text-2xl font-semibold text-card-foreground">
               {t("shift_closed")}
