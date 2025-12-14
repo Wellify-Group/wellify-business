@@ -1080,15 +1080,15 @@ export default function RegisterDirectorClient() {
   // Главный контейнер: центрирование по вертикали и горизонтали
 
   return (
-    <main className="flex flex-col pt-24 min-h-[calc(100vh-112px)] md:min-h-[calc(100vh-112px)] items-center justify-center bg-background px-4 py-6 md:py-8 overflow-y-auto sm:overflow-y-visible">
-      <div className="relative w-full max-w-xl">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="relative w-full max-w-xl mt-14 mb-14">
         <Card className="relative z-10 w-full rounded-[28px] border border-white/4 bg-gradient-to-b from-[#0B1220] to-[#050712] backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.70)]">
-          <CardHeader className="px-4 py-6 md:px-8 md:py-8">
+          <CardHeader className="px-8 pt-5 pb-3">
             {step !== 4 && renderTabs()}
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className="px-4 py-4 md:px-8 md:pb-4 md:pt-2 flex items-center justify-center min-h-[300px]">
+          <CardContent className="px-8 pb-3 pt-0 flex items-center justify-center min-h-[300px]">
             <div className="w-full">
               {registerError && (
                 <div className={cn(
@@ -1129,7 +1129,7 @@ export default function RegisterDirectorClient() {
             </div>
           </CardContent>
 
-          <CardFooter className="relative flex items-center justify-between px-4 md:px-8 pb-4 md:pb-6 pt-4 md:pt-5 text-xs text-muted-foreground">
+          <CardFooter className="relative flex items-center justify-between px-8 pb-4 pt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               {step > 1 && step < 4 && (
                 <button
