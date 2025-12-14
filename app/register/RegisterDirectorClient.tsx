@@ -90,27 +90,8 @@ export default function RegisterDirectorClient() {
   const handlePersonalChange =
     (field: keyof PersonalForm) =>
     (e: ChangeEvent<HTMLInputElement>) => {
-      let value = e.target.value;
-      
-      // Валидация даты рождения: ограничение года от 1920 до текущего года
-      // Проверяем только если дата полностью введена (формат YYYY-MM-DD)
-      if (field === "birthDate" && value) {
-        // Проверяем, что дата в правильном формате (YYYY-MM-DD)
-        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-        if (datePattern.test(value)) {
-          const date = new Date(value);
-          const currentYear = new Date().getFullYear();
-          const minYear = 1920;
-          
-          // Проверяем, что дата валидна и год в диапазоне
-          if (isNaN(date.getTime()) || date.getFullYear() < minYear || date.getFullYear() > currentYear) {
-            // Не позволяем ввести невалидную дату
-            return;
-          }
-        }
-        // Если дата еще не полностью введена, разрешаем ввод
-      }
-      
+      const value = e.target.value;
+      // Просто обновляем значение без валидации - валидация будет при отправке
       setPersonal((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -123,19 +104,38 @@ export default function RegisterDirectorClient() {
       return;
     }
 
-    if (!personal.birthDate) {
+    if (!personal.birthDate || !personal.birthDate.trim()) {
       setRegisterError("Укажите дату рождения директора.");
       return;
     }
 
-    // Валидация даты рождения: год от 1920 до текущего года
+    // Валидация даты рождения: проверка формата и года (от 1920 до текущего года)
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (!datePattern.test(personal.birthDate)) {
+      setRegisterError("Неверный формат даты рождения.");
+      return;
+    }
+
     const birthDateObj = new Date(personal.birthDate);
+    if (isNaN(birthDateObj.getTime())) {
+      setRegisterError("Неверная дата рождения.");
+      return;
+    }
+
     const currentYear = new Date().getFullYear();
     const minYear = 1920;
     const birthYear = birthDateObj.getFullYear();
     
     if (birthYear < minYear || birthYear > currentYear) {
       setRegisterError(`Год рождения должен быть от ${minYear} до ${currentYear}.`);
+      return;
+    }
+
+    // Проверка, что дата не в будущем
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (birthDateObj > today) {
+      setRegisterError("Дата рождения не может быть в будущем.");
       return;
     }
 
@@ -684,7 +684,7 @@ export default function RegisterDirectorClient() {
               min="1920-01-01"
               max={new Date().toISOString().split('T')[0]}
               className="h-10 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-              value={personal.birthDate}
+              value={personal.birthDate || ""}
               onChange={handlePersonalChange("birthDate")}
             />
           </div>
