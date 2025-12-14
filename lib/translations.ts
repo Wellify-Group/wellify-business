@@ -16,6 +16,10 @@ export const TRANSLATIONS = {
     btn_login: "Sign In",
     login_or_social: "OR LOGIN WITH",
     login_terminal_hint: "If you are a point employee — use the \"Terminal\" tab",
+    // --- EMAIL CONFIRMATION KEYS ---
+    email_confirmed_title: "Email confirmation",
+    email_confirmed_message: "Your email has been successfully confirmed.",
+    email_confirmed_close_button: "Close window",
     // -----------------------
 
     role_employee: "Employee",
@@ -424,6 +428,10 @@ export const TRANSLATIONS = {
     btn_login: "Увійти",
     login_or_social: "АБО УВІЙТИ ЧЕРЕЗ",
     login_terminal_hint: "Якщо ви співробітник точки — використовуйте вкладку «Термінал»",
+    // --- EMAIL CONFIRMATION KEYS ---
+    email_confirmed_title: "Підтвердження e-mail",
+    email_confirmed_message: "Ваш e-mail успішно підтверджено.",
+    email_confirmed_close_button: "Закрити вікно",
     // -----------------------
 
     role_employee: "Співробітник",
@@ -832,6 +840,10 @@ export const TRANSLATIONS = {
     btn_login: "Войти",
     login_or_social: "ИЛИ ВОЙТИ ЧЕРЕЗ",
     login_terminal_hint: "Если вы сотрудник точки — используйте вкладку «Терминал»",
+    // --- EMAIL CONFIRMATION KEYS ---
+    email_confirmed_title: "Подтверждение e-mail",
+    email_confirmed_message: "Ваш e-mail успешно подтверждён.",
+    email_confirmed_close_button: "Закрыть окно",
     // -----------------------
 
     role_employee: "Сотрудник",
