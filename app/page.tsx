@@ -265,8 +265,8 @@ export default function Home() {
         className="relative flex items-center justify-center px-4 pt-24 md:pt-32 pb-16 sm:px-6 lg:px-8 overflow-hidden"
         style={{ backgroundColor: "transparent" }}
       >
-        {/* Фоновый брендовый слой */}
-        <div className="absolute inset-0 -z-10">
+        {/* Фоновый брендовый слой - ограничен внутри секции */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent"></div>
           <div 
             className="absolute inset-0 opacity-30"

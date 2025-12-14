@@ -635,6 +635,7 @@ export default function RegisterDirectorClient() {
             {descriptionText}
           </CardDescription>
         )}
+        {descriptionText && <div className="mt-4"></div>}
       </>
     );
   };
@@ -643,121 +644,170 @@ export default function RegisterDirectorClient() {
    * Рендер шага 1: Личные данные директора
    * Поля: Имя, Отчество, Фамилия, Дата рождения, Пароль, Подтверждение пароля
    */
-  const renderStep1 = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-        <div className="space-y-1.5 md:col-span-1">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Имя
-          </label>
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <User className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
+  const renderStep1 = () => {
+    // Функция для форматирования даты из YYYY-MM-DD в ДД.ММ.ГГГГ
+    const formatDateForDisplay = (dateStr: string): string => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "";
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+
+    // Функция для парсинга ДД.ММ.ГГГГ в YYYY-MM-DD
+    const parseDateFromDisplay = (displayStr: string): string => {
+      if (!displayStr) return "";
+      const parts = displayStr.split(".");
+      if (parts.length !== 3) return "";
+      const day = parts[0].padStart(2, "0");
+      const month = parts[1].padStart(2, "0");
+      const year = parts[2];
+      if (year.length !== 4) return "";
+      return `${year}-${month}-${day}`;
+    };
+
+    // Обработчик для поля даты рождения
+    const handleBirthDateChange = (e: ChangeEvent<HTMLInputElement>) => {
+      let value = e.target.value;
+      // Удаляем все кроме цифр и точек
+      value = value.replace(/[^\d.]/g, "");
+      
+      // Ограничиваем длину
+      if (value.length > 10) value = value.slice(0, 10);
+      
+      // Автоматически добавляем точки
+      if (value.length > 2 && value[2] !== ".") {
+        value = value.slice(0, 2) + "." + value.slice(2);
+      }
+      if (value.length > 5 && value[5] !== ".") {
+        value = value.slice(0, 5) + "." + value.slice(5);
+      }
+      
+      // Парсим в YYYY-MM-DD и обновляем состояние
+      const parsedDate = parseDateFromDisplay(value);
+      if (parsedDate || value === "") {
+        setPersonal((prev) => ({ ...prev, birthDate: parsedDate }));
+      }
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="space-y-1.5 md:col-span-1">
+            <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Имя
+            </label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                <User className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
+              </div>
+              <input
+                type="text"
+                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                value={personal.firstName}
+                onChange={handlePersonalChange("firstName")}
+              />
             </div>
-            <input
-              type="text"
-              className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-              value={personal.firstName}
-              onChange={handlePersonalChange("firstName")}
-            />
+          </div>
+
+          <div className="space-y-1.5 md:col-span-1">
+            <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Отчество
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                value={personal.middleName}
+                onChange={handlePersonalChange("middleName")}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5 md:col-span-1">
+            <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Фамилия
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                value={personal.lastName}
+                onChange={handlePersonalChange("lastName")}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-1.5 md:col-span-1">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Отчество
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-              value={personal.middleName}
-              onChange={handlePersonalChange("middleName")}
-            />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Дата рождения
+            </label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                <Calendar className="h-3 w-3 text-muted-foreground opacity-50" />
+              </div>
+              <input
+                type="text"
+                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                placeholder="ДД.ММ.ГГГГ"
+                value={formatDateForDisplay(personal.birthDate)}
+                onChange={handleBirthDateChange}
+                maxLength={10}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-1.5 md:col-span-1">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Фамилия
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-              value={personal.lastName}
-              onChange={handlePersonalChange("lastName")}
-            />
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Пароль
+            </label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                <Lock className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
+              </div>
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="h-11 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                placeholder="Минимум 8 символов"
+                value={personal.password}
+                onChange={handlePersonalChange("password")}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Подтверждение пароля
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                autoComplete="new-password"
+                className="h-11 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                placeholder="Повторите пароль"
+                value={personal.passwordConfirm}
+                onChange={handlePersonalChange("passwordConfirm")}
+              />
+            </div>
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Дата рождения
-          </label>
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
-            </div>
-            <input
-              type="date"
-              min="1920-01-01"
-              max={new Date().toISOString().split('T')[0]}
-              className="h-10 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-              value={personal.birthDate || ""}
-              onChange={handlePersonalChange("birthDate")}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Пароль
-          </label>
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Lock className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
-            </div>
-            <input
-              type="password"
-              autoComplete="new-password"
-              className="h-10 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-              placeholder="Минимум 8 символов"
-              value={personal.password}
-              onChange={handlePersonalChange("password")}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Подтверждение пароля
-          </label>
-          <div className="relative">
-            <input
-              type="password"
-              autoComplete="new-password"
-              className="h-10 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-              placeholder="Повторите пароль"
-              value={personal.passwordConfirm}
-              onChange={handlePersonalChange("passwordConfirm")}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   /**
    * Рендер шага 2: Подтверждение e-mail
    * Поле ввода e-mail с отправкой письма для подтверждения
    */
   const renderStep2 = () => (
-    <form id="step2-form" className="space-y-5" onSubmit={handleSubmitStep2}>
+    <form id="step2-form" className="space-y-4" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Рабочий e-mail
@@ -769,7 +819,7 @@ export default function RegisterDirectorClient() {
           <input
             type="email"
             autoComplete="email"
-            className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+            className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
             placeholder="you@business.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -834,9 +884,9 @@ export default function RegisterDirectorClient() {
    * Показывает сообщение об успехе и кнопку перехода в дашборд
    */
   const renderStep4 = () => (
-    <div className="flex flex-col items-center gap-6 py-8 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 animate-[fadeInScale_250ms_ease-out]">
-        <CheckCircle2 className="h-12 w-12 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]" />
+    <div className="flex flex-col items-center gap-5 py-4 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 animate-[fadeInScale_250ms_ease-out]">
+        <CheckCircle2 className="h-10 w-10 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]" />
       </div>
       <div className="space-y-2">
         <h3 className="text-xl font-semibold text-foreground">
@@ -849,7 +899,7 @@ export default function RegisterDirectorClient() {
       <Button
         onClick={finishRegistration}
         disabled={isSubmitting}
-        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+        className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
       >
         {isSubmitting ? (
           <>
@@ -873,12 +923,12 @@ export default function RegisterDirectorClient() {
     <main className="flex flex-col pt-24 min-h-[calc(100vh-112px)] md:min-h-[calc(100vh-112px)] items-center justify-center bg-background px-4 py-6 md:py-8 overflow-y-auto sm:overflow-y-visible">
       <div className="relative w-full max-w-xl">
         <Card className="relative z-10 w-full rounded-[28px] border border-white/4 bg-gradient-to-b from-[#0B1220] to-[#050712] backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.70)]">
-          <CardHeader className="px-6 py-6 md:px-10 md:py-10">
-            {renderTabs()}
+          <CardHeader className="px-4 py-6 md:px-8 md:py-8">
+            {step !== 4 && renderTabs()}
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className="px-6 py-4 md:px-10 md:pb-6 md:pt-2 flex items-center justify-center min-h-[400px]">
+          <CardContent className="px-4 py-4 md:px-8 md:pb-4 md:pt-2 flex items-center justify-center min-h-[300px]">
             <div className="w-full">
               {registerError && (
                 <div className={cn(
@@ -919,7 +969,7 @@ export default function RegisterDirectorClient() {
             </div>
           </CardContent>
 
-          <CardFooter className="relative flex items-center justify-between px-6 md:px-10 pb-6 md:pb-8 pt-2 text-xs text-muted-foreground">
+          <CardFooter className="relative flex items-center justify-between px-4 md:px-8 pb-4 md:pb-6 pt-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               {step > 1 && step < 4 && (
                 <button
@@ -969,7 +1019,7 @@ export default function RegisterDirectorClient() {
                     emailStatus === "sending" ||
                     emailStatus === "link_sent"
                   }
-                  className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                  className="inline-flex items-center justify-center min-h-[44px] rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
                   {isSubmitting || emailStatus === "sending" ? (
                     <>
@@ -977,7 +1027,10 @@ export default function RegisterDirectorClient() {
                       Отправляем...
                     </>
                   ) : emailStatus === "link_sent" ? (
-                    <>Ждём подтверждения…</>
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Ждём подтверждения…
+                    </>
                   ) : (
                     <>
                       Далее

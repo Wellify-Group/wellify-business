@@ -739,26 +739,36 @@ export default function DirectorDashboard() {
     return (
       <div className="space-y-6">
         <DayHeader />
-        <div className="flex flex-col items-center justify-center py-16 px-4 bg-card border border-border rounded-xl">
-          <div className="text-center max-w-md space-y-6">
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-              {welcomeText}
-            </h1>
-            {greetingName && (
-              <p className="text-xl font-semibold text-foreground">
-                {greetingName}
+        <div className="flex flex-col items-center justify-center py-12 px-4 bg-card border border-border rounded-xl">
+          <div className="text-center max-w-md space-y-5">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Шаг 1
               </p>
-            )}
-            <p className="text-muted-foreground mb-6">
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+                {welcomeText}
+              </h1>
+              {greetingName && (
+                <p className="text-xl font-semibold text-foreground">
+                  {greetingName}
+                </p>
+              )}
+            </div>
+            <p className="text-muted-foreground text-sm leading-relaxed">
               {t("dashboard.welcome_subtitle") ||
                 "Создайте первую торговую точку для начала работы"}
             </p>
-            <Link
-              href="/dashboard/director/locations?action=new"
-              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-floating)] transition hover:bg-primary/90"
-            >
-              {t("dashboard.create_point")}
-            </Link>
+            <div className="space-y-3 pt-2">
+              <Link
+                href="/dashboard/director/locations?action=new"
+                className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[var(--shadow-floating)] transition hover:bg-primary/90 hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px]"
+              >
+                {t("dashboard.create_point")}
+              </Link>
+              <p className="text-xs text-muted-foreground/80">
+                После создания точки появится статистика и аналитика
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -17,8 +17,11 @@ import { SIDEBAR_EXPANDED, SIDEBAR_COLLAPSED } from "@/lib/constants";
 export function AppSidebar() {
   const { t } = useLanguage();
   const pathname = usePathname();
-  const { isSidebarCollapsed, toggleSidebar, currentUser } = useStore();
+  const { isSidebarCollapsed, toggleSidebar, currentUser, locations } = useStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Проверка empty-state: нет точек
+  const isEmptyState = !isManager && locations.length === 0;
 
   // Check fullscreen state
   useEffect(() => {
@@ -119,16 +122,21 @@ export function AppSidebar() {
                   isSidebarCollapsed 
                     ? "h-12 w-full justify-center rounded-lg" 
                     : "h-12 px-3 rounded-lg gap-3",
-                  isActive && "sidebar-item-active"
+                  isActive && "sidebar-item-active",
+                  isEmptyState && !isActive && "opacity-60"
                 )}
                 title={isSidebarCollapsed ? item.name : undefined}
               >
                 <item.icon className={cn(
                   "flex-shrink-0",
-                  "w-6 h-6"
+                  "w-6 h-6",
+                  isEmptyState && !isActive && "text-slate-400"
                 )} />
                 {!isSidebarCollapsed && (
-                  <span className="sidebar-item__label text-sm font-medium whitespace-nowrap overflow-hidden">
+                  <span className={cn(
+                    "sidebar-item__label text-sm font-medium whitespace-nowrap overflow-hidden",
+                    isEmptyState && !isActive && "text-slate-400"
+                  )}>
                     {item.name}
                   </span>
                 )}
