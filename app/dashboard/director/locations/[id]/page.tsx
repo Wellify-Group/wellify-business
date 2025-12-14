@@ -969,6 +969,18 @@ function TeamTab({ location, manager, staff, employees, users, onAssignManager, 
 
 // Schedule Tab Component
 function ScheduleTab({ location, onUpdate }: any) {
+  const { t } = useLanguage();
+  
+  const DAYS = [
+    { key: 'mon' as const, label: t("dashboard.weekdays.monday") },
+    { key: 'tue' as const, label: t("dashboard.weekdays.tuesday") },
+    { key: 'wed' as const, label: t("dashboard.weekdays.wednesday") },
+    { key: 'thu' as const, label: t("dashboard.weekdays.thursday") },
+    { key: 'fri' as const, label: t("dashboard.weekdays.friday") },
+    { key: 'sat' as const, label: t("dashboard.weekdays.saturday") },
+    { key: 'sun' as const, label: t("dashboard.weekdays.sunday") }
+  ];
+  
   const [schedule, setSchedule] = useState(() => {
     const currentSchedule = location.schedule || {};
     return DAYS.map(day => {
