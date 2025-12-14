@@ -340,8 +340,10 @@ export default function RegisterDirectorClient() {
       setVerifiedPhone(phone);
     }
     // Переходим на шаг 4 - успешное завершение регистрации
+    // Проверка данных будет выполнена автоматически через useEffect на шаге 4
     setStep(4);
     setMaxStepReached(4);
+    setRegisterError(null);
   };
 
   // ---------- Polling подтверждения e-mail ----------
@@ -407,6 +409,62 @@ export default function RegisterDirectorClient() {
       if (intervalId) clearInterval(intervalId);
     };
   }, [emailStatus, email]);
+
+  // ---------- Автоматическая проверка готовности данных на шаге 4 ----------
+  
+  /**
+   * Проверяет готовность данных профиля (phone и telegram_verified) когда пользователь на шаге 4
+   * Если данные не готовы, показывает сообщение и повторяет проверку каждые 2 секунды
+   */
+  useEffect(() => {
+    if (step !== 4) return;
+    
+    let cancelled = false;
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    const checkProfileReady = async () => {
+      if (cancelled) return;
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("phone, telegram_verified")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        
+        // Если данные готовы - убираем ошибку и останавливаем проверку
+        if (profile?.phone && profile?.telegram_verified) {
+          setRegisterError(null);
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+          return;
+        }
+        
+        // Если данные еще не готовы, показываем сообщение
+        setRegisterError("Ожидание подтверждения данных Telegram...");
+      } catch (error) {
+        console.error("[register] Error checking profile on step 4", error);
+      }
+    };
+    
+    // Первая проверка через небольшую задержку (чтобы дать время БД обновиться)
+    const initialTimeout = setTimeout(() => {
+      checkProfileReady();
+      // Затем проверяем каждые 2 секунды
+      intervalId = setInterval(checkProfileReady, 2000);
+    }, 1000);
+    
+    return () => {
+      cancelled = true;
+      clearTimeout(initialTimeout);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [step, supabase]);
 
   // ---------- Функции рендеринга UI ----------
 
