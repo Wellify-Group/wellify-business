@@ -19,6 +19,9 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { isSidebarCollapsed, toggleSidebar, currentUser, locations } = useStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Determine menu items based on role
+  const isManager = currentUser?.role === 'manager';
   
   // Проверка empty-state: нет точек
   const isEmptyState = !isManager && locations.length === 0;
@@ -31,9 +34,6 @@ export function AppSidebar() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
-  // Determine menu items based on role
-  const isManager = currentUser?.role === 'manager';
   const baseHref = isManager ? '/dashboard/manager' : '/dashboard/director';
   
   const allMenuItems: Array<{ name: string; href: string; icon: any; id: string; roles?: string[] }> = [

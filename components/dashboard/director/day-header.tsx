@@ -2,6 +2,7 @@
 import { useState } from "react";
 import useStore from "@/lib/store";
 import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function DayHeader() {
   const { locations, currentUser } = useStore();
