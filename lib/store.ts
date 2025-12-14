@@ -9,6 +9,9 @@ export interface User {
   id: string;
   name: string;
   fullName?: string; // Full name for formal addressing (e.g., "Ivanov Ivan Ivanovich")
+  firstName?: string; // First name from profile
+  middleName?: string; // Middle name from profile
+  lastName?: string; // Last name from profile
   role: Role;
   email?: string;
   password?: string;
