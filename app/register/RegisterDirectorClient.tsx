@@ -244,10 +244,33 @@ export default function RegisterDirectorClient() {
       setIsSubmitting(true);
       setRegisterError(null);
 
-      // Проверяем, что пользователь авторизован
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Проверяем наличие необходимых данных
+      if (!registeredUserEmail || !personal.password) {
+        setRegisterError("Не удалось получить данные для завершения регистрации.");
+        return;
+      }
+
+      // Проверяем или восстанавливаем сессию
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError || !session?.user) {
+      // Если сессии нет, пытаемся восстановить её через signIn
+      if (!session?.user) {
+        console.log("[register] Session not found, attempting to restore...");
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: registeredUserEmail,
+          password: personal.password,
+        });
+
+        if (signInError || !signInData?.user) {
+          console.error("[register] Failed to restore session", signInError);
+          setRegisterError("Не удалось восстановить сессию. Пожалуйста, войдите вручную.");
+          return;
+        }
+
+        session = signInData.session;
+      }
+
+      if (!session?.user) {
         setRegisterError("Сессия не найдена. Пожалуйста, войдите в систему.");
         return;
       }
