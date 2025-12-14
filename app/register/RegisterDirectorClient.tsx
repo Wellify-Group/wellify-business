@@ -27,6 +27,7 @@ import {
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
+import { cn } from "@/lib/utils";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -327,9 +328,22 @@ export default function RegisterDirectorClient() {
       }
 
       // Загружаем профиль через API endpoint (обходит RLS через admin клиент)
-      const profileResponse = await fetch('/api/auth/load-profile');
+      const profileResponse = await fetch('/api/auth/load-profile', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (profileResponse.status === 401) {
+        console.error("[register] Not authenticated in finishRegistration");
+        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+        return;
+      }
+      
       if (!profileResponse.ok) {
-        console.error("[register] Failed to load profile via API in finishRegistration");
+        console.error("[register] Failed to load profile via API in finishRegistration", profileResponse.status);
         setRegisterError("Не удалось проверить профиль. Попробуйте позже.");
         return;
       }
@@ -465,20 +479,32 @@ export default function RegisterDirectorClient() {
       if (cancelled) return;
       
       try {
+        // Проверяем сессию
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error("[register] Session error on step 4:", sessionError);
-          return;
-        }
-        if (!session?.user) {
-          console.log("[register] No session on step 4");
+        if (sessionError || !session?.user) {
+          // Если нет сессии, не показываем ошибку - просто ждем
+          console.log("[register] No session yet on step 4, waiting...");
           return;
         }
         
         // Используем API endpoint для загрузки профиля (обходит RLS)
-        const profileResponse = await fetch('/api/auth/load-profile');
+        const profileResponse = await fetch('/api/auth/load-profile', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        // Если 401 - сессия еще не готова, просто ждем без ошибки
+        if (profileResponse.status === 401) {
+          console.log("[register] Not authenticated yet, waiting...");
+          return;
+        }
+        
         if (!profileResponse.ok) {
-          console.error("[register] Failed to load profile via API");
+          console.error("[register] Failed to load profile via API", profileResponse.status);
+          // Не показываем ошибку при временных проблемах
           return;
         }
         
@@ -494,13 +520,10 @@ export default function RegisterDirectorClient() {
           hasPhone: !!profile?.phone,
           phone: profile?.phone,
           telegramVerified: profile?.telegram_verified,
-          profile: profile
         });
         
         // Если данные готовы - убираем ошибку и останавливаем проверку
-        // Проверяем что phone не пустой и telegram_verified === true (строгая проверка булева)
         const hasPhone = profile?.phone && profile.phone.trim() !== "";
-        // Проверяем telegram_verified - может быть булево true или строка "true"
         const isTelegramVerified = profile?.telegram_verified === true || 
                                    profile?.telegram_verified === "true" ||
                                    profile?.telegram_verified === 1;
@@ -515,26 +538,25 @@ export default function RegisterDirectorClient() {
           return;
         }
         
-        // Если данные еще не готовы, показываем сообщение
-        console.log("[register] Profile not ready yet:", {
-          hasPhone,
-          phone: profile?.phone,
-          isTelegramVerified,
-          telegramVerified: profile?.telegram_verified,
-          telegramVerifiedType: typeof profile?.telegram_verified
-        });
-        setRegisterError("Ожидание подтверждения данных Telegram...");
+        // Если данные еще не готовы, показываем сообщение только если его еще нет
+        if (!registerError || registerError !== "Ожидание подтверждения данных Telegram...") {
+          setRegisterError("Ожидание подтверждения данных Telegram...");
+        }
       } catch (error) {
         console.error("[register] Error checking profile on step 4", error);
+        // Не показываем ошибку пользователю при временных проблемах сети
       }
     };
+    
+    // При переходе на шаг 4 сначала очищаем ошибки
+    setRegisterError(null);
     
     // Первая проверка через небольшую задержку (чтобы дать время БД обновиться)
     const initialTimeout = setTimeout(() => {
       checkProfileReady();
       // Затем проверяем каждые 2 секунды
       intervalId = setInterval(checkProfileReady, 2000);
-    }, 1000);
+    }, 1500);
     
     return () => {
       cancelled = true;
@@ -859,8 +881,15 @@ export default function RegisterDirectorClient() {
           <CardContent className="px-6 py-4 md:px-10 md:pb-6 md:pt-2 flex items-center justify-center min-h-[400px]">
             <div className="w-full">
               {registerError && (
-                <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
-                  <AlertCircle className="mt-0.5 h-4 w-4" />
+                <div className={cn(
+                  "mb-4 flex items-start gap-2 rounded-2xl px-4 py-3 text-xs",
+                  registerError === "Ожидание подтверждения данных Telegram..." || registerError.includes("Ожидание")
+                    ? "border border-blue-800/50 bg-blue-950/50 text-blue-100"
+                    : "border border-rose-800/80 bg-rose-950/80 text-rose-50"
+                )}>
+                  {registerError !== "Ожидание подтверждения данных Telegram..." && !registerError.includes("Ожидание") && (
+                    <AlertCircle className="mt-0.5 h-4 w-4" />
+                  )}
                   <span>{registerError}</span>
                 </div>
               )}
