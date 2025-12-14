@@ -244,61 +244,43 @@ export default function RegisterDirectorClient() {
       setIsSubmitting(true);
       setRegisterError(null);
 
-      // Проверяем наличие всех необходимых данных
-      if (!registeredUserEmail || !personal.password || !personal.firstName || !personal.lastName) {
-        setRegisterError("Не удалось получить данные для завершения регистрации.");
+      // Проверяем, что пользователь авторизован
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session?.user) {
+        setRegisterError("Сессия не найдена. Пожалуйста, войдите в систему.");
         return;
       }
 
-      // ШАГ 4: Вызываем финальный API для завершения регистрации
-      // Этот API создаст бизнес, обновит профиль и создаст запись в staff
-      const registerResponse = await fetch("/api/auth/register-director", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: registeredUserEmail,
-          password: personal.password,
-          phone: verifiedPhone || "", // Телефон из Telegram верификации
-          firstName: personal.firstName.trim(),
-          lastName: personal.lastName.trim(),
-          middleName: personal.middleName?.trim() || "",
-          birthDate: personal.birthDate || null,
-          locale: localeForAPI,
-        }),
-      });
+      const userId = session.user.id;
 
-      if (!registerResponse.ok) {
-        const errorData = await registerResponse.json().catch(() => ({}));
-        console.error("[register] register-director error", errorData);
-        setRegisterError(
-          errorData.message || "Не удалось завершить регистрацию. Попробуйте позже."
-        );
+      // Проверяем профиль: phone и telegram_verified
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("phone, telegram_verified")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("[register] Error fetching profile", profileError);
+        setRegisterError("Не удалось проверить профиль. Попробуйте позже.");
         return;
       }
 
-      const registerData = await registerResponse.json();
-      if (!registerData.success) {
-        setRegisterError(
-          registerData.message || "Не удалось завершить регистрацию."
-        );
+      // Проверяем два условия:
+      // 1. phone должен быть заполнен
+      // 2. telegram_verified должен быть true
+      if (!profile?.phone || profile.phone.trim() === "") {
+        setRegisterError("Номер телефона не подтвержден. Пожалуйста, завершите верификацию Telegram.");
         return;
       }
 
-      // После успешной регистрации делаем вход
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: registeredUserEmail,
-        password: personal.password,
-      });
-
-      if (signInError) {
-        console.warn("[register] signIn error", signInError);
-        setRegisterError(
-          "Регистрация завершена, но не удалось выполнить вход. Попробуйте войти вручную."
-        );
+      if (!profile?.telegram_verified) {
+        setRegisterError("Telegram не подтвержден. Пожалуйста, завершите верификацию Telegram.");
         return;
       }
 
-      // Сразу редирект в дашборд
+      // Оба условия выполнены - сразу редирект в дашборд
       router.push("/dashboard/director");
     } catch (e) {
       console.error("finishRegistration error", e);

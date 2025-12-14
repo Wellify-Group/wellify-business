@@ -143,15 +143,18 @@ export async function POST(request: NextRequest) {
       businessId: 'DUMMY_ID', // ЗАГЛУШКА: mapProfileToDb требует, но мы не используем businessId в profiles
       companyCode,
       jobTitle: "владелец",
-      active: true,
+      // active: true, // УДАЛЕНО: в таблице profiles нет колонки 'активен'
       phone: phone.trim(),
       phoneVerified: true,
       emailVerified: true, 
     });
 
     // !!! ИСПРАВЛЕНИЕ: Удаляем все проблемные поля, которых нет в PROFILES !!!
+    // Сначала удаляем проблемные поля из profileDataMapped
+    const { активен, бизнес_ид, business_id, locale: localeField, ФИО, ф_и_о, ...cleanProfileDataMapped } = profileDataMapped;
+    
     const finalProfileData: Record<string, any> = {
-        ...profileDataMapped,
+        ...cleanProfileDataMapped,
         id: userId,
         email: normalizedEmail,
         full_name: fullName, 
@@ -164,20 +167,23 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
         birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
         
-        // УДАЛЯЕМ ВСЕ ПРОБЛЕМНЫЕ/НЕПРАВИЛЬНЫЕ ПОЛЯ (которых нет в profiles)
-        бизнес_ид: undefined, 
-        business_id: undefined, 
-        locale: undefined, 
-        ФИО: undefined,
-        ф_и_о: undefined,
-        
         // Оставляем только те, которые точно есть:
         код_компании: companyCode,
         role: "директор"
     };
     
-    // Чистим окончательно от undefined
-    Object.keys(finalProfileData).forEach(key => finalProfileData[key] === undefined && delete finalProfileData[key]);
+    // Чистим окончательно от undefined и любых оставшихся проблемных полей
+    Object.keys(finalProfileData).forEach(key => {
+        if (finalProfileData[key] === undefined || 
+            key === 'активен' || 
+            key === 'бизнес_ид' || 
+            key === 'business_id' || 
+            key === 'locale' || 
+            key === 'ФИО' || 
+            key === 'ф_и_о') {
+            delete finalProfileData[key];
+        }
+    });
 
 
     // 6. Upsert (Обновление/Создание) профиля (UPDATE/INSERT)
