@@ -45,7 +45,10 @@ export function BusinessModal() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
             onClick={closeModal}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[10px]"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md"
+            style={{
+              background: "radial-gradient(circle at center, rgba(88, 130, 255, 0.1) 0%, rgba(0, 0, 0, 0.6) 100%)"
+            }}
           />
 
           {/* Modal */}
@@ -57,11 +60,13 @@ export function BusinessModal() {
               transition={{ duration: 0.3, ease: "easeOut" }}
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "relative w-full max-w-[720px] rounded-[32px] px-6 py-6 md:px-10 md:py-9 border",
-                "bg-card/95 text-card-foreground border-border shadow-[0_24px_80px_rgba(0,0,0,0.65)]",
+                "relative w-full max-w-[680px] rounded-[32px] px-6 py-6 md:px-10 md:py-10 border",
+                "bg-gradient-to-b from-[#0B1220] to-[#050712] text-card-foreground border-white/4 shadow-[0_24px_80px_rgba(0,0,0,0.70)]",
                 "backdrop-blur-[22px] transition-colors duration-300 pointer-events-auto"
               )}
             >
+              {/* Верхняя брендированная полоска */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-500 rounded-t-[32px]"></div>
               {/* Close Button */}
               <button
                 onClick={closeModal}
@@ -116,10 +121,11 @@ export function BusinessModal() {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.15 + index * 0.05 }}
-                        className="flex gap-3 items-start text-sm md:text-[15px] leading-snug"
+                        whileHover={{ x: 2 }}
+                        className="group flex gap-3 items-start text-sm md:text-[15px] leading-snug p-3 rounded-xl hover:bg-white/5 transition-all duration-200"
                       >
-                        <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white flex-shrink-0">
-                          <Check className="h-3.5 w-3.5" />
+                        <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white flex-shrink-0 transition-all duration-200 group-hover:scale-110 group-hover:shadow-[0_0_12px_rgba(37,99,235,0.5)]">
+                          <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium text-card-foreground">

@@ -93,15 +93,22 @@ export default function RegisterDirectorClient() {
       let value = e.target.value;
       
       // Валидация даты рождения: ограничение года от 1920 до текущего года
+      // Проверяем только если дата полностью введена (формат YYYY-MM-DD)
       if (field === "birthDate" && value) {
-        const date = new Date(value);
-        const currentYear = new Date().getFullYear();
-        const minYear = 1920;
-        
-        if (date.getFullYear() < minYear || date.getFullYear() > currentYear) {
-          // Не позволяем ввести невалидную дату
-          return;
+        // Проверяем, что дата в правильном формате (YYYY-MM-DD)
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (datePattern.test(value)) {
+          const date = new Date(value);
+          const currentYear = new Date().getFullYear();
+          const minYear = 1920;
+          
+          // Проверяем, что дата валидна и год в диапазоне
+          if (isNaN(date.getTime()) || date.getFullYear() < minYear || date.getFullYear() > currentYear) {
+            // Не позволяем ввести невалидную дату
+            return;
+          }
         }
+        // Если дата еще не полностью введена, разрешаем ввод
       }
       
       setPersonal((prev) => ({ ...prev, [field]: value }));

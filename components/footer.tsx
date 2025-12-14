@@ -41,12 +41,12 @@ export function AppFooter() {
       <footer
         className="border-t text-sm transition-colors"
         style={{
-          borderColor: isDark ? "rgba(255, 255, 255, 0.1)" : "var(--color-border-subtle)",
+          borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "var(--color-border-subtle)",
           backgroundColor: isDark ? "#050B13" : "var(--color-surface)",
           color: isDark ? "rgba(255, 255, 255, 0.7)" : "var(--color-text-muted)",
         }}
       >
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
             {/* BRAND */}
@@ -158,9 +158,10 @@ export function AppFooter() {
             }}
           >
             <p
-              className="text-center text-xs whitespace-pre-line"
+              className="text-center text-[11px] whitespace-pre-line tracking-wide"
               style={{
                 color: isDark ? "rgba(255, 255, 255, 0.4)" : "var(--color-text-soft)",
+                letterSpacing: "0.01em",
               }}
             >
               {t.footerBottomText[lang].replace(

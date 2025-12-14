@@ -252,19 +252,36 @@ export default function Home() {
   return (
     <main
       className="relative min-h-screen"
-      style={{ backgroundColor: "var(--color-background)" }}
+      style={{ 
+        backgroundColor: "var(--color-background)",
+        backgroundImage: `
+          radial-gradient(circle at 50% 30%, rgba(88, 130, 255, 0.08) 0%, transparent 50%),
+          repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(148, 163, 184, 0.03) 2px, rgba(148, 163, 184, 0.03) 4px)
+        `,
+      }}
     >
       {/* HERO */}
       <section
-        className="relative flex items-center justify-center px-4 pt-10 md:pt-14 pb-8 sm:px-6 lg:px-8"
-        style={{ backgroundColor: "var(--color-background)" }}
+        className="relative flex items-center justify-center px-4 pt-24 md:pt-32 pb-16 sm:px-6 lg:px-8 overflow-hidden"
+        style={{ backgroundColor: "transparent" }}
       >
-        <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 py-8 md:py-12 text-center">
+        {/* Фоновый брендовый слой */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent"></div>
+          <div 
+            className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          ></div>
+        </div>
+
+        <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10">
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05, duration: 0.5 }}
-            className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-tight"
+            transition={{ delay: 0.05, duration: 0.6, ease: "easeOut" }}
+            className="text-5xl md:text-6xl font-extrabold tracking-tight text-foreground leading-tight"
           >
             {t("landing_hero_main_title")}
           </motion.h1>
@@ -272,8 +289,8 @@ export default function Home() {
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-            className="max-w-2xl text-base text-zinc-600 sm:text-lg dark:text-zinc-400"
+            transition={{ delay: 0.15, duration: 0.6, ease: "easeOut" }}
+            className="max-w-3xl text-base text-muted-foreground sm:text-lg leading-relaxed"
           >
             {t("landing_hero_main_desc")}
           </motion.p>
@@ -281,11 +298,11 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="flex flex-col items-center gap-3 sm:flex-row"
+            transition={{ delay: 0.25, duration: 0.6, ease: "easeOut" }}
+            className="flex flex-col items-center gap-4 sm:flex-row sm:gap-4"
           >
             <Link href={signupHref}>
-              <PrimaryButton>
+              <PrimaryButton className="bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:via-blue-400 hover:to-indigo-500 shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200">
                 {t("landing_btn_create_director")}
               </PrimaryButton>
             </Link>
@@ -293,7 +310,7 @@ export default function Home() {
             <button
               type="button"
               onClick={scrollToHowItWorks}
-              className="text-sm font-medium text-zinc-700 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+              className="px-6 h-12 rounded-full border border-border bg-transparent text-sm font-medium text-foreground hover:bg-muted/50 hover:border-white/10 transition-all duration-200"
             >
               {t("landing_btn_how_it_works")}
             </button>
@@ -306,8 +323,8 @@ export default function Home() {
         className="relative px-4 pt-8 pb-10 sm:px-6 lg:px-8"
         style={{ backgroundColor: "var(--color-background)" }}
       >
-        <div className="mx-auto max-w-6xl">
-          <h2 className="mb-8 text-center text-3xl font-bold text-foreground">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
             {t("sec_whom")}
           </h2>
 
@@ -315,6 +332,8 @@ export default function Home() {
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
               const isActive = activeCategoryId === String(segment.id);
+              // Первая строка (первые 4 элемента) - более акцентная
+              const isFirstRow = index < 4;
 
               return (
                 <motion.button
@@ -324,28 +343,33 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   whileTap={{ scale: 0.98 }}
+                  whileHover={{ y: -2, scale: 1.01 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border border-border dark:bg-surface-elevated bg-card px-8 py-6 text-sm font-medium text-card-foreground dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] shadow-lg transition-all duration-200 hover:-translate-y-1 hover:bg-muted hover:shadow-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border bg-gradient-to-br backdrop-blur-sm px-6 py-5 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    isFirstRow
+                      ? "border-white/8 from-[#0F172A]/80 to-[#020617]/80 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:border-white/12 hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+                      : "border-white/4 from-[#0B1220]/60 to-[#050712]/60 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-white/8 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
                     isActive
                       ? "bg-primary text-white shadow-2xl border-primary"
-                      : ""
+                      : "text-foreground"
                   )}
                 >
                   <Icon
                     className={cn(
-                      "h-6 w-6",
+                      "h-6 w-6 transition-transform duration-250 group-hover:scale-[1.03]",
                       isActive
-                        ? "text-white dark:text-zinc-900"
-                        : "text-neutral-500 dark:text-neutral-200"
+                        ? "text-white"
+                        : "text-muted-foreground group-hover:text-foreground"
                     )}
+                    strokeWidth={2}
                   />
                   <span
                     className={cn(
-                      "break-words leading-tight",
+                      "break-words leading-tight text-center",
                       isActive
                         ? "text-white"
-                        : "text-neutral-900 dark:text-neutral-50"
+                        : "text-foreground"
                     )}
                   >
                     {segment.label}
@@ -362,12 +386,12 @@ export default function Home() {
         className="relative px-4 py-[60px] sm:px-6 lg:px-8"
         style={{ backgroundColor: "var(--color-background)" }}
       >
-        <div className="mx-auto max-w-6xl">
-          <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="mb-16 text-center text-3xl font-bold text-foreground">
             {t("sec_caps")}
           </h2>
 
-          <div className="space-y-12">
+          <div className="space-y-16">
             {FEATURES.map((category, categoryIndex) => (
               <motion.div
                 key={category.category}
@@ -376,13 +400,16 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ delay: categoryIndex * 0.1, duration: 0.5 }}
               >
-                <h3 className="mb-6 text-xl font-semibold text-foreground">
-                  {category.category}
-                </h3>
+                <div className="mb-8">
+                  <h3 className="mb-3 text-2xl font-semibold text-foreground">
+                    {category.category}
+                  </h3>
+                  <div className="h-px w-24 bg-gradient-to-r from-blue-500/50 to-transparent"></div>
+                </div>
 
                 <div
                   className={cn(
-                    "grid gap-4",
+                    "grid gap-5",
                     categoryIndex === 0
                       ? "md:grid-cols-2 lg:grid-cols-3"
                       : categoryIndex === 1
@@ -404,16 +431,16 @@ export default function Home() {
                             categoryIndex * 0.1 + itemIndex * 0.05,
                           duration: 0.3,
                         }}
-                        whileHover={{ scale: 1.02, y: -2 }}
-                        className="flex flex-col gap-2 rounded-xl dark:bg-surface-elevated bg-card/50 backdrop-blur-sm border border-border p-6 transition-all duration-300 ease-out dark:shadow-[0_0_20px_rgba(0,0,0,0.45)] shadow-lg hover:shadow-xl hover:bg-card"
+                        whileHover={{ y: -2 }}
+                        className="flex flex-col gap-3 rounded-2xl bg-gradient-to-br from-[#0B1220]/60 to-[#050712]/60 backdrop-blur-sm border border-white/4 p-6 transition-all duration-250 ease-out shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-white/8 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
                       >
                         <div className="flex items-center gap-3">
-                          <Icon className="h-6 w-6 flex-shrink-0 text-primary" />
-                          <span className="text-sm font-medium text-foreground">
+                          <Icon className="h-6 w-6 flex-shrink-0 text-primary" strokeWidth={2} />
+                          <span className="text-base font-semibold text-foreground">
                             {item.title}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
                           {item.description}
                         </p>
                       </motion.div>
@@ -426,18 +453,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
+      {/* HOW IT WORKS + QUICK START */}
       <section
         id="how-it-works"
         className="relative px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32"
         style={{ backgroundColor: "var(--color-background)" }}
       >
-        <div className="mx-auto max-w-6xl">
-          <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="mb-16 text-center text-3xl font-bold text-foreground">
             {t("sec_how")}
           </h2>
 
-          <div className="flex flex-col items-center gap-8 lg:flex-row lg:justify-between">
+          <div className="relative flex flex-col items-center gap-12 lg:flex-row lg:justify-between lg:gap-8 mb-20">
             {/* Step 1 */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -447,17 +474,25 @@ export default function Home() {
               className="flex flex-1 flex-col items-center text-center"
             >
               <div className="mb-4 rounded-full bg-primary/10 p-6">
-                <Smartphone className="h-12 w-12 text-primary" />
+                <Smartphone className="h-12 w-12 text-primary" strokeWidth={2} />
               </div>
               <h3 className="mb-2 text-xl font-semibold text-foreground">
                 {t("landing_how_works_step1_title")}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {t("landing_how_works_step1_desc")}
               </p>
             </motion.div>
 
-            <ArrowRight className="hidden h-8 w-8 rotate-90 text-muted-foreground lg:block lg:rotate-0" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.25, duration: 0.4 }}
+              className="hidden lg:block"
+            >
+              <ArrowRight className="h-8 w-8 text-muted-foreground" strokeWidth={2} />
+            </motion.div>
 
             {/* Step 2 */}
             <motion.div
@@ -468,17 +503,25 @@ export default function Home() {
               className="flex flex-1 flex-col items-center text-center"
             >
               <div className="mb-4 rounded-full bg-primary/10 p-6">
-                <Cpu className="h-12 w-12 text-primary" />
+                <Cpu className="h-12 w-12 text-primary" strokeWidth={2} />
               </div>
               <h3 className="mb-2 text-xl font-semibold text-foreground">
                 {t("landing_how_works_step2_title")}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {t("landing_how_works_step2_desc")}
               </p>
             </motion.div>
 
-            <ArrowRight className="hidden h-8 w-8 rotate-90 text-muted-foreground lg:block lg:rotate-0" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.35, duration: 0.4 }}
+              className="hidden lg:block"
+            >
+              <ArrowRight className="h-8 w-8 text-muted-foreground" strokeWidth={2} />
+            </motion.div>
 
             {/* Step 3 */}
             <motion.div
@@ -489,46 +532,41 @@ export default function Home() {
               className="flex flex-1 flex-col items-center text-center"
             >
               <div className="mb-4 rounded-full bg-primary/10 p-6">
-                <LineChart className="h-12 w-12 text-primary" />
+                <LineChart className="h-12 w-12 text-primary" strokeWidth={2} />
               </div>
               <h3 className="mb-2 text-xl font-semibold text-foreground">
                 {t("landing_how_works_step3_title")}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {t("landing_how_works_step3_desc")}
               </p>
             </motion.div>
           </div>
-        </div>
-      </section>
 
-      {/* QUICK START */}
-      <section
-        className="relative px-4 py-[60px] sm:px-6 lg:px-8"
-        style={{ backgroundColor: "var(--color-background)" }}
-      >
-        <div className="mx-auto max-w-2xl">
-          <h2 className="mb-4 text-center text-3xl font-bold text-foreground">
-            {t("landing_quick_start_title")}
-          </h2>
+          {/* QUICK START */}
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="mb-4 text-3xl font-bold text-foreground">
+              {t("landing_quick_start_title")}
+            </h2>
 
-          <p className="mb-8 text-center text-muted-foreground max-w-xl mx-auto">
-            Откройте аккаунт директора и настройте свои точки, сотрудников и
-            смены в одном кабинете.
-          </p>
+            <p className="mb-8 text-muted-foreground max-w-xl mx-auto text-sm">
+              Меньше минуты, без карты и платежей
+            </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex justify-center"
-          >
-            <Link href="/register">
-              <PrimaryButton>
-                {t("landing_btn_create_director")}
-              </PrimaryButton>
-            </Link>
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="flex justify-center"
+            >
+              <Link href="/register">
+                <PrimaryButton className="bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:via-blue-400 hover:to-indigo-500 shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 px-8 h-14 text-base">
+                  {t("landing_btn_create_director")}
+                </PrimaryButton>
+              </Link>
+            </motion.div>
+          </div>
         </div>
       </section>
     </main>
