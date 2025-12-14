@@ -662,7 +662,7 @@ export default function RegisterDirectorClient() {
   // ---------- main render ----------
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-background px-4 pt-28 pb-10">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
       <div className="relative w-full max-w-3xl">
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
