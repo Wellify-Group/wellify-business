@@ -251,14 +251,7 @@ export default function Home() {
 
   return (
     <main
-      className="relative min-h-screen"
-      style={{ 
-        backgroundColor: "var(--color-background)",
-        backgroundImage: `
-          radial-gradient(circle at 50% 30%, rgba(88, 130, 255, 0.08) 0%, transparent 50%),
-          repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(148, 163, 184, 0.03) 2px, rgba(148, 163, 184, 0.03) 4px)
-        `,
-      }}
+      className="relative min-h-screen bg-background"
     >
       {/* HERO */}
       <section
@@ -267,13 +260,7 @@ export default function Home() {
       >
         {/* Фоновый брендовый слой */}
         <div className="absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent"></div>
-          <div 
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          ></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent"></div>
         </div>
 
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10">
@@ -310,7 +297,7 @@ export default function Home() {
             <button
               type="button"
               onClick={scrollToHowItWorks}
-              className="px-6 h-12 rounded-full border border-border bg-transparent text-sm font-medium text-foreground hover:bg-muted/50 hover:border-white/10 transition-all duration-200"
+              className="px-6 h-12 rounded-full border border-border bg-transparent text-sm font-medium text-foreground hover:bg-muted/50 hover:border-border-hover transition-all duration-200"
             >
               {t("landing_btn_how_it_works")}
             </button>
@@ -346,12 +333,12 @@ export default function Home() {
                   whileHover={{ y: -2, scale: 1.01 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "group flex flex-col items-center justify-center gap-3 rounded-xl border bg-gradient-to-br backdrop-blur-sm px-5 py-4 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "group flex flex-col items-center justify-center gap-3 rounded-xl border bg-card backdrop-blur-sm px-5 py-4 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isFirstRow
-                      ? "border-white/8 from-[#0F172A]/80 to-[#020617]/80 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:border-primary/30 hover:shadow-[0_12px_40px_rgba(37,99,235,0.3)] hover:ring-1 hover:ring-primary/20"
-                      : "border-white/4 from-[#0B1220]/60 to-[#050712]/60 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-primary/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.2)] hover:ring-1 hover:ring-primary/10",
+                      ? "border-border shadow-[var(--shadow-card)] hover:border-primary/30 hover:shadow-[var(--shadow-floating)] hover:ring-1 hover:ring-primary/20"
+                      : "border-border shadow-[var(--shadow-soft)] hover:border-primary/20 hover:shadow-[var(--shadow-card)] hover:ring-1 hover:ring-primary/10",
                     isActive
-                      ? "bg-primary text-white shadow-2xl border-primary"
+                      ? "bg-primary text-primary-foreground shadow-[var(--shadow-floating)] border-primary"
                       : "text-foreground"
                   )}
                 >
@@ -359,7 +346,7 @@ export default function Home() {
                     className={cn(
                       "h-7 w-7 transition-transform duration-250 group-hover:scale-[1.05] mb-1",
                       isActive
-                        ? "text-white"
+                        ? "text-primary-foreground"
                         : "text-muted-foreground group-hover:text-primary"
                     )}
                     strokeWidth={2}
@@ -368,7 +355,7 @@ export default function Home() {
                     className={cn(
                       "break-words leading-tight text-center text-base font-semibold",
                       isActive
-                        ? "text-white"
+                        ? "text-primary-foreground"
                         : "text-foreground"
                     )}
                   >
@@ -432,7 +419,7 @@ export default function Home() {
                           duration: 0.3,
                         }}
                         whileHover={{ y: -2 }}
-                        className="flex flex-col gap-3 rounded-2xl bg-gradient-to-br from-[#0B1220]/60 to-[#050712]/60 backdrop-blur-sm border border-white/4 p-6 transition-all duration-250 ease-out shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-white/8 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+                        className="flex flex-col gap-3 rounded-2xl bg-card backdrop-blur-sm border border-border p-6 transition-all duration-250 ease-out shadow-[var(--shadow-soft)] hover:border-border-hover hover:shadow-[var(--shadow-card)]"
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-6 w-6 flex-shrink-0 text-primary" strokeWidth={2} />
