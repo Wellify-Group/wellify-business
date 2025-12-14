@@ -634,7 +634,7 @@ export default function RegisterDirectorClient() {
           Создать аккаунт директора
         </CardTitle>
         {descriptionText && (
-          <CardDescription className="mt-2 md:mt-3 text-center text-sm leading-relaxed text-muted-foreground">
+          <CardDescription className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
             {descriptionText}
           </CardDescription>
         )}
@@ -931,7 +931,7 @@ export default function RegisterDirectorClient() {
    * Поле ввода e-mail с отправкой письма для подтверждения
    */
   const renderStep2 = () => (
-    <form id="step2-form" className="space-y-3" onSubmit={handleSubmitStep2}>
+    <form id="step2-form" className="space-y-4" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Рабочий e-mail
@@ -951,7 +951,7 @@ export default function RegisterDirectorClient() {
         </div>
       </div>
 
-      <div className="mt-2 flex flex-col gap-2 text-xs text-muted-foreground">
+      <div className="mt-4 flex flex-col gap-2 text-xs text-muted-foreground">
         <p>
           Этот адрес будет использоваться для входа, уведомлений по сменам и
           восстановления доступа.
@@ -1080,8 +1080,8 @@ export default function RegisterDirectorClient() {
   // Главный контейнер: центрирование по вертикали и горизонтали
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 pt-14 pb-10">
-      <div className="relative w-full max-w-xl mt-10 mb-10">
+    <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
+      <div className="relative w-full max-w-xl">
         <Card className="relative z-10 w-full rounded-[28px] border border-white/4 bg-gradient-to-b from-[#0B1220] to-[#050712] backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.70)]">
           <CardHeader className="px-8 pt-5 pb-0">
             {step !== 4 && renderTabs()}
@@ -1113,14 +1113,14 @@ export default function RegisterDirectorClient() {
               )}
               {step === 2 && (
                 <div className="flex justify-center">
-                  <div className="w-full max-w-md">
+                  <div className="w-full">
                     {renderStep2()}
                   </div>
                 </div>
               )}
               {step === 3 && (
                 <div className="flex justify-center">
-                  <div className="w-full max-w-md">
+                  <div className="w-full">
                     {renderStep3()}
                   </div>
                 </div>
@@ -1129,41 +1129,17 @@ export default function RegisterDirectorClient() {
             </div>
           </CardContent>
 
-          <CardFooter className="relative flex items-center justify-between px-8 pb-4 pt-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              {step > 1 && step < 4 && (
+          {/* Footer с кнопками и ссылкой "Уже есть аккаунт?" */}
+          {step === 2 ? (
+            <div className="px-8 pb-4 pt-2 mt-8">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <button
                   type="button"
-                  onClick={handleBack}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  onClick={() => router.push("/auth/login")}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                  Назад
+                  Уже есть аккаунт? <span className="underline">Войти</span>
                 </button>
-              )}
-            </div>
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-[11px]">
-              <span className="text-muted-foreground">Уже есть аккаунт? </span>
-              <button
-                type="button"
-                onClick={() => router.push("/auth/login")}
-                className="ml-1 font-medium text-foreground underline-offset-4 hover:underline"
-              >
-                Войти
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              {step === 1 && (
-                <button
-                  type="button"
-                  onClick={handleNextFromStep1}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
-                >
-                  Далее
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-              {step === 2 && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1179,7 +1155,7 @@ export default function RegisterDirectorClient() {
                     emailStatus === "sending" ||
                     emailStatus === "link_sent"
                   }
-                  className="inline-flex items-center justify-center h-11 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                  className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
                   {isSubmitting || emailStatus === "sending" ? (
                     <>
@@ -1198,9 +1174,46 @@ export default function RegisterDirectorClient() {
                     </>
                   )}
                 </button>
-              )}
+              </div>
             </div>
-          </CardFooter>
+          ) : (
+            <CardFooter className="relative flex items-center justify-between px-8 pb-4 pt-2 mt-8 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                {step > 1 && step < 4 && (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Назад
+                  </button>
+                )}
+              </div>
+              <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-[11px]">
+                <span className="text-muted-foreground">Уже есть аккаунт? </span>
+                <button
+                  type="button"
+                  onClick={() => router.push("/auth/login")}
+                  className="ml-1 font-medium text-foreground underline-offset-4 hover:underline"
+                >
+                  Войти
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                {step === 1 && (
+                  <button
+                    type="button"
+                    onClick={handleNextFromStep1}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
+                  >
+                    Далее
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </CardFooter>
+          )}
         </Card>
       </div>
     </main>
