@@ -30,6 +30,7 @@ import {
   AssignModal 
 } from "./problem-modals";
 import { useToast } from "@/components/ui/toast";
+import { useLanguage } from "@/components/language-provider";
 
 interface ProblemCenterProps {
   networkStatus: 'normal' | 'risks' | 'critical';
@@ -43,6 +44,7 @@ interface ProblemCenterProps {
 }
 
 export function ProblemCenter({ networkStatus, notifications, problems }: ProblemCenterProps) {
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<'all' | ProblemCategory>('all');
   const [resolvedProblems, setResolvedProblems] = useState<Set<string>>(new Set());
   const [pinnedProblems, setPinnedProblems] = useState<Set<string>>(new Set());
@@ -131,9 +133,9 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
   };
 
   const typeLabels = {
-    finance: 'Финансы',
-    personnel: 'Персонал',
-    operations: 'Операции'
+    finance: t("dashboard.problem_center_finance"),
+    personnel: t("dashboard.problem_center_personnel"),
+    operations: t("dashboard.problem_center_operations")
   };
 
   const severityColors = {
@@ -383,10 +385,10 @@ export function ProblemCenter({ networkStatus, notifications, problems }: Proble
           <div className="flex flex-col gap-3">
             <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
               <TabsList className="grid w-full grid-cols-4 h-8">
-                <TabsTrigger value="all" className="text-xs">Все</TabsTrigger>
-                <TabsTrigger value="finance" className="text-xs">Финансы</TabsTrigger>
-                <TabsTrigger value="personnel" className="text-xs">Персонал</TabsTrigger>
-                <TabsTrigger value="operations" className="text-xs">Операции</TabsTrigger>
+                <TabsTrigger value="all" className="text-xs">{t("dashboard.problem_center_all")}</TabsTrigger>
+                <TabsTrigger value="finance" className="text-xs">{t("dashboard.problem_center_finance")}</TabsTrigger>
+                <TabsTrigger value="personnel" className="text-xs">{t("dashboard.problem_center_personnel")}</TabsTrigger>
+                <TabsTrigger value="operations" className="text-xs">{t("dashboard.problem_center_operations")}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>

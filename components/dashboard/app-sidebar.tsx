@@ -40,7 +40,7 @@ export function AppSidebar() {
       { name: t("dashboard.nav_staff"), href: "/dashboard/director/staff", icon: Users, id: "nav-staff" },
     ] : []),
     { name: t("dashboard.nav_shifts"), href: "/dashboard/director/shifts", icon: FileText, id: "nav-shifts" },
-    { name: "Склад / Инвентарь", href: "/dashboard/manager/inventory", icon: Package, id: "nav-inventory", roles: ['director', 'manager'] },
+    { name: t("dashboard.nav_inventory"), href: "/dashboard/manager/inventory", icon: Package, id: "nav-inventory", roles: ['director', 'manager'] },
     ...(!isManager ? [
       { name: t("dashboard.nav_builder"), href: "/dashboard/director/builder", icon: Settings, id: "nav-builder" },
     ] : []),

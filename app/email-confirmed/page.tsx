@@ -2,90 +2,71 @@
 
 import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { useEffect, useState } from "react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+
+const translations = {
+  ru: {
+    title: "Подтверждение e-mail",
+    message: "Ваш e-mail успешно подтверждён.",
+    closeButton: "Закрыть окно",
+  },
+  uk: {
+    title: "Підтвердження e-mail",
+    message: "Ваш e-mail успішно підтверджено.",
+    closeButton: "Закрити вікно",
+  },
+  en: {
+    title: "Email confirmation",
+    message: "Your email has been successfully confirmed.",
+    closeButton: "Close window",
+  },
+} as const;
 
 export default function EmailConfirmedPage() {
-  const { t, language } = useLanguage();
-  const [userLanguage, setUserLanguage] = useState<"ru" | "uk" | "en">("ru");
-  const supabase = createBrowserSupabaseClient();
+  const { language } = useLanguage();
 
-  // Загружаем язык пользователя из БД
-  useEffect(() => {
-    const loadUserLanguage = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("language")
-            .eq("id", session.user.id)
-            .maybeSingle();
-          
-          if (profile?.language) {
-            const lang = profile.language === "ua" ? "uk" : profile.language;
-            if (["ru", "uk", "en"].includes(lang)) {
-              setUserLanguage(lang as "ru" | "uk" | "en");
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error loading user language:", error);
-      }
-    };
-    loadUserLanguage();
-  }, [supabase]);
+  const activeLang = (["ru", "uk", "en"].includes(language)
+    ? language
+    : "ru") as "ru" | "uk" | "en";
 
-  const translations = {
-    ru: {
-      title: "Подтверждение e-mail",
-      message: "Ваш e-mail успешно подтверждён.",
-      closeButton: "Закрыть окно",
-    },
-    uk: {
-      title: "Підтвердження e-mail",
-      message: "Ваш e-mail успішно підтверджено.",
-      closeButton: "Закрити вікно",
-    },
-    en: {
-      title: "Email Confirmation",
-      message: "Your email has been successfully confirmed.",
-      closeButton: "Close Window",
-    },
-  };
-
-  const texts = translations[userLanguage];
+  const texts = translations[activeLang];
 
   const handleClose = () => {
-    // Закрываем окно браузера
     if (window.opener) {
       window.close();
-    } else {
-      window.close();
+      return;
     }
+    window.close();
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-xl rounded-[32px] border border-[var(--border)] bg-[var(--card)] px-8 py-10 shadow-[var(--shadow-modal)]">
-        <div className="flex flex-col items-center text-center space-y-4">
-          <CheckCircle2 className="h-16 w-16 text-[var(--color-success)]" />
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+      <div className="relative w-full max-w-xl">
+        <div className="pointer-events-none absolute inset-x-0 -top-24 flex justify-center">
+          <div className="h-48 w-48 rounded-full bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.32),_transparent_65%)] blur-2xl" />
+        </div>
 
-          <h1 className="text-2xl font-semibold text-[var(--foreground)]">
-            {texts.title}
-          </h1>
+        <div className="relative overflow-hidden rounded-[32px] border border-border bg-card px-6 py-8 shadow-[var(--shadow-modal)] sm:px-10 sm:py-12">
+          <div className="flex flex-col items-center space-y-5 text-center sm:space-y-6">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow-[0_0_0_1px_rgba(34,197,94,0.35)]">
+              <CheckCircle2 className="h-10 w-10 text-[color:var(--color-success)]" />
+            </div>
 
-          <p className="max-w-md text-sm leading-relaxed text-[var(--muted-foreground)]">
-            {texts.message}
-          </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {texts.title}
+            </h1>
 
-          <button
-            type="button"
-            onClick={handleClose}
-            className="mt-2 inline-flex h-10 items-center justify-center rounded-full bg-[var(--primary)] px-6 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-floating)] transition hover:bg-[var(--primary)]/90"
-          >
-            {texts.closeButton}
-          </button>
+            <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {texts.message}
+            </p>
+
+            <button
+              type="button"
+              onClick={handleClose}
+              className="mt-2 inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-semibold tracking-wide text-primary-foreground shadow-[var(--shadow-floating)] transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              {texts.closeButton}
+            </button>
+          </div>
         </div>
       </div>
     </main>

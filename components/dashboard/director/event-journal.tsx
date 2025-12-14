@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Users, AlertTriangle, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/language-provider";
 
 interface Event {
   id: string;
@@ -32,11 +33,13 @@ export function EventJournal({ events }: EventJournalProps) {
     other: FileText
   };
 
+  const { t } = useLanguage();
+  
   const typeLabels = {
-    finance: 'Финансы',
-    incident: 'Инциденты',
-    personnel: 'Персонал',
-    other: 'Прочее'
+    finance: t("dashboard.event_journal_finance"),
+    incident: t("dashboard.event_journal_incident"),
+    personnel: t("dashboard.event_journal_personnel"),
+    other: t("dashboard.event_journal_other")
   };
 
   const typeColors = {
@@ -67,10 +70,10 @@ export function EventJournal({ events }: EventJournalProps) {
               onChange={(e) => setFilter(e.target.value as any)}
               className="text-xs bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
-              <option value="all">Все события</option>
-              <option value="finance">Финансы</option>
-              <option value="incident">Инциденты</option>
-              <option value="personnel">Персонал</option>
+              <option value="all">{t("dashboard.event_journal_all")}</option>
+              <option value="finance">{t("dashboard.event_journal_finance")}</option>
+              <option value="incident">{t("dashboard.event_journal_incident")}</option>
+              <option value="personnel">{t("dashboard.event_journal_personnel")}</option>
             </select>
           )}
         </div>

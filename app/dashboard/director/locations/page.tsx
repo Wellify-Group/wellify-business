@@ -340,9 +340,9 @@ function LocationsContent() {
         return t("dashboard.loc_active");
       case 'paused':
       case 'yellow':
-        return "Приостановлена";
+        return t("dashboard.location_status_paused");
       case 'archived':
-        return "Архивирована";
+        return t("dashboard.location_status_archived");
       case 'error':
       case 'red':
         return t("dashboard.loc_problem");
@@ -580,7 +580,7 @@ function LocationsContent() {
                               onClick={handleConfirmManager}
                               disabled={!newManager.name.trim() || !newManager.pin.trim()}
                               className="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Подтвердить"
+                              title={t("dashboard.confirm")}
                             >
                               <Check className="w-4 h-4" />
                             </button>
@@ -589,7 +589,7 @@ function LocationsContent() {
                               type="button"
                               onClick={handleEditManager}
                               className="h-10 w-10 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 hover:text-indigo-500 bg-transparent transition-all"
-                              title="Редактировать"
+                              title={t("dashboard.edit")}
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -598,7 +598,7 @@ function LocationsContent() {
                             type="button"
                             onClick={handleRemoveManager}
                             className="h-10 w-10 flex items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
-                            title="Удалить"
+                            title={t("dashboard.delete")}
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -684,7 +684,7 @@ function LocationsContent() {
                                 onClick={() => handleConfirmEmployee(emp.id)}
                                 disabled={!emp.name.trim() || !emp.pin.trim()}
                                 className="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Подтвердить"
+                                title={t("dashboard.confirm")}
                               >
                                 <Check className="w-4 h-4" />
                               </button>
@@ -693,7 +693,7 @@ function LocationsContent() {
                                 type="button"
                                 onClick={() => handleEditEmployee(emp.id)}
                                 className="h-10 w-10 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 hover:text-indigo-500 bg-transparent transition-all"
-                                title="Редактировать"
+                                title={t("dashboard.edit")}
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -702,7 +702,7 @@ function LocationsContent() {
                               type="button"
                               onClick={() => handleRemoveEmployee(emp.id)}
                               className="h-10 w-10 flex items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
-                              title="Удалить"
+                              title={t("dashboard.delete")}
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -887,10 +887,10 @@ function LocationsContent() {
           setDeleteLocationId(null);
         }}
         onConfirm={confirmDelete}
-        title="Удалить локацию"
-        message="Вы уверены, что хотите удалить эту локацию? Это действие нельзя отменить."
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t("dashboard.delete") + " " + t("dashboard.nav_locations").toLowerCase()}
+        message={t("dashboard.delete_location_confirm") || "Вы уверены, что хотите удалить эту локацию? Это действие нельзя отменить."}
+        confirmText={t("dashboard.delete_confirm")}
+        cancelText={t("dashboard.cancel_action")}
         variant="danger"
       />
     </div>

@@ -757,7 +757,7 @@ export default function DirectorDashboard() {
               href="/dashboard/director/locations?action=new"
               className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-floating)] transition hover:bg-primary/90"
             >
-              Создать точку
+              {t("dashboard.create_point")}
             </Link>
           </div>
         </div>

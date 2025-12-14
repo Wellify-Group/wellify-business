@@ -45,20 +45,22 @@ import { StaffPassportModal } from "@/components/dashboard/staff-passport-modal"
 
 type TabType = 'info' | 'team' | 'schedule' | 'settings' | 'docs' | 'history';
 
-const DAYS = [
-  { key: 'mon' as const, label: 'Понедельник' },
-  { key: 'tue' as const, label: 'Вторник' },
-  { key: 'wed' as const, label: 'Среда' },
-  { key: 'thu' as const, label: 'Четверг' },
-  { key: 'fri' as const, label: 'Пятница' },
-  { key: 'sat' as const, label: 'Суббота' },
-  { key: 'sun' as const, label: 'Воскресенье' }
-];
+// DAYS will be defined inside component to use translations
 
 export default function LocationProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { t } = useLanguage();
+  
+  const DAYS = [
+    { key: 'mon' as const, label: t("dashboard.weekdays.monday") },
+    { key: 'tue' as const, label: t("dashboard.weekdays.tuesday") },
+    { key: 'wed' as const, label: t("dashboard.weekdays.wednesday") },
+    { key: 'thu' as const, label: t("dashboard.weekdays.thursday") },
+    { key: 'fri' as const, label: t("dashboard.weekdays.friday") },
+    { key: 'sat' as const, label: t("dashboard.weekdays.saturday") },
+    { key: 'sun' as const, label: t("dashboard.weekdays.sunday") }
+  ];
   const { 
     locations, 
     employees, 
