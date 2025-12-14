@@ -18,6 +18,7 @@ import { QuickActions } from "@/components/dashboard/director/quick-actions";
 import { Problem, createProblemFromSource } from "@/lib/problem-types";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 export default function DirectorDashboard() {
   const { t, language } = useLanguage();
@@ -731,41 +732,66 @@ export default function DirectorDashboard() {
     // Формируем имя отчество директора
     const firstName = (currentUser as any)?.firstName || "";
     const middleName = (currentUser as any)?.middleName || "";
-    const directorGreeting = [firstName, middleName].filter(Boolean).join(" ") || directorName;
+    const lastName = (currentUser as any)?.lastName || "";
+    const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ") || currentUser?.fullName || "";
+    const directorGreeting = fullName || directorName;
     
     const welcomeText = t("dashboard.welcome_text") || "Добро пожаловать";
     const greetingName = directorGreeting && directorGreeting !== "User" ? directorGreeting : "";
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-var(--navbar-height)-40px)] px-4 py-8">
-        <div className="w-full max-w-xl space-y-6">
+      <div className="flex items-center justify-center min-h-[calc(100vh-var(--navbar-height))] px-4 py-12">
+        <div className="w-full max-w-2xl">
           <DayHeader />
-          <div className="flex flex-col items-center justify-center py-8 px-4 bg-card border border-border rounded-xl">
-            <div className="text-center max-w-md space-y-4">
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-primary uppercase tracking-wider">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="mt-8 flex flex-col items-center justify-center py-10 px-8 bg-card border border-border rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.4)]"
+          >
+            {/* Прогресс индикатор */}
+            <div className="w-full mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-primary/70 uppercase tracking-wider">
+                  Шаг 1 из 3
+                </span>
+                <span className="text-xs text-muted-foreground/60">33%</span>
+              </div>
+              <div className="h-1 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-full" style={{ width: '33%' }}></div>
+              </div>
+            </div>
+
+            <div className="text-center max-w-lg space-y-5">
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-primary/70 uppercase tracking-[0.15em]">
                   Шаг 1
                 </p>
-                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-                  {welcomeText} {greetingName}
+                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
+                  {welcomeText}
                 </h1>
+                {greetingName && (
+                  <h2 className="text-2xl md:text-3xl font-bold text-foreground/90">
+                    {greetingName}
+                  </h2>
+                )}
               </div>
-              <p className="text-muted-foreground text-base leading-relaxed">
+              <p className="text-muted-foreground text-lg leading-relaxed">
                 Создайте первую торговую точку, чтобы начать работу.
               </p>
-              <div className="space-y-3 pt-2">
+              <div className="space-y-4 pt-2">
                 <Link
                   href="/dashboard/director/locations?action=new"
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 py-4 text-lg font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-10 py-4 text-lg font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
                 >
                   {t("dashboard.create_point") || "Создать точку"}
                 </Link>
-                <p className="text-xs text-muted-foreground/80 max-w-sm mx-auto">
+                <p className="text-xs text-muted-foreground/70 leading-snug max-w-md mx-auto">
                   После создания точки вы увидите онлайн-выручку, смены и сотрудников в одном кабинете.
                 </p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     );

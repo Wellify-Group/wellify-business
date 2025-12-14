@@ -267,19 +267,21 @@ export default function Home() {
       >
         {/* Фоновый брендовый слой - ограничен внутри секции */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/5 to-transparent"></div>
-          <div 
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          ></div>
+          {/* Крупный радиальный градиент позади заголовка */}
+          <div className="absolute inset-0 bg-gradient-radial from-blue-500/8 via-blue-500/4 to-transparent" style={{
+            background: 'radial-gradient(circle at 50% 40%, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 40%, transparent 70%)'
+          }}></div>
+          
+          {/* Размазанные glow пятна */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/6 rounded-full blur-[120px] -z-10"></div>
+          <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-indigo-500/6 rounded-full blur-[120px] -z-10"></div>
         </div>
         
         {/* Плавный градиентный переход внизу hero-секции */}
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent via-[var(--color-background)]/50 to-[var(--color-background)] pointer-events-none -z-[5]"></div>
 
-        <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10">
+        {/* Glass эффект для контента */}
+        <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10 backdrop-blur-sm bg-background/30 border border-white/5 rounded-3xl px-8 md:px-12 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -331,7 +333,7 @@ export default function Home() {
             {t("sec_whom")}
           </h2>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-5 lg:grid-cols-4">
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
               const isActive = activeCategoryId === String(segment.id);
@@ -349,10 +351,10 @@ export default function Home() {
                   whileHover={{ y: -2, scale: 1.01 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "group flex flex-col items-center justify-center gap-3 rounded-2xl border bg-gradient-to-br backdrop-blur-sm px-6 py-5 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "group flex flex-col items-center justify-center gap-3 rounded-xl border bg-gradient-to-br backdrop-blur-sm px-5 py-4 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isFirstRow
-                      ? "border-white/8 from-[#0F172A]/80 to-[#020617]/80 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:border-white/12 hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
-                      : "border-white/4 from-[#0B1220]/60 to-[#050712]/60 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-white/8 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
+                      ? "border-white/8 from-[#0F172A]/80 to-[#020617]/80 shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:border-primary/30 hover:shadow-[0_12px_40px_rgba(37,99,235,0.3)] hover:ring-1 hover:ring-primary/20"
+                      : "border-white/4 from-[#0B1220]/60 to-[#050712]/60 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:border-primary/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.2)] hover:ring-1 hover:ring-primary/10",
                     isActive
                       ? "bg-primary text-white shadow-2xl border-primary"
                       : "text-foreground"
@@ -360,16 +362,16 @@ export default function Home() {
                 >
                   <Icon
                     className={cn(
-                      "h-6 w-6 transition-transform duration-250 group-hover:scale-[1.03]",
+                      "h-7 w-7 transition-transform duration-250 group-hover:scale-[1.05] mb-1",
                       isActive
                         ? "text-white"
-                        : "text-muted-foreground group-hover:text-foreground"
+                        : "text-muted-foreground group-hover:text-primary"
                     )}
                     strokeWidth={2}
                   />
                   <span
                     className={cn(
-                      "break-words leading-tight text-center",
+                      "break-words leading-tight text-center text-base font-semibold",
                       isActive
                         ? "text-white"
                         : "text-foreground"
