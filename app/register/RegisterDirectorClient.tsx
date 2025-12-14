@@ -58,6 +58,9 @@ export default function RegisterDirectorClient() {
     passwordConfirm: "",
   });
 
+  // Локальное состояние для отображаемого значения даты рождения (ДД.ММ.ГГГГ)
+  const [displayDate, setDisplayDate] = useState<string>("");
+
   // Данные шага 2: рабочий e-mail
   const [email, setEmail] = useState("");
 
@@ -644,22 +647,29 @@ export default function RegisterDirectorClient() {
    * Рендер шага 1: Личные данные директора
    * Поля: Имя, Отчество, Фамилия, Дата рождения, Пароль, Подтверждение пароля
    */
-  const renderStep1 = () => {
-    // Локальное состояние для отображаемого значения даты (ДД.ММ.ГГГГ)
-    const [displayDate, setDisplayDate] = useState<string>(() => {
-      if (!personal.birthDate) return "";
+  // Синхронизация displayDate с personal.birthDate при изменении извне (только если displayDate пустой)
+  useEffect(() => {
+    if (personal.birthDate && !displayDate) {
       try {
         const date = new Date(personal.birthDate);
-        if (isNaN(date.getTime())) return "";
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const year = date.getFullYear();
-        return `${day}.${month}.${year}`;
+        if (!isNaN(date.getTime())) {
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+          const formatted = `${day}.${month}.${year}`;
+          setDisplayDate(formatted);
+        }
       } catch {
-        return "";
+        // Игнорируем ошибки парсинга
       }
-    });
+    } else if (!personal.birthDate && displayDate && displayDate.length === 10) {
+      // Если birthDate очищен программно (не пользователем), очищаем displayDate
+      // Но только если это не редактирование пользователем
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personal.birthDate]);
 
+  const renderStep1 = () => {
     // Функция для парсинга ДД.ММ.ГГГГ в YYYY-MM-DD
     const parseDateFromDisplay = (displayStr: string): string | null => {
       if (!displayStr || displayStr.trim() === "") return null;
