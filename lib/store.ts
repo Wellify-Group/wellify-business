@@ -2638,30 +2638,15 @@ export const useStore = create<AppState>()(
           }
 
           // Для директоров: сначала пытаемся загрузить данные из Supabase
+          let supabaseProfileData: any = null;
           if (currentUser.role === 'director') {
             try {
               const profileResponse = await fetch('/api/auth/load-profile');
               const profileData = await profileResponse.json();
 
               if (profileResponse.ok && profileData.success && profileData.user) {
-                // Обновляем currentUser данными из Supabase
-                const supabaseUser = profileData.user;
-                set({
-                  currentUser: {
-                    ...currentUser,
-                    ...supabaseUser,
-                    // Сохраняем важные поля, которые могут быть в currentUser
-                    businessId: supabaseUser.businessId || currentUser.businessId,
-                    companyCode: supabaseUser.companyCode || currentUser.companyCode,
-                  },
-                  user: {
-                    ...currentUser,
-                    ...supabaseUser,
-                    businessId: supabaseUser.businessId || currentUser.businessId,
-                    companyCode: supabaseUser.companyCode || currentUser.companyCode,
-                  },
-                });
-                console.log('[Sync] Loaded profile from Supabase:', supabaseUser);
+                supabaseProfileData = profileData.user;
+                console.log('[Sync] Loaded profile from Supabase:', supabaseProfileData);
               }
             } catch (profileError) {
               console.warn('[Sync] Failed to load profile from Supabase, falling back to file system:', profileError);
@@ -2672,12 +2657,23 @@ export const useStore = create<AppState>()(
           const data = await response.json();
 
           if (response.ok && data.success && data.data) {
-            // OVERWRITE local state with fresh data from server
-            // Но сохраняем данные из Supabase, если они были загружены
+            // Объединяем данные: приоритет у данных из Supabase для профиля директора
             const updatedUser = {
               ...data.data.user,
-              // Если есть данные из Supabase, используем их для полей профиля
-              ...(currentUser.role === 'director' && {
+              // Для директоров: используем данные из Supabase, если они есть
+              ...(currentUser.role === 'director' && supabaseProfileData ? {
+                firstName: supabaseProfileData.firstName || data.data.user.name?.split(' ')[0],
+                lastName: supabaseProfileData.lastName || data.data.user.name?.split(' ')[1],
+                middleName: supabaseProfileData.middleName || data.data.user.name?.split(' ')[2],
+                phone: supabaseProfileData.phone || data.data.user.phone,
+                dob: supabaseProfileData.dob || data.data.user.dob,
+                email: supabaseProfileData.email || data.data.user.email,
+                fullName: supabaseProfileData.fullName || data.data.user.fullName,
+                role: supabaseProfileData.role || data.data.user.role,
+                businessId: supabaseProfileData.businessId || data.data.user.businessId || currentUser.businessId,
+                companyCode: supabaseProfileData.companyCode || data.data.user.companyCode || currentUser.companyCode,
+              } : {
+                // Fallback для других ролей или если Supabase не вернул данные
                 firstName: (currentUser as any).firstName || data.data.user.name?.split(' ')[0],
                 lastName: (currentUser as any).lastName || data.data.user.name?.split(' ')[1],
                 middleName: (currentUser as any).middleName || data.data.user.name?.split(' ')[2],

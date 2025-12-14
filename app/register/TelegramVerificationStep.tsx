@@ -280,11 +280,6 @@ export function TelegramVerificationStep({
         </p>
       )}
 
-      {status && status.status === "pending" && (
-        <div className="mt-3 inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-300">
-          {texts.waiting}
-        </div>
-      )}
 
       {status && status.status === "expired" && (
         <div className="mt-3 flex flex-col items-center gap-2 text-center">

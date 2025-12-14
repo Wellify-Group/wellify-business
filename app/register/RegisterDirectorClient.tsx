@@ -670,7 +670,7 @@ export default function RegisterDirectorClient() {
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className="px-10 pb-4 pt-1">
+          <CardContent className={`px-10 pb-4 pt-1 ${step === 2 ? 'flex items-center justify-center min-h-[400px]' : ''}`}>
             {registerError && (
               <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
                 <AlertCircle className="mt-0.5 h-4 w-4" />
@@ -679,7 +679,11 @@ export default function RegisterDirectorClient() {
             )}
 
             {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
+            {step === 2 && (
+              <div className="w-full max-w-md">
+                {renderStep2()}
+              </div>
+            )}
             {step === 3 && renderStep3()}
             {step === 4 && renderStep4()}
           </CardContent>
