@@ -294,20 +294,22 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      const userId = session.user.id;
-
-      // Загружаем профиль из БД для проверки phone и telegram_verified
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("phone, telegram_verified")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error("[register] Error fetching profile", profileError);
+      // Загружаем профиль через API endpoint (обходит RLS через admin клиент)
+      const profileResponse = await fetch('/api/auth/load-profile');
+      if (!profileResponse.ok) {
+        console.error("[register] Failed to load profile via API in finishRegistration");
         setRegisterError("Не удалось проверить профиль. Попробуйте позже.");
         return;
       }
+
+      const profileData = await profileResponse.json();
+      if (!profileData.success || !profileData.user) {
+        console.error("[register] Profile not loaded via API in finishRegistration");
+        setRegisterError("Не удалось загрузить профиль. Попробуйте позже.");
+        return;
+      }
+
+      const profile = profileData.user;
 
       // Проверка условия 1: phone должен быть заполнен
       if (!profile?.phone || profile.phone.trim() === "") {
@@ -315,8 +317,13 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // Проверка условия 2: telegram_verified должен быть true
-      if (!profile?.telegram_verified) {
+      // Проверка условия 2: telegram_verified должен быть true (строгая проверка)
+      // Проверяем telegram_verified - может быть булево true или строка "true"
+      const isTelegramVerified = profile?.telegram_verified === true || 
+                                 profile?.telegram_verified === "true" ||
+                                 profile?.telegram_verified === 1;
+
+      if (!isTelegramVerified) {
         setRegisterError("Telegram не подтвержден. Пожалуйста, завершите верификацию Telegram.");
         return;
       }
@@ -426,17 +433,48 @@ export default function RegisterDirectorClient() {
       if (cancelled) return;
       
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error("[register] Session error on step 4:", sessionError);
+          return;
+        }
+        if (!session?.user) {
+          console.log("[register] No session on step 4");
+          return;
+        }
         
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone, telegram_verified")
-          .eq("id", session.user.id)
-          .maybeSingle();
+        // Используем API endpoint для загрузки профиля (обходит RLS)
+        const profileResponse = await fetch('/api/auth/load-profile');
+        if (!profileResponse.ok) {
+          console.error("[register] Failed to load profile via API");
+          return;
+        }
+        
+        const profileData = await profileResponse.json();
+        if (!profileData.success || !profileData.user) {
+          console.log("[register] Profile not loaded via API");
+          return;
+        }
+        
+        const profile = profileData.user;
+        
+        console.log("[register] Profile check on step 4:", {
+          hasPhone: !!profile?.phone,
+          phone: profile?.phone,
+          telegramVerified: profile?.telegram_verified,
+          profile: profile
+        });
         
         // Если данные готовы - убираем ошибку и останавливаем проверку
-        if (profile?.phone && profile?.telegram_verified) {
+        // Проверяем что phone не пустой и telegram_verified === true (строгая проверка булева)
+        const hasPhone = profile?.phone && profile.phone.trim() !== "";
+        // Проверяем telegram_verified - может быть булево true или строка "true"
+        const isTelegramVerified = profile?.telegram_verified === true || 
+                                   profile?.telegram_verified === "true" ||
+                                   profile?.telegram_verified === 1;
+        
+        if (hasPhone && isTelegramVerified) {
+          console.log("[register] Profile ready, clearing error");
           setRegisterError(null);
           if (intervalId) {
             clearInterval(intervalId);
@@ -446,6 +484,13 @@ export default function RegisterDirectorClient() {
         }
         
         // Если данные еще не готовы, показываем сообщение
+        console.log("[register] Profile not ready yet:", {
+          hasPhone,
+          phone: profile?.phone,
+          isTelegramVerified,
+          telegramVerified: profile?.telegram_verified,
+          telegramVerifiedType: typeof profile?.telegram_verified
+        });
         setRegisterError("Ожидание подтверждения данных Telegram...");
       } catch (error) {
         console.error("[register] Error checking profile on step 4", error);

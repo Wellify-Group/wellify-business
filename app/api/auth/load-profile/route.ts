@@ -72,6 +72,9 @@ export async function GET(request: NextRequest) {
       firstName: profile.first_name || null,
       lastName: profile.last_name || null,
       middleName: profile.middle_name || null,
+      // Поля для проверки верификации Telegram
+      telegram_verified: profile.telegram_verified || false,
+      phone_verified: profile.phone_verified || false,
     };
 
     console.log('[load-profile] Profile loaded successfully', {
