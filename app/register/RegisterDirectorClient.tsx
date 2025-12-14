@@ -42,7 +42,7 @@ interface PersonalForm {
 
 export default function RegisterDirectorClient() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
 
   // Состояние шагов регистрации
   const [step, setStep] = useState<Step>(1); // Текущий активный шаг
@@ -104,25 +104,25 @@ export default function RegisterDirectorClient() {
     setRegisterError(null);
 
     if (!personal.firstName.trim() || !personal.lastName.trim()) {
-      setRegisterError("Укажите имя и фамилию директора.");
+      setRegisterError(t<string>("register_error_name_required"));
       return;
     }
 
     if (!personal.birthDate || !personal.birthDate.trim()) {
-      setRegisterError("Укажите дату рождения директора.");
+      setRegisterError(t<string>("register_error_birth_date_required"));
       return;
     }
 
     // Валидация даты рождения: проверка формата и года (от 1920 до текущего года)
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
     if (!datePattern.test(personal.birthDate)) {
-      setRegisterError("Неверный формат даты рождения.");
+      setRegisterError(t<string>("register_error_birth_date_invalid_format"));
       return;
     }
 
     const birthDateObj = new Date(personal.birthDate);
     if (isNaN(birthDateObj.getTime())) {
-      setRegisterError("Неверная дата рождения.");
+      setRegisterError(t<string>("register_error_birth_date_invalid"));
       return;
     }
 
@@ -131,7 +131,7 @@ export default function RegisterDirectorClient() {
     const birthYear = birthDateObj.getFullYear();
     
     if (birthYear < minYear || birthYear > currentYear) {
-      setRegisterError(`Год рождения должен быть от ${minYear} до ${currentYear}.`);
+      setRegisterError(t<string>("register_error_birth_date_year_range").replace("{minYear}", String(minYear)).replace("{currentYear}", String(currentYear)));
       return;
     }
 
@@ -139,17 +139,17 @@ export default function RegisterDirectorClient() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (birthDateObj > today) {
-      setRegisterError("Дата рождения не может быть в будущем.");
+      setRegisterError(t<string>("register_error_birth_date_future"));
       return;
     }
 
     if (!personal.password || personal.password.length < 8) {
-      setRegisterError("Пароль должен содержать не менее 8 символов.");
+      setRegisterError(t<string>("register_error_password_min"));
       return;
     }
 
     if (personal.password !== personal.passwordConfirm) {
-      setRegisterError("Пароль и подтверждение не совпадают.");
+      setRegisterError(t<string>("register_error_password_mismatch"));
       return;
     }
 
@@ -171,14 +171,14 @@ export default function RegisterDirectorClient() {
     setRegisterError(null);
 
     if (!email.trim()) {
-      setRegisterError("Укажите рабочий e-mail.");
+      setRegisterError(t<string>("register_error_email_required"));
       setEmailStatus("error");
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      setRegisterError("Введите корректный e-mail адрес.");
+      setRegisterError(t<string>("register_error_email_invalid"));
       setEmailStatus("error");
       return;
     }
@@ -189,7 +189,7 @@ export default function RegisterDirectorClient() {
       !personal.password
     ) {
       setRegisterError(
-        "Пожалуйста, заполните личные данные и пароль на шаге 1."
+        t<string>("register_error_personal_data_required")
       );
       setEmailStatus("error");
       return;
@@ -240,12 +240,12 @@ export default function RegisterDirectorClient() {
           msg.includes("registered")
         ) {
           setRegisterError(
-            "Этот e-mail уже зарегистрирован. Попробуйте войти в систему."
+            t<string>("register_error_email_exists")
           );
         } else {
           setRegisterError(
             error.message ||
-              "Не удалось отправить письмо. Попробуйте ещё раз позже."
+              t<string>("register_error_email_send_failed")
           );
         }
         return;
@@ -255,7 +255,7 @@ export default function RegisterDirectorClient() {
         console.error("[register] signUp returned no user", { data });
         setEmailStatus("error");
         setRegisterError(
-          "Не удалось создать учетную запись. Попробуйте ещё раз."
+          t<string>("register_error_account_creation_failed")
         );
         return;
       }
@@ -267,7 +267,7 @@ export default function RegisterDirectorClient() {
     } catch (err) {
       console.error("[register] handleSendEmailLink error", err);
       setEmailStatus("error");
-      setRegisterError("Внутренняя ошибка. Попробуйте позже.");
+      setRegisterError(t<string>("register_error_internal"));
     } finally {
       setIsSubmitting(false);
     }
@@ -301,7 +301,7 @@ export default function RegisterDirectorClient() {
 
       // Проверяем наличие необходимых данных
       if (!registeredUserEmail || !personal.password) {
-        setRegisterError("Не удалось получить данные для завершения регистрации.");
+        setRegisterError(t<string>("register_error_finish_data_missing"));
         return;
       }
 
@@ -318,7 +318,7 @@ export default function RegisterDirectorClient() {
 
         if (signInError || !signInData?.user) {
           console.error("[register] Failed to restore session", signInError);
-          setRegisterError("Не удалось восстановить сессию. Пожалуйста, войдите вручную.");
+          setRegisterError(t<string>("register_error_session_restore_failed"));
           return;
         }
 
@@ -326,7 +326,7 @@ export default function RegisterDirectorClient() {
       }
 
       if (!session?.user) {
-        setRegisterError("Сессия не найдена. Пожалуйста, войдите в систему.");
+        setRegisterError(t<string>("register_error_session_not_found"));
         return;
       }
 
@@ -351,7 +351,7 @@ export default function RegisterDirectorClient() {
 
         if (signInError || !signInData?.user) {
           console.error("[register] Failed to restore session in finishRegistration", signInError);
-          setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+          setRegisterError(t<string>("register_error_session_expired"));
           return;
         }
 
@@ -366,21 +366,21 @@ export default function RegisterDirectorClient() {
         
         if (profileResponse.status === 401) {
           console.error("[register] Still not authenticated after restore");
-          setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+          setRegisterError(t<string>("register_error_session_expired"));
           return;
         }
       }
       
       if (!profileResponse.ok) {
         console.error("[register] Failed to load profile via API in finishRegistration", profileResponse.status);
-        setRegisterError("Не удалось проверить профиль. Попробуйте позже.");
+        setRegisterError(t<string>("register_error_profile_check_failed"));
         return;
       }
 
       const profileData = await profileResponse.json();
       if (!profileData.success || !profileData.user) {
         console.error("[register] Profile not loaded via API in finishRegistration");
-        setRegisterError("Не удалось загрузить профиль. Попробуйте позже.");
+        setRegisterError(t<string>("register_error_profile_load_failed"));
         return;
       }
 
@@ -388,7 +388,7 @@ export default function RegisterDirectorClient() {
 
       // Проверка условия 1: phone должен быть заполнен
       if (!profile?.phone || profile.phone.trim() === "") {
-        setRegisterError("Номер телефона не подтвержден. Пожалуйста, завершите верификацию Telegram.");
+        setRegisterError(t<string>("register_error_phone_not_verified"));
         return;
       }
 
@@ -399,7 +399,7 @@ export default function RegisterDirectorClient() {
                                  profile?.telegram_verified === 1;
 
       if (!isTelegramVerified) {
-        setRegisterError("Telegram не подтвержден. Пожалуйста, завершите верификацию Telegram.");
+        setRegisterError(t<string>("register_error_telegram_not_verified"));
         return;
       }
 
@@ -408,7 +408,7 @@ export default function RegisterDirectorClient() {
     } catch (e) {
       console.error("finishRegistration error", e);
       setRegisterError(
-        "Неизвестная ошибка. Попробуйте войти вручную."
+        t<string>("register_error_unknown")
       );
     } finally {
       setIsSubmitting(false);
@@ -568,8 +568,9 @@ export default function RegisterDirectorClient() {
         }
         
         // Если данные еще не готовы, показываем сообщение только если его еще нет
-        if (!registerError || registerError !== "Ожидание подтверждения данных Telegram...") {
-          setRegisterError("Ожидание подтверждения данных Telegram...");
+        const waitingText = t<string>("register_waiting_telegram");
+        if (!registerError || registerError !== waitingText) {
+          setRegisterError(waitingText);
         }
       } catch (error) {
         console.error("[register] Error checking profile on step 4", error);
@@ -603,13 +604,13 @@ export default function RegisterDirectorClient() {
    */
   const renderTabs = () => {
     const tabs: { id: Step; label: string }[] = [
-      { id: 1, label: "Основные данные" },
-      { id: 2, label: "E-mail" },
-      { id: 3, label: "Telegram" },
+      { id: 1, label: t<string>("register_tab_basic_data") },
+      { id: 2, label: t<string>("register_tab_email") },
+      { id: 3, label: t<string>("register_tab_telegram") },
     ];
 
     return (
-      <div className="mb-6 flex items-center justify-between rounded-full border border-white/4 bg-black/20 backdrop-blur-sm px-1 py-1 text-[13px]">
+      <div className="mb-6 flex items-center justify-between rounded-full border border-border/50 bg-muted/30 backdrop-blur-sm px-1 py-1 text-[13px]">
         {tabs.map((tab) => {
           const active = step === tab.id;
           const reachable = canGoToStep(tab.id);
@@ -623,10 +624,10 @@ export default function RegisterDirectorClient() {
               className={[
                 "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                 active
-                  ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                  ? "bg-gradient-to-r from-blue-600 to-blue-500 text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
                   : reachable
-                  ? "text-slate-400 hover:text-slate-300 hover:bg-white/5"
-                  : "text-slate-500 cursor-default",
+                  ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  : "text-muted-foreground/60 cursor-default",
               ].join(" ")}
             >
               {tab.label}
@@ -644,11 +645,9 @@ export default function RegisterDirectorClient() {
     let descriptionText: string | null = null;
 
     if (step === 1) {
-      descriptionText =
-        "Укажите личные данные директора и задайте пароль для входа.";
+      descriptionText = t<string>("register_step1_description");
     } else if (step === 2) {
-      descriptionText =
-        "Укажите рабочий e-mail, мы отправим письмо для подтверждения доступа в WELLIFY business.";
+      descriptionText = t<string>("register_step2_description");
     } else {
       // Для шага 3 описание убираем, чтобы не дублировать текст про подтверждение телефона
       descriptionText = null;
@@ -657,7 +656,7 @@ export default function RegisterDirectorClient() {
     return (
       <>
         <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
-          Создать аккаунт директора
+          {t<string>("register_title")}
         </CardTitle>
         {descriptionText && (
           <CardDescription className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
@@ -846,7 +845,7 @@ export default function RegisterDirectorClient() {
         <div className="grid grid-cols-1 gap-2.5 md:gap-3 md:grid-cols-3">
           <div className="space-y-1.5 md:col-span-1">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Имя
+              {t<string>("register_field_first_name")}
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -854,7 +853,7 @@ export default function RegisterDirectorClient() {
               </div>
               <input
                 type="text"
-                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                className="h-11 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
                 value={personal.firstName}
                 onChange={handlePersonalChange("firstName")}
               />
@@ -863,12 +862,12 @@ export default function RegisterDirectorClient() {
 
           <div className="space-y-1.5 md:col-span-1">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Отчество
+              {t<string>("register_field_middle_name")}
             </label>
             <div className="relative">
               <input
                 type="text"
-                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                className="h-11 w-full rounded-full border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
                 value={personal.middleName}
                 onChange={handlePersonalChange("middleName")}
               />
@@ -877,12 +876,12 @@ export default function RegisterDirectorClient() {
 
           <div className="space-y-1.5 md:col-span-1">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Фамилия
+              {t<string>("register_field_last_name")}
             </label>
             <div className="relative">
               <input
                 type="text"
-                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                className="h-11 w-full rounded-full border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
                 value={personal.lastName}
                 onChange={handlePersonalChange("lastName")}
               />
@@ -893,7 +892,7 @@ export default function RegisterDirectorClient() {
         <div className="grid grid-cols-1 gap-2.5 md:gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Дата рождения
+              {t<string>("register_field_birth_date")}
             </label>
             <div className="relative group">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center z-10">
@@ -903,7 +902,7 @@ export default function RegisterDirectorClient() {
                 type="text"
                 inputMode="numeric"
                 className="h-11 w-full rounded-full border border-border bg-background pl-10 pr-4 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)] hover:border-border-hover"
-                placeholder="ДД.ММ.ГГГГ"
+                placeholder={t<string>("register_field_birth_date_placeholder")}
                 value={displayDate}
                 onChange={handleBirthDateChange}
                 maxLength={10}
@@ -915,7 +914,7 @@ export default function RegisterDirectorClient() {
         <div className="grid grid-cols-1 gap-2.5 md:gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Пароль
+              {t<string>("register_field_password")}
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -924,8 +923,8 @@ export default function RegisterDirectorClient() {
               <input
                 type="password"
                 autoComplete="new-password"
-                className="h-11 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-                placeholder="Минимум 8 символов"
+                className="h-11 w-full rounded-[14px] border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+                placeholder={t<string>("register_field_password_placeholder")}
                 value={personal.password}
                 onChange={handlePersonalChange("password")}
               />
@@ -934,14 +933,14 @@ export default function RegisterDirectorClient() {
 
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Подтверждение пароля
+              {t<string>("register_field_password_confirm")}
             </label>
             <div className="relative">
               <input
                 type="password"
                 autoComplete="new-password"
-                className="h-11 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-                placeholder="Повторите пароль"
+                className="h-11 w-full rounded-[14px] border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+                placeholder={t<string>("register_field_password_confirm_placeholder")}
                 value={personal.passwordConfirm}
                 onChange={handlePersonalChange("passwordConfirm")}
               />
@@ -960,7 +959,7 @@ export default function RegisterDirectorClient() {
     <form id="step2-form" className="space-y-4" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Рабочий e-mail
+          {t<string>("register_field_work_email")}
         </label>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -969,8 +968,8 @@ export default function RegisterDirectorClient() {
           <input
             type="email"
             autoComplete="email"
-            className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
-            placeholder="you@business.com"
+            className="h-11 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+            placeholder={t<string>("register_field_work_email_placeholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -979,17 +978,16 @@ export default function RegisterDirectorClient() {
 
       <div className="mt-4 flex flex-col gap-2 text-xs text-muted-foreground">
         <p>
-          Этот адрес будет использоваться для входа, уведомлений по сменам и
-          восстановления доступа.
+          {t<string>("register_email_hint")}
         </p>
         {emailStatus === "link_sent" && (
           <>
-            <p className="text-blue-400 flex items-center gap-1.5">
+            <p className="text-primary flex items-center gap-1.5">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Ожидаем подтверждения e-mail…
+              {t<string>("register_email_waiting")}
             </p>
             <p className="text-muted-foreground/80">
-              Письмо с подтверждением отправлено. Перейдите по ссылке в письме.
+              {t<string>("register_email_sent")}
             </p>
             <button
               type="button"
@@ -1015,13 +1013,13 @@ export default function RegisterDirectorClient() {
               }}
               className="mt-1 inline-flex items-center justify-center rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors self-start"
             >
-              Я подтвердил e-mail
+              {t<string>("register_email_confirmed_btn")}
             </button>
           </>
         )}
         {emailStatus === "verified" && (
-          <p className="text-emerald-400">
-            E-mail подтвержден. Можно переходить к шагу Telegram.
+          <p className="text-[color:var(--color-success)]">
+            {t<string>("register_email_verified")}
           </p>
         )}
       </div>
@@ -1036,12 +1034,10 @@ export default function RegisterDirectorClient() {
     if (!registeredUserId || !registeredUserEmail) {
       return (
         <div className="space-y-4">
-          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+          <div className="flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4" />
             <span>
-              Не удалось получить данные регистрации. Вернитесь на шаг 2,
-              отправьте письмо ещё раз и подтвердите e-mail по ссылке из
-              письма.
+              {t<string>("register_error_telegram_data_missing")}
             </span>
           </div>
         </div>
@@ -1052,7 +1048,7 @@ export default function RegisterDirectorClient() {
       <div className="space-y-4">
         <div className="mb-4 rounded-xl border border-border/50 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           <p>
-            Telegram нужен для уведомлений, смен и поддержки. Подключить можно сейчас или позже в настройках.
+            {t<string>("register_telegram_hint")}
           </p>
         </div>
         <TelegramVerificationStep
@@ -1071,30 +1067,30 @@ export default function RegisterDirectorClient() {
    */
   const renderStep4 = () => (
     <div className="flex flex-col items-center gap-5 py-4 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 animate-[fadeInScale_250ms_ease-out]">
-        <CheckCircle2 className="h-10 w-10 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]" />
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20 animate-[fadeInScale_250ms_ease-out]">
+        <CheckCircle2 className="h-10 w-10 text-[color:var(--color-success)]" />
       </div>
       <div className="space-y-2">
         <h3 className="text-xl font-semibold text-foreground">
-          Регистрация завершена успешно!
+          {t<string>("register_success_title")}
         </h3>
         <p className="max-w-md text-sm text-muted-foreground">
-          Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business.
+          {t<string>("register_success_message")}
         </p>
       </div>
       <Button
         onClick={finishRegistration}
         disabled={isSubmitting}
-        className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+        className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 text-sm font-semibold text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
       >
         {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Переход в дашборд...
+            {t<string>("register_btn_go_to_dashboard_loading")}
           </>
         ) : (
           <>
-            Перейти в дашборд
+            {t<string>("register_btn_go_to_dashboard")}
             <ArrowRight className="h-4 w-4" />
           </>
         )}
@@ -1108,7 +1104,7 @@ export default function RegisterDirectorClient() {
   return (
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
       <div className="relative w-full max-w-xl">
-        <Card className="relative z-10 w-full rounded-[28px] border border-white/4 bg-gradient-to-b from-[#0B1220] to-[#050712] backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.70)]">
+        <Card className="relative z-10 w-full rounded-[28px] border border-border bg-card backdrop-blur-[14px] shadow-[var(--shadow-modal)]">
           <CardHeader className="px-8 pt-5 pb-0">
             {step !== 4 && renderTabs()}
             {renderStepTitle()}
@@ -1119,11 +1115,11 @@ export default function RegisterDirectorClient() {
               {registerError && (
                 <div className={cn(
                   "mb-4 flex items-start gap-2 rounded-2xl px-4 py-3 text-xs",
-                  registerError === "Ожидание подтверждения данных Telegram..." || registerError.includes("Ожидание")
-                    ? "border border-blue-800/50 bg-blue-950/50 text-blue-100"
-                    : "border border-rose-800/80 bg-rose-950/80 text-rose-50"
+                  registerError === t<string>("register_waiting_telegram") || registerError.includes(t<string>("register_waiting_telegram").split(" ")[0])
+                    ? "border border-primary/30 bg-primary/10 text-primary"
+                    : "border border-destructive/30 bg-destructive/10 text-destructive"
                 )}>
-                  {registerError !== "Ожидание подтверждения данных Telegram..." && !registerError.includes("Ожидание") && (
+                  {registerError !== t<string>("register_waiting_telegram") && !registerError.includes(t<string>("register_waiting_telegram").split(" ")[0]) && (
                     <AlertCircle className="mt-0.5 h-4 w-4" />
                   )}
                   <span>{registerError}</span>
@@ -1164,7 +1160,7 @@ export default function RegisterDirectorClient() {
                   onClick={() => router.push("/auth/login")}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Уже есть аккаунт? <span className="underline">Войти</span>
+                  {t<string>("register_already_have_account")} <span className="underline">{t<string>("register_login_link")}</span>
                 </button>
                 <button
                   type="button"
@@ -1181,21 +1177,21 @@ export default function RegisterDirectorClient() {
                     emailStatus === "sending" ||
                     emailStatus === "link_sent"
                   }
-                  className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                  className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
                   {isSubmitting || emailStatus === "sending" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Отправляем...
+                      {t<string>("register_btn_sending")}
                     </>
                   ) : emailStatus === "link_sent" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Ждём подтверждения…
+                      {t<string>("register_btn_waiting")}
                     </>
                   ) : (
                     <>
-                      Далее
+                      {t<string>("register_btn_next")}
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -1212,12 +1208,12 @@ export default function RegisterDirectorClient() {
                     className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    Назад
+                    {t<string>("register_btn_back")}
                   </button>
                 )}
               </div>
               <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-[11px]">
-                <span className="text-muted-foreground">Уже есть аккаунт? </span>
+                <span className="text-muted-foreground">{t<string>("register_already_have_account")} </span>
                 <button
                   type="button"
                   onClick={() => router.push("/auth/login")}
@@ -1231,7 +1227,7 @@ export default function RegisterDirectorClient() {
                   <button
                     type="button"
                     onClick={handleNextFromStep1}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
                   >
                     Далее
                     <ArrowRight className="h-4 w-4" />

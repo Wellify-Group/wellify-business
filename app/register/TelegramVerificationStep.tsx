@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { useLanguage } from "@/components/language-provider";
 import {
   CardContent,
   CardTitle,
@@ -32,6 +33,7 @@ export function TelegramVerificationStep({
   userId,
   email,
 }: TelegramVerificationStepProps) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [telegramLink, setTelegramLink] = useState<string | null>(null);
@@ -39,73 +41,19 @@ export function TelegramVerificationStep({
   const [error, setError] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
 
-
-  const texts = {
-    ru: {
-      waiting: "Ждём подтверждения телефона в Telegram…",
-      expired: "Сессия истекла. Создайте новую ссылку и попробуйте ещё раз.",
-      openHint:
-        "Нажмите на QR-код или отсканируйте его камерой, чтобы открыть бота WELLIFY business в Telegram.",
-      steps: [
-        "Откройте бота WELLIFY business.",
-        "Нажмите «Старт» (если требуется).",
-        "Нажмите «Отправить номер телефона».",
-        "Дождитесь подтверждения и вернитесь сюда.",
-      ],
-      successTitle: "Поздравляем!",
-      successText:
-        "Регистрация успешно завершена. Теперь вы можете перейти в свой дашборд и начать работу с сервисом.", 
-      successButton: "Перейти в Дашборд", 
-      newLink: "Создать новую ссылку",
-    },
-    uk: {
-      waiting: "Чекаємо підтвердження телефону в Telegram…",
-      expired: "Сесію завершено. Створіть нове посилання і спробуйте ще раз.",
-      openHint:
-        "Натисніть на QR-код або відскануйте його камерою, щоб відкрити бота WELLIFY business у Telegram.",
-      steps: [
-        "Відкрийте бота WELLIFY business.",
-        "Натисніть «Старт» (якщо потрібно).",
-        "Натисніть «Надіслати номер телефону».",
-        "Дочекайтеся підтвердження та поверніться сюди.",
-      ],
-      successTitle: "Вітаємо!",
-      successText:
-        "Реєстрацію успішно завершено. Тепер ви можете перейти до свого дашборду та почати роботу з сервісом.",
-      successButton: "Перейти до Дашборду",
-      newLink: "Створити нове посилання",
-    },
-    en: {
-      waiting: "Waiting for phone confirmation in Telegram…",
-      expired: "Session expired. Create a new link and try again.",
-      openHint:
-        "Click the QR code or scan it with your camera to open the WELLIFY business bot in Telegram.",
-      steps: [
-        "Open the WELLIFY business bot.",
-        "Press “Start” (if required).",
-        "Press “Send phone number”.",
-        "Wait for confirmation and return here.",
-      ],
-      successTitle: "Congratulations!",
-      successText: "Registration completed successfully. You can now go to your dashboard and start using the service.",
-      successButton: "Go to Dashboard",
-      newLink: "Create new link",
-    },
-  }[language];
-
   // 1. Создаём Telegram-сессию
   useEffect(() => {
     const createSession = async () => {
       if (!userId || !email) {
         setError(
-          "Не удалось получить данные регистрации. Вернитесь на предыдущий шаг."
+          t<string>("register_error_telegram_data_missing")
         );
         return;
       }
 
       if (!TELEGRAM_API_URL) {
         setError(
-          "NEXT_PUBLIC_TELEGRAM_API_URL не настроен. Обратитесь к администратору."
+          t<string>("register_error_internal")
         );
         return;
       }
@@ -122,7 +70,7 @@ export function TelegramVerificationStep({
 
         if (!resp.ok) {
           setError(
-            `Не удалось подготовить ссылку для Telegram (код ${resp.status}).`
+            t<string>("register_error_internal")
           );
           return;
         }
@@ -137,7 +85,7 @@ export function TelegramVerificationStep({
         setPolling(true);
       } catch (e) {
         console.error("[telegram] link-session error", e);
-        setError("Произошла внутренняя ошибка при создании сессии Telegram.");
+        setError(t<string>("register_error_internal"));
       } finally {
         setLoading(false);
       }
@@ -249,12 +197,12 @@ export function TelegramVerificationStep({
     <div className="flex flex-col items-center gap-6 py-4">
       {telegramLink && (
         <>
-          <div className="relative rounded-[24px] border border-white/8 bg-gradient-to-br from-[#0F172A] to-[#020617] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-sm">
-            <div className="absolute inset-0 rounded-[24px] bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-50"></div>
+          <div className="relative rounded-[24px] border border-border bg-card p-6 shadow-[var(--shadow-modal)] backdrop-blur-sm">
+            <div className="absolute inset-0 rounded-[24px] bg-primary/5 opacity-50"></div>
             <button
               type="button"
               onClick={handleOpenTelegram}
-              className="relative rounded-2xl bg-white p-4 shadow-[0_18px_60px_rgba(0,0,0,0.45)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_20px_70px_rgba(0,0,0,0.55)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
+              className="relative rounded-2xl bg-card border border-border p-4 shadow-[var(--shadow-card)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[var(--shadow-floating)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
             >
               <QRCode value={telegramLink} size={200} />
             </button>
@@ -264,12 +212,12 @@ export function TelegramVerificationStep({
       )}
 
       {!telegramLink && !error && (
-        <div className="flex items-center gap-2 text-xs text-slate-400 animate-pulse">
-          <div className="h-2 w-2 rounded-full bg-blue-400"></div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+          <div className="h-2 w-2 rounded-full bg-primary"></div>
           <p>
             {loading
-              ? "Готовим ссылку для Telegram…"
-              : "Подготовка ссылки для Telegram…"}
+              ? t<string>("register_telegram_preparing")
+              : t<string>("register_telegram_preparing")}
           </p>
         </div>
       )}
@@ -277,9 +225,9 @@ export function TelegramVerificationStep({
 
       {status && status.status === "expired" && (
         <div className="mt-3 flex flex-col items-center gap-2 text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-600/50 bg-amber-950/70 px-3 py-1.5 text-[11px] text-amber-200">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-warning)]/30 bg-[color:var(--color-warning)]/10 px-3 py-1.5 text-[11px] text-[color:var(--color-warning)]">
             <AlertCircle className="h-3.5 w-3.5" />
-            <span>{texts.expired}</span>
+            <span>{t<string>("register_telegram_session_expired")}</span>
           </div>
           <Button
             type="button"
@@ -287,14 +235,14 @@ export function TelegramVerificationStep({
             size="sm"
             onClick={handleCreateNewLink}
           >
-            {texts.newLink}
+            {t<string>("register_telegram_new_link")}
           </Button>
         </div>
       )}
 
 
       {error && (
-        <div className="mt-3 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+        <div className="mt-3 flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4" />
           <span>{error}</span>
         </div>
