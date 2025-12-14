@@ -23,10 +23,10 @@ export default function NotFound() {
         
         <h1 className="text-6xl font-bold text-foreground">404</h1>
         <h2 className="text-2xl font-semibold text-foreground">
-          {t("not_found_title") || "Страница не найдена"}
+          {t<string>("not_found_title") || "Страница не найдена"}
         </h2>
         <p className="text-muted-foreground">
-          {t("not_found_description") || "К сожалению, запрашиваемая страница не существует или была перемещена."}
+          {t<string>("not_found_description") || "К сожалению, запрашиваемая страница не существует или была перемещена."}
         </p>
         
         <div className="pt-4">
@@ -37,7 +37,7 @@ export default function NotFound() {
               className="inline-flex items-center gap-2 rounded-[20px] bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-[var(--shadow-floating)]"
             >
               <Home className="h-4 w-4" />
-              {t("not_found_back_home") || "На главную"}
+              {t<string>("not_found_back_home") || "На главную"}
             </motion.button>
           </Link>
         </div>
