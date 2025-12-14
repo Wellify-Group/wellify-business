@@ -16,7 +16,6 @@ export const NavbarClock = () => {
   const localeMap: Record<string, string> = {
     ru: "ru-RU",
     ua: "uk-UA",
-    uk: "uk-UA",
     en: "en-US",
   };
 

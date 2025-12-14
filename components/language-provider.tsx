@@ -83,11 +83,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
               .maybeSingle();
             
             if (profile?.language) {
-              // Конвертируем ua -> uk для совместимости
-              const dbLang = profile.language === "ua" ? "uk" : profile.language;
-              if (isValidLanguage(dbLang)) {
-                setLanguageState(dbLang);
-                window.localStorage.setItem("wellify_locale", dbLang);
+              // Проверяем, что язык из БД валиден
+              if (isValidLanguage(profile.language)) {
+                setLanguageState(profile.language);
+                window.localStorage.setItem("wellify_locale", profile.language);
                 return;
               }
             }
@@ -124,11 +123,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          // Конвертируем uk -> ua для БД
-          const dbLang = lang === "uk" ? "ua" : lang;
+          // Сохраняем язык в БД (lang уже в формате "ua", "ru" или "en")
           await supabase
             .from("profiles")
-            .update({ language: dbLang })
+            .update({ language: lang })
             .eq("id", session.user.id);
         }
       } catch (error) {
