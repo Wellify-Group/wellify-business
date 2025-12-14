@@ -38,13 +38,15 @@ export default function EmailConfirmedPage() {
     window.close();
   };
 
+  // Показываем контент сразу, без ожидания монтирования
+  // Это предотвращает мигание и промежуточные состояния
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+    <div className="flex h-full w-full items-center justify-center px-4 py-8">
       <div className="relative w-full max-w-md">
         <div className="relative overflow-hidden rounded-[32px] border border-border bg-card px-6 py-6 shadow-[var(--shadow-modal)] sm:px-8 sm:py-8">
           <div className="flex flex-col items-center space-y-4 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 dark:bg-emerald-500/10">
-              <CheckCircle2 className="h-12 w-12 text-emerald-400 dark:text-emerald-400" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
+              <CheckCircle2 className="h-12 w-12 text-emerald-400" />
             </div>
 
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
@@ -65,6 +67,6 @@ export default function EmailConfirmedPage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

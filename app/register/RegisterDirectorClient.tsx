@@ -90,7 +90,21 @@ export default function RegisterDirectorClient() {
   const handlePersonalChange =
     (field: keyof PersonalForm) =>
     (e: ChangeEvent<HTMLInputElement>) => {
-      setPersonal((prev) => ({ ...prev, [field]: e.target.value }));
+      let value = e.target.value;
+      
+      // Валидация даты рождения: ограничение года от 1920 до текущего года
+      if (field === "birthDate" && value) {
+        const date = new Date(value);
+        const currentYear = new Date().getFullYear();
+        const minYear = 1920;
+        
+        if (date.getFullYear() < minYear || date.getFullYear() > currentYear) {
+          // Не позволяем ввести невалидную дату
+          return;
+        }
+      }
+      
+      setPersonal((prev) => ({ ...prev, [field]: value }));
     };
 
   // Валидация и переход со шага 1 (личные данные) на шаг 2 (e-mail)
@@ -104,6 +118,17 @@ export default function RegisterDirectorClient() {
 
     if (!personal.birthDate) {
       setRegisterError("Укажите дату рождения директора.");
+      return;
+    }
+
+    // Валидация даты рождения: год от 1920 до текущего года
+    const birthDateObj = new Date(personal.birthDate);
+    const currentYear = new Date().getFullYear();
+    const minYear = 1920;
+    const birthYear = birthDateObj.getFullYear();
+    
+    if (birthYear < minYear || birthYear > currentYear) {
+      setRegisterError(`Год рождения должен быть от ${minYear} до ${currentYear}.`);
       return;
     }
 
@@ -526,7 +551,7 @@ export default function RegisterDirectorClient() {
     ];
 
     return (
-      <div className="mb-5 flex items-center justify-between rounded-full border border-zinc-800/80 bg-zinc-950/70 px-1 py-1 text-[13px] text-zinc-300">
+      <div className="mb-6 flex items-center justify-between rounded-full border border-white/4 bg-black/20 backdrop-blur-sm px-1 py-1 text-[13px]">
         {tabs.map((tab) => {
           const active = step === tab.id;
           const reachable = canGoToStep(tab.id);
@@ -538,12 +563,12 @@ export default function RegisterDirectorClient() {
               disabled={!reachable}
               onClick={() => reachable && setStep(tab.id)}
               className={[
-                "flex-1 rounded-full px-3 py-1.5 text-center transition-all",
+                "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                 active
-                  ? "bg-[var(--accent-primary,#2563eb)] text-white shadow-[0_0_25px_rgba(37,99,235,0.55)]"
+                  ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
                   : reachable
-                  ? "text-zinc-300 hover:bg-zinc-800/60"
-                  : "text-zinc-500 cursor-default",
+                  ? "text-slate-400 hover:text-slate-300 hover:bg-white/5"
+                  : "text-slate-500 cursor-default",
               ].join(" ")}
             >
               {tab.label}
@@ -573,11 +598,11 @@ export default function RegisterDirectorClient() {
 
     return (
       <>
-        <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-zinc-50">
+        <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
           Создать аккаунт директора
         </CardTitle>
         {descriptionText && (
-          <CardDescription className="mt-2 text-center text-sm leading-relaxed text-zinc-400">
+          <CardDescription className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
             {descriptionText}
           </CardDescription>
         )}
@@ -590,20 +615,19 @@ export default function RegisterDirectorClient() {
    * Поля: Имя, Отчество, Фамилия, Дата рождения, Пароль, Подтверждение пароля
    */
   const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
         <div className="space-y-1.5 md:col-span-1">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Имя
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <User className="h-4 w-4 text-zinc-500" />
+              <User className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
             </div>
             <input
               type="text"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Иван"
+              className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
               value={personal.firstName}
               onChange={handlePersonalChange("firstName")}
             />
@@ -611,14 +635,13 @@ export default function RegisterDirectorClient() {
         </div>
 
         <div className="space-y-1.5 md:col-span-1">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Отчество
           </label>
           <div className="relative">
             <input
               type="text"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Александрович"
+              className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
               value={personal.middleName}
               onChange={handlePersonalChange("middleName")}
             />
@@ -626,14 +649,13 @@ export default function RegisterDirectorClient() {
         </div>
 
         <div className="space-y-1.5 md:col-span-1">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Фамилия
           </label>
           <div className="relative">
             <input
               type="text"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Петров"
+              className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
               value={personal.lastName}
               onChange={handlePersonalChange("lastName")}
             />
@@ -641,18 +663,20 @@ export default function RegisterDirectorClient() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Дата рождения
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Calendar className="h-4 w-4 text-zinc-500" />
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
             </div>
             <input
               type="date"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              min="1920-01-01"
+              max={new Date().toISOString().split('T')[0]}
+              className="h-10 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
               value={personal.birthDate}
               onChange={handlePersonalChange("birthDate")}
             />
@@ -660,19 +684,19 @@ export default function RegisterDirectorClient() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Пароль
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Lock className="h-4 w-4 text-zinc-500" />
+              <Lock className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
             </div>
             <input
               type="password"
               autoComplete="new-password"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              className="h-10 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
               placeholder="Минимум 8 символов"
               value={personal.password}
               onChange={handlePersonalChange("password")}
@@ -681,14 +705,14 @@ export default function RegisterDirectorClient() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Подтверждение пароля
           </label>
           <div className="relative">
             <input
               type="password"
               autoComplete="new-password"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              className="h-10 w-full rounded-[14px] border border-slate-700/22 bg-[#050814] px-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
               placeholder="Повторите пароль"
               value={personal.passwordConfirm}
               onChange={handlePersonalChange("passwordConfirm")}
@@ -706,17 +730,17 @@ export default function RegisterDirectorClient() {
   const renderStep2 = () => (
     <form id="step2-form" className="space-y-5" onSubmit={handleSubmitStep2}>
       <div className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+        <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Рабочий e-mail
         </label>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-            <Mail className="h-4 w-4 text-zinc-500" />
+            <Mail className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
           </div>
           <input
             type="email"
             autoComplete="email"
-            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+            className="h-10 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
             placeholder="you@business.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -724,7 +748,7 @@ export default function RegisterDirectorClient() {
         </div>
       </div>
 
-      <div className="mt-2 flex flex-col gap-1 text-xs text-zinc-500">
+      <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
         <p>
           Этот адрес будет использоваться для входа, уведомлений по сменам и
           восстановления доступа.
@@ -782,21 +806,21 @@ export default function RegisterDirectorClient() {
    */
   const renderStep4 = () => (
     <div className="flex flex-col items-center gap-6 py-8 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-        <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 animate-[fadeInScale_250ms_ease-out]">
+        <CheckCircle2 className="h-12 w-12 text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]" />
       </div>
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-zinc-50">
+        <h3 className="text-xl font-semibold text-foreground">
           Регистрация завершена успешно!
         </h3>
-        <p className="max-w-md text-sm text-zinc-400">
+        <p className="max-w-md text-sm text-muted-foreground">
           Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business.
         </p>
       </div>
       <Button
         onClick={finishRegistration}
         disabled={isSubmitting}
-        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
       >
         {isSubmitting ? (
           <>
@@ -817,16 +841,16 @@ export default function RegisterDirectorClient() {
   // Главный контейнер: центрирование по вертикали и горизонтали
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
-      <div className="relative w-full max-w-3xl">
-        <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
-          <CardHeader className="px-10 pt-7 pb-4">
+    <main className="flex flex-col pt-24 min-h-[calc(100vh-112px)] md:min-h-[calc(100vh-112px)] items-center justify-center bg-background px-4 py-6 md:py-8 overflow-y-auto sm:overflow-y-visible">
+      <div className="relative w-full max-w-xl">
+        <Card className="relative z-10 w-full rounded-[28px] border border-white/4 bg-gradient-to-b from-[#0B1220] to-[#050712] backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.70)]">
+          <CardHeader className="px-6 py-6 md:px-10 md:py-10">
             {renderTabs()}
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className="px-10 pb-4 pt-1 flex items-center justify-center min-h-[400px]">
-            <div className="w-full max-w-2xl">
+          <CardContent className="px-6 py-4 md:px-10 md:pb-6 md:pt-2 flex items-center justify-center min-h-[400px]">
+            <div className="w-full">
               {registerError && (
                 <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
                   <AlertCircle className="mt-0.5 h-4 w-4" />
@@ -836,7 +860,7 @@ export default function RegisterDirectorClient() {
 
               {step === 1 && (
                 <div className="flex justify-center">
-                  <div className="w-full max-w-2xl">
+                  <div className="w-full">
                     {renderStep1()}
                   </div>
                 </div>
@@ -859,13 +883,13 @@ export default function RegisterDirectorClient() {
             </div>
           </CardContent>
 
-          <CardFooter className="relative flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
+          <CardFooter className="relative flex items-center justify-between px-6 md:px-10 pb-6 md:pb-8 pt-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               {step > 1 && step < 4 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800/80 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Назад
@@ -873,11 +897,11 @@ export default function RegisterDirectorClient() {
               )}
             </div>
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-[11px]">
-              <span className="text-zinc-500">Уже есть аккаунт? </span>
+              <span className="text-muted-foreground">Уже есть аккаунт? </span>
               <button
                 type="button"
                 onClick={() => router.push("/auth/login")}
-                className="ml-1 font-medium text-zinc-200 underline-offset-4 hover:underline"
+                className="ml-1 font-medium text-foreground underline-offset-4 hover:underline"
               >
                 Войти
               </button>
@@ -887,7 +911,7 @@ export default function RegisterDirectorClient() {
                 <button
                   type="button"
                   onClick={handleNextFromStep1}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
                 >
                   Далее
                   <ArrowRight className="h-4 w-4" />
@@ -909,7 +933,7 @@ export default function RegisterDirectorClient() {
                     emailStatus === "sending" ||
                     emailStatus === "link_sent"
                   }
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                 >
                   {isSubmitting || emailStatus === "sending" ? (
                     <>

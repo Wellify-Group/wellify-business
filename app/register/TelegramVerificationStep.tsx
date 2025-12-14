@@ -246,26 +246,27 @@ export function TelegramVerificationStep({
 
 
   return (
-    <div className="flex flex-col items-center gap-4 py-4">
+    <div className="flex flex-col items-center gap-6 py-4">
       {telegramLink && (
         <>
-          <button
-            type="button"
-            onClick={handleOpenTelegram}
-            className="rounded-3xl bg-white p-4 shadow-[0_18px_60px_rgba(0,0,0,0.45)] transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
-          >
-            <QRCode value={telegramLink} size={200} />
-          </button>
+          <div className="relative rounded-[24px] border border-white/8 bg-gradient-to-br from-[#0F172A] to-[#020617] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-sm">
+            <div className="absolute inset-0 rounded-[24px] bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-50"></div>
+            <button
+              type="button"
+              onClick={handleOpenTelegram}
+              className="relative rounded-2xl bg-white p-4 shadow-[0_18px_60px_rgba(0,0,0,0.45)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_20px_70px_rgba(0,0,0,0.55)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
+            >
+              <QRCode value={telegramLink} size={200} />
+            </button>
+          </div>
 
-          {/* !!! ИСПРАВЛЕНИЕ: Удаляем дублирующий текст-описание (openHint) !!! */}
-          {/* <p className="max-w-md text-center text-xs text-zinc-400">
-            {texts.openHint}
-          </p> */}
-
-          <ol className="mt-1 space-y-1 text-[11px] text-zinc-500">
+          <ol className="mt-2 space-y-2.5 text-[12px] leading-relaxed text-slate-400 max-w-sm">
             {texts.steps.map((line, idx) => (
-              <li key={idx}>
-                {idx + 1}. {line}
+              <li key={idx} className="flex items-start gap-2">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-semibold text-blue-400">
+                  {idx + 1}
+                </span>
+                <span>{line}</span>
               </li>
             ))}
           </ol>
@@ -273,11 +274,14 @@ export function TelegramVerificationStep({
       )}
 
       {!telegramLink && !error && (
-        <p className="text-xs text-zinc-500">
-          {loading
-            ? "Готовим ссылку для Telegram…"
-            : "Подготовка ссылки для Telegram…"}
-        </p>
+        <div className="flex items-center gap-2 text-xs text-slate-400 animate-pulse">
+          <div className="h-2 w-2 rounded-full bg-blue-400"></div>
+          <p>
+            {loading
+              ? "Готовим ссылку для Telegram…"
+              : "Подготовка ссылки для Telegram…"}
+          </p>
+        </div>
       )}
 
 
