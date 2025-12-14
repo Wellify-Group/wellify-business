@@ -1080,8 +1080,8 @@ export default function RegisterDirectorClient() {
   // Главный контейнер: центрирование по вертикали и горизонтали
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="relative w-full max-w-xl mt-14 mb-14">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 pt-14 pb-10">
+      <div className="relative w-full max-w-xl mt-10 mb-10">
         <Card className="relative z-10 w-full rounded-[28px] border border-white/4 bg-gradient-to-b from-[#0B1220] to-[#050712] backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.70)]">
           <CardHeader className="px-8 pt-5 pb-3">
             {step !== 4 && renderTabs()}
