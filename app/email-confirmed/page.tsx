@@ -1,52 +1,90 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
+import { useLanguage } from "@/components/language-provider";
+import { useEffect, useState } from "react";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export default function EmailConfirmedPage() {
+  const { t, language } = useLanguage();
+  const [userLanguage, setUserLanguage] = useState<"ru" | "uk" | "en">("ru");
+  const supabase = createBrowserSupabaseClient();
+
+  // Загружаем язык пользователя из БД
+  useEffect(() => {
+    const loadUserLanguage = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("language")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          
+          if (profile?.language) {
+            const lang = profile.language === "ua" ? "uk" : profile.language;
+            if (["ru", "uk", "en"].includes(lang)) {
+              setUserLanguage(lang as "ru" | "uk" | "en");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error loading user language:", error);
+      }
+    };
+    loadUserLanguage();
+  }, [supabase]);
+
+  const translations = {
+    ru: {
+      title: "Подтверждение e-mail",
+      message: "Ваш e-mail успешно подтверждён.",
+      closeButton: "Закрыть окно",
+    },
+    uk: {
+      title: "Підтвердження e-mail",
+      message: "Ваш e-mail успішно підтверджено.",
+      closeButton: "Закрити вікно",
+    },
+    en: {
+      title: "Email Confirmation",
+      message: "Your email has been successfully confirmed.",
+      closeButton: "Close Window",
+    },
+  };
+
+  const texts = translations[userLanguage];
+
   const handleClose = () => {
-    // Если вкладка открыта в новом окне – попробуем закрыть
+    // Закрываем окно браузера
     if (window.opener) {
       window.close();
     } else {
-      // fallback: просто вернем на регистрацию
-      window.location.href = "/register";
+      window.close();
     }
   };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-xl rounded-[32px] border border-emerald-500/25 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%),_rgba(5,15,20,0.96)] px-8 py-10 shadow-[0_24px_80px_rgba(0,0,0,0.9)]">
+      <div className="w-full max-w-xl rounded-[32px] border border-[var(--border)] bg-[var(--card)] px-8 py-10 shadow-[var(--shadow-modal)]">
         <div className="flex flex-col items-center text-center space-y-4">
-          <CheckCircle2 className="h-16 w-16 text-emerald-400" />
+          <CheckCircle2 className="h-16 w-16 text-[var(--color-success)]" />
 
-          <h1 className="text-2xl font-semibold text-zinc-50">
-            Подтверждение e-mail
+          <h1 className="text-2xl font-semibold text-[var(--foreground)]">
+            {texts.title}
           </h1>
 
-          <p className="max-w-md text-sm leading-relaxed text-zinc-300">
-            Ваш e-mail успешно подтверждён. Теперь вы можете вернуться
-            к регистрации директора в WELLIFY business и продолжить настройку
-            аккаунта.
-          </p>
-
-          <p className="text-xs text-emerald-400">
-            E-mail подтверждён. Можно закрыть это окно.
+          <p className="max-w-md text-sm leading-relaxed text-[var(--muted-foreground)]">
+            {texts.message}
           </p>
 
           <button
             type="button"
             onClick={handleClose}
-            className="mt-2 inline-flex h-10 items-center justify-center rounded-full bg-emerald-500 px-6 text-sm font-semibold text-emerald-950 shadow-[0_18px_60px_rgba(16,185,129,0.55)] transition hover:bg-emerald-400"
+            className="mt-2 inline-flex h-10 items-center justify-center rounded-full bg-[var(--primary)] px-6 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-floating)] transition hover:bg-[var(--primary)]/90"
           >
-            Закрыть окно
-          </button>
-
-          <button
-            type="button"
-            onClick={() => (window.location.href = "/register")}
-            className="mt-3 text-xs text-zinc-400 underline-offset-4 hover:underline"
-          >
-            Вернуться к регистрации
+            {texts.closeButton}
           </button>
         </div>
       </div>

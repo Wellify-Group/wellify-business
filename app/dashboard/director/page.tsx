@@ -17,6 +17,7 @@ import { NetworkStatusIndicator } from "@/components/dashboard/director/network-
 import { QuickActions } from "@/components/dashboard/director/quick-actions";
 import { Problem, createProblemFromSource } from "@/lib/problem-types";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import Link from "next/link";
 
 export default function DirectorDashboard() {
   const { t, language } = useLanguage();
@@ -727,11 +728,13 @@ export default function DirectorDashboard() {
 
   // Пустое состояние: нет точек
   if (locations.length === 0) {
-    const welcomeText = `${
-      t("dashboard.welcome_text") || "Добро пожаловать"
-    }${
-      directorName && directorName !== "User" ? `, ${directorName}` : ""
-    }`;
+    // Формируем имя отчество директора
+    const firstName = (currentUser as any)?.firstName || "";
+    const middleName = (currentUser as any)?.middleName || "";
+    const directorGreeting = [firstName, middleName].filter(Boolean).join(" ") || directorName;
+    
+    const welcomeText = t("dashboard.welcome_text") || "Добро пожаловать";
+    const greetingName = directorGreeting && directorGreeting !== "User" ? directorGreeting : "";
 
     return (
       <div className="space-y-6">
@@ -741,10 +744,21 @@ export default function DirectorDashboard() {
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
               {welcomeText}
             </h1>
+            {greetingName && (
+              <p className="text-xl font-semibold text-foreground">
+                {greetingName}
+              </p>
+            )}
             <p className="text-muted-foreground mb-6">
               {t("dashboard.welcome_subtitle") ||
                 "Создайте первую торговую точку для начала работы"}
             </p>
+            <Link
+              href="/dashboard/director/locations?action=new"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-6 py-3 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-floating)] transition hover:bg-[var(--primary)]/90"
+            >
+              Создать точку
+            </Link>
           </div>
         </div>
       </div>

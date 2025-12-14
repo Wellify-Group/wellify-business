@@ -37,17 +37,21 @@ export function WeatherWidget() {
   // Prevent hydration mismatch by not rendering temperature until mounted
   if (!mounted) {
     return (
-      <div className="hidden md:flex items-center gap-1.5 text-xs font-mono text-muted-foreground border border-border px-2 py-1 rounded-md bg-muted/20">
-        {weatherIcon}
-        <span>--°C</span>
+      <div className="hidden md:flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
+        <div className="w-4 h-4 flex items-center justify-center">
+          {weatherIcon}
+        </div>
+        <span className="tabular-nums">--°C</span>
       </div>
     );
   }
 
   return (
-    <div className="hidden md:flex items-center gap-1.5 text-xs font-mono text-muted-foreground border border-border px-2 py-1 rounded-md bg-muted/20">
-      {weatherIcon}
-      <span suppressHydrationWarning>{weather.temp}°C</span>
+    <div className="hidden md:flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)]">
+      <div className="w-4 h-4 flex items-center justify-center">
+        {weatherIcon}
+      </div>
+      <span className="tabular-nums" suppressHydrationWarning>{weather.temp}°C</span>
     </div>
   );
 }

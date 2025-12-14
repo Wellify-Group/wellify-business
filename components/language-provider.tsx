@@ -52,12 +52,12 @@ function isValidLanguage(lang: string | null): lang is Language {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   // Always start with DEFAULT_LANGUAGE to avoid hydration mismatch
-  // Language will be updated from localStorage in useEffect after mount
+  // Language will be updated from localStorage or DB in useEffect after mount
   const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Check for new key first, then fallback to old key for migration
+      // Сначала проверяем localStorage
       let stored = window.localStorage.getItem("wellify_locale");
       if (!stored) {
         stored = window.localStorage.getItem("shiftflow-lang");
@@ -67,21 +67,73 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
           window.localStorage.removeItem("shiftflow-lang");
         }
       }
-      if (isValidLanguage(stored)) {
-        setLanguageState(stored);
-      }
+      
+      // Затем пытаемся загрузить из БД (если пользователь авторизован)
+      const loadLanguageFromDB = async () => {
+        try {
+          const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
+          const supabase = createBrowserSupabaseClient();
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("language")
+              .eq("id", session.user.id)
+              .maybeSingle();
+            
+            if (profile?.language) {
+              // Конвертируем ua -> uk для совместимости
+              const dbLang = profile.language === "ua" ? "uk" : profile.language;
+              if (isValidLanguage(dbLang)) {
+                setLanguageState(dbLang);
+                window.localStorage.setItem("wellify_locale", dbLang);
+                return;
+              }
+            }
+          }
+        } catch (error) {
+          console.warn("[LanguageProvider] Failed to load language from DB:", error);
+        }
+        
+        // Fallback to localStorage
+        if (isValidLanguage(stored)) {
+          setLanguageState(stored);
+        }
+      };
+      
+      loadLanguageFromDB();
     }
   }, []);
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = async (lang: Language) => {
     if (!isValidLanguage(lang)) {
       console.warn(`Invalid language: ${lang}, falling back to ${DEFAULT_LANGUAGE}`);
       setLanguageState(DEFAULT_LANGUAGE);
       return;
     }
+    
     setLanguageState(lang);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("wellify_locale", lang);
+      
+      // Сохраняем язык в БД
+      try {
+        const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
+        const supabase = createBrowserSupabaseClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Конвертируем uk -> ua для БД
+          const dbLang = lang === "uk" ? "ua" : lang;
+          await supabase
+            .from("profiles")
+            .update({ language: dbLang })
+            .eq("id", session.user.id);
+        }
+      } catch (error) {
+        console.warn("[LanguageProvider] Failed to save language to DB:", error);
+      }
     }
   };
 

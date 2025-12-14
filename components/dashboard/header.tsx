@@ -153,9 +153,9 @@ export function DashboardHeader() {
   const currentLanguage =
     languages.find((lang) => lang.code === language) || languages[0];
 
-  const handleLanguageChange = (langCode: Language) => {
+  const handleLanguageChange = async (langCode: Language) => {
     if (language !== langCode) {
-      setLanguage(langCode);
+      await setLanguage(langCode);
       router.refresh();
     }
     setIsLanguageMenuOpen(false);
@@ -185,9 +185,8 @@ export function DashboardHeader() {
   };
 
   useEffect(() => {
-    updateLanguageMenuPosition();
-
     if (isLanguageMenuOpen) {
+      updateLanguageMenuPosition();
       window.addEventListener("scroll", updateLanguageMenuPosition, true);
       window.addEventListener("resize", updateLanguageMenuPosition);
 
@@ -428,7 +427,11 @@ export function DashboardHeader() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsProfileOpen(false);
-                            setIsLanguageMenuOpen(!isLanguageMenuOpen);
+                            // Обновляем позицию перед открытием
+                            setTimeout(() => {
+                              updateLanguageMenuPosition();
+                              setIsLanguageMenuOpen(true);
+                            }, 0);
                           }}
                           className="flex items-center justify-between px-4 py-3 hover:bg-[var(--surface-2)] transition-colors rounded-md"
                         >

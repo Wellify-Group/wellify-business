@@ -108,7 +108,8 @@ export function AppSidebar() {
         style={isSidebarCollapsed ? { width: '100%' } : undefined}
         >
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            // Проверяем активность: точное совпадение или начало пути
+            const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}

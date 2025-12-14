@@ -60,18 +60,18 @@ export async function GET(request: NextRequest) {
     // Формируем данные пользователя для фронтенда
     const userData = {
       id: userId,
-      name: profile.first_name || profile['имя'] || user.email?.split('@')[0] || 'User',
-      fullName: profile.full_name || profile['полное_имя'] || null,
+      name: profile.first_name || user.email?.split('@')[0] || 'User',
+      fullName: profile.full_name || null,
       email: profile.email || user.email || null,
-      phone: profile.phone || profile['телефон'] || null,
-      dob: profile.birth_date || profile['дата_рождения'] || null,
-      role: 'director' as const,
-      businessId: profile.business_id || profile['бизнес_id'] || userId,
-      companyCode: profile.company_code || profile['код_компании'] || null,
+      phone: profile.phone || null,
+      dob: profile.birth_date || null,
+      role: (profile.role || 'director') as 'director' | 'manager' | 'employee',
+      businessId: profile.business_id || userId,
+      companyCode: (profile as any)['код_компании'] || profile.company_code || null,
       // Дополнительные поля из профиля
-      firstName: profile.first_name || profile['имя'] || null,
-      lastName: profile.last_name || profile['фамилия'] || null,
-      middleName: profile.middle_name || profile['отчество'] || null,
+      firstName: profile.first_name || null,
+      lastName: profile.last_name || null,
+      middleName: profile.middle_name || null,
     };
 
     console.log('[load-profile] Profile loaded successfully', {
