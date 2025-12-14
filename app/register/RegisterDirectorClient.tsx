@@ -1083,12 +1083,12 @@ export default function RegisterDirectorClient() {
     <main className="flex min-h-screen items-center justify-center bg-background px-4 pt-14 pb-10">
       <div className="relative w-full max-w-xl mt-10 mb-10">
         <Card className="relative z-10 w-full rounded-[28px] border border-white/4 bg-gradient-to-b from-[#0B1220] to-[#050712] backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.70)]">
-          <CardHeader className="px-8 pt-5 pb-3">
+          <CardHeader className="px-8 pt-5 pb-0">
             {step !== 4 && renderTabs()}
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className="px-8 pb-3 pt-0 flex items-center justify-center min-h-[300px]">
+          <CardContent className="px-8 py-0 flex items-center justify-center min-h-[300px]">
             <div className="w-full">
               {registerError && (
                 <div className={cn(

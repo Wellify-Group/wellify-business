@@ -260,16 +260,6 @@ export function TelegramVerificationStep({
             </button>
           </div>
 
-          <ol className="mt-2 space-y-2.5 text-[12px] leading-relaxed text-slate-400 max-w-sm">
-            {texts.steps.map((line, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-semibold text-blue-400">
-                  {idx + 1}
-                </span>
-                <span>{line}</span>
-              </li>
-            ))}
-          </ol>
         </>
       )}
 
@@ -310,23 +300,6 @@ export function TelegramVerificationStep({
         </div>
       )}
 
-      {/* Кнопка "Пропустить" - показывается только если есть telegramLink и статус не completed */}
-      {telegramLink && status && status.status !== "completed" && (
-        <div className="mt-4 flex flex-col items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Вызываем onVerified без телефона, чтобы пропустить шаг
-              onVerified(undefined);
-            }}
-            className="text-xs"
-          >
-            Пропустить, подключу позже
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
