@@ -645,39 +645,73 @@ export default function RegisterDirectorClient() {
    * Поля: Имя, Отчество, Фамилия, Дата рождения, Пароль, Подтверждение пароля
    */
   const renderStep1 = () => {
-    // Функция для форматирования даты из YYYY-MM-DD в ДД.ММ.ГГГГ
-    const formatDateForDisplay = (dateStr: string): string => {
-      if (!dateStr) return "";
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return "";
-      const day = String(date.getDate()).padStart(2, "0");
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const year = date.getFullYear();
-      return `${day}.${month}.${year}`;
-    };
+    // Локальное состояние для отображаемого значения даты (ДД.ММ.ГГГГ)
+    const [displayDate, setDisplayDate] = useState<string>(() => {
+      if (!personal.birthDate) return "";
+      try {
+        const date = new Date(personal.birthDate);
+        if (isNaN(date.getTime())) return "";
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}.${month}.${year}`;
+      } catch {
+        return "";
+      }
+    });
 
     // Функция для парсинга ДД.ММ.ГГГГ в YYYY-MM-DD
-    const parseDateFromDisplay = (displayStr: string): string => {
-      if (!displayStr) return "";
+    const parseDateFromDisplay = (displayStr: string): string | null => {
+      if (!displayStr || displayStr.trim() === "") return null;
       const parts = displayStr.split(".");
-      if (parts.length !== 3) return "";
-      const day = parts[0].padStart(2, "0");
-      const month = parts[1].padStart(2, "0");
-      const year = parts[2];
-      if (year.length !== 4) return "";
+      if (parts.length !== 3) return null;
+      
+      const day = parts[0].trim().padStart(2, "0");
+      const month = parts[1].trim().padStart(2, "0");
+      const year = parts[2].trim();
+      
+      if (day.length !== 2 || month.length !== 2 || year.length !== 4) {
+        return null;
+      }
+      
+      const dayNum = parseInt(day, 10);
+      const monthNum = parseInt(month, 10);
+      const yearNum = parseInt(year, 10);
+      
+      if (isNaN(dayNum) || isNaN(monthNum) || isNaN(yearNum)) {
+        return null;
+      }
+      
+      // Проверка валидности даты
+      if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12) {
+        return null;
+      }
+      
+      const date = new Date(yearNum, monthNum - 1, dayNum);
+      if (
+        date.getDate() !== dayNum ||
+        date.getMonth() !== monthNum - 1 ||
+        date.getFullYear() !== yearNum
+      ) {
+        return null; // Невалидная дата (например, 31.02.2024)
+      }
+      
       return `${year}-${month}-${day}`;
     };
 
     // Обработчик для поля даты рождения
     const handleBirthDateChange = (e: ChangeEvent<HTMLInputElement>) => {
       let value = e.target.value;
+      
       // Удаляем все кроме цифр и точек
       value = value.replace(/[^\d.]/g, "");
       
-      // Ограничиваем длину
-      if (value.length > 10) value = value.slice(0, 10);
+      // Ограничиваем длину до 10 символов (ДД.ММ.ГГГГ)
+      if (value.length > 10) {
+        value = value.slice(0, 10);
+      }
       
-      // Автоматически добавляем точки
+      // Автоматически добавляем точки после дня и месяца
       if (value.length > 2 && value[2] !== ".") {
         value = value.slice(0, 2) + "." + value.slice(2);
       }
@@ -685,10 +719,31 @@ export default function RegisterDirectorClient() {
         value = value.slice(0, 5) + "." + value.slice(5);
       }
       
-      // Парсим в YYYY-MM-DD и обновляем состояние
-      const parsedDate = parseDateFromDisplay(value);
-      if (parsedDate || value === "") {
-        setPersonal((prev) => ({ ...prev, birthDate: parsedDate }));
+      // Обновляем отображаемое значение
+      setDisplayDate(value);
+      
+      // Парсим в YYYY-MM-DD только если дата полностью введена (10 символов: ДД.ММ.ГГГГ)
+      if (value.length === 10) {
+        const parsedDate = parseDateFromDisplay(value);
+        if (parsedDate) {
+          // Проверяем валидность года (1920 - текущий год)
+          const year = parseInt(value.split(".")[2], 10);
+          const currentYear = new Date().getFullYear();
+          const minYear = 1920;
+          
+          if (year >= minYear && year <= currentYear) {
+            setPersonal((prev) => ({ ...prev, birthDate: parsedDate }));
+          } else {
+            // Год вне диапазона - очищаем birthDate
+            setPersonal((prev) => ({ ...prev, birthDate: "" }));
+          }
+        } else {
+          // Если дата невалидна, очищаем birthDate
+          setPersonal((prev) => ({ ...prev, birthDate: "" }));
+        }
+      } else {
+        // Если дата неполная или поле очищено, очищаем birthDate
+        setPersonal((prev) => ({ ...prev, birthDate: "" }));
       }
     };
 
@@ -746,15 +801,16 @@ export default function RegisterDirectorClient() {
             <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Дата рождения
             </label>
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                <Calendar className="h-3 w-3 text-muted-foreground opacity-50" />
+            <div className="relative group">
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center z-10">
+                <Calendar className="h-4 w-4 text-muted-foreground/60 group-focus-within:text-teal-400/80 transition-colors duration-200" />
               </div>
               <input
                 type="text"
-                className="h-11 w-full rounded-full border border-slate-700/22 bg-[#050814] pl-9 pr-3 text-sm text-foreground placeholder:text-slate-500 outline-none transition-all duration-200 focus:border-teal-400/80 focus:shadow-[0_0_0_1px_rgba(94,234,212,0.5)]"
+                inputMode="numeric"
+                className="h-11 w-full rounded-full border border-border bg-background pl-10 pr-4 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)] hover:border-border-hover"
                 placeholder="ДД.ММ.ГГГГ"
-                value={formatDateForDisplay(personal.birthDate)}
+                value={displayDate}
                 onChange={handleBirthDateChange}
                 maxLength={10}
               />

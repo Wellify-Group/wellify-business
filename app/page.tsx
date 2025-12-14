@@ -275,6 +275,9 @@ export default function Home() {
             }}
           ></div>
         </div>
+        
+        {/* Плавный градиентный переход внизу hero-секции */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent via-[var(--color-background)]/50 to-[var(--color-background)] pointer-events-none -z-[5]"></div>
 
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10">
           <motion.h1
