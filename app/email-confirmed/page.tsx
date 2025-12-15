@@ -47,13 +47,13 @@ export default function EmailConfirmedPage() {
             <div 
               className="flex h-16 w-16 items-center justify-center rounded-full"
               style={{
-                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                backgroundColor: 'var(--email-confirmed-success-bg)',
               }}
             >
               <CheckCircle2 
                 className="h-10 w-10"
                 style={{
-                  color: '#22c55e',
+                  color: 'var(--email-confirmed-success-text)',
                 }}
               />
             </div>
