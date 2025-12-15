@@ -982,7 +982,7 @@ export default function RegisterDirectorClient() {
         </label>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-            <Mail className="h-3.5 w-3.5 text-[color:var(--color-success)] opacity-70" />
+            <Mail className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
           </div>
           <input
             type="email"
@@ -1000,44 +1000,12 @@ export default function RegisterDirectorClient() {
           {t<string>("register_email_hint")}
         </p>
         {emailStatus === "link_sent" && (
-          <>
-            <p className="text-primary flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              {t<string>("register_email_waiting")}
-            </p>
-            <p className="text-muted-foreground/80">
-              {t<string>("register_email_sent")}
-            </p>
-            <button
-              type="button"
-              onClick={async () => {
-                // Форсируем проверку подтверждения
-                try {
-                  const res = await fetch("/api/auth/check-email-confirmed", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email }),
-                  });
-                  const data = await res.json();
-                  if (data.success && data.emailConfirmed) {
-                    setEmailStatus("verified");
-                    setEmailVerified(true);
-                    setRegisterError(null);
-                    setStep(3);
-                    setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-                  }
-                } catch (e) {
-                  console.error("[register] Manual email check error", e);
-                }
-              }}
-              className="mt-1 inline-flex items-center justify-center rounded-full border border-border bg-card px-4 py-2 text-xs font-medium text-foreground hover:bg-muted transition-colors self-start"
-            >
-              {t<string>("register_email_confirmed_btn")}
-            </button>
-          </>
+          <p className="text-muted-foreground/80">
+            {t<string>("register_email_sent")}
+          </p>
         )}
         {emailStatus === "verified" && (
-          <p className="text-[color:var(--color-success)]">
+          <p className="text-foreground">
             {t<string>("register_email_verified")}
           </p>
         )}
@@ -1086,8 +1054,8 @@ export default function RegisterDirectorClient() {
    */
   const renderStep4 = () => (
     <div className="flex flex-col items-center gap-5 py-4 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--color-success)]/10 dark:bg-[color:var(--color-success)]/20 animate-[fadeInScale_250ms_ease-out]">
-        <CheckCircle2 className="h-10 w-10 text-[color:var(--color-success)]" />
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted animate-[fadeInScale_250ms_ease-out]">
+        <CheckCircle2 className="h-10 w-10 text-foreground" />
       </div>
       <div className="space-y-2">
         <h3 className="text-xl font-semibold text-foreground">
@@ -1123,7 +1091,7 @@ export default function RegisterDirectorClient() {
   return (
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
       <div className="relative w-full max-w-xl">
-        <Card className="relative z-10 w-full rounded-[28px] border border-border bg-card backdrop-blur-[14px] shadow-[var(--shadow-modal)]">
+        <Card className="relative z-10 w-full rounded-[28px] border border-[color:var(--color-border-strong)] dark:border-border bg-card backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.08)] dark:shadow-[var(--shadow-modal)]">
           <CardHeader className="px-8 pt-5 pb-0">
             {step !== 4 && renderTabs()}
             {renderStepTitle()}
