@@ -335,11 +335,11 @@ export default function Home() {
                   className={cn(
                     "group flex flex-col items-center justify-center gap-2 rounded-lg border bg-card px-4 py-3 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isFirstRow
-                      ? "border-border shadow-sm hover:border-primary/30 hover:shadow-md hover:ring-1 hover:ring-primary/20"
-                      : "border-border shadow-sm hover:border-primary/20 hover:shadow-md hover:ring-1 hover:ring-primary/10",
+                      ? "border-[color:var(--color-border-strong)] dark:border-border shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-sm hover:border-primary/50 dark:hover:border-primary/30 hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] dark:hover:shadow-md hover:bg-muted/30 dark:hover:bg-transparent hover:ring-1 hover:ring-primary/20"
+                      : "border-[color:var(--color-border-strong)] dark:border-border shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-sm hover:border-primary/40 dark:hover:border-primary/20 hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] dark:hover:shadow-md hover:bg-muted/20 dark:hover:bg-transparent hover:ring-1 hover:ring-primary/10",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-md border-primary"
-                      : "text-foreground"
+                      ? "bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(37,99,235,0.3)] dark:shadow-md border-primary"
+                      : "text-foreground bg-card"
                   )}
                 >
                   <Icon
