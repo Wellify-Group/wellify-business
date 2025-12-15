@@ -1055,7 +1055,7 @@ export default function RegisterDirectorClient() {
   const renderStep4 = () => (
     <div className="flex flex-col items-center gap-5 py-4 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted animate-[fadeInScale_250ms_ease-out]">
-        <CheckCircle2 className="h-10 w-10 text-foreground" />
+        <CheckCircle2 className="h-10 w-10 text-[color:var(--color-success)]" />
       </div>
       <div className="space-y-2">
         <h3 className="text-xl font-semibold text-foreground">
@@ -1091,7 +1091,7 @@ export default function RegisterDirectorClient() {
   return (
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
       <div className="relative w-full max-w-xl">
-        <Card className="relative z-10 w-full rounded-[28px] border border-[color:var(--color-border-strong)] dark:border-border bg-card backdrop-blur-[14px] shadow-[0_24px_80px_rgba(0,0,0,0.08)] dark:shadow-[var(--shadow-modal)]">
+        <Card className="relative z-10 w-full rounded-[28px] border border-[color:var(--color-border-strong)] dark:border-border bg-card dark:backdrop-blur-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-[var(--shadow-modal)]">
           <CardHeader className="px-8 pt-5 pb-0">
             {step !== 4 && renderTabs()}
             {renderStepTitle()}
