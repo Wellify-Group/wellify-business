@@ -356,6 +356,62 @@ export default function DirectorDashboard() {
     return issues;
   }, [locations, todayShifts, employees, t]);
 
+  // === ATTENTION ITEMS (Problems) ===
+  const attentionItems = useMemo(() => {
+    const problemItems: Problem[] = [];
+    const seenProblems = new Set<string>();
+
+    // NO_MANAGER_ASSIGNED - Operations issues
+    locations.forEach(loc => {
+      if (!loc.managerId) {
+        const problemKey = `operations-no-manager-${loc.id}`;
+        if (!seenProblems.has(problemKey)) {
+          const problemData = createProblemFromSource('NO_MANAGER_ASSIGNED', {
+            locationId: loc.id,
+            locationName: (loc as any).название || loc.name,
+          });
+          problemItems.push({
+            ...problemData,
+            id: problemKey,
+            status: 'open',
+            createdAt: new Date().toISOString()
+          });
+          seenProblems.add(problemKey);
+        }
+      }
+    });
+
+    // LOW_ACTIVITY - Operations issues (low activity)
+    locations.forEach(loc => {
+      const locShifts = todayShifts.filter(s => s.locationId === loc.id);
+      const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      const locPlanPercent = loc.dailyPlan && loc.dailyPlan > 0
+        ? Math.round((locRevenue / loc.dailyPlan) * 100)
+        : 0;
+
+      if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
+        const problemKey = `operations-low-activity-${loc.id}`;
+        const hasPlanProblem = seenProblems.has(`finance-low-${loc.id}`);
+        if (!hasPlanProblem && !seenProblems.has(problemKey)) {
+          const problemData = createProblemFromSource('LOW_ACTIVITY', {
+            locationId: loc.id,
+            locationName: (loc as any).название || loc.name,
+            planPercent: locPlanPercent
+          });
+          problemItems.push({
+            ...problemData,
+            id: problemKey,
+            status: 'open',
+            createdAt: new Date().toISOString()
+          });
+          seenProblems.add(problemKey);
+        }
+      }
+    });
+
+    return problemItems;
+  }, [locations, todayShifts]);
+
   // Network temperature status
   const networkStatus = useMemo(() => {
     if (planPercent >= 90 && notifications.filter(n => n.priority === 'high').length === 0) {
@@ -555,7 +611,7 @@ export default function DirectorDashboard() {
   }, [currentUser]);
   
   if (locations.length === 0) {
-    const welcomeText = t('dashboard.welcome_text', { name: directorName }) || `Добро пожаловать${directorName && directorName !== 'User' ? `, ${directorName}` : ''}`;
+    const welcomeText = t('dashboard.welcome_text') || `Добро пожаловать${directorName && directorName !== 'User' ? `, ${directorName}` : ''}`;
 
     return (
       <div className="space-y-6">
