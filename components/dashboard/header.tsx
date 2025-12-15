@@ -190,7 +190,7 @@ export function DashboardHeader() {
 
   // Позиция подменю языков
   const updateLanguageMenuPosition = () => {
-    if (isLanguageMenuOpen && languageButtonRef.current) {
+    if (languageButtonRef.current) {
       const buttonRect = languageButtonRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - buttonRect.bottom;
       const spaceAbove = buttonRect.top;
@@ -213,11 +213,16 @@ export function DashboardHeader() {
 
   useEffect(() => {
     if (isLanguageMenuOpen) {
-      updateLanguageMenuPosition();
+      // Небольшая задержка для гарантии, что кнопка отрендерена
+      const timer = setTimeout(() => {
+        updateLanguageMenuPosition();
+      }, 10);
+      
       window.addEventListener("scroll", updateLanguageMenuPosition, true);
       window.addEventListener("resize", updateLanguageMenuPosition);
 
       return () => {
+        clearTimeout(timer);
         window.removeEventListener("scroll", updateLanguageMenuPosition, true);
         window.removeEventListener("resize", updateLanguageMenuPosition);
       };
@@ -461,11 +466,8 @@ export function DashboardHeader() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsProfileOpen(false);
-                            // Обновляем позицию перед открытием
-                            setTimeout(() => {
-                              updateLanguageMenuPosition();
-                              setIsLanguageMenuOpen(true);
-                            }, 0);
+                            // Открываем меню, позиция обновится в useEffect
+                            setIsLanguageMenuOpen(true);
                           }}
                           className="flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md"
                         >
