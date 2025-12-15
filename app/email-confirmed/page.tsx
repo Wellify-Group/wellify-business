@@ -2,12 +2,12 @@
 
 import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
-export default function EmailConfirmedPage() {
+function EmailConfirmedContent() {
   const { t, setLanguage } = useLanguage();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -254,5 +254,45 @@ export default function EmailConfirmedPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function EmailConfirmedPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full w-full items-center justify-center px-4 py-8">
+        <div className="relative w-full max-w-[480px]">
+          <div 
+            className="relative overflow-hidden rounded-[32px] border px-6 py-5 shadow-xl sm:px-8 sm:py-6"
+            style={{
+              backgroundColor: 'var(--email-confirmed-card-bg)',
+              borderColor: 'var(--email-confirmed-border)',
+            }}
+          >
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div 
+                className="text-[11px] tracking-[0.16em] uppercase"
+                style={{
+                  color: 'var(--email-confirmed-muted)',
+                }}
+              >
+                <span>WELLIFY <strong style={{ color: 'var(--email-confirmed-text)', fontWeight: 600 }}>BUSINESS</strong></span>
+              </div>
+              <h1 
+                className="text-[22px] leading-[1.3] font-bold"
+                style={{
+                  color: 'var(--email-confirmed-text)',
+                  margin: '0 0 16px 0',
+                }}
+              >
+                Загрузка...
+              </h1>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <EmailConfirmedContent />
+    </Suspense>
   );
 }
