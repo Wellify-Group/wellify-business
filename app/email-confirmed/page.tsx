@@ -2,16 +2,86 @@
 
 import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { useEffect } from "react";
-import { cn } from "@/lib/utils"; // Предполагаем, что cn доступен для объединения классов
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export default function EmailConfirmedPage() {
   const { t, setLanguage } = useLanguage();
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   // Устанавливаем украинский язык для этой страницы
   useEffect(() => {
     setLanguage('ua');
   }, [setLanguage]);
+
+  // Проверяем сессию и подтверждаем email
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const { data, error: getUserError } = await supabase.auth.getUser();
+
+        if (getUserError) {
+          console.error("[email-confirmed] getUser error", getUserError);
+          setError("Не удалось проверить сессию");
+          setLoading(false);
+          return;
+        }
+
+        if (!data?.user) {
+          console.error("[email-confirmed] No user found");
+          setError("Пользователь не найден");
+          setLoading(false);
+          return;
+        }
+
+        // Проверяем, подтвержден ли email
+        if (!data.user.email_confirmed_at) {
+          console.error("[email-confirmed] Email not confirmed");
+          setError("Email еще не подтвержден");
+          setLoading(false);
+          return;
+        }
+
+        const normalized = data.user.email?.toLowerCase() || null;
+        setEmail(normalized);
+
+        // Синхронизируем профиль через API
+        try {
+          const res = await fetch("/api/auth/email-sync-profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: data.user.id,
+              email: normalized,
+            }),
+          });
+
+          if (!res.ok) {
+            console.error("[email-confirmed] Failed to sync profile");
+          }
+        } catch (syncError) {
+          console.error("[email-confirmed] Error syncing profile", syncError);
+        }
+
+        // Помечаем верификацию в localStorage
+        if (typeof window !== "undefined" && normalized) {
+          localStorage.setItem("wellify_email_confirmed", "true");
+          localStorage.setItem("wellify_email_confirmed_for", normalized);
+        }
+      } catch (e) {
+        console.error("[email-confirmed] Unexpected error", e);
+        setError("Произошла ошибка при подтверждении email");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
+  }, []);
 
   const handleClose = () => {
     if (window.opener) {
@@ -56,44 +126,118 @@ export default function EmailConfirmedPage() {
               />
             </div>
 
-            <h1 
-              className="text-[22px] leading-[1.3] font-bold"
-              style={{
-                color: 'var(--email-confirmed-text)',
-                margin: '0 0 16px 0',
-              }}
-            >
-              {t<string>("email_confirmed_title")}
-            </h1>
+            {loading ? (
+              <>
+                <h1 
+                  className="text-[22px] leading-[1.3] font-bold"
+                  style={{
+                    color: 'var(--email-confirmed-text)',
+                    margin: '0 0 16px 0',
+                  }}
+                >
+                  Подтверждаем e-mail...
+                </h1>
+                <p 
+                  className="text-sm leading-[1.6] max-w-sm"
+                  style={{
+                    color: 'var(--email-confirmed-muted)',
+                    margin: '0 0 8px 0',
+                  }}
+                >
+                  Пожалуйста, подождите...
+                </p>
+              </>
+            ) : error ? (
+              <>
+                <h1 
+                  className="text-[22px] leading-[1.3] font-bold"
+                  style={{
+                    color: '#DC2626',
+                    margin: '0 0 16px 0',
+                  }}
+                >
+                  Ошибка подтверждения
+                </h1>
+                <p 
+                  className="text-sm leading-[1.6] max-w-sm"
+                  style={{
+                    color: 'var(--email-confirmed-muted)',
+                    margin: '0 0 8px 0',
+                  }}
+                >
+                  {error}
+                </p>
+                <div className="pt-6 pb-4">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className={cn(
+                      "inline-block rounded-full px-7 py-3 text-sm font-semibold transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                      "hover:opacity-80"
+                    )}
+                    style={{
+                      backgroundColor: 'var(--email-confirmed-primary)',
+                      color: 'var(--email-confirmed-primary-foreground)',
+                    }}
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h1 
+                  className="text-[22px] leading-[1.3] font-bold"
+                  style={{
+                    color: 'var(--email-confirmed-text)',
+                    margin: '0 0 16px 0',
+                  }}
+                >
+                  {t<string>("email_confirmed_title")}
+                </h1>
 
-            <p 
-              className="text-sm leading-[1.6] max-w-sm"
-              style={{
-                color: 'var(--email-confirmed-muted)',
-                margin: '0 0 8px 0',
-              }}
-            >
-              {t<string>("email_confirmed_message")}
-            </p>
+                <p 
+                  className="text-sm leading-[1.6] max-w-sm"
+                  style={{
+                    color: 'var(--email-confirmed-muted)',
+                    margin: '0 0 8px 0',
+                  }}
+                >
+                  {t<string>("email_confirmed_message")}
+                </p>
 
-            <div className="pt-6 pb-4">
-              <button
-                type="button"
-                onClick={handleClose}
-                className={cn(
-                  "inline-block rounded-full px-7 py-3 text-sm font-semibold transition-colors",
-                  // Используем CSS-переменные для адаптивности:
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-                  "hover:opacity-80" // Добавляем простой hover эффект
+                {email && (
+                  <p 
+                    className="text-xs mt-2"
+                    style={{
+                      color: 'var(--email-confirmed-muted)',
+                    }}
+                  >
+                    E-mail: <span className="font-mono">{email}</span>
+                  </p>
                 )}
-                style={{
-                  backgroundColor: 'var(--email-confirmed-primary)',
-                  color: 'var(--email-confirmed-primary-foreground)',
-                }}
-              >
-                {t<string>("email_confirmed_close_button")}
-              </button>
-            </div>
+
+                <div className="pt-6 pb-4">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className={cn(
+                      "inline-block rounded-full px-7 py-3 text-sm font-semibold transition-colors",
+                      // Используем CSS-переменные для адаптивности:
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                      "hover:opacity-80" // Добавляем простой hover эффект
+                    )}
+                    style={{
+                      backgroundColor: 'var(--email-confirmed-primary)',
+                      color: 'var(--email-confirmed-primary-foreground)',
+                    }}
+                  >
+                    {t<string>("email_confirmed_close_button")}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
