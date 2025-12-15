@@ -23,6 +23,8 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -60,6 +62,10 @@ export default function RegisterDirectorClient() {
 
   // Локальное состояние для отображаемого значения даты рождения (ДД.ММ.ГГГГ)
   const [displayDate, setDisplayDate] = useState<string>("");
+
+  // Состояния видимости паролей
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   // Данные шага 2: рабочий e-mail
   const [email, setEmail] = useState("");
@@ -851,7 +857,7 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                <User className="h-3.5 w-3.5 text-[color:var(--color-success)] opacity-70" />
+                <User className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
               </div>
               <input
                 type="text"
@@ -898,7 +904,7 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative group">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center z-10">
-                <Calendar className="h-4 w-4 text-[color:var(--color-success)] opacity-70" />
+                <Calendar className="h-4 w-4 text-muted-foreground opacity-70" />
               </div>
               <input
                 type="text"
@@ -920,16 +926,28 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                <Lock className="h-3.5 w-3.5 text-[color:var(--color-success)] opacity-70" />
+                <Lock className="h-3.5 w-3.5 text-muted-foreground opacity-70" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                className="h-11 w-full rounded-[14px] border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+                className="h-11 w-full rounded-[14px] border border-border bg-background pl-9 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
                 placeholder={t<string>("register_field_password_placeholder")}
                 value={personal.password}
                 onChange={handlePersonalChange("password")}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -939,13 +957,25 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative">
               <input
-                type="password"
+                type={showPasswordConfirm ? "text" : "password"}
                 autoComplete="new-password"
-                className="h-11 w-full rounded-[14px] border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+                className="h-11 w-full rounded-[14px] border border-border bg-background px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
                 placeholder={t<string>("register_field_password_confirm_placeholder")}
                 value={personal.passwordConfirm}
                 onChange={handlePersonalChange("passwordConfirm")}
               />
+              <button
+                type="button"
+                onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPasswordConfirm ? "Скрыть пароль" : "Показать пароль"}
+              >
+                {showPasswordConfirm ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
         </div>

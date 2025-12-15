@@ -315,7 +315,7 @@ export default function Home() {
             {t("sec_whom")}
           </h2>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:gap-5 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
             {SEGMENTS.map((segment, index) => {
               const Icon = segment.icon;
               const isActive = activeCategoryId === String(segment.id);
@@ -333,18 +333,18 @@ export default function Home() {
                   whileHover={{ y: -2, scale: 1.01 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                   className={cn(
-                    "group flex flex-col items-center justify-center gap-3 rounded-xl border bg-card backdrop-blur-sm px-5 py-4 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                    "group flex flex-col items-center justify-center gap-2 rounded-lg border bg-card px-4 py-3 text-sm font-medium transition-all duration-250 ease-out cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     isFirstRow
-                      ? "border-border shadow-[var(--shadow-card)] hover:border-primary/30 hover:shadow-[var(--shadow-floating)] hover:ring-1 hover:ring-primary/20"
-                      : "border-border shadow-[var(--shadow-soft)] hover:border-primary/20 hover:shadow-[var(--shadow-card)] hover:ring-1 hover:ring-primary/10",
+                      ? "border-border shadow-sm hover:border-primary/30 hover:shadow-md hover:ring-1 hover:ring-primary/20"
+                      : "border-border shadow-sm hover:border-primary/20 hover:shadow-md hover:ring-1 hover:ring-primary/10",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-[var(--shadow-floating)] border-primary"
+                      ? "bg-primary text-primary-foreground shadow-md border-primary"
                       : "text-foreground"
                   )}
                 >
                   <Icon
                     className={cn(
-                      "h-7 w-7 transition-transform duration-250 group-hover:scale-[1.05] mb-1",
+                      "h-5 w-5 transition-transform duration-250 group-hover:scale-[1.05]",
                       isActive
                         ? "text-primary-foreground"
                         : "text-muted-foreground group-hover:text-primary"
@@ -353,7 +353,7 @@ export default function Home() {
                   />
                   <span
                     className={cn(
-                      "break-words leading-tight text-center text-base font-semibold",
+                      "break-words leading-tight text-center text-sm font-medium",
                       isActive
                         ? "text-primary-foreground"
                         : "text-foreground"
