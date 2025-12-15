@@ -13,7 +13,7 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
     // Определяем тему синхронно
     const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    // Устанавливаем цвета сразу, без ожидания CSS
+    // Устанавливаем цвета сразу, без ожидания CSS (согласно HTML-шаблону)
     const bgColor = isDark ? '#050B13' : '#F8FAFC';
     const textColor = isDark ? '#E2E8F0' : '#0F172A';
     
@@ -61,15 +61,17 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
         background-color: ${bgColor} !important;
       }
       
-      /* Адаптация к системной теме браузера */
+      /* Адаптация к системной теме браузера (согласно HTML-шаблону) */
       :root {
-        --email-confirmed-bg: ${isDark ? '#050B13' : '#F8FAFC'};
-        --email-confirmed-card-bg: ${isDark ? '#0B1320' : '#FFFFFF'};
-        --email-confirmed-border: ${isDark ? 'rgba(148, 163, 184, 0.24)' : '#E2E8F0'};
-        --email-confirmed-text: ${isDark ? '#E2E8F0' : '#0F172A'};
-        --email-confirmed-muted: ${isDark ? '#94A3B8' : '#64748B'};
-        --email-confirmed-primary: ${isDark ? '#3B82F6' : '#2563EB'};
-        --email-confirmed-primary-hover: ${isDark ? '#2563EB' : '#1D4ED8'};
+        --email-confirmed-bg: #F8FAFC;
+        --email-confirmed-card-bg: #FFFFFF;
+        --email-confirmed-border: #E2E8F0;
+        --email-confirmed-text: #0F172A;
+        --email-confirmed-muted: #64748B;
+        --email-confirmed-soft: #9CA3AF;
+        --email-confirmed-primary: #2563EB;
+        --email-confirmed-primary-hover: #1D4ED8;
+        --email-confirmed-primary-foreground: #F8FAFC;
       }
       
       @media (prefers-color-scheme: dark) {
@@ -79,8 +81,10 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-border: rgba(148, 163, 184, 0.24);
           --email-confirmed-text: #E2E8F0;
           --email-confirmed-muted: #94A3B8;
+          --email-confirmed-soft: #9CA3AF;
           --email-confirmed-primary: #3B82F6;
           --email-confirmed-primary-hover: #2563EB;
+          --email-confirmed-primary-foreground: #F8FAFC;
         }
       }
       
@@ -91,8 +95,10 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-border: #E2E8F0;
           --email-confirmed-text: #0F172A;
           --email-confirmed-muted: #64748B;
+          --email-confirmed-soft: #9CA3AF;
           --email-confirmed-primary: #2563EB;
           --email-confirmed-primary-hover: #1D4ED8;
+          --email-confirmed-primary-foreground: #F8FAFC;
         }
       }
     `;
