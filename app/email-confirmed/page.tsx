@@ -27,10 +27,10 @@ export default function EmailConfirmedPage() {
     <div className="flex h-full w-full items-center justify-center px-4 py-8">
       <div className="relative w-full max-w-[480px]">
         <div 
-          className="relative overflow-hidden rounded-2xl border px-6 py-8"
+          className="relative overflow-hidden rounded-[32px] border px-6 py-5 shadow-[var(--shadow-modal)] sm:px-8 sm:py-6"
           style={{
-            backgroundColor: 'var(--email-confirmed-card-bg, #FFFFFF)',
-            borderColor: 'var(--email-confirmed-border, #E2E8F0)',
+            backgroundColor: 'var(--email-confirmed-card-bg)',
+            borderColor: 'var(--email-confirmed-border)',
           }}
         >
           <div className="flex flex-col items-center space-y-4 text-center">
@@ -38,10 +38,10 @@ export default function EmailConfirmedPage() {
             <div 
               className="text-[11px] tracking-[0.16em] uppercase"
               style={{
-                color: 'var(--email-confirmed-muted, #64748B)',
+                color: 'var(--email-confirmed-muted)',
               }}
             >
-              <span>WELLIFY <strong style={{ color: 'var(--email-confirmed-text, #0F172A)', fontWeight: 600 }}>BUSINESS</strong></span>
+              <span>WELLIFY <strong style={{ color: 'var(--email-confirmed-text)', fontWeight: 600 }}>BUSINESS</strong></span>
             </div>
 
             <div 
@@ -61,7 +61,7 @@ export default function EmailConfirmedPage() {
             <h1 
               className="text-[22px] leading-[1.3] font-bold"
               style={{
-                color: 'var(--email-confirmed-text, #0F172A)',
+                color: 'var(--email-confirmed-text)',
                 margin: '0 0 16px 0',
               }}
             >
@@ -71,7 +71,7 @@ export default function EmailConfirmedPage() {
             <p 
               className="text-sm leading-[1.6] max-w-sm"
               style={{
-                color: 'var(--email-confirmed-muted, #64748B)',
+                color: 'var(--email-confirmed-muted)',
                 margin: '0 0 8px 0',
               }}
             >
@@ -84,14 +84,14 @@ export default function EmailConfirmedPage() {
                 onClick={handleClose}
                 className="inline-block rounded-full px-7 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style={{
-                  backgroundColor: 'var(--email-confirmed-primary, #2563EB)',
-                  color: 'var(--email-confirmed-primary-foreground, #F8FAFC)',
+                  backgroundColor: 'var(--email-confirmed-primary)',
+                  color: 'var(--email-confirmed-primary-foreground)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary-hover, #1D4ED8)';
+                  e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary-hover)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary, #2563EB)';
+                  e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary)';
                 }}
               >
                 {t<string>("email_confirmed_close_button")}

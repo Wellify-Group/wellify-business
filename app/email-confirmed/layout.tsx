@@ -39,6 +39,7 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-primary-foreground: #F8FAFC;
           --email-confirmed-success-bg: rgba(34, 197, 94, 0.1);
           --email-confirmed-success-text: #22c55e;
+          --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
       }
       
@@ -55,6 +56,7 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-primary-foreground: #F8FAFC;
           --email-confirmed-success-bg: rgba(34, 197, 94, 0.15);
           --email-confirmed-success-text: #22c55e;
+          --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
         }
       }
     `;
