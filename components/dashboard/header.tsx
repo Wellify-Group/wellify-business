@@ -487,8 +487,8 @@ export function DashboardHeader() {
                         {/* Logout */}
                         <button
                           onClick={async () => {
-                            await logout();
                             setIsProfileOpen(false);
+                            await logout();
                             router.push("/login");
                           }}
                           className="flex items-center justify-between px-4 py-3 text-destructive hover:bg-destructive/10 transition-colors rounded-md"

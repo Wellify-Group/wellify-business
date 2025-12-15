@@ -1,183 +1,158 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { useStore, getFormalName } from "@/lib/store";
+import { useStore, getFormalName } from "@/lib/store"; // Импортируем getFormalName
 import { useLanguage } from "@/components/language-provider";
 import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 import { DayHeader } from "@/components/dashboard/director/day-header";
 import { KPICard } from "@/components/dashboard/director/kpi-card";
 import { ProblemCenter } from "@/components/dashboard/director/problem-center";
-import {
-  LocationsShiftsTable,
-  type LocationShiftData,
-} from "@/components/dashboard/director/locations-shifts-table";
+import { LocationsShiftsTable } from "@/components/dashboard/director/locations-shifts-table";
 import { RevenueChartBlock } from "@/components/dashboard/director/revenue-chart-block";
 import { EventJournal } from "@/components/dashboard/director/event-journal";
 import { NetworkStatusIndicator } from "@/components/dashboard/director/network-status-indicator";
 import { QuickActions } from "@/components/dashboard/director/quick-actions";
 import { Problem, createProblemFromSource } from "@/lib/problem-types";
-import { TrendingUp, TrendingDown } from "lucide-react";
-import Link from "next/link";
-import { motion } from "framer-motion";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export default function DirectorDashboard() {
-  const { t, language } = useLanguage();
-  const { locations, shifts, currency, employees, currentUser, hasSeenTour } =
-    useStore();
+  const { t, language } = useLanguage(); 
+  const { locations, shifts, currency, employees, currentUser, hasSeenTour } = useStore();
+  const [isMounted, setIsMounted] = useState(false);
+  const [recentEvents, setRecentEvents] = useState<Array<{
+    id: string;
+    message: string;
+    time: number;
+    type: 'finance' | 'incident' | 'personnel' | 'other';
+  }>>([]);
 
-  const [recentEvents, setRecentEvents] = useState<
-    Array<{
-      id: string;
-      message: string;
-      time: number;
-      type: "finance" | "incident" | "personnel" | "other";
-    }>
-  >([]);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  // Refs для актуальных данных в интервалах
+  // Store refs for current data to use in interval
   const shiftsRef = useRef(shifts);
   const employeesRef = useRef(employees);
   const locationsRef = useRef(locations);
   const existingEventsRef = useRef<Set<string>>(new Set());
 
+  // Update refs when data changes
   useEffect(() => {
     shiftsRef.current = shifts;
     employeesRef.current = employees;
     locationsRef.current = locations;
   }, [shifts, employees, locations]);
 
-  // Генерация событий (журнал)
+  // Generate events
   useEffect(() => {
     const generateEvents = () => {
       const events: Array<{
         id: string;
         message: string;
         time: number;
-        type: "finance" | "incident" | "personnel" | "other";
+        type: 'finance' | 'incident' | 'personnel' | 'other';
       }> = [];
       const newEventIds = new Set<string>();
 
-      // Недавние смены
+      // Recent shifts
       [...shiftsRef.current]
         .sort((a, b) => b.date - a.date)
         .slice(0, 5)
-        .forEach((shift) => {
-          const employee = employeesRef.current.find(
-            (e) => e.id === shift.employeeId
-          );
-          if (shift.clockOut && shift.status === "ok") {
+        .forEach(shift => {
+          const employee = employeesRef.current.find(e => e.id === shift.employeeId);
+          if (shift.clockOut && shift.status === 'ok') {
             const eventId = shift.id;
             if (!existingEventsRef.current.has(eventId)) {
               events.push({
                 id: eventId,
-                message: `${t("dashboard.shift_completed") || "Смена сотрудника"} ${
-                  employee?.name || shift.employeeName
-                } ${
-                  t("dashboard.shift_completed_suffix") || "завершена."
-                }`,
+                message: `${t('dashboard.shift_completed') || 'Смена сотрудника'} ${employee?.name || shift.employeeName} ${t('dashboard.shift_completed_suffix') || 'завершена.'}`,
                 time: shift.date,
-                type: "personnel",
+                type: 'personnel'
               });
               newEventIds.add(eventId);
             }
           }
         });
 
-      // Обновление планов по точкам
-      locationsRef.current.forEach((loc) => {
+      // Plan updates
+      locationsRef.current.forEach(loc => {
         if (loc.dailyPlan && loc.dailyPlan > 0) {
           const eventId = `plan-${loc.id}`;
           if (!existingEventsRef.current.has(eventId)) {
             events.push({
               id: eventId,
-              message: `${
-                t("dashboard.plan_updated") || "План по точке"
-              } ${loc.name} ${
-                t("dashboard.plan_updated_suffix") || "обновлён менеджером."
-              }`,
+              message: `${t('dashboard.plan_updated') || 'План по точке'} ${loc.name} ${t('dashboard.plan_updated_suffix') || 'обновлён менеджером.'}`,
               time: Date.now() - Math.random() * 86400000,
-              type: "finance",
+              type: 'finance'
             });
             newEventIds.add(eventId);
           }
         }
       });
 
-      // Новый сотрудник
+      // New employees
       employeesRef.current
-        .filter((e) => e.role === "employee" && e.status === "active")
+        .filter(e => e.role === 'employee' && e.status === 'active')
         .slice(0, 1)
-        .forEach((emp) => {
+        .forEach(emp => {
           const eventId = `emp-${emp.id}`;
           if (!existingEventsRef.current.has(eventId)) {
             events.push({
               id: eventId,
-              message:
-                t("dashboard.new_employee_added") ||
-                "В систему добавлен новый сотрудник.",
+              message: t('dashboard.new_employee_added') || `В систему добавлен новый сотрудник.`,
               time: Date.now() - Math.random() * 2 * 86400000,
-              type: "personnel",
+              type: 'personnel'
             });
             newEventIds.add(eventId);
           }
         });
 
-      newEventIds.forEach((id) => existingEventsRef.current.add(id));
-      const allEvents = [...recentEvents, ...events].sort(
-        (a, b) => b.time - a.time
-      );
+      newEventIds.forEach(id => existingEventsRef.current.add(id));
+      const allEvents = [...recentEvents, ...events].sort((a, b) => b.time - a.time);
       return allEvents.slice(0, 10);
     };
 
     setRecentEvents(generateEvents());
 
     const interval = setInterval(() => {
-      setRecentEvents((prevEvents) => {
+      setRecentEvents(prevEvents => {
         const events: Array<{
           id: string;
           message: string;
           time: number;
-          type: "finance" | "incident" | "personnel" | "other";
+          type: 'finance' | 'incident' | 'personnel' | 'other';
         }> = [];
         const newEventIds = new Set<string>();
 
         [...shiftsRef.current]
           .sort((a, b) => b.date - a.date)
           .slice(0, 5)
-          .forEach((shift) => {
-            const employee = employeesRef.current.find(
-              (e) => e.id === shift.employeeId
-            );
-            if (shift.clockOut && shift.status === "ok") {
+          .forEach(shift => {
+            const employee = employeesRef.current.find(e => e.id === shift.employeeId);
+            if (shift.clockOut && shift.status === 'ok') {
               const eventId = shift.id;
               if (!existingEventsRef.current.has(eventId)) {
                 events.push({
                   id: eventId,
-                  message: `${
-                    t("dashboard.shift_completed") || "Смена сотрудника"
-                  } ${employee?.name || shift.employeeName} ${
-                    t("dashboard.shift_completed_suffix") || "завершена."
-                  }`,
+                  message: `${t('dashboard.shift_completed') || 'Смена сотрудника'} ${employee?.name || shift.employeeName} ${t('dashboard.shift_completed_suffix') || 'завершена.'}`,
                   time: shift.date,
-                  type: "personnel",
+                  type: 'personnel'
                 });
                 newEventIds.add(eventId);
               }
             }
           });
 
-        newEventIds.forEach((id) => existingEventsRef.current.add(id));
-        const allEvents = [...prevEvents, ...events].sort(
-          (a, b) => b.time - a.time
-        );
+        newEventIds.forEach(id => existingEventsRef.current.add(id));
+        const allEvents = [...prevEvents, ...events].sort((a, b) => b.time - a.time);
         return allEvents.slice(0, 10);
       });
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [shifts, employees, locations, t, recentEvents]);
+  }, [shifts, employees, locations, t]); // recentEvents удален, t добавлен
 
-  // === ДАТЫ ===
+  // === DATE CALCULATIONS ===
   const today = useMemo(() => {
     const now = new Date();
     const startOfDay = new Date(now.setHours(0, 0, 0, 0)).getTime();
@@ -185,321 +160,226 @@ export default function DirectorDashboard() {
     return { start: startOfDay, end: endOfDay };
   }, []);
 
-  const todayShifts = useMemo(
-    () => shifts.filter((s) => s.date >= today.start && s.date <= today.end),
-    [shifts, today]
-  );
+  const todayShifts = useMemo(() => {
+    return shifts.filter(s => s.date >= today.start && s.date <= today.end);
+  }, [shifts, today]);
 
-  // === KPI ===
-  const totalRevenue = useMemo(
-    () =>
-      todayShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      ),
-    [todayShifts]
-  );
+  // === KPI CALCULATIONS ===
+  const totalRevenue = useMemo(() => {
+    return todayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+  }, [todayShifts]);
 
-  const totalCheckCount = useMemo(
-    () => todayShifts.reduce((acc, s) => acc + (s.checkCount || 0), 0),
-    [todayShifts]
-  );
+  const totalCheckCount = useMemo(() => {
+    return todayShifts.reduce((acc, s) => acc + (s.checkCount || 0), 0);
+  }, [todayShifts]);
 
-  const totalGuestCount = useMemo(
-    () => todayShifts.reduce((acc, s) => acc + (s.guestCount || 0), 0),
-    [todayShifts]
-  );
+  const totalGuestCount = useMemo(() => {
+    return todayShifts.reduce((acc, s) => acc + (s.guestCount || 0), 0);
+  }, [todayShifts]);
 
-  const avgCheck = useMemo(
-    () => (totalCheckCount > 0 ? totalRevenue / totalCheckCount : 0),
-    [totalRevenue, totalCheckCount]
-  );
+  const avgCheck = useMemo(() => {
+    return totalCheckCount > 0 ? totalRevenue / totalCheckCount : 0;
+  }, [totalRevenue, totalCheckCount]);
 
-  const totalPlan = useMemo(
-    () =>
-      locations.reduce((acc, loc) => acc + (loc.dailyPlan || 0), 0),
-    [locations]
-  );
+  const totalPlan = useMemo(() => {
+    return locations.reduce((acc, loc) => acc + (loc.dailyPlan || 0), 0);
+  }, [locations]);
 
-  const planPercent = useMemo(
-    () => (totalPlan > 0 ? Math.round((totalRevenue / totalPlan) * 100) : 0),
-    [totalRevenue, totalPlan]
-  );
+  const planPercent = useMemo(() => {
+    return totalPlan > 0 ? Math.round((totalRevenue / totalPlan) * 100) : 0;
+  }, [totalRevenue, totalPlan]);
 
-  // Вчера
+  // Previous day comparison
   const yesterdayRevenue = useMemo(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
     const yesterdayEnd = new Date(yesterday);
     yesterdayEnd.setHours(23, 59, 59, 999);
-    const yesterdayShiftsLocal = shifts.filter(
-      (s) =>
-        s.date >= yesterday.getTime() &&
-        s.date <= yesterdayEnd.getTime()
+    const yesterdayShifts = shifts.filter(s => 
+      s.date >= yesterday.getTime() && s.date <= yesterdayEnd.getTime()
     );
-    return yesterdayShiftsLocal.reduce(
-      (acc, s) => acc + s.revenueCash + s.revenueCard,
-      0
-    );
+    return yesterdayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
   }, [shifts]);
 
-  const revenueChangePercent =
-    yesterdayRevenue > 0
-      ? Math.round(
-          ((totalRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
-        )
-      : 0;
+  const revenueChangePercent = yesterdayRevenue > 0
+    ? Math.round(((totalRevenue - yesterdayRevenue) / yesterdayRevenue) * 100)
+    : 0;
 
+  // Calculate yesterday metrics for comparison
   const yesterdayShifts = useMemo(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
     const yesterdayEnd = new Date(yesterday);
     yesterdayEnd.setHours(23, 59, 59, 999);
-    return shifts.filter(
-      (s) =>
-        s.date >= yesterday.getTime() &&
-        s.date <= yesterdayEnd.getTime()
+    return shifts.filter(s => 
+      s.date >= yesterday.getTime() && s.date <= yesterdayEnd.getTime()
     );
   }, [shifts]);
 
-  const yesterdayCheckCount = useMemo(
-    () =>
-      yesterdayShifts.reduce(
-        (acc, s) => acc + (s.checkCount || 0),
-        0
-      ),
-    [yesterdayShifts]
-  );
+  const yesterdayCheckCount = useMemo(() => {
+    return yesterdayShifts.reduce((acc, s) => acc + (s.checkCount || 0), 0);
+  }, [yesterdayShifts]);
 
-  const yesterdayGuestCount = useMemo(
-    () =>
-      yesterdayShifts.reduce(
-        (acc, s) => acc + (s.guestCount || 0),
-        0
-      ),
-    [yesterdayShifts]
-  );
+  const yesterdayGuestCount = useMemo(() => {
+    return yesterdayShifts.reduce((acc, s) => acc + (s.guestCount || 0), 0);
+  }, [yesterdayShifts]);
 
-  const yesterdayAvgCheck = useMemo(
-    () =>
-      yesterdayCheckCount > 0
-        ? yesterdayRevenue / yesterdayCheckCount
-        : 0,
-    [yesterdayRevenue, yesterdayCheckCount]
-  );
+  const yesterdayAvgCheck = useMemo(() => {
+    return yesterdayCheckCount > 0 ? yesterdayRevenue / yesterdayCheckCount : 0;
+  }, [yesterdayRevenue, yesterdayCheckCount]);
 
-  const checkCountChange =
-    totalCheckCount > 0 && yesterdayCheckCount > 0
-      ? Math.round(
-          ((totalCheckCount - yesterdayCheckCount) /
-            yesterdayCheckCount) *
-            100
-        )
-      : 0;
+  const checkCountChange = totalCheckCount > 0 && yesterdayCheckCount > 0
+    ? Math.round(((totalCheckCount - yesterdayCheckCount) / yesterdayCheckCount) * 100)
+    : 0;
 
-  const guestCountChange =
-    totalGuestCount > 0 && yesterdayGuestCount > 0
-      ? Math.round(
-          ((totalGuestCount - yesterdayGuestCount) /
-            yesterdayGuestCount) *
-            100
-        )
-      : 0;
+  const guestCountChange = totalGuestCount > 0 && yesterdayGuestCount > 0
+    ? Math.round(((totalGuestCount - yesterdayGuestCount) / yesterdayGuestCount) * 100)
+    : 0;
 
-  const avgCheckChange =
-    avgCheck > 0 && yesterdayAvgCheck > 0
-      ? Math.round(
-          ((avgCheck - yesterdayAvgCheck) / yesterdayAvgCheck) * 100
-        )
-      : 0;
+  const avgCheckChange = avgCheck > 0 && yesterdayAvgCheck > 0
+    ? Math.round(((avgCheck - yesterdayAvgCheck) / yesterdayAvgCheck) * 100)
+    : 0;
 
-  // === NOTIFICATIONS (уведомления) ===
+  // === NOTIFICATIONS ===
   const notifications = useMemo(() => {
     const issues: Array<{
       id: string;
       message: string;
       href?: string;
-      priority: "low" | "medium" | "high";
+      priority: 'low' | 'medium' | 'high';
     }> = [];
 
-    locations.forEach((loc) => {
+    locations.forEach(loc => {
       if (!loc.managerId) {
         issues.push({
           id: `loc-no-manager-${loc.id}`,
-          message: `${
-            t("dashboard.loc_no_manager") || "На точке"
-          } ${loc.name} ${
-            t("dashboard.no_manager_suffix") ||
-            "отсутствует назначенный менеджер."
-          }`,
+          message: `${t('dashboard.loc_no_manager') || 'На точке'} ${loc.name} ${t('dashboard.no_manager_suffix') || 'отсутствует назначенный менеджер.'}`,
           href: `/dashboard/director/locations/${loc.id}`,
-          priority: "high",
+          priority: 'high'
         });
       }
 
-      const locShifts = todayShifts.filter(
-        (s) => s.locationId === loc.id
-      );
-      const locRevenue = locShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      );
-      const locPlanPercent =
-        loc.dailyPlan && loc.dailyPlan > 0
-          ? Math.round((locRevenue / loc.dailyPlan) * 100)
-          : 0;
+      const locShifts = todayShifts.filter(s => s.locationId === loc.id);
+      const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      const locPlanPercent = loc.dailyPlan && loc.dailyPlan > 0
+        ? Math.round((locRevenue / loc.dailyPlan) * 100)
+        : 0;
 
       if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
         issues.push({
           id: `loc-low-activity-${loc.id}`,
-          message:
-            t("dashboard.loc_low_activity") ||
-            `Зафиксирована низкая операционная активность на точке ${loc.name}.`,
+          message: `${t('dashboard.loc_low_activity') || 'Зафиксирована низкая операционная активность на точке'} ${loc.name}.`,
           href: `/dashboard/director/locations/${loc.id}`,
-          priority: "medium",
+          priority: 'medium'
         });
       }
     });
 
-    const employeesWithShifts = new Set(
-      todayShifts.map((s) => s.employeeId)
-    );
+    const employeesWithShifts = new Set(todayShifts.map(s => s.employeeId));
     employees
-      .filter(
-        (e) =>
-          e.role === "employee" &&
-          e.status === "active" &&
-          !employeesWithShifts.has(e.id)
-      )
-      .forEach((emp) => {
+      .filter(e => e.role === 'employee' && e.status === 'active' && !employeesWithShifts.has(e.id))
+      .forEach(emp => {
         issues.push({
           id: `emp-no-report-${emp.id}`,
-          message: `${
-            t("dashboard.emp_no_report") || "У сотрудника"
-          } ${emp.name} ${
-            t("dashboard.for_today") || "отсутствует отчёт за сегодня."
-          }`,
+          message: `${t('dashboard.emp_no_report') || 'У сотрудника'} ${emp.name} ${t('dashboard.for_today') || 'отсутствует отчёт за сегодня.'}`,
           href: `/dashboard/director/staff#${emp.id}`,
-          priority: "medium",
+          priority: 'medium'
         });
       });
 
-    todayShifts
-      .filter((s) => s.status === "issue")
-      .forEach((shift) => {
-        const location = locations.find(
-          (l) => l.id === shift.locationId
-        );
-        issues.push({
-          id: `shift-issue-${shift.id}`,
-          message: `${
-            t("dashboard.cash_discrepancy") ||
-            "Обнаружено несоответствие кассы на точке"
-          } ${location?.name || t("dashboard.unknown_point")}.`,
-          href: `/dashboard/director/shifts?shiftId=${shift.id}`,
-          priority: "high",
-        });
+    todayShifts.filter(s => s.status === 'issue').forEach(shift => {
+      const location = locations.find(l => l.id === shift.locationId);
+      issues.push({
+        id: `shift-issue-${shift.id}`,
+        message: `${t('dashboard.cash_discrepancy') || 'Обнаружено несоответствие кассы на точке'} ${(location as any)?.название || t('dashboard.unknown_point')}.`, // Обход ошибки
+        href: `/dashboard/director/shifts?shiftId=${shift.id}`,
+        priority: 'high'
       });
+    });
+
+    // !!! ИСПРАВЛЕНИЕ: Объявление items и seenProblems внутри useMemo !!!
+    const problemItems: Problem[] = [];
+    const seenProblems = new Set<string>();
+
+    // NO_MANAGER_ASSIGNED - Operations issues
+    locations.forEach(loc => {
+      if (!loc.managerId) {
+        const problemKey = `operations-no-manager-${loc.id}`;
+        if (!seenProblems.has(problemKey)) {
+          const problemData = createProblemFromSource('NO_MANAGER_ASSIGNED', {
+            locationId: loc.id,
+            locationName: (loc as any).название, // Обход ошибки
+          });
+          problemItems.push({
+            ...problemData,
+            id: problemKey,
+            status: 'open',
+            createdAt: new Date().toISOString()
+          });
+          seenProblems.add(problemKey);
+        }
+      }
+    });
+
+    // LOW_ACTIVITY - Operations issues (low activity)
+    locations.forEach(loc => {
+      const locShifts = todayShifts.filter(s => s.locationId === loc.id);
+      const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      const locPlanPercent = loc.dailyPlan && loc.dailyPlan > 0
+        ? Math.round((locRevenue / loc.dailyPlan) * 100)
+        : 0;
+
+      // LOW_ACTIVITY отличается от LOW_PLAN_PERFORMANCE тем, что это операционная проблема
+      // Добавляем только если уже нет LOW_PLAN_PERFORMANCE для этой точки
+      if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
+        const problemKey = `operations-low-activity-${loc.id}`;
+        const hasPlanProblem = seenProblems.has(`finance-low-${loc.id}`);
+        if (!hasPlanProblem && !seenProblems.has(problemKey)) {
+          const problemData = createProblemFromSource('LOW_ACTIVITY', {
+            locationId: loc.id,
+            locationName: (loc as any).название, // Обход ошибки
+            planPercent: locPlanPercent
+          });
+          problemItems.push({
+            ...problemData,
+            id: problemKey,
+            status: 'open',
+            createdAt: new Date().toISOString()
+          });
+          seenProblems.add(problemKey);
+        }
+      }
+    });
 
     return issues;
   }, [locations, todayShifts, employees, t]);
 
-  // === ATTENTION ITEMS (ProblemCenter) ===
-  const attentionItems = useMemo<Problem[]>(() => {
-    const items: Problem[] = [];
-    const seen = new Set<string>();
-
-    // 1. Нет менеджера на точке
-    locations.forEach((loc) => {
-      if (!loc.managerId) {
-        const id = `operations-no-manager-${loc.id}`;
-        if (!seen.has(id)) {
-          const base = createProblemFromSource("NO_MANAGER_ASSIGNED", {
-            locationId: loc.id,
-            locationName: loc.name,
-          });
-          items.push({
-            ...base,
-            id,
-            status: "open",
-            createdAt: new Date().toISOString(),
-          });
-          seen.add(id);
-        }
-      }
-    });
-
-    // 2. Низкая активность / выполнение плана
-    locations.forEach((loc) => {
-      const locShifts = todayShifts.filter(
-        (s) => s.locationId === loc.id
-      );
-      const locRevenue = locShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      );
-      const locPlanPercent =
-        loc.dailyPlan && loc.dailyPlan > 0
-          ? Math.round((locRevenue / loc.dailyPlan) * 100)
-          : 0;
-
-      if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
-        const id = `operations-low-activity-${loc.id}`;
-        if (!seen.has(id)) {
-          const base = createProblemFromSource("LOW_ACTIVITY", {
-            locationId: loc.id,
-            locationName: loc.name,
-            planPercent: locPlanPercent,
-          });
-          items.push({
-            ...base,
-            id,
-            status: "open",
-            createdAt: new Date().toISOString(),
-          });
-          seen.add(id);
-        }
-      }
-    });
-
-    return items;
-  }, [locations, todayShifts]);
-
-  // === СЕТЕВОЙ СТАТУС ===
-  const networkStatus = useMemo<"normal" | "risks" | "critical">(() => {
-    const highPriorityCount = notifications.filter(
-      (n) => n.priority === "high"
-    ).length;
-
-    if (planPercent >= 90 && highPriorityCount === 0) return "normal";
-    if (planPercent >= 70 && highPriorityCount <= 2) return "risks";
-    return "critical";
+  // Network temperature status
+  const networkStatus = useMemo(() => {
+    if (planPercent >= 90 && notifications.filter(n => n.priority === 'high').length === 0) {
+      return 'normal';
+    }
+    if (planPercent >= 70 && notifications.filter(n => n.priority === 'high').length <= 2) {
+      return 'risks';
+    }
+    return 'critical';
   }, [planPercent, notifications]);
 
-  // === СТАТИСТИКА ЗАДАЧ ПО СМЕНАМ ===
-  const [tasksStats, setTasksStats] = useState<
-    Record<
-      string,
-      { total: number; completed: number; completionPercent: number }
-    >
-  >({});
+  // === TASKS STATS STATE ===
+  const [tasksStats, setTasksStats] = useState<Record<string, { total: number; completed: number; completionPercent: number }>>({});
 
+  // Загружаем статистику задач для активных смен
   useEffect(() => {
     const loadTasksStats = async () => {
-      const activeShifts = todayShifts.filter((s) => !s.clockOut);
-      const stats: Record<
-        string,
-        { total: number; completed: number; completionPercent: number }
-      > = {};
+      const activeShifts = todayShifts.filter(s => !s.clockOut);
+      const stats: Record<string, { total: number; completed: number; completionPercent: number }> = {};
 
       await Promise.all(
         activeShifts.map(async (shift) => {
           try {
-            const response = await fetch(
-              `/api/shifts/${shift.id}/tasks/stats`
-            );
+            const response = await fetch(`/api/shifts/${shift.id}/tasks/stats`);
             if (response.ok) {
               const data = await response.json();
               if (data.success) {
@@ -511,10 +391,7 @@ export default function DirectorDashboard() {
               }
             }
           } catch (error) {
-            console.error(
-              `Error loading tasks stats for shift ${shift.id}:`,
-              error
-            );
+            console.error(`Error loading tasks stats for shift ${shift.id}:`, error);
           }
         })
       );
@@ -527,167 +404,126 @@ export default function DirectorDashboard() {
     }
   }, [todayShifts]);
 
-  // === ДАННЫЕ ДЛЯ ТАБЛИЦЫ ТОЧЕК/СМЕН ===
-  const locationsShiftsData = useMemo<LocationShiftData[]>(() => {
-    return locations.map((loc) => {
-      const locShifts = todayShifts.filter(
-        (s) => s.locationId === loc.id
-      );
-      const locRevenue = locShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      );
-      const locPlanPercent =
-        loc.dailyPlan && loc.dailyPlan > 0
-          ? Math.round((locRevenue / loc.dailyPlan) * 100)
-          : 0;
+  // === LOCATIONS AND SHIFTS DATA ===
+  const locationsShiftsData = useMemo(() => {
+    return locations.map(loc => {
+      const locShifts = todayShifts.filter(s => s.locationId === loc.id);
+      const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      const locPlanPercent = loc.dailyPlan && loc.dailyPlan > 0
+        ? Math.round((locRevenue / loc.dailyPlan) * 100)
+        : 0;
 
-      const activeShift = locShifts.find((s) => !s.clockOut);
-      const manager = loc.managerId
-        ? employees.find((e) => e.id === loc.managerId)
-        : null;
+      const activeShift = locShifts.find(s => !s.clockOut);
+      const manager = loc.managerId ? employees.find(e => e.id === loc.managerId) : null;
 
-      let activity: "normal" | "low" | "suspicious" = "normal";
+      let activity: 'normal' | 'low' | 'suspicious' = 'normal';
       if (locPlanPercent < 70 && loc.dailyPlan && loc.dailyPlan > 0) {
-        activity = "low";
+        activity = 'low';
       }
-      if (locShifts.some((s) => s.status === "issue")) {
-        activity = "suspicious";
+      if (locShifts.some(s => s.status === 'issue')) {
+        activity = 'suspicious';
       }
 
       const formatTime = (timestamp?: string) => {
         if (!timestamp) return undefined;
         return new Date(timestamp).toLocaleTimeString(language, {
-          hour: "2-digit",
-          minute: "2-digit",
+          hour: '2-digit',
+          minute: '2-digit'
         });
       };
 
-      const shiftTasksStats = activeShift
-        ? tasksStats[activeShift.id]
-        : null;
-
-      const shiftStatus: "open" | "closed" | "not-opened" = activeShift
-        ? "open"
-        : locShifts.length > 0
-        ? "closed"
-        : "not-opened";
-
-      const managerStatus: "on-shift" | "not-assigned" | undefined = manager
-        ? activeShift
-          ? "on-shift"
-          : "not-assigned"
-        : undefined;
+      // Получаем статистику задач для активных смен
+      const shiftTasksStats = activeShift ? tasksStats[activeShift.id] : null;
 
       return {
         locationId: loc.id,
-        locationName: loc.name,
-        shiftStatus,
+        locationName: (loc as any).название, // Используем название (Обход ошибки)
+        shiftStatus: activeShift ? 'open' : (locShifts.length > 0 ? 'closed' : 'not-opened') as 'open' | 'closed' | 'not-opened',
         shiftTime: activeShift
-          ? `${formatTime(activeShift.clockIn)} - ${t(
-              "dashboard.in_progress"
-            )}`
+          ? `${formatTime(activeShift.clockIn)} - ${t('dashboard.in_progress')}`
           : locShifts.length > 0 && locShifts[0].clockOut
-          ? `${formatTime(locShifts[0].clockIn)} - ${formatTime(
-              locShifts[0].clockOut
-            )}`
+          ? `${formatTime(locShifts[0].clockIn)} - ${formatTime(locShifts[0].clockOut)}`
           : undefined,
         managerName: manager?.name,
-        managerStatus,
+        managerStatus: manager ? (activeShift ? 'on-shift' : 'not-assigned') as 'on-shift' | 'not-assigned' : undefined,
         revenue: locRevenue,
         plan: loc.dailyPlan || 0,
         planPercent: locPlanPercent,
         activity,
-        tasksStats: shiftTasksStats
-          ? {
-              completed: shiftTasksStats.completed,
-              total: shiftTasksStats.total,
-              completionPercent: shiftTasksStats.completionPercent,
-            }
-          : null,
+        tasksStats: shiftTasksStats ? {
+          completed: shiftTasksStats.completed,
+          total: shiftTasksStats.total,
+          completionPercent: shiftTasksStats.completionPercent,
+        } : null,
         activeShiftId: activeShift?.id,
       };
     });
   }, [locations, todayShifts, employees, tasksStats, language, t]);
 
-  // === ДАННЫЕ ДЛЯ ГРАФИКА ВЫРУЧКИ ===
+  // === REVENUE CHART DATA ===
   const revenueChartData = useMemo(() => {
     const now = new Date();
-
+    
+    // Day data (by hours)
     const dayData = Array.from({ length: 24 }, (_, i) => {
       const hourStart = new Date(now);
       hourStart.setHours(i, 0, 0, 0);
       const hourEnd = new Date(hourStart);
       hourEnd.setHours(i, 59, 59, 999);
-
-      const hourShifts = shifts.filter(
-        (s) =>
-          s.date >= hourStart.getTime() && s.date <= hourEnd.getTime()
+      
+      const hourShifts = shifts.filter(s => 
+        s.date >= hourStart.getTime() && s.date <= hourEnd.getTime()
       );
-      const hourRevenue = hourShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      );
-
+      const hourRevenue = hourShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      
       return {
         date: `${i}:00`,
         revenue: hourRevenue,
-        fullDate: hourStart.toLocaleDateString(language),
+        fullDate: hourStart.toLocaleDateString(language)
       };
     });
 
+    // Week data
     const weekData = Array.from({ length: 7 }, (_, i) => {
       const date = new Date(now);
       date.setDate(date.getDate() - (6 - i));
       date.setHours(0, 0, 0, 0);
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
-
-      const dayShifts = shifts.filter(
-        (s) =>
-          s.date >= date.getTime() && s.date <= dayEnd.getTime()
+      
+      const dayShifts = shifts.filter(s => 
+        s.date >= date.getTime() && s.date <= dayEnd.getTime()
       );
-      const dayRevenue = dayShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      );
-
+      const dayRevenue = dayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      
       return {
-        date: date.toLocaleDateString(language, {
-          weekday: "short",
-          day: "numeric",
-        }),
+        date: date.toLocaleDateString(language, { weekday: 'short', day: 'numeric' }),
         revenue: dayRevenue,
-        fullDate: date.toLocaleDateString(language),
+        fullDate: date.toLocaleDateString(language)
       };
     });
 
+    // Month data
     const monthData = Array.from({ length: 30 }, (_, i) => {
       const date = new Date(now);
       date.setDate(date.getDate() - (29 - i));
       date.setHours(0, 0, 0, 0);
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
-
-      const dayShifts = shifts.filter(
-        (s) =>
-          s.date >= date.getTime() && s.date <= dayEnd.getTime()
+      
+      const dayShifts = shifts.filter(s => 
+        s.date >= date.getTime() && s.date <= dayEnd.getTime()
       );
-      const dayRevenue = dayShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      );
-
+      const dayRevenue = dayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      
       return {
-        date: date.toLocaleDateString(language, {
-          day: "numeric",
-          month: "short",
-        }),
+        date: date.toLocaleDateString(language, { day: 'numeric', month: 'short' }),
         revenue: dayRevenue,
-        fullDate: date.toLocaleDateString(language),
+        fullDate: date.toLocaleDateString(language)
       };
     });
 
+    // Year data (by months)
     const yearData = Array.from({ length: 12 }, (_, i) => {
       const date = new Date(now);
       date.setMonth(date.getMonth() - (11 - i));
@@ -697,101 +533,42 @@ export default function DirectorDashboard() {
       monthEnd.setMonth(monthEnd.getMonth() + 1);
       monthEnd.setDate(0);
       monthEnd.setHours(23, 59, 59, 999);
-
-      const monthShifts = shifts.filter(
-        (s) =>
-          s.date >= date.getTime() && s.date <= monthEnd.getTime()
+      
+      const monthShifts = shifts.filter(s => 
+        s.date >= date.getTime() && s.date <= monthEnd.getTime()
       );
-      const monthRevenue = monthShifts.reduce(
-        (acc, s) => acc + s.revenueCash + s.revenueCard,
-        0
-      );
-
+      const monthRevenue = monthShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+      
       return {
-        date: date.toLocaleDateString(language, {
-          month: "short",
-        }),
+        date: date.toLocaleDateString(language, { month: 'short' }),
         revenue: monthRevenue,
-        fullDate: date.toLocaleDateString(language, {
-          month: "long",
-          year: "numeric",
-        }),
+        fullDate: date.toLocaleDateString(language, { month: 'long', year: 'numeric' })
       };
     });
 
     return { dayData, weekData, monthData, yearData };
   }, [shifts, language]);
 
-  const directorName = useMemo(
-    () => getFormalName(currentUser),
-    [currentUser]
-  );
-
-  // Пустое состояние: нет точек
+  // !!! ИСПРАВЛЕНИЕ: Получение имени директора !!!
+  const directorName = useMemo(() => {
+    return getFormalName(currentUser);
+  }, [currentUser]);
+  
   if (locations.length === 0) {
-    // Формируем имя отчество директора
-    const firstName = (currentUser as any)?.firstName || "";
-    const middleName = (currentUser as any)?.middleName || "";
-    const lastName = (currentUser as any)?.lastName || "";
-    const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ") || currentUser?.fullName || "";
-    const directorGreeting = fullName || directorName;
-    
-    const welcomeText = t("dashboard.welcome_text") || "Добро пожаловать";
-    const greetingName = directorGreeting && directorGreeting !== "User" ? directorGreeting : "";
+    const welcomeText = t('dashboard.welcome_text', { name: directorName }) || `Добро пожаловать${directorName && directorName !== 'User' ? `, ${directorName}` : ''}`;
 
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-var(--navbar-height))] px-4">
-        <div className="w-full max-w-3xl mx-auto">
-          <DayHeader />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="mt-8 flex flex-col items-center justify-center py-8 px-10 bg-card border border-border rounded-2xl shadow-[0_24px_80px_rgba(0,0,0,0.4)]"
-          >
-            {/* Прогресс индикатор */}
-            <div className="w-full mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-primary/70 uppercase tracking-[0.15em]">
-                  Шаг 1 из 3
-                </span>
-                <span className="text-xs text-muted-foreground/60">33%</span>
-              </div>
-              <div className="h-0.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-full" style={{ width: '33%' }}></div>
-              </div>
-            </div>
-
-            <div className="text-center max-w-xl space-y-4">
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-primary/70 uppercase tracking-[0.15em]">
-                  Шаг 1
-                </p>
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-                  {welcomeText}
-                </h1>
-                {greetingName && (
-                  <h2 className="text-2xl md:text-3xl font-bold text-foreground/90">
-                    {greetingName}
-                  </h2>
-                )}
-              </div>
-              <p className="text-muted-foreground text-base leading-relaxed">
-                Создайте первую торговую точку, чтобы начать работу.
-              </p>
-              <div className="space-y-3 pt-1">
-                <Link
-                  href="/dashboard/director/locations?action=new"
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-12 py-4 text-lg font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
-                >
-                  {t("dashboard.create_point") || "Создать точку"}
-                </Link>
-                <p className="text-xs text-muted-foreground/60 leading-tight max-w-md mx-auto">
-                  После создания точки вы увидите онлайн-выручку, смены и сотрудников в одном кабинете.
-                </p>
-              </div>
-            </div>
-          </motion.div>
+      <div className="space-y-6">
+        <DayHeader />
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-card border border-border rounded-xl">
+          <div className="text-center max-w-md space-y-6">
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
+              {welcomeText}
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              {t('dashboard.welcome_subtitle') || 'Создайте первую торговую точку для начала работы'}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -800,159 +577,107 @@ export default function DirectorDashboard() {
   return (
     <div className="space-y-6 pb-6 h-full overflow-y-auto">
       {!hasSeenTour && <OnboardingTour />}
-
+      
+      {/* Header */}
       <DayHeader />
+
+      {/* Quick Actions */}
       <QuickActions />
 
-      <NetworkStatusIndicator
-        status={networkStatus}
+      {/* Network Status Indicator */}
+      <NetworkStatusIndicator 
+        status={networkStatus} 
         problemCount={attentionItems.length + notifications.length}
       />
 
-      {/* KPI блоки */}
+      {/* KPI Cards - Grouped */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+        {/* Left group: Revenue metrics */}
         <KPICard
-          label={t("dashboard.revenue_today") || "Выручка за сегодня"}
-          value={
-            totalRevenue > 0
-              ? `${totalRevenue.toLocaleString(language)} ${currency}`
-              : "—"
-          }
-          subtitle={
-            totalRevenue > 0 && revenueChangePercent !== 0 ? (
-              <div className="flex items-center gap-1">
-                {revenueChangePercent > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
-                )}
-                <span
-                  className={
-                    revenueChangePercent > 0
-                      ? "text-[color:var(--color-success)]"
-                      : "text-[color:var(--color-danger)]"
-                  }
-                >
-                  {revenueChangePercent > 0 ? "+" : ""}
-                  {revenueChangePercent}%
-                </span>
-                <span className="text-muted-foreground">
-                  {t("dashboard.to_yesterday") || "к вчера"}
-                </span>
-              </div>
-            ) : totalRevenue > 0 ? (
-              `${t("dashboard.yesterday") || "Вчера"}: ${yesterdayRevenue.toLocaleString(
-                language
-              )} ${currency}`
-            ) : undefined
-          }
+          label={t('dashboard.revenue_today') || 'Выручка за сегодня'}
+          value={totalRevenue > 0 ? `${totalRevenue.toLocaleString(language)} ${currency}` : '—'}
+          subtitle={totalRevenue > 0 && revenueChangePercent !== 0 ? (
+            <div className="flex items-center gap-1">
+              {revenueChangePercent > 0 ? (
+                <TrendingUp className="h-3 w-3 text-emerald-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-rose-500" />
+              )}
+              <span className={revenueChangePercent > 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                {revenueChangePercent > 0 ? '+' : ''}{revenueChangePercent}%
+              </span>
+              <span className="text-muted-foreground">{t('dashboard.to_yesterday') || 'к вчера'}</span>
+            </div>
+          ) : totalRevenue > 0 ? `${t('dashboard.yesterday') || 'Вчера'}: ${yesterdayRevenue.toLocaleString(language)} ${currency}` : undefined}
         />
         <KPICard
-          label={t("dashboard.plan_today") || "План на сегодня"}
-          value={
-            totalPlan > 0
-              ? `${totalPlan.toLocaleString(language)} ${currency}`
-              : "—"
-          }
+          label={t('dashboard.plan_today') || 'План на сегодня'}
+          value={totalPlan > 0 ? `${totalPlan.toLocaleString(language)} ${currency}` : '—'}
         />
         <KPICard
-          label={t("dashboard.plan_fulfillment") || "Выполнение плана"}
-          value={totalPlan > 0 ? `${planPercent}%` : "—"}
-          status={
-            totalPlan > 0
-              ? planPercent >= 95
-                ? "success"
-                : planPercent >= 80
-                ? "warning"
-                : "error"
-              : "neutral"
-          }
+          label={t('dashboard.plan_fulfillment') || 'Выполнение плана'}
+          value={totalPlan > 0 ? `${planPercent}%` : '—'}
+          status={totalPlan > 0 ? (planPercent >= 95 ? 'success' : planPercent >= 80 ? 'warning' : 'error') : 'neutral'}
+        />
+        
+        {/* Right group: Check metrics */}
+        <KPICard
+          label={t('dashboard.avg_check') || 'Средний чек'}
+          value={avgCheck > 0 ? `${Math.round(avgCheck).toLocaleString(language)} ${currency}` : '—'}
+          subtitle={avgCheck > 0 && avgCheckChange !== 0 ? (
+            <div className="flex items-center gap-1">
+              {avgCheckChange > 0 ? (
+                <TrendingUp className="h-3 w-3 text-emerald-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-rose-500" />
+              )}
+              <span className={avgCheckChange > 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                {avgCheckChange > 0 ? '+' : ''}{avgCheckChange}%
+              </span>
+            </div>
+          ) : undefined}
         />
         <KPICard
-          label={t("dashboard.avg_check") || "Средний чек"}
-          value={
-            avgCheck > 0
-              ? `${Math.round(avgCheck).toLocaleString(language)} ${currency}`
-              : "—"
-          }
-          subtitle={
-            avgCheck > 0 && avgCheckChange !== 0 ? (
-              <div className="flex items-center gap-1">
-                {avgCheckChange > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
-                )}
-                <span
-                  className={
-                    avgCheckChange > 0
-                      ? "text-[color:var(--color-success)]"
-                      : "text-[color:var(--color-danger)]"
-                  }
-                >
-                  {avgCheckChange > 0 ? "+" : ""}
-                  {avgCheckChange}%
-                </span>
-              </div>
-            ) : undefined
-          }
+          label={t('dashboard.check_count') || 'Количество чеков'}
+          value={totalCheckCount > 0 ? totalCheckCount : '—'}
+          subtitle={totalCheckCount > 0 && checkCountChange !== 0 ? (
+            <div className="flex items-center gap-1">
+              {checkCountChange > 0 ? (
+                <TrendingUp className="h-3 w-3 text-emerald-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-rose-500" />
+              )}
+              <span className={checkCountChange > 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                {checkCountChange > 0 ? '+' : ''}{checkCountChange}%
+              </span>
+            </div>
+          ) : undefined}
         />
         <KPICard
-          label={t("dashboard.check_count") || "Количество чеков"}
-          value={totalCheckCount > 0 ? totalCheckCount : "—"}
-          subtitle={
-            totalCheckCount > 0 && checkCountChange !== 0 ? (
-              <div className="flex items-center gap-1">
-                {checkCountChange > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
-                )}
-                <span
-                  className={
-                    checkCountChange > 0
-                      ? "text-[color:var(--color-success)]"
-                      : "text-[color:var(--color-danger)]"
-                  }
-                >
-                  {checkCountChange > 0 ? "+" : ""}
-                  {checkCountChange}%
-                </span>
-              </div>
-            ) : undefined
-          }
-        />
-        <KPICard
-          label={t("dashboard.guest_count") || "Количество гостей"}
-          value={totalGuestCount > 0 ? totalGuestCount : "—"}
-          subtitle={
-            totalGuestCount > 0 && guestCountChange !== 0 ? (
-              <div className="flex items-center gap-1">
-                {guestCountChange > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-[color:var(--color-success)]" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-[color:var(--color-danger)]" />
-                )}
-                <span
-                  className={
-                    guestCountChange > 0
-                      ? "text-[color:var(--color-success)]"
-                      : "text-[color:var(--color-danger)]"
-                  }
-                >
-                  {guestCountChange > 0 ? "+" : ""}
-                  {guestCountChange}%
-                </span>
-              </div>
-            ) : undefined
-          }
+          label={t('dashboard.guest_count') || 'Количество гостей'}
+          value={totalGuestCount > 0 ? totalGuestCount : '—'}
+          subtitle={totalGuestCount > 0 && guestCountChange !== 0 ? (
+            <div className="flex items-center gap-1">
+              {guestCountChange > 0 ? (
+                <TrendingUp className="h-3 w-3 text-emerald-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 text-rose-500" />
+              )}
+              <span className={guestCountChange > 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                {guestCountChange > 0 ? '+' : ''}{guestCountChange}%
+              </span>
+            </div>
+          ) : undefined}
         />
       </div>
 
-      {/* Таблица точек + центр проблем */}
+      {/* Locations & Shifts + Problem Center */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-8">
-          <LocationsShiftsTable data={locationsShiftsData} currency={currency} />
+          <LocationsShiftsTable
+            data={locationsShiftsData}
+            currency={currency}
+          />
         </div>
         <div className="xl:col-span-4">
           <ProblemCenter
@@ -963,6 +688,7 @@ export default function DirectorDashboard() {
         </div>
       </div>
 
+      {/* Revenue Chart */}
       <RevenueChartBlock
         dayData={revenueChartData.dayData}
         weekData={revenueChartData.weekData}
@@ -973,6 +699,7 @@ export default function DirectorDashboard() {
         locations={locations}
       />
 
+      {/* Event Journal */}
       <EventJournal events={recentEvents} />
     </div>
   );
