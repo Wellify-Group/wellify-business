@@ -3,11 +3,13 @@
 import { CheckCircle2 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export default function EmailConfirmedPage() {
   const { t, setLanguage } = useLanguage();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,32 +19,42 @@ export default function EmailConfirmedPage() {
     setLanguage('ua');
   }, [setLanguage]);
 
-  // Проверяем сессию и подтверждаем email
+  // Обмениваем code на сессию (если он есть) и синхронизируем профиль
   useEffect(() => {
     const run = async () => {
       try {
         const supabase = createBrowserSupabaseClient();
+        const code = searchParams.get("code");
+
+        // 1) Если Supabase прислал code, сначала меняем его на сессию
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            console.error("[email-confirmed] exchangeCodeForSession error", exchangeError);
+            setError("Не удалось подтвердить e-mail. Ссылка могла устареть.");
+            return;
+          }
+        }
+
+        // 2) После этого пробуем получить пользователя
         const { data, error: getUserError } = await supabase.auth.getUser();
 
         if (getUserError) {
           console.error("[email-confirmed] getUser error", getUserError);
           setError("Не удалось проверить сессию");
-          setLoading(false);
           return;
         }
 
         if (!data?.user) {
           console.error("[email-confirmed] No user found");
           setError("Пользователь не найден");
-          setLoading(false);
           return;
         }
 
         // Проверяем, подтвержден ли email
         if (!data.user.email_confirmed_at) {
           console.error("[email-confirmed] Email not confirmed");
-          setError("Email еще не подтвержден");
-          setLoading(false);
+          setError("E-mail еще не подтвержден");
           return;
         }
 
@@ -74,14 +86,14 @@ export default function EmailConfirmedPage() {
         }
       } catch (e) {
         console.error("[email-confirmed] Unexpected error", e);
-        setError("Произошла ошибка при подтверждении email");
+        setError("Произошла ошибка при подтверждении e-mail");
       } finally {
         setLoading(false);
       }
     };
 
     run();
-  }, []);
+  }, [searchParams]);
 
   const handleClose = () => {
     if (window.opener) {
