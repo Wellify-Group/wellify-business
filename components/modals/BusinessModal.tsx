@@ -63,8 +63,6 @@ export function BusinessModal() {
                 "backdrop-blur-[22px] transition-colors duration-300 pointer-events-auto"
               )}
             >
-              {/* Верхняя брендированная полоска */}
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-indigo-500 rounded-t-2xl"></div>
               {/* Close Button */}
               <button
                 onClick={closeModal}

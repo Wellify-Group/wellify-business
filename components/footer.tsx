@@ -39,16 +39,16 @@ export function AppFooter() {
   if (isWelcomePage) {
     return (
       <footer
-        className="border-t text-sm transition-colors"
+        className="w-full border-t text-sm transition-colors"
         style={{
           borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "var(--color-border-subtle)",
           backgroundColor: isDark ? "#050B13" : "var(--color-surface)",
           color: isDark ? "rgba(255, 255, 255, 0.7)" : "var(--color-text-muted)",
         }}
       >
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="w-full mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 w-full">
             {/* BRAND */}
             <div>
               <h3
@@ -177,8 +177,8 @@ export function AppFooter() {
 
   // ====== ОБЫЧНЫЙ ФУТЕР ======
   return (
-    <footer className="border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-[#050B13] text-sm">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <footer className="w-full border-t border-zinc-100/50 dark:border-zinc-800/50 bg-[var(--bg-secondary)] dark:bg-[#050B13] text-sm">
+      <div className="w-full mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <p className="text-center text-xs text-muted-foreground whitespace-pre-line">
           © {new Date().getFullYear()} WELLIFY business. Все права защищены.{'\n'}WELLIFY Business является продуктом компании WELLIFY Group.
         </p>

@@ -63,9 +63,8 @@ export default function RegisterDirectorClient() {
   // Локальное состояние для отображаемого значения даты рождения (ДД.ММ.ГГГГ)
   const [displayDate, setDisplayDate] = useState<string>("");
 
-  // Состояния видимости паролей
+  // Состояние видимости паролей (общее для обоих полей)
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   // Данные шага 2: рабочий e-mail
   const [email, setEmail] = useState("");
@@ -957,25 +956,13 @@ export default function RegisterDirectorClient() {
             </label>
             <div className="relative">
               <input
-                type={showPasswordConfirm ? "text" : "password"}
+                type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
-                className="h-11 w-full rounded-[14px] border border-border bg-background px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+                className="h-11 w-full rounded-[14px] border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
                 placeholder={t<string>("register_field_password_confirm_placeholder")}
                 value={personal.passwordConfirm}
                 onChange={handlePersonalChange("passwordConfirm")}
               />
-              <button
-                type="button"
-                onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={showPasswordConfirm ? "Скрыть пароль" : "Показать пароль"}
-              >
-                {showPasswordConfirm ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
             </div>
           </div>
         </div>
