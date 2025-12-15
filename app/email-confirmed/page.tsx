@@ -82,16 +82,12 @@ export default function EmailConfirmedPage() {
               <button
                 type="button"
                 onClick={handleClose}
+                // !!! ИСПРАВЛЕНИЕ: Используем стандартные классы Tailwind для hover !!!
+                // Классы hover:bg-opacity и hover:bg-[var(...)] должны быть в глобальном CSS/Tailwind config
                 className="inline-block rounded-full px-7 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style={{
                   backgroundColor: 'var(--email-confirmed-primary)',
                   color: 'var(--email-confirmed-primary-foreground)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--email-confirmed-primary)';
                 }}
               >
                 {t<string>("email_confirmed_close_button")}

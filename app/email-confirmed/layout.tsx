@@ -1,11 +1,11 @@
+// app/email-confirmed/layout.tsx (Скорректированный код)
+
 "use client";
 
 import { ReactNode, useEffect } from "react";
 
 /**
  * Layout для страницы подтверждения e-mail
- * Скрывает навбар и футер через CSS, использует fixed positioning для полного перекрытия
- * Адаптируется к системной теме браузера через чистые CSS Media Queries (prefers-color-scheme)
  */
 export default function EmailConfirmedLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -13,21 +13,8 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
     const style = document.createElement('style');
     style.id = 'email-confirmed-styles';
     style.textContent = `
-      nav { display: none !important; }
-      footer { display: none !important; }
-      body { 
-        overflow: hidden !important; 
-        background-color: var(--email-confirmed-bg) !important;
-        color: var(--email-confirmed-text) !important;
-      }
-      html { 
-        overflow: hidden !important;
-        background-color: var(--email-confirmed-bg) !important;
-      }
-      
-      /* Адаптация к системной теме браузера через чистые Media Queries */
-      @media (prefers-color-scheme: light) {
-        :root {
+      /* --- ПЕРЕМЕННЫЕ ПО УМОЛЧАНИЮ (СВЕТЛАЯ ТЕМА) --- */
+      :root {
           --email-confirmed-bg: #F8FAFC;
           --email-confirmed-card-bg: #FFFFFF;
           --email-confirmed-border: #E2E8F0;
@@ -40,9 +27,9 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-success-bg: rgba(34, 197, 94, 0.1);
           --email-confirmed-success-text: #22c55e;
           --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
       }
       
+      /* --- ТЕМНАЯ ТЕМА (ПЕРЕОПРЕДЕЛЕНИЕ) --- */
       @media (prefers-color-scheme: dark) {
         :root {
           --email-confirmed-bg: #050B13;
@@ -58,6 +45,19 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-success-text: #22c55e;
           --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
         }
+      }
+      
+      /* Остальные стили */
+      nav { display: none !important; }
+      footer { display: none !important; }
+      body { 
+        overflow: hidden !important; 
+        background-color: var(--email-confirmed-bg) !important;
+        color: var(--email-confirmed-text) !important;
+      }
+      html { 
+        overflow: hidden !important;
+        background-color: var(--email-confirmed-bg) !important;
       }
     `;
     
@@ -94,4 +94,3 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
     </div>
   );
 }
-
