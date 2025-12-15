@@ -6,7 +6,7 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
   
   // Определяем CSS-переменные с помощью dangerouslySetInnerHTML
   const cssStyles = `
-      /* --- ПЕРЕМЕННЫЕ ПО УМОЛЧАНИЮ (СВЕТЛАЯ ТЕМА) --- */
+      /* --- СВЕТЛАЯ ТЕМА (ВСЕГДА) --- */
       :root {
           --email-confirmed-bg: #F8FAFC;
           --email-confirmed-card-bg: #FFFFFF;
@@ -18,22 +18,6 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
           --email-confirmed-primary-foreground: #F8FAFC;
           --email-confirmed-success-bg: rgba(34, 197, 94, 0.1);
           --email-confirmed-success-text: #22c55e;
-      }
-      
-      /* --- ТЕМНАЯ ТЕМА (ПЕРЕОПРЕДЕЛЕНИЕ) --- */
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --email-confirmed-bg: #050B13;
-          --email-confirmed-card-bg: #0B1320;
-          --email-confirmed-border: rgba(148, 163, 184, 0.24);
-          --email-confirmed-text: #E2E8F0;
-          --email-confirmed-muted: #94A3B8;
-          --email-confirmed-primary: #3B82F6;
-          --email-confirmed-primary-hover: #2563EB;
-          --email-confirmed-primary-foreground: #F8FAFC;
-          --email-confirmed-success-bg: rgba(34, 197, 94, 0.15);
-          --email-confirmed-success-text: #22c55e;
-        }
       }
       
       /* Сброс стилей для body и html */
