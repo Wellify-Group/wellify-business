@@ -308,8 +308,8 @@ export default function LoginPage() {
                   className={cn(
                     "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                     activeTab === "office"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -323,8 +323,8 @@ export default function LoginPage() {
                   className={cn(
                     "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                     activeTab === "terminal"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
                   <div className="flex items-center justify-center gap-2">
