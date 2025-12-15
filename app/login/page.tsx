@@ -345,6 +345,7 @@ export default function LoginPage() {
                   ? (t("login_office_desc") || "Для владельцев и менеджеров")
                   : (terminalStep === 1 ? "Введите ID компании" : "Введите пин-код сотрудника")}
               </CardDescription>
+            </div>
             </CardHeader>
 
             <CardContent className="px-8 py-0 flex items-center justify-center min-h-[300px]">
