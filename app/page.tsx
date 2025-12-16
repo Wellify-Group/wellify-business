@@ -48,6 +48,28 @@ export default function Home() {
   const { t } = useLanguage();
   const { openModal, isOpen, modalData, closeModal } = useBusinessModalStore();
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  
+  // Handle email confirmation code from Supabase redirect
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const type = urlParams.get('type');
+    
+    // If we have a code parameter (from Supabase email confirmation), redirect to /auth/confirm
+    if (code && (type === 'signup' || type === 'email')) {
+      window.location.href = `/auth/confirm?code=${code}${type ? `&type=${type}` : ''}`;
+      return;
+    }
+    
+    // Also handle token_hash for older Supabase email links
+    const tokenHash = urlParams.get('token_hash');
+    if (tokenHash) {
+      window.location.href = `/auth/email-confirmed?token_hash=${tokenHash}`;
+      return;
+    }
+  }, []);
 
   const scrollToHowItWorks = () => {
     document

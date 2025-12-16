@@ -22,16 +22,25 @@ export default function ConfirmEmailInner() {
 
     supabase.auth
       .exchangeCodeForSession(code)
-      .then(({ error }) => {
+      .then(({ data, error }) => {
         if (error) {
-          console.error(error);
+          console.error('[auth/confirm] Error exchanging code:', error);
           setStatus('error');
-        } else {
+        } else if (data?.session && data?.user) {
           setStatus('success');
+          
+          // After successful confirmation, redirect to registration page after 2 seconds
+          // to allow user to continue registration flow
+          setTimeout(() => {
+            window.location.href = '/register';
+          }, 2000);
+        } else {
+          console.error('[auth/confirm] No session or user after exchange');
+          setStatus('error');
         }
       })
       .catch(err => {
-        console.error(err);
+        console.error('[auth/confirm] Exception:', err);
         setStatus('error');
       });
   }, [searchParams]);
