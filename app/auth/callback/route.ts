@@ -127,12 +127,17 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL("/auth/login", request.url));
       }
       
-      // Если это регистрация (есть данные регистрации в user_metadata), редиректим на /register
-      // Иначе - в дашборд
+      // Если это регистрация (есть данные регистрации в user_metadata или это новый пользователь)
+      // Редиректим на /register для продолжения регистрации (шаг 3 - Telegram)
       const hasRegistrationData = user.user_metadata?.first_name || user.user_metadata?.last_name;
-      if (hasRegistrationData && !profileRaw) {
+      const isNewUser = !profileRaw || (profileRaw && !profileRaw.phone_verified);
+      
+      if (hasRegistrationData || isNewUser) {
         // Это новая регистрация - редиректим на /register для завершения
-        return NextResponse.redirect(new URL("/register", request.url));
+        // Добавляем параметр email_confirmed для UI
+        const registerUrl = new URL("/register", request.url);
+        registerUrl.searchParams.set("email_confirmed", "true");
+        return NextResponse.redirect(registerUrl);
       }
       
       // Редиректим директора в его дашборд

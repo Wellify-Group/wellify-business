@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent, ChangeEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardHeader,
@@ -44,6 +44,7 @@ interface PersonalForm {
 
 export default function RegisterDirectorClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { language, t } = useLanguage();
 
   // Состояние шагов регистрации
@@ -92,6 +93,20 @@ export default function RegisterDirectorClient() {
 
   const localeForAPI =
     language === "ua" ? "uk" : (language as "ru" | "uk" | "en" | string);
+
+  // Проверка параметра email_confirmed из URL (после подтверждения email)
+  useEffect(() => {
+    const emailConfirmed = searchParams.get("email_confirmed");
+    if (emailConfirmed === "true") {
+      console.log("[register] Email confirmed via callback, moving to step 3");
+      setEmailStatus("verified");
+      setEmailVerified(true);
+      setStep(3);
+      setMaxStepReached(3);
+      // Очищаем параметр из URL
+      router.replace("/register", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // ---------- Обработчики событий ----------
 
@@ -212,10 +227,15 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      const redirectTo =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/auth/confirm`
-          : `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/confirm`;
+      // Формируем redirect URL - используем /auth/callback (уже в whitelist Supabase)
+      // После подтверждения callback редиректит на /register для продолжения
+      const baseUrl = typeof window !== "undefined"
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+      
+      const redirectTo = `${baseUrl}/auth/callback`;
+      
+      console.log("[register] SignUp with redirectTo:", redirectTo);
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -234,7 +254,12 @@ export default function RegisterDirectorClient() {
       });
 
       if (error) {
-        console.error("[register] signUp error", error);
+        console.error("[register] signUp error:", error);
+        console.error("[register] Error details:", {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
         setEmailStatus("error");
         const msg = error.message?.toLowerCase() || "";
         if (
@@ -244,6 +269,12 @@ export default function RegisterDirectorClient() {
         ) {
           setRegisterError(
             t<string>("register_error_email_exists")
+          );
+        } else if (msg.includes("redirect") || msg.includes("url")) {
+          // Ошибка связанная с redirect URL
+          console.error("[register] Redirect URL error - check Supabase Site URL settings");
+          setRegisterError(
+            "Ошибка настройки redirect URL. Проверьте настройки Supabase."
           );
         } else {
           setRegisterError(
@@ -262,6 +293,9 @@ export default function RegisterDirectorClient() {
         );
         return;
       }
+
+      console.log("[register] SignUp successful, user created:", data.user.id);
+      console.log("[register] Email confirmation required:", !data.user.email_confirmed_at);
 
       setRegisteredUserId(data.user.id);
       setRegisteredUserEmail(data.user.email ?? email.trim());
