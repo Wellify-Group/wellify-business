@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { serverConfig } from "@/lib/config/appConfig";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2023-10-16",
@@ -73,8 +74,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?canceled=true`,
+      success_url: `${serverConfig.appBaseUrl}/dashboard?success=true`,
+      cancel_url: `${serverConfig.appBaseUrl}/dashboard?canceled=true`,
       metadata: {
         user_id: user.id,
       },

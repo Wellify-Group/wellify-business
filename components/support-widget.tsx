@@ -4,8 +4,7 @@ import { usePathname } from "next/navigation";
 import { Send } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
-
-const TELEGRAM_BOT_URL = "https://t.me/wellifybusinesssupport_bot";
+import { appConfig } from "@/lib/config/appConfig";
 
 const collapsedWidth = 48;
 const expandedWidth = 210;
@@ -58,7 +57,8 @@ export function SupportWidget() {
   const ariaLabel = t("support.btn_telegram");
 
   const handleClick = () => {
-    window.open(TELEGRAM_BOT_URL, "_blank", "noopener,noreferrer");
+    const telegramBotUrl = `https://t.me/${appConfig.telegramBotUsername}`;
+    window.open(telegramBotUrl, "_blank", "noopener,noreferrer");
   };
 
   return (

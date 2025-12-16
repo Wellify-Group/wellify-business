@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { serverConfig } from '@/lib/config/appConfig'
 
 export interface SendPhoneVerificationCodeResult {
   success: boolean
@@ -42,7 +43,7 @@ export async function sendPhoneVerificationCode(
     }
 
     // Вызываем API для отправки SMS через Twilio
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const baseUrl = serverConfig.appBaseUrl
     const res = await fetch(`${baseUrl}/api/auth/phone/send-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,7 +112,7 @@ export async function verifyPhoneCode(
     }
 
     // Вызываем API для проверки кода через Twilio
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const baseUrl = serverConfig.appBaseUrl
     const res = await fetch(`${baseUrl}/api/auth/phone/verify-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

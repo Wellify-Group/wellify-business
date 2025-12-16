@@ -3,6 +3,7 @@
 import { z } from 'zod'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { serverConfig } from '@/lib/config/appConfig'
 
 const registerSchema = z.object({
   firstName: z.string().min(1, 'Укажите имя'),
@@ -47,8 +48,8 @@ export async function registerDirector(formData: FormData) {
 
     const supabase = await createServerSupabaseClient()
 
-    const redirectBase =
-      process.env.NEXT_PUBLIC_SITE_URL || 'https://dev.wellifyglobal.com'
+    const { serverConfig } = await import('@/lib/config/appConfig');
+    const redirectBase = serverConfig.appBaseUrl;
 
     const { data, error } = await supabase.auth.signUp({
       email,

@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { serverConfig } from "@/lib/config/appConfig";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -151,8 +152,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://dev.wellifyglobal.com";
-    const redirectTo = `${siteUrl}/auth/reset-password`;
+    const { serverConfig } = await import('@/lib/config/appConfig');
+    const redirectTo = `${serverConfig.appBaseUrl}/auth/reset-password`;
 
     try {
       // resetPasswordForEmail автоматически отправляет письмо

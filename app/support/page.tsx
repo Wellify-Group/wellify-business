@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Mail, MessageCircle } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
+import { appConfig } from "@/lib/config/appConfig";
 
 export default function SupportPage() {
   const { t } = useLanguage();
@@ -53,7 +54,7 @@ export default function SupportPage() {
               </motion.a>
 
               <motion.a
-                href="https://t.me/wellify_business_bot"
+                href={`https://t.me/${appConfig.telegramBotUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 whileHover={{ scale: 1.02, y: -2 }}

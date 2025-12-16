@@ -44,11 +44,12 @@ export async function createServerSupabaseClient() {
  * Use this for admin operations that bypass RLS
  */
 export function createAdminSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co'
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'example-key'
+  const { serverConfig } = require('@/lib/config/appConfig');
+  const supabaseUrl = serverConfig.supabaseUrl;
+  const supabaseServiceRoleKey = serverConfig.supabaseServiceRoleKey;
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn('Missing Supabase admin environment variables. Using placeholder values.')
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error('Missing Supabase admin environment variables: SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY are required');
   }
 
   return createClient(supabaseUrl, supabaseServiceRoleKey, {

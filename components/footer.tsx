@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { welcomeTranslations } from "@/lib/i18n/welcome";
 import { useInterfaceLanguageStore } from "@/lib/store/interfaceLanguageStore";
+import { appConfig } from "@/lib/config/appConfig";
 
 const t = welcomeTranslations;
 
@@ -135,7 +136,7 @@ export function AppFooter() {
                   wellify_group@proton.me
                 </a>
                 <a
-                  href="https://t.me/wellify_business_bot"
+                  href={`https://t.me/${appConfig.telegramBotUsername}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`block transition-colors ${

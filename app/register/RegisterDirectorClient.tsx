@@ -215,9 +215,7 @@ export default function RegisterDirectorClient() {
       const redirectTo =
         typeof window !== "undefined"
           ? `${window.location.origin}/email-confirmed`
-          : `${
-              process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
-            }/email-confirmed`;
+          : `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/email-confirmed`;
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
