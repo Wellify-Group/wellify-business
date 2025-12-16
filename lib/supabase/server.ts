@@ -44,7 +44,7 @@ export async function createServerSupabaseClient() {
  * Use this for admin operations that bypass RLS
  */
 export function createAdminSupabaseClient() {
-  const { serverConfig } = require('@/lib/config/appConfig');
+  const { serverConfig } = require('@/lib/config/serverConfig.server');
   const supabaseUrl = serverConfig.supabaseUrl;
   const supabaseServiceRoleKey = serverConfig.supabaseServiceRoleKey;
 

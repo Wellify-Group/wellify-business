@@ -1,10 +1,11 @@
 // lib/config/appConfig.ts
-// Единый конфиг для фронтенда и сервера
-// Все значения читаются из переменных окружения
+// ⚠️ DEPRECATED: Этот файл устарел и не должен использоваться
+// Используйте вместо него:
+// - Для клиента: import { appConfig } from '@/lib/config/appConfig.client'
+// - Для сервера: import { serverConfig } from '@/lib/config/serverConfig.server'
 
 /**
- * Конфигурация для клиентской части (браузер)
- * Использует только NEXT_PUBLIC_* переменные
+ * @deprecated Используйте appConfig.client.ts для клиентских компонентов
  */
 export const appConfig = {
   appUrl: process.env.NEXT_PUBLIC_APP_URL!,
@@ -14,8 +15,7 @@ export const appConfig = {
 };
 
 /**
- * Конфигурация для серверной части (API routes, server actions)
- * Может использовать как NEXT_PUBLIC_*, так и серверные переменные
+ * @deprecated Используйте serverConfig.server.ts для серверных файлов
  */
 export const serverConfig = {
   supabaseUrl: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!,

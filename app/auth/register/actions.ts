@@ -3,7 +3,7 @@
 import { z } from 'zod'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { serverConfig } from '@/lib/config/appConfig'
+import { serverConfig } from '@/lib/config/serverConfig.server'
 
 const registerSchema = z.object({
   firstName: z.string().min(1, 'Укажите имя'),
@@ -48,7 +48,7 @@ export async function registerDirector(formData: FormData) {
 
     const supabase = await createServerSupabaseClient()
 
-    const { serverConfig } = await import('@/lib/config/appConfig');
+    const { serverConfig } = await import('@/lib/config/serverConfig.server');
     const redirectBase = serverConfig.appBaseUrl;
 
     const { data, error } = await supabase.auth.signUp({

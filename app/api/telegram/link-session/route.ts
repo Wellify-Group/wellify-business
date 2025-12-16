@@ -1,7 +1,9 @@
 // app/api/telegram/link-session/route.ts
 
-// URL бота из .env
-const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
+import { serverConfig } from '@/lib/config/serverConfig.server';
+
+// URL бота из .env (серверная переменная)
+const TELEGRAM_API_URL = serverConfig.telegramApiUrl || process.env.TELEGRAM_API_URL;
 
 export async function POST(request: Request) {
     if (!TELEGRAM_API_URL) {

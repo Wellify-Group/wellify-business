@@ -1,7 +1,7 @@
 'use server'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { serverConfig } from '@/lib/config/appConfig'
+import { serverConfig } from '@/lib/config/serverConfig.server'
 
 export interface SendPhoneVerificationCodeResult {
   success: boolean

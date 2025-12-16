@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { serverConfig } from "@/lib/config/appConfig";
+import { serverConfig } from "@/lib/config/serverConfig.server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const { serverConfig } = await import('@/lib/config/appConfig');
+    const { serverConfig } = await import('@/lib/config/serverConfig.server');
     const redirectTo = `${serverConfig.appBaseUrl}/auth/reset-password`;
 
     try {

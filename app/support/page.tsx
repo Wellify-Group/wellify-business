@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Mail, MessageCircle } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { appConfig } from "@/lib/config/appConfig";
+import { appConfig } from "@/lib/config/appConfig.client";
 
 export default function SupportPage() {
   const { t } = useLanguage();

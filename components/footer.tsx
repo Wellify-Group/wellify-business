@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { welcomeTranslations } from "@/lib/i18n/welcome";
 import { useInterfaceLanguageStore } from "@/lib/store/interfaceLanguageStore";
-import { appConfig } from "@/lib/config/appConfig";
+import { appConfig } from "@/lib/config/appConfig.client";
 
 const t = welcomeTranslations;
 

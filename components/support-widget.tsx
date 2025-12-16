@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Send } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
-import { appConfig } from "@/lib/config/appConfig";
+import { appConfig } from "@/lib/config/appConfig.client";
 
 const collapsedWidth = 48;
 const expandedWidth = 210;
