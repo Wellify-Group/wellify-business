@@ -1,20 +1,23 @@
 // app/api/telegram/session-status/[sessionToken]/route.ts
 
-import { serverConfig } from '@/lib/config/serverConfig.server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// URL бота из .env (серверная переменная)
-const TELEGRAM_API_URL = serverConfig.telegramApiUrl || process.env.TELEGRAM_API_URL;
+// TELEGRAM_API_URL - server-only variable, no fallback to NEXT_PUBLIC
+const TELEGRAM_API_URL = process.env.TELEGRAM_API_URL;
 
 // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ОТКЛЮЧАЕМ КЭШИРОВАНИЕ !!!
 export const dynamic = "force-dynamic"; 
 export const runtime = "nodejs"; // Опционально, но лучше добавить
 
-export async function GET(request: Request, { params }: { params: { sessionToken: string } }) {
+export async function GET(
+    request: NextRequest,
+    { params }: { params: { sessionToken: string } }
+) {
     if (!TELEGRAM_API_URL) {
-        return new Response(JSON.stringify({ error: "Configuration Error" }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return NextResponse.json(
+            { error: "Configuration Error: TELEGRAM_API_URL is not set" },
+            { status: 500 }
+        );
     }
 
     const { sessionToken } = params;
@@ -32,16 +35,13 @@ export async function GET(request: Request, { params }: { params: { sessionToken
         const json = await resp.json();
         
         // Передаем ответ обратно на фронт
-        return new Response(JSON.stringify(json), {
-            status: resp.status,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return NextResponse.json(json, { status: resp.status });
 
     } catch (e) {
         console.error("API Proxy Error:", e);
-        return new Response(JSON.stringify({ error: "Internal Proxy Error" }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return NextResponse.json(
+            { error: "Internal Proxy Error" },
+            { status: 500 }
+        );
     }
 }

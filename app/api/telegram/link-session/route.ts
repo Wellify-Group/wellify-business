@@ -1,16 +1,19 @@
 // app/api/telegram/link-session/route.ts
 
-import { serverConfig } from '@/lib/config/serverConfig.server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// URL бота из .env (серверная переменная)
-const TELEGRAM_API_URL = serverConfig.telegramApiUrl || process.env.TELEGRAM_API_URL;
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+// TELEGRAM_API_URL - server-only variable, no fallback to NEXT_PUBLIC
+const TELEGRAM_API_URL = process.env.TELEGRAM_API_URL;
+
+export async function POST(request: NextRequest) {
     if (!TELEGRAM_API_URL) {
-        return new Response(JSON.stringify({ error: "Configuration Error" }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return NextResponse.json(
+            { error: "Configuration Error: TELEGRAM_API_URL is not set" },
+            { status: 500 }
+        );
     }
 
     try {
@@ -39,30 +42,27 @@ export async function POST(request: Request) {
             
             // Если код 502, выбрасываем ошибку с нашим текстом, но сохраняем код
             if (resp.status === 502) {
-                return new Response(JSON.stringify({ error: `Не удалось создать сессию Telegram. Код ошибки: 502. Попробуйте позже.` }), {
-                    status: 502,
-                    headers: { 'Content-Type': 'application/json' },
-                });
+                return NextResponse.json(
+                    { error: `Не удалось создать сессию Telegram. Код ошибки: 502. Попробуйте позже.` },
+                    { status: 502 }
+                );
             }
             // Для всех остальных ошибок
-            return new Response(JSON.stringify({ error: `Прокси-ошибка: ${resp.status}` }), {
-                status: resp.status,
-                headers: { 'Content-Type': 'application/json' },
-            });
+            return NextResponse.json(
+                { error: `Прокси-ошибка: ${resp.status}` },
+                { status: resp.status }
+            );
         }
         
         // Передаем ответ обратно на фронт
-        return new Response(JSON.stringify(json), {
-            status: resp.status,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return NextResponse.json(json, { status: resp.status });
 
     } catch (e) {
         console.error("API Proxy Error:", e);
         // Эта ошибка возникает, если Next.js не смог достучаться до Railway
-        return new Response(JSON.stringify({ error: "Internal Proxy Error: Failed to connect to Railway" }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return NextResponse.json(
+            { error: "Internal Proxy Error: Failed to connect to Railway" },
+            { status: 500 }
+        );
     }
 }

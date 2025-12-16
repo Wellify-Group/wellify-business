@@ -25,7 +25,8 @@ type SessionStatus = {
   telegramVerified?: boolean;
 };
 
-const TELEGRAM_API_URL = process.env.NEXT_PUBLIC_TELEGRAM_API_URL;
+// TELEGRAM_API_URL is server-only, use API routes instead
+// This component should use /api/telegram/link-session and /api/telegram/session-status endpoints
 
 export function TelegramVerificationStep({
   onVerified,
@@ -51,12 +52,7 @@ export function TelegramVerificationStep({
         return;
       }
 
-      if (!TELEGRAM_API_URL) {
-        setError(
-          t<string>("register_error_internal")
-        );
-        return;
-      }
+      // Use API route instead of direct TELEGRAM_API_URL access
 
       try {
         setLoading(true);

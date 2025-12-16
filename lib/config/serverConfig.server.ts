@@ -3,6 +3,13 @@
 // Импорт 'server-only' гарантирует, что этот файл не попадёт в client bundle
 
 import 'server-only';
+import { validateServerEnv, assertEnvValid } from './envValidation';
+
+// Валидация при импорте (только в production или при явном вызове)
+if (process.env.NODE_ENV === 'production' || process.env.VALIDATE_ENV === 'true') {
+  const validationResult = validateServerEnv();
+  assertEnvValid(validationResult, 'Server environment validation');
+}
 
 export const serverConfig = {
   supabaseUrl: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,8 +20,10 @@ export const serverConfig = {
     process.env.TELEGRAM_BOT_USERNAME ?? process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME!,
   resendApiKey: process.env.RESEND_API_KEY,
   resendFromEmail: process.env.RESEND_FROM_EMAIL,
+  // TELEGRAM_API_URL - server-only variable, no NEXT_PUBLIC fallback
   telegramApiUrl: process.env.TELEGRAM_API_URL,
   supportManagersChatId: process.env.SUPPORT_MANAGERS_CHAT_ID,
+  webhookUrl: process.env.WEBHOOK_URL,
 };
 
 
