@@ -465,6 +465,54 @@ export default function RegisterDirectorClient() {
     setRegisterError(null);
   };
 
+  // ---------- Повторная отправка письма подтверждения ----------
+
+  /**
+   * Повторная отправка письма подтверждения email
+   */
+  const handleResendConfirmation = async () => {
+    if (!email.trim()) {
+      setRegisterError(t<string>("register_error_email_required"));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setRegisterError(null);
+
+    try {
+      const response = await fetch("/api/auth/resend-confirmation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        const errorMessage =
+          data.error === "EMAIL_ALREADY_CONFIRMED"
+            ? "Email уже подтвержден"
+            : data.error === "USER_NOT_FOUND"
+            ? "Пользователь не найден"
+            : data.error || "Не удалось отправить письмо";
+        setRegisterError(errorMessage);
+        return;
+      }
+
+      // Успешно отправлено
+      setEmailStatus("link_sent");
+      setRegisterError(null);
+      console.log("[register] Confirmation email resent successfully");
+    } catch (err) {
+      console.error("[register] Resend confirmation error", err);
+      setRegisterError("Произошла ошибка при отправке письма. Попробуйте позже.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // ---------- Polling подтверждения e-mail ----------
 
   /**
@@ -1032,9 +1080,19 @@ export default function RegisterDirectorClient() {
           {t<string>("register_email_hint")}
         </p>
         {emailStatus === "link_sent" && (
-          <p className="text-muted-foreground/80">
-            {t<string>("register_email_sent")}
-          </p>
+          <div className="flex flex-col gap-2">
+            <p className="text-muted-foreground/80">
+              {t<string>("register_email_sent")}
+            </p>
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={isSubmitting}
+              className="text-left text-xs text-primary hover:text-primary/80 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSubmitting ? "Отправка..." : "Отправить письмо повторно"}
+            </button>
+          </div>
         )}
         {emailStatus === "verified" && (
           <p className="text-foreground">

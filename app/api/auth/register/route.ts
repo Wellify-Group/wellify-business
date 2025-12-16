@@ -85,6 +85,16 @@ export async function POST(request: NextRequest) {
     const companyCode = generateCompanyCode();
 
     // === РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ В AUTH ===
+    // Получаем базовый URL для redirect
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "http://localhost:3000";
+    
+    const redirectTo = `${baseUrl}/auth/callback`;
+    
+    console.log("[register] SignUp with emailRedirectTo:", redirectTo);
+
     const { data: signUpData, error: signUpError } =
       await supabaseAdmin.auth.signUp({
         email: normalizedEmail,
@@ -100,6 +110,7 @@ export async function POST(request: NextRequest) {
             role: "директор",
             language: safeLanguage,
           },
+          emailRedirectTo: redirectTo,
         },
       });
 
