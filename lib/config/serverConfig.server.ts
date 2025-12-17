@@ -5,8 +5,13 @@
 import 'server-only';
 import { validateServerEnv, assertEnvValid } from './envValidation';
 
-// Валидация при импорте (только в production или при явном вызове)
-if (process.env.NODE_ENV === 'production' || process.env.VALIDATE_ENV === 'true') {
+// Валидация при импорте (только в runtime; НЕ во время next build на Vercel).
+// Next выставляет NEXT_PHASE=phase-production-build во время сборки.
+const isNextBuildPhase =
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.NEXT_PHASE === 'phase-production-export';
+
+if (!isNextBuildPhase && (process.env.NODE_ENV === 'production' || process.env.VALIDATE_ENV === 'true')) {
   const validationResult = validateServerEnv();
   assertEnvValid(validationResult, 'Server environment validation');
 }
