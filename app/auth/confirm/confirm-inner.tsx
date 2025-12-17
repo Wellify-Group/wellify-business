@@ -22,7 +22,8 @@ export default function ConfirmEmailInner() {
 
     supabase.auth
       .exchangeCodeForSession(code)
-      .then(({ data, error }) => {
+      .then((result: any) => {
+        const { data, error } = result;
         if (error) {
           console.error('[auth/confirm] Error exchanging code:', error);
           setStatus('error');
@@ -39,7 +40,7 @@ export default function ConfirmEmailInner() {
           setStatus('error');
         }
       })
-      .catch(err => {
+      .catch((err: any) => {
         console.error('[auth/confirm] Exception:', err);
         setStatus('error');
       });
