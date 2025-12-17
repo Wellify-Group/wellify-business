@@ -25,15 +25,44 @@ function EmailConfirmedContent() {
       try {
         const supabase = createBrowserSupabaseClient();
         const code = searchParams.get("code");
+        const tokenHash = searchParams.get("token_hash");
+        const type = searchParams.get("type"); // signup | magiclink | recovery | invite | email_change
 
-        // 1) Если Supabase прислал code, сначала меняем его на сессию
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) {
-            console.error("[email-confirmed] exchangeCodeForSession error", exchangeError);
-            setError("Не удалось подтвердить e-mail. Ссылка могла устареть.");
+        // 1) Если Supabase прислал token_hash + type (классический email link), подтверждаем через verifyOtp
+        if (tokenHash && type) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any,
+          });
+
+          if (verifyError) {
+            console.error("[email-confirmed] verifyOtp error", verifyError);
+            setError("Не удалось подтвердить e-mail. Ссылка могла устареть или уже была использована.");
             return;
           }
+        } else if (code) {
+          // 2) Если пришёл code (PKCE), меняем его на сессию.
+          // Важно: для PKCE нужен code_verifier, который хранится в localStorage в ТОМ ЖЕ браузере,
+          // где пользователь начинал регистрацию. Если ссылку открыть в другом браузере/инкогнито — обмен не получится.
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            const msg = (exchangeError as any)?.message?.toLowerCase?.() ?? "";
+            console.error("[email-confirmed] exchangeCodeForSession error", exchangeError);
+
+            if (msg.includes("code verifier") || msg.includes("code_verifier") || msg.includes("pkce")) {
+              setError(
+                "Не удалось подтвердить e-mail, потому что ссылка открыта не в том же браузере/профиле, где вы начали регистрацию. " +
+                  "Откройте письмо в том же браузере (не инкогнито) и перейдите по ссылке ещё раз, либо запросите новое письмо."
+              );
+            } else {
+              setError("Не удалось подтвердить e-mail. Ссылка могла устареть или уже была использована.");
+            }
+            return;
+          }
+        } else {
+          // Нет параметров подтверждения
+          setError("Не удалось подтвердить e-mail: в ссылке отсутствуют параметры подтверждения.");
+          return;
         }
 
         // 2) После этого пробуем получить пользователя
