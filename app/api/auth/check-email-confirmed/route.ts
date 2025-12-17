@@ -1,37 +1,16 @@
 // app/api/auth/check-email-confirmed/route.ts
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL) {
-  throw new Error(
-    "[check-email-confirmed] SUPABASE_URL is not set in environment variables"
-  );
-}
-
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error(
-    "[check-email-confirmed] SUPABASE_SERVICE_ROLE_KEY is not set in environment variables"
-  );
-}
-
-// Админ-клиент с service_role
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 // Принудительно динамический рендеринг, т.к. используем request.url
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
+    // Админ-клиент с service_role (единая логика выбора DEV/MAIN ключей)
+    const supabaseAdmin = createAdminSupabaseClient();
+
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email");
 

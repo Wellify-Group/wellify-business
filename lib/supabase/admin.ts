@@ -1,3 +1,5 @@
+// lib/supabase/admin.ts (КОРРЕКТНАЯ ИНИЦИАЛИЗАЦИЯ ДЛЯ VERCEL/NEXT.JS)
+
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -8,39 +10,29 @@ import { createClient } from '@supabase/supabase-js';
  * ⚠️ NEVER expose this client to the browser or use it in client components
  */
 export function createAdminSupabaseClient() {
-  const isVercelProduction = process.env.VERCEL_ENV === 'production';
+  // !!! КРИТИЧНО: Используем VERCEL_ENV для выбора ключа !!!
+  // VERCEL_ENV = 'production' для main ветки, 'preview' для dev-веток, 'development' для локального запуска.
+  const isProduction = process.env.VERCEL_ENV === 'production';
+  const isLocal = process.env.VERCEL_ENV === 'development';
 
-  // In Vercel Production ("main"), use dedicated _MAIN env vars to avoid conflicts with local/dev keys.
-  // Otherwise (local dev / preview), use the default env vars.
-  const supabaseUrl = isVercelProduction
-    ? process.env.SUPABASE_URL_MAIN
-    : process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Предполагаем MAIN для prod (если задано), иначе fallback на обычные локальные переменные.
+  const SUPABASE_URL =
+    process.env.NEXT_PUBLIC_SUPABASE_URL_MAIN || process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  const supabaseServiceRoleKey = isVercelProduction
+  const SERVICE_ROLE_KEY = isProduction
     ? process.env.SUPABASE_SERVICE_ROLE_KEY_MAIN
-    : process.env.SUPABASE_SERVICE_ROLE_KEY;
+    : process.env.SUPABASE_SERVICE_ROLE_KEY_DEV || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl) {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
     throw new Error(
-      isVercelProduction
-        ? 'Missing SUPABASE_URL_MAIN environment variable (Vercel Production)'
-        : 'Missing NEXT_PUBLIC_SUPABASE_URL environment variable'
+      `[Admin Client] Supabase URL or Service Role Key is missing.\n` +
+        `VERCEL_ENV=${process.env.VERCEL_ENV ?? 'undefined'} (isProduction=${isProduction}, isLocal=${isLocal}).\n` +
+        `Is VERCEL_ENV set correctly? Is SUPABASE_SERVICE_ROLE_KEY_MAIN/DEV set?`
     );
   }
 
-  if (!supabaseServiceRoleKey) {
-    throw new Error(
-      isVercelProduction
-        ? 'Missing SUPABASE_SERVICE_ROLE_KEY_MAIN environment variable (Vercel Production)'
-        : 'Missing SUPABASE_SERVICE_ROLE_KEY environment variable'
-    );
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+  return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
   });
 }
 

@@ -21,6 +21,11 @@ export const appConfig = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   telegramBotUsername: process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME!,
+  // Optional: can be separated by environment in Vercel via *_MAIN / *_DEV
+  telegramApiUrl:
+    process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN ||
+    process.env.NEXT_PUBLIC_TELEGRAM_API_URL_DEV ||
+    process.env.NEXT_PUBLIC_TELEGRAM_API_URL,
 };
 
 
