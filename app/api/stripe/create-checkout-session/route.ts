@@ -1,20 +1,22 @@
-// app/api/stripe/create-checkout-session/route.ts (ФИНАЛЬНЫЙ КОД ДЛЯ ДВУХ СРЕД)
+// app/api/stripe/create-checkout-session/route.ts (ФИНАЛЬНЫЙ КОД: ОБХОД ОШИБКИ СБОРКИ)
 
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"; // Используем Admin Client
 import { serverConfig } from "@/lib/config/serverConfig.server";
+import { createServerSupabaseClient } from "@/lib/supabase/server"; // Используем для getUser()
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic'; // Для обеспечения актуальности ключей
 
 export async function POST(request: NextRequest) {
   // Определяем среду Vercel
   const isProduction = process.env.VERCEL_ENV === 'production';
 
-  // !!! ШАГ 1: АДАПТИВНЫЙ ВЫБОР КЛЮЧЕЙ STRIPE И PRICE IDs !!!
+  // !!! ШАГ 1: АДАПТИВНЫЙ ВЫБОР КЛЮЧЕЙ STRIPE И PRICE IDs (с заглушкой) !!!
   const STRIPE_SECRET = isProduction
-    ? process.env.STRIPE_SECRET_KEY_MAIN 
-    : process.env.STRIPE_SECRET_KEY_DEV;
+    ? process.env.STRIPE_SECRET_KEY_MAIN || 'sk_test_DUMMY'
+    : process.env.STRIPE_SECRET_KEY_DEV || 'sk_test_DUMMY';
 
   const PRICE_MONTHLY = isProduction
     ? process.env.STRIPE_PRICE_ID_MONTHLY_Main 
@@ -23,14 +25,13 @@ export async function POST(request: NextRequest) {
   const PRICE_YEARLY = isProduction
     ? process.env.STRIPE_PRICE_ID_YEARLY_Main
     : process.env.STRIPE_PRICE_ID_YEARLY_Dev;
-  // !!! КОНЕЦ АДАПТИВНОГО ВЫБОРА !!!
-
-
-  // !!! ШАГ 2: ЗАГЛУШКА ДЛЯ ПРЕДОТВРАЩЕНИЯ ОШИБКИ СБОРКИ !!!
-  if (!STRIPE_SECRET || !PRICE_MONTHLY || !PRICE_YEARLY) {
-      console.error(`[Stripe] Missing key. ENV: ${isProduction ? 'MAIN' : 'DEV'}. Returning 503.`);
+  
+  
+  // !!! ШАГ 2: КРИТИЧНО - ПРОВЕРКА НАЛИЧИЯ ВСЕХ КЛЮЧЕЙ В НАЧАЛЕ !!!
+  if (STRIPE_SECRET === 'sk_test_DUMMY' || !PRICE_MONTHLY || !PRICE_YEARLY) {
+      console.error("[Stripe] Missing config. Returning 503.");
       return NextResponse.json(
-          { error: "Stripe is not fully configured for this environment." }, 
+          { error: "Stripe configuration is incomplete." }, 
           { status: 503 }
       );
   }
@@ -41,14 +42,12 @@ export async function POST(request: NextRequest) {
   });
   
   try {
-    // !!! ШАГ 3: ИСПОЛЬЗУЕМ ADMIN CLIENT (для upsert Customer ID) !!!
-    const supabaseAdmin = createAdminSupabaseClient();
+    // Получаем пользователя, используя обычный серверный клиент (пользовательский токен)
+    const supabase = await createServerSupabaseClient(); // Используем createServerSupabaseClient
     
-    // Получаем текущего пользователя (ЗДЕСЬ НУЖЕН КЛИЕНТ БРАУЗЕРА/АУТЕНТИФИКАЦИИ, 
-    // НО МЫ ИСПОЛЬЗУЕМ ADMIN ДЛЯ ПРАВ)
     const {
       data: { user },
-    } = await supabaseAdmin.auth.getUser(); // Используем Admin Client для проверки User
+    } = await supabase.auth.getUser(); 
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -57,12 +56,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { planType } = body; 
 
-    // !!! ШАГ 4: ВЫБОР PRICE ID !!!
+    // ШАГ 3: ВЫБОР PRICE ID 
     const priceId = planType === 'monthly' ? PRICE_MONTHLY : PRICE_YEARLY;
     
     if (!priceId) {
       return NextResponse.json({ error: "Invalid plan type or missing price ID." }, { status: 400 });
     }
+
+    // Инициализация Admin Client для операций с БД (только если все ок)
+    const supabaseAdmin = createAdminSupabaseClient();
 
     // Get or create Stripe customer
     let customerId: string;
@@ -104,7 +106,6 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      // Предполагаем, что serverConfig.appBaseUrl также адаптивен
       success_url: `${serverConfig.appBaseUrl}/dashboard?success=true`, 
       cancel_url: `${serverConfig.appBaseUrl}/dashboard?canceled=true`,
       metadata: {
