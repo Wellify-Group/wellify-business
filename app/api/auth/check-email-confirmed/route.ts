@@ -71,11 +71,9 @@ export async function GET(req: Request) {
     }
 
     // Реальное подтверждение e-mail в Supabase
-    // email_confirmed_at заполняется только после клика по ссылке из письма
-    const emailConfirmed =
-      Boolean((user as any).email_confirmed_at) ||
-      Boolean((user as any).confirmed_at) ||
-      Boolean((user.user_metadata as any)?.email_verified);
+    // email_confirmed_at заполняется ТОЛЬКО после клика по ссылке из письма
+    // НЕ проверяем user_metadata.email_verified, так как оно может быть установлено вручную
+    const emailConfirmed = Boolean((user as any).email_confirmed_at);
 
     console.log("[check-email-confirmed] User check:", {
       email: normalizedEmail,

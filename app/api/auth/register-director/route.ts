@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
       // active: true, // УДАЛЕНО: в таблице profiles нет колонки 'активен'
       phone: phone.trim(),
       phoneVerified: true,
-      emailVerified: true, 
+      emailVerified: false, // Email должен подтверждаться через письмо, не вручную! 
     });
 
     // !!! ИСПРАВЛЕНИЕ: Удаляем все проблемные поля, которых нет в PROFILES !!!
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
         last_name: lastName.trim(),
         middle_name: middleName?.trim() || null,
         language: normalizedLocale, 
-        email_verified: true, 
+        email_verified: false, // Email должен подтверждаться через письмо, не вручную!
         phone_verified: true, 
         updated_at: new Date().toISOString(),
         birth_date: birthDate ? (birthDate.includes("T") ? birthDate.split("T")[0] : birthDate) : null,
