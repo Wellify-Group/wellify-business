@@ -1,4 +1,4 @@
-// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - ИСПРАВЛЕНИЕ 400 Bad Request)
+// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - ОТМЕНА АВТО-ПЕРЕХОДА НА ШАГ 3)
 
 "use client";
 
@@ -250,7 +250,7 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request !!!
+      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request: ГАРАНТИРУЕМ null для необязательных полей !!!
       const payload = {
         email: registeredUserEmail,
         password: personal.password,
@@ -334,13 +334,15 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
+        // !!! КРИТИЧНО: ЭТА ЛОГИКА ДОЛЖНА БЫТЬ ИСПРАВЛЕНА !!!
         if (data.success && data.emailConfirmed) {
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
-
-          setStep(3);
-          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+          
+          // !!! ИСПРАВЛЕНИЕ: МЫ УДАЛЯЕМ АВТОМАТИЧЕСКИЙ ПЕРЕХОД !!!
+          // setStep(3);
+          // setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
 
           if (intervalId) {
             clearInterval(intervalId);
@@ -644,14 +646,14 @@ export default function RegisterDirectorClient() {
 
   return (
     <main className="flex min-h-screen items-start justify-center bg-background px-4 pt-28 pb-10">
-      <div className="relative w-full max-w-xl">
+      <div className="relative w-full max-w-3xl">
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
-          <CardHeader className="px-8 pt-7 pb-4">
+          <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
             {renderStepTitle()}
           </CardHeader>
 
-          <CardContent className="px-8 pb-4 pt-1">
+          <CardContent className="px-10 pb-4 pt-1">
             {registerError && (
               <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
                 <AlertCircle className="mt-0.5 h-4 w-4" />
@@ -665,7 +667,7 @@ export default function RegisterDirectorClient() {
             {step === 4 && renderStep4()}
           </CardContent>
 
-          <CardFooter className="relative flex items-center justify-between px-8 pb-6 pt-2 text-xs text-zinc-500">
+          <CardFooter className="relative flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
             <div className="flex items-center gap-2">
               {step > 1 && step < 4 && (
                 <button
