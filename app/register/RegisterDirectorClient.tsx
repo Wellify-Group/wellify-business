@@ -1,4 +1,4 @@
-// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - ОТМЕНА АВТО-ПЕРЕХОДА НА ШАГ 3)
+// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - БЕЗ АВТО-ПОДТВЕРЖДЕНИЯ EMAIL)
 
 "use client";
 
@@ -234,6 +234,7 @@ export default function RegisterDirectorClient() {
   const canGoToStep = (target: Step) => {
     if (target === 1) return true;
     if (target === 2) return maxStepReached >= 2;
+    // !!! КРИТИЧНО: Шаг 3 требует подтверждения email !!!
     if (target === 3) return emailVerified && maxStepReached >= 3;
     return false;
   };
@@ -334,15 +335,14 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
-        // !!! КРИТИЧНО: ЭТА ЛОГИКА ДОЛЖНА БЫТЬ ИСПРАВЛЕНА !!!
         if (data.success && data.emailConfirmed) {
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
-          
-          // !!! ИСПРАВЛЕНИЕ: МЫ УДАЛЯЕМ АВТОМАТИЧЕСКИЙ ПЕРЕХОД !!!
-          // setStep(3);
-          // setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+
+          // !!! КРИТИЧНО: МЫ УДАЛЯЕМ АВТОМАТИЧЕСКИЙ ПЕРЕХОД !!!
+          // setStep(3); // УДАЛЕНО
+          setMaxStepReached((prev) => (prev < 3 ? 3 : prev)); // Оставляем только обновление maxStepReached
 
           if (intervalId) {
             clearInterval(intervalId);
