@@ -11,23 +11,27 @@ if (typeof window !== 'undefined') {
   ];
 
   const missing = requiredVars.filter((v) => !process.env[v]);
+  
+  // Детальная диагностика
   if (missing.length > 0) {
-    console.error(
-      'Missing required client environment variables:',
-      missing,
-      '\n',
-      '⚠️ Причина: переменные NEXT_PUBLIC_* встраиваются в bundle во время сборки.',
-      '\n',
-      'Решение:',
-      '\n',
-      '1. Проверьте Vercel → Settings → Environment Variables',
-      '\n',
-      '2. Убедитесь, что переменные установлены для Preview scope',
-      '\n',
-      '3. Пересоберите Preview deployment после добавления переменных',
-      '\n',
-      '4. Для локальной разработки добавьте переменные в .env.local'
+    console.group('🔍 Диагностика Environment Variables');
+    console.log('Отсутствующие переменные:', missing);
+    console.log('Доступные NEXT_PUBLIC_* переменные:', 
+      Object.keys(process.env)
+        .filter(key => key.startsWith('NEXT_PUBLIC_'))
+        .reduce((acc, key) => {
+          acc[key] = process.env[key] ? `${process.env[key]?.substring(0, 20)}...` : 'undefined';
+          return acc;
+        }, {} as Record<string, string>)
     );
+    console.log('Все process.env ключи (первые 20):', Object.keys(process.env).slice(0, 20));
+    console.log('⚠️ Проблема: переменные NEXT_PUBLIC_* должны быть встроены в bundle во время сборки Next.js');
+    console.log('📋 Решение:');
+    console.log('1. Vercel → Settings → Environment Variables → проверьте, что переменные установлены для нужного scope');
+    console.log('2. Vercel → Deployments → найдите последний Preview deployment → Redeploy');
+    console.log('3. Убедитесь, что переменные добавлены ДО сборки (не после)');
+    console.log('4. Проверьте, что scope правильный: "Preview" или "All Pre-Production Environments"');
+    console.groupEnd();
   }
 }
 
