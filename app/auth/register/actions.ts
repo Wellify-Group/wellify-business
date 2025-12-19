@@ -55,7 +55,7 @@ export async function registerDirector(formData: FormData) {
       email,
       password,
       options: {
-        emailRedirectTo: `${redirectBase}/email-confirmed`,
+        emailRedirectTo: `${redirectBase}/auth/confirm`,
         data: {
           first_name: firstName,
           last_name: lastName,

@@ -11,38 +11,12 @@ export default function EmailConfirmedPage() {
     const run = async () => {
       try {
         const supabase = createBrowserSupabaseClient();
-        const { data, error } = await supabase.auth.getUser();
+        const { data } = await supabase.auth.getUser();
+        setEmail(data.user?.email ?? null);
 
-        if (!error && data.user?.email) {
-          const normalized = data.user.email.toLowerCase();
-          setEmail(normalized);
-
-          // Синхронизируем профиль через API
-          try {
-            const res = await fetch("/api/auth/email-sync-profile", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: data.user.id,
-                email: normalized,
-              }),
-            });
-
-            if (!res.ok) {
-              console.error("[email-confirmed] Failed to sync profile");
-            }
-          } catch (syncError) {
-            console.error("[email-confirmed] Error syncing profile", syncError);
-          }
-
-          // помечаем верификацию в localStorage
-          if (typeof window !== "undefined") {
-            localStorage.setItem("wellify_email_confirmed", "true");
-            localStorage.setItem("wellify_email_confirmed_for", normalized);
-          }
+        if (typeof window !== "undefined") {
+          localStorage.setItem("wellify_email_confirmed", "true");
         }
-      } catch (e) {
-        console.error("[email-confirmed] getUser error", e);
       } finally {
         setLoading(false);
       }
@@ -52,29 +26,34 @@ export default function EmailConfirmedPage() {
   }, []);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[rgba(7,13,23,0.96)] px-8 py-10 text-center shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
-        <h1 className="mb-3 text-xl font-semibold text-white">
+    <main className="min-h-screen flex items-center justify-center px-4">
+      <div className="max-w-md w-full rounded-2xl bg-[#050816] border border-white/5 px-8 py-10 text-center">
+        <h1 className="text-white text-xl font-semibold mb-3">
           E-mail подтверждён
         </h1>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">
-            Завершаем подтверждение e-mail...
+          <p className="text-sm text-zinc-400">
+            Завершаем подтверждение...
           </p>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-zinc-300">
               Ваша почта успешно подтверждена.
-              <br />
-              Можете закрыть это окно и вернуться к регистрации в WELLIFY
-              business.
             </p>
             {email && (
               <p className="mt-3 text-xs text-zinc-500">
-                Текущий e-mail: <span className="font-mono">{email}</span>
+                {email}
               </p>
             )}
+            <div className="mt-6 flex justify-center gap-3">
+              <a href="/login" className="text-sm text-blue-400">
+                Войти
+              </a>
+              <a href="/register" className="text-sm text-blue-400">
+                Регистрация
+              </a>
+            </div>
           </>
         )}
       </div>

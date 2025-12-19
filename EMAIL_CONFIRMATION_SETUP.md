@@ -1,21 +1,36 @@
 # Настройка подтверждения email
 
+## Flow подтверждения email
+
+1. Пользователь регистрируется → `signUp()` отправляет письмо
+2. Пользователь кликает по ссылке в письме → Supabase редиректит на `/auth/confirm?code=...`
+3. Серверный route `/auth/confirm` вызывает `exchangeCodeForSession(code)` → создает сессию
+4. После успешного обмена → редирект на `/auth/email-confirmed` (UI страница)
+5. Страница `/auth/email-confirmed` показывает успешное подтверждение и получает email через `getUser()`
+
 ## Важно: Настройка шаблона email в Supabase Dashboard
 
-Для работы подтверждения email через token_hash (без PKCE) необходимо обновить шаблон email в Supabase Dashboard:
+Для работы подтверждения email необходимо настроить шаблон в Supabase Dashboard:
 
 1. Перейдите в Supabase Dashboard → Authentication → Email Templates
 2. Выберите шаблон "Confirm signup"
 3. В поле "Redirect URL" используйте следующую ссылку:
 
 ```
-{{ .SiteURL }}/email-confirmed?token_hash={{ .TokenHash }}&type=signup
+{{ .SiteURL }}/auth/confirm
 ```
 
 **Важно:** 
-- Используйте `/email-confirmed` (не `/auth/email-confirmed`)
-- Параметры `token_hash` и `type` обязательны
-- `type=signup` для подтверждения регистрации
+- Используйте `/auth/confirm` (серверный route)
+- Supabase автоматически добавит параметр `code` к URL
+- Никаких дополнительных параметров не требуется
+
+## Архитектура
+
+- **app/auth/confirm/route.ts** - серверный route, который делает `exchangeCodeForSession(code)`
+- **app/auth/email-confirmed/page.tsx** - UI страница, показывает успешное подтверждение
+- Никаких client-side confirm/verify логик
+- Email подтверждается ТОЛЬКО по клику по ссылке из письма
 
 ## Безопасность: Ротация Service Role Keys
 
@@ -37,18 +52,8 @@
 **Preview scope:** значения для development/preview Supabase проекта
 **Development scope:** значения для локальной разработки
 
-## Flow подтверждения email
-
-1. Пользователь регистрируется → `signUp()` отправляет письмо
-2. Пользователь переходит по ссылке из письма → `/email-confirmed?token_hash=...&type=signup`
-3. Страница `/email-confirmed` вызывает `verifyOtp({ token_hash, type })` → работает в любом браузере
-4. После успешного подтверждения вызывается `/api/auth/email-sync-profile` → ставит `email_verified=true` в profiles
-5. Автоматический redirect на `/auth/register?step=3`
-6. Polling на клиенте проверяет подтверждение через `/api/auth/check-email-confirmed?userId=...`
-
 ## Удаление зависимости от PKCE
 
-Старый flow использовал `exchangeCodeForSession(code)`, который требовал `code_verifier` из localStorage того же браузера.
+Старый flow использовал `exchangeCodeForSession(code)` на клиенте, который требовал `code_verifier` из localStorage того же браузера.
 
-Новый flow использует `verifyOtp({ token_hash, type })`, который работает в любом браузере/устройстве, так как `token_hash` самодостаточен.
-
+Новый flow использует серверный route `/auth/confirm`, который делает `exchangeCodeForSession(code)` на сервере. Это работает в любом браузере/устройстве, так как сервер обрабатывает обмен кода на сессию.
