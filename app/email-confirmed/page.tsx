@@ -1,118 +1,115 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
-import { useLanguage } from "@/components/language-provider";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 function EmailConfirmedContent() {
-  const { t, setLanguage } = useLanguage();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  // Устанавливаем украинский язык для этой страницы
-  useEffect(() => {
-    setLanguage('ua');
-  }, [setLanguage]);
 
-  // Обмениваем code на сессию (если он есть) и синхронизируем профиль
+  // Подтверждение email через token_hash + verifyOtp (без PKCE)
   useEffect(() => {
     const run = async () => {
       try {
         const supabase = createBrowserSupabaseClient();
-        const code = searchParams.get("code");
         const tokenHash = searchParams.get("token_hash");
         const type = searchParams.get("type"); // signup | magiclink | recovery | invite | email_change
 
-        // 1) Если Supabase прислал token_hash + type (классический email link), подтверждаем через verifyOtp
-        if (tokenHash && type) {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: type as any,
-          });
-
-          if (verifyError) {
-            console.error("[email-confirmed] verifyOtp error", verifyError);
-            setError("Не удалось подтвердить e-mail. Ссылка могла устареть или уже была использована.");
-            return;
-          }
-        } else if (code) {
-          // 2) Если пришёл code (PKCE), меняем его на сессию.
-          // Важно: для PKCE нужен code_verifier, который хранится в localStorage в ТОМ ЖЕ браузере,
-          // где пользователь начинал регистрацию. Если ссылку открыть в другом браузере/инкогнито — обмен не получится.
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) {
-            const msg = (exchangeError as any)?.message?.toLowerCase?.() ?? "";
-            console.error("[email-confirmed] exchangeCodeForSession error", exchangeError);
-
-            if (msg.includes("code verifier") || msg.includes("code_verifier") || msg.includes("pkce")) {
-              setError(
-                "Не удалось подтвердить e-mail, потому что ссылка открыта не в том же браузере/профиле, где вы начали регистрацию. " +
-                  "Откройте письмо в том же браузере (не инкогнито) и перейдите по ссылке ещё раз, либо запросите новое письмо."
-              );
-            } else {
-              setError("Не удалось подтвердить e-mail. Ссылка могла устареть или уже была использована.");
-            }
-            return;
-          }
-        } else {
-          // Нет параметров подтверждения
+        if (!tokenHash || !type) {
           setError("Не удалось подтвердить e-mail: в ссылке отсутствуют параметры подтверждения.");
+          setLoading(false);
           return;
         }
 
-        // 2) После этого пробуем получить пользователя
-        const { data, error: getUserError } = await supabase.auth.getUser();
+        // Подтверждаем через verifyOtp (работает в любом браузере, не требует PKCE)
+        const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: type as any,
+        });
+
+        if (verifyError) {
+          console.error("[email-confirmed] verifyOtp error", verifyError);
+          
+          // Определяем тип ошибки для более понятного сообщения
+          const errorMessage = verifyError.message?.toLowerCase() || "";
+          if (errorMessage.includes("expired") || errorMessage.includes("устарел")) {
+            setError("Ссылка для подтверждения устарела. Пожалуйста, запросите новое письмо.");
+          } else if (errorMessage.includes("invalid") || errorMessage.includes("неверн")) {
+            setError("Неверная ссылка для подтверждения. Пожалуйста, используйте ссылку из последнего письма.");
+          } else {
+            setError("Не удалось подтвердить e-mail. Ссылка могла устареть или уже была использована.");
+          }
+          setLoading(false);
+          return;
+        }
+
+        // После успешного verifyOtp получаем пользователя
+        const { data: userData, error: getUserError } = await supabase.auth.getUser();
 
         if (getUserError) {
           console.error("[email-confirmed] getUser error", getUserError);
-          setError("Не удалось проверить сессию");
+          setError("Не удалось проверить сессию после подтверждения.");
+          setLoading(false);
           return;
         }
 
-        if (!data?.user) {
+        if (!userData?.user) {
           console.error("[email-confirmed] No user found");
-          setError("Пользователь не найден");
+          setError("Пользователь не найден после подтверждения.");
+          setLoading(false);
           return;
         }
 
-        // Проверяем, подтвержден ли email
-        if (!data.user.email_confirmed_at) {
-          console.error("[email-confirmed] Email not confirmed");
-          setError("E-mail еще не подтвержден");
+        // Проверяем, что email действительно подтвержден
+        if (!userData.user.email_confirmed_at) {
+          console.error("[email-confirmed] Email not confirmed after verifyOtp");
+          setError("E-mail не был подтвержден. Попробуйте ещё раз.");
+          setLoading(false);
           return;
         }
 
-        const normalized = data.user.email?.toLowerCase() || null;
+        const normalized = userData.user.email?.toLowerCase() || null;
         setEmail(normalized);
 
-        // Синхронизируем профиль через API
+        // Синхронизируем профиль через API (ставит email_verified=true в profiles)
         try {
           const res = await fetch("/api/auth/email-sync-profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              userId: data.user.id,
+              userId: userData.user.id,
               email: normalized,
             }),
           });
 
           if (!res.ok) {
-            console.error("[email-confirmed] Failed to sync profile");
+            const errorData = await res.json().catch(() => ({}));
+            console.error("[email-confirmed] Failed to sync profile", errorData);
+            // Не показываем ошибку пользователю, т.к. email уже подтвержден в Auth
           }
         } catch (syncError) {
           console.error("[email-confirmed] Error syncing profile", syncError);
+          // Не показываем ошибку пользователю, т.к. email уже подтвержден в Auth
         }
 
         // Помечаем верификацию в localStorage
         if (typeof window !== "undefined" && normalized) {
           localStorage.setItem("wellify_email_confirmed", "true");
           localStorage.setItem("wellify_email_confirmed_for", normalized);
+          localStorage.setItem("wellify_registration_userId", userData.user.id);
         }
+
+        // Перенаправляем на страницу регистрации, шаг 3 (или другую логику)
+        // Используем setTimeout чтобы пользователь увидел сообщение об успехе
+        setTimeout(() => {
+          router.push("/auth/register?step=3");
+        }, 2000);
       } catch (e) {
         console.error("[email-confirmed] Unexpected error", e);
         setError("Произошла ошибка при подтверждении e-mail");
@@ -122,15 +119,7 @@ function EmailConfirmedContent() {
     };
 
     run();
-  }, [searchParams]);
-
-  const handleClose = () => {
-    if (window.opener) {
-      window.close();
-      return;
-    }
-    window.close();
-  };
+  }, [searchParams, router]);
 
   return (
     <div className="flex h-full w-full items-center justify-center px-4 py-8">
@@ -153,22 +142,16 @@ function EmailConfirmedContent() {
               <span>WELLIFY <strong style={{ color: 'var(--email-confirmed-text)', fontWeight: 600 }}>BUSINESS</strong></span>
             </div>
 
-            <div 
-              className="flex h-16 w-16 items-center justify-center rounded-full"
-              style={{
-                backgroundColor: 'var(--email-confirmed-success-bg)',
-              }}
-            >
-              <CheckCircle2 
-                className="h-10 w-10"
-                style={{
-                  color: 'var(--email-confirmed-success-text)',
-                }}
-              />
-            </div>
-
             {loading ? (
               <>
+                <div 
+                  className="flex h-16 w-16 items-center justify-center rounded-full animate-spin"
+                  style={{
+                    backgroundColor: 'var(--email-confirmed-success-bg)',
+                  }}
+                >
+                  <div className="h-8 w-8 border-4 border-t-transparent rounded-full" style={{ borderColor: 'var(--email-confirmed-success-text)' }} />
+                </div>
                 <h1 
                   className="text-[22px] leading-[1.3] font-bold"
                   style={{
@@ -190,6 +173,19 @@ function EmailConfirmedContent() {
               </>
             ) : error ? (
               <>
+                <div 
+                  className="flex h-16 w-16 items-center justify-center rounded-full"
+                  style={{
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                  }}
+                >
+                  <AlertCircle 
+                    className="h-10 w-10"
+                    style={{
+                      color: '#DC2626',
+                    }}
+                  />
+                </div>
                 <h1 
                   className="text-[22px] leading-[1.3] font-bold"
                   style={{
@@ -211,7 +207,7 @@ function EmailConfirmedContent() {
                 <div className="pt-6 pb-4">
                   <button
                     type="button"
-                    onClick={handleClose}
+                    onClick={() => router.push("/auth/register")}
                     className={cn(
                       "inline-block rounded-full px-7 py-3 text-sm font-semibold transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
@@ -222,12 +218,26 @@ function EmailConfirmedContent() {
                       color: 'var(--email-confirmed-primary-foreground)',
                     }}
                   >
-                    Закрыть
+                    Вернуться к регистрации
                   </button>
                 </div>
               </>
             ) : (
               <>
+                <div 
+                  className="flex h-16 w-16 items-center justify-center rounded-full"
+                  style={{
+                    backgroundColor: 'var(--email-confirmed-success-bg)',
+                  }}
+                >
+                  <CheckCircle2 
+                    className="h-10 w-10"
+                    style={{
+                      color: 'var(--email-confirmed-success-text)',
+                    }}
+                  />
+                </div>
+
                 <h1 
                   className="text-[22px] leading-[1.3] font-bold"
                   style={{
@@ -235,7 +245,7 @@ function EmailConfirmedContent() {
                     margin: '0 0 16px 0',
                   }}
                 >
-                  {t<string>("email_confirmed_title")}
+                  E-mail подтверждён
                 </h1>
 
                 <p 
@@ -245,7 +255,7 @@ function EmailConfirmedContent() {
                     margin: '0 0 8px 0',
                   }}
                 >
-                  {t<string>("email_confirmed_message")}
+                  Ваша почта успешно подтверждена. Перенаправляем вас на страницу регистрации...
                 </p>
 
                 {email && (
@@ -258,25 +268,6 @@ function EmailConfirmedContent() {
                     E-mail: <span className="font-mono">{email}</span>
                   </p>
                 )}
-
-                <div className="pt-6 pb-4">
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className={cn(
-                      "inline-block rounded-full px-7 py-3 text-sm font-semibold transition-colors",
-                      // Используем CSS-переменные для адаптивности:
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-                      "hover:opacity-80" // Добавляем простой hover эффект
-                    )}
-                    style={{
-                      backgroundColor: 'var(--email-confirmed-primary)',
-                      color: 'var(--email-confirmed-primary-foreground)',
-                    }}
-                  >
-                    {t<string>("email_confirmed_close_button")}
-                  </button>
-                </div>
               </>
             )}
           </div>

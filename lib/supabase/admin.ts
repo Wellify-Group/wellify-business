@@ -1,6 +1,6 @@
 // lib/supabase/admin.ts
 // Admin Supabase client with service role key
-// Uses unified env module - NO HARDCODED KEYS
+// NO HARDCODED KEYS - uses environment variables only
 
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
@@ -12,6 +12,7 @@ import { getSupabaseAdminEnv, logSupabaseEnv } from './env';
  *
  * This client has full access to all tables and bypasses Row Level Security (RLS)
  * ⚠️ NEVER expose this client to the browser or use it in client components
+ * ⚠️ CRITICAL: If service role keys were exposed in repository, rotate them immediately in Supabase Dashboard
  */
 export function createAdminSupabaseClient() {
   // Защита от использования в браузере
@@ -25,11 +26,18 @@ export function createAdminSupabaseClient() {
   const { url: supabaseUrl, serviceRoleKey: supabaseServiceRoleKey } =
     getSupabaseAdminEnv();
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
+  if (!supabaseUrl) {
     throw new Error(
-      `[Admin Client] Supabase URL or Service Role Key is missing.\n` +
-        `VERCEL_ENV=${process.env.VERCEL_ENV ?? 'undefined'}.\n` +
-        `Expected: SUPABASE_SERVICE_ROLE_KEY_MAIN/DEV or SUPABASE_SERVICE_ROLE_KEY`
+      `[Admin Client] Missing NEXT_PUBLIC_SUPABASE_URL. ` +
+        `Set it in Vercel Environment Variables (Production/Preview/Development scope).`
+    );
+  }
+
+  if (!supabaseServiceRoleKey) {
+    throw new Error(
+      `[Admin Client] Missing SUPABASE_SERVICE_ROLE_KEY. ` +
+        `Set it in Vercel Environment Variables (Production/Preview/Development scope). ` +
+        `⚠️ CRITICAL: If service role keys were exposed in repository, rotate them immediately in Supabase Dashboard.`
     );
   }
 

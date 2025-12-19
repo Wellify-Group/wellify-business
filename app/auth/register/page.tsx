@@ -25,6 +25,17 @@ interface FormState {
 export default function RegisterDirectorPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
+  
+  // Восстановление шага из URL параметров
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const stepParam = urlParams.get('step');
+    if (stepParam === '3') {
+      setStep(3);
+    } else if (stepParam === '2') {
+      setStep(2);
+    }
+  }, []);
   const [form, setForm] = useState<FormState>({
     firstName: '',
     lastName: '',
@@ -41,12 +52,23 @@ export default function RegisterDirectorPage() {
   const [emailSent, setEmailSent] = useState(false);
   const [emailConfirmed, setEmailConfirmed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   // сбрасываем текст ошибок при смене шага
   useEffect(() => {
     setFormError(null);
     setFormSuccess(null);
   }, [step]);
+
+  // Очистка polling при размонтировании
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   const supabase = createBrowserSupabaseClient();
 
@@ -139,10 +161,79 @@ export default function RegisterDirectorPage() {
       return;
     }
 
+    // Сохраняем userId для polling
+    if (result.userId) {
+      setUserId(result.userId);
+      // Сохраняем в localStorage для восстановления при перезагрузке
+      localStorage.setItem('wellify_registration_userId', result.userId);
+      localStorage.setItem('wellify_registration_email', form.email.trim());
+    }
+
     setEmailSent(true);
     setFormSuccess(
       result.message || `Письмо с подтверждением отправлено на ${form.email.trim()}. Перейдите по ссылке в письме, затем вернитесь и нажмите кнопку «Я подтвердил e-mail».`,
     );
+
+    // Запускаем polling для проверки подтверждения email
+    if (result.userId) {
+      startPolling(result.userId);
+    }
+  };
+
+  // Восстановление userId из localStorage при монтировании
+  useEffect(() => {
+    const savedUserId = localStorage.getItem('wellify_registration_userId');
+    const savedEmail = localStorage.getItem('wellify_registration_email');
+    
+    if (savedUserId && savedEmail) {
+      // Проверяем совпадение email только если он уже введен
+      if (!form.email.trim() || savedEmail.toLowerCase() === form.email.trim().toLowerCase()) {
+        setUserId(savedUserId);
+        if (emailSent && step === 2) {
+          startPolling(savedUserId);
+        }
+      }
+    }
+  }, []);
+
+  const startPolling = (targetUserId: string) => {
+    // Очищаем предыдущий интервал, если есть
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+
+    // Проверяем сразу
+    checkEmailConfirmed(targetUserId);
+
+    // Затем каждые 3 секунды
+    const interval = setInterval(() => {
+      checkEmailConfirmed(targetUserId);
+    }, 3000);
+
+    setPollingInterval(interval);
+  };
+
+  const checkEmailConfirmed = async (targetUserId: string) => {
+    try {
+      const response = await fetch(`/api/auth/check-email-confirmed?userId=${encodeURIComponent(targetUserId)}`);
+      const data = await response.json();
+
+      if (data.success && data.emailConfirmed) {
+        // Email подтвержден - останавливаем polling и переходим на шаг 3
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+        setEmailConfirmed(true);
+        setFormSuccess('E-mail подтверждён. Переходим к следующему шагу...');
+        setTimeout(() => {
+          setStep(3);
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('[register] Polling error:', error);
+      // Не показываем ошибку пользователю, просто продолжаем polling
+    }
   };
 
   const handleCheckEmailConfirmed = async () => {
@@ -150,28 +241,45 @@ export default function RegisterDirectorPage() {
     setFormSuccess(null);
     setIsLoading(true);
 
-    const { data, error } = await supabase.auth.getUser();
+    const targetUserId = userId || localStorage.getItem('wellify_registration_userId');
 
-    setIsLoading(false);
-
-    if (error || !data.user) {
-      setFormError('Не удалось получить данные пользователя. Обновите страницу и попробуйте ещё раз.');
+    if (!targetUserId) {
+      setIsLoading(false);
+      setFormError('Не найден ID пользователя. Пожалуйста, отправьте письмо ещё раз.');
       return;
     }
 
-    if (!data.user.email || data.user.email.toLowerCase() !== form.email.trim().toLowerCase()) {
-      setFormError('Подтверждённый e-mail не совпадает с указанным при регистрации.');
-      return;
-    }
+    try {
+      const response = await fetch(`/api/auth/check-email-confirmed?userId=${encodeURIComponent(targetUserId)}`);
+      const data = await response.json();
 
-    if (!data.user.email_confirmed_at) {
-      setFormError('Мы не видим подтверждение e-mail. Убедитесь, что вы перешли по ссылке в письме.');
-      return;
-    }
+      setIsLoading(false);
 
-    setEmailConfirmed(true);
-    setFormSuccess('E-mail подтверждён. Можно переходить к следующему шагу.');
-    setStep(3);
+      if (!data.success) {
+        setFormError(data.error === 'user_not_found' 
+          ? 'Пользователь не найден. Пожалуйста, отправьте письмо ещё раз.'
+          : 'Не удалось проверить подтверждение e-mail. Попробуйте ещё раз.');
+        return;
+      }
+
+      if (data.emailConfirmed) {
+        setEmailConfirmed(true);
+        setFormSuccess('E-mail подтверждён. Переходим к следующему шагу...');
+        // Останавливаем polling, если он был запущен
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+        setTimeout(() => {
+          setStep(3);
+        }, 1000);
+      } else {
+        setFormError('Мы не видим подтверждение e-mail. Убедитесь, что вы перешли по ссылке в письме.');
+      }
+    } catch (error) {
+      setIsLoading(false);
+      setFormError('Не удалось проверить подтверждение e-mail. Попробуйте ещё раз.');
+    }
   };
 
   const handleFinish = async (e: FormEvent) => {

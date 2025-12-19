@@ -1,5 +1,5 @@
 // app/api/auth/check-email-confirmed/route.ts
-// Проверяет подтверждение email через getUserById (не listUsers)
+// Проверяет подтверждение email через getUserById (userId обязателен)
 
 import { NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
@@ -28,51 +28,27 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
-    const email = searchParams.get('email'); // Fallback для обратной совместимости
 
-    // Приоритет: userId, если нет - email (для обратной совместимости)
-    if (!userId && !email) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, emailConfirmed: false, error: 'userId_or_email_required' },
+        { success: false, emailConfirmed: false, error: 'userId_required' },
         { status: 400 }
       );
     }
 
-    let user = null;
+    // Используем getUserById (надежный метод, не зависит от поиска по email)
+    const { data: userData, error: getUserError } =
+      await supabaseAdmin.auth.admin.getUserById(userId);
 
-    if (userId) {
-      // Используем getUserById (предпочтительный метод)
-      const { data: userData, error: getUserError } =
-        await supabaseAdmin.auth.admin.getUserById(userId);
-
-      if (getUserError) {
-        console.error('[check-email-confirmed] getUserById error:', getUserError.message);
-        return NextResponse.json(
-          { success: false, emailConfirmed: false, error: 'user_not_found' },
-          { status: 404 }
-        );
-      }
-
-      user = userData?.user ?? null;
-    } else if (email) {
-      // Fallback: поиск по email через listUsers (для обратной совместимости)
-      const normalizedEmail = email.trim().toLowerCase();
-      const { data: usersData, error: listError } =
-        await supabaseAdmin.auth.admin.listUsers();
-
-      if (listError) {
-        console.error('[check-email-confirmed] listUsers error:', listError.message);
-        return NextResponse.json(
-          { success: false, emailConfirmed: false, error: 'admin_error' },
-          { status: 500 }
-        );
-      }
-
-      user =
-        usersData?.users?.find(
-          (u) => u.email && u.email.toLowerCase() === normalizedEmail
-        ) ?? null;
+    if (getUserError) {
+      console.error('[check-email-confirmed] getUserById error:', getUserError.message);
+      return NextResponse.json(
+        { success: false, emailConfirmed: false, error: 'user_not_found' },
+        { status: 404 }
+      );
     }
+
+    const user = userData?.user ?? null;
 
     // Пользователь не найден
     if (!user) {

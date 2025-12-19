@@ -55,7 +55,7 @@ export async function registerDirector(formData: FormData) {
       email,
       password,
       options: {
-        emailRedirectTo: `${redirectBase}/auth/confirm`,
+        emailRedirectTo: `${redirectBase}/email-confirmed`,
         data: {
           first_name: firstName,
           last_name: lastName,
@@ -77,10 +77,22 @@ export async function registerDirector(formData: FormData) {
       }
     }
 
+    // Возвращаем userId для polling на клиенте
+    const userId = data.user?.id;
+
+    if (!userId) {
+      console.error('registerDirector: signUp succeeded but no user.id returned')
+      return {
+        success: false as const,
+        error: 'Не удалось создать пользователя. Попробуйте ещё раз.'
+      }
+    }
+
     // Сам факт вызова auth.signUp с включённым шаблоном Confirm sign up
     // в Supabase запускает отправку письма.
     return {
       success: true as const,
+      userId,
       message: `Письмо с подтверждением отправлено на ${email}. Перейдите по ссылке в письме.`
     }
   } catch (err) {

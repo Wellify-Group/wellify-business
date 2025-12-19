@@ -1,6 +1,6 @@
 // lib/supabase/server.ts
 // Server client for Supabase
-// Uses unified env module for consistent MAIN/DEV handling
+// Uses unified env module
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -13,7 +13,6 @@ import { getSupabasePublicEnv } from './env';
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
-  // Используем единый env модуль вместо прямого чтения process.env
   const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
 
   if (!supabaseUrl) {

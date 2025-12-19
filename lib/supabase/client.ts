@@ -1,6 +1,6 @@
 // lib/supabase/client.ts
 // Browser client for Supabase (with SSR support)
-// Uses unified env module for consistent MAIN/DEV handling
+// Uses unified env module
 
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -16,7 +16,7 @@ function isNextBuildPhase(): boolean {
 function createMissingEnvProxy() {
   const msg =
     'Missing Supabase env: set NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY ' +
-    '(or NEXT_PUBLIC_SUPABASE_URL_MAIN/DEV + NEXT_PUBLIC_SUPABASE_ANON_KEY_MAIN/DEV on Vercel).';
+    'in Vercel Environment Variables (Production/Preview/Development scope).';
 
   return new Proxy({} as any, {
     get(_target, prop) {
@@ -32,7 +32,6 @@ function createMissingEnvProxy() {
  * Use this in client components and browser-side code
  */
 export function createBrowserSupabaseClient() {
-  // Используем единый env модуль
   const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
 
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -57,7 +56,6 @@ export function createBrowserSupabaseClient() {
  * Use this if you need a simple client without cookie handling
  */
 export function getSupabaseClient() {
-  // Используем единый env модуль
   const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
 
   if (!supabaseUrl || !supabaseAnonKey) {
