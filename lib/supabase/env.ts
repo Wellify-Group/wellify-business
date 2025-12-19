@@ -95,15 +95,47 @@ export function getSupabaseAdminEnv(): {
 }
 
 /**
- * Безопасное логирование env (без ключей)
+ * Безопасное логирование env (без полных ключей)
+ * Используется только на сервере
  */
 export function logSupabaseEnv(context: string): void {
-  const publicEnv = getSupabasePublicEnv();
+  // Логирование только на сервере
+  if (typeof window !== 'undefined') {
+    return;
+  }
 
-  console.log(`[${context}] Supabase env:`, {
-    vercelEnv: process.env.VERCEL_ENV,
-    supabaseUrl: publicEnv.url ? `${publicEnv.url.substring(0, 30)}...` : 'MISSING',
-    hasAnonKey: !!publicEnv.anonKey,
-    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  const publicEnv = getSupabasePublicEnv();
+  const adminEnv = getSupabaseAdminEnv();
+
+  // Извлекаем hostname из URL
+  let hostname = 'MISSING';
+  if (publicEnv.url) {
+    try {
+      const url = new URL(publicEnv.url);
+      hostname = url.hostname;
+    } catch {
+      hostname = 'INVALID_URL';
+    }
+  }
+
+  // Маскируем первые 8 символов service role key
+  let serviceRoleKeyMask = 'MISSING';
+  if (adminEnv.serviceRoleKey) {
+    const key = adminEnv.serviceRoleKey;
+    serviceRoleKeyMask = `${key.substring(0, 8)}...${key.length > 16 ? key.substring(key.length - 4) : ''}`;
+  }
+
+  console.log(`[${context}] Supabase env (server-only):`, {
+    vercelEnv: process.env.VERCEL_ENV || 'local',
+    supabaseHostname: hostname,
+    hasNextPublicSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasNextPublicSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasSupabaseServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    serviceRoleKeyMask: serviceRoleKeyMask,
+    // Проверка на старые/неправильные переменные
+    hasSupabaseUrl: !!process.env.SUPABASE_URL,
+    hasSbSecret: !!process.env.sb_secret,
+    hasSbPublishable: !!process.env.sb_publishable,
+    hasSupabaseJwtSecret: !!process.env.SUPABASE_JWT_SECRET,
   });
 }

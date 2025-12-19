@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSupabasePublicEnv } from './env';
 
+/**
+ * @deprecated Используйте createServerSupabaseClient из '@/lib/supabase/server' для правильной работы с cookies
+ * Этот файл оставлен для обратной совместимости
+ */
 export function createServerSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Используем единый env модуль вместо прямого чтения process.env
+  const { url, anonKey } = getSupabasePublicEnv();
 
   if (!url || !anonKey) {
     throw new Error('Supabase env vars are missing');

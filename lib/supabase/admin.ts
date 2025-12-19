@@ -41,7 +41,7 @@ export function createAdminSupabaseClient() {
     );
   }
 
-  // Безопасное логирование (без ключей)
+  // Безопасное логирование (только на сервере, с маскировкой ключей)
   logSupabaseEnv('AdminClient');
 
   return createClient(supabaseUrl, supabaseServiceRoleKey, {

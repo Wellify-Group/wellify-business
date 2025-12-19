@@ -49,9 +49,9 @@ export async function middleware(request: NextRequest) {
   })
 
   try {
-    // Создаем Supabase клиент для проверки сессии
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    // Используем единый env модуль вместо прямого чтения process.env
+    const { getSupabasePublicEnv } = await import('@/lib/supabase/env');
+    const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error('Missing Supabase environment variables in middleware')

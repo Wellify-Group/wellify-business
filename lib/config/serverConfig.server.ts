@@ -4,6 +4,7 @@
 
 import 'server-only';
 import { validateServerEnv, assertEnvValid } from './envValidation';
+import { getSupabaseAdminEnv } from '@/lib/supabase/env';
 
 // Валидация при импорте (только в runtime; НЕ во время next build на Vercel).
 // Next выставляет NEXT_PHASE=phase-production-build во время сборки.
@@ -16,9 +17,12 @@ if (!isNextBuildPhase && (process.env.NODE_ENV === 'production' || process.env.V
   assertEnvValid(validationResult, 'Server environment validation');
 }
 
+// Используем единый env модуль для Supabase переменных
+const { url: supabaseUrl, serviceRoleKey: supabaseServiceRoleKey } = getSupabaseAdminEnv();
+
 export const serverConfig = {
-  supabaseUrl: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  supabaseUrl,
+  supabaseServiceRoleKey,
   appBaseUrl: process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL!,
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN!,
   telegramBotUsername:

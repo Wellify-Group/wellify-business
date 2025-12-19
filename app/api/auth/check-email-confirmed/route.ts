@@ -9,6 +9,10 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
+  // Логирование env переменных (только на сервере)
+  const { logSupabaseEnv } = await import('@/lib/supabase/env');
+  logSupabaseEnv('check-email-confirmed');
+
   let supabaseAdmin;
   try {
     supabaseAdmin = createAdminSupabaseClient();
