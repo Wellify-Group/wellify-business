@@ -12,7 +12,33 @@ export default function EmailConfirmedPage() {
       try {
         const supabase = createBrowserSupabaseClient();
         const { data } = await supabase.auth.getUser();
-        setEmail(data.user?.email ?? null);
+        
+        if (!data.user) {
+          setLoading(false);
+          return;
+        }
+
+        setEmail(data.user.email ?? null);
+
+        // Автоматическая синхронизация профиля после подтверждения email
+        if (data.user.id && data.user.email) {
+          try {
+            const res = await fetch("/api/auth/email-sync-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: data.user.email,
+              }),
+            });
+
+            if (!res.ok) {
+              console.error("[email-confirmed] Failed to sync profile");
+            }
+          } catch (syncError) {
+            console.error("[email-confirmed] Error syncing profile", syncError);
+          }
+        }
 
         if (typeof window !== "undefined") {
           localStorage.setItem("wellify_email_confirmed", "true");
