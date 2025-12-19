@@ -3,7 +3,7 @@
  * Handles file storage operations (currently Supabase Storage)
  */
 
-import { createAdminSupabaseClient } from '@/lib/supabase/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 export class StorageService {
   private bucketName = 'reports'; // Supabase Storage bucket name

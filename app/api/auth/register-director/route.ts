@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
+      userId, // Приоритет: userId из body (передается фронтом после signUp)
       email,
       password,
       phone,
@@ -48,10 +49,9 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Валидация обязательных полей
-    if (!email || !password || !phone || !firstName || !lastName) {
+    if (!email || !phone || !firstName || !lastName) {
       console.error("[register-director] Missing required fields", {
         hasEmail: !!email,
-        hasPassword: !!password,
         hasPhone: !!phone,
         hasFirstName: !!firstName,
         hasLastName: !!lastName,
@@ -64,35 +64,66 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Ищем пользователя в Auth 
-    const { data: userResponse, error: authUserError } =
-      await supabaseAdmin.auth.admin.listUsers(); 
+    // 1. Получаем пользователя из Auth
+    let user = null;
+    
+    if (userId) {
+      // Предпочтительный метод: используем getUserById
+      const { data: userData, error: getUserError } =
+        await supabaseAdmin.auth.admin.getUserById(userId);
 
-    if (authUserError) {
+      if (getUserError) {
+        console.error("[register-director] getUserById error:", getUserError.message);
+        return NextResponse.json(
+          { success: false, message: "User not found in auth. Please try again." },
+          { status: 404 }
+        );
+      }
+
+      user = userData?.user ?? null;
+
+      // Проверяем, что email совпадает
+      if (user && user.email?.toLowerCase().trim() !== normalizedEmail) {
+        console.error("[register-director] Email mismatch", {
+          providedEmail: normalizedEmail,
+          userEmail: user.email,
+        });
+        return NextResponse.json(
+          { success: false, message: "Email mismatch" },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Fallback: поиск по email через listUsers (для обратной совместимости)
+      console.warn("[register-director] userId not provided, falling back to listUsers");
+      const { data: userResponse, error: authUserError } =
+        await supabaseAdmin.auth.admin.listUsers();
+
+      if (authUserError) {
         console.error("[register-director] Error listing users", { error: authUserError.message });
         return NextResponse.json(
-            { success: false, message: "Failed to check existing users" },
-            { status: 500 }
+          { success: false, message: "Failed to check existing users" },
+          { status: 500 }
         );
-    }
-    
-    // Ищем точное совпадение
-    const existingUser = userResponse?.users?.find(
+      }
+
+      user = userResponse?.users?.find(
         (u) => u.email && u.email.toLowerCase().trim() === normalizedEmail
-    );
-
-    if (!existingUser) {
-        console.error("[register-director] User not found in auth", { email: normalizedEmail });
-        return NextResponse.json(
-            { success: false, message: "User not found after sign up. Please try again." },
-            { status: 500 }
-        );
+      ) ?? null;
     }
 
-    const userId = existingUser.id;
+    if (!user) {
+      console.error("[register-director] User not found in auth", { email: normalizedEmail, userId });
+      return NextResponse.json(
+        { success: false, message: "User not found after sign up. Please try again." },
+        { status: 404 }
+      );
+    }
+
+    const finalUserId = user.id;
 
     // 2. Обновляем AUTH (для phone/phone_verified, если не обновил бот)
-    const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(finalUserId, {
         phone: phone.trim(),
         phone_confirm: true,
     });
@@ -105,7 +136,7 @@ export async function POST(request: NextRequest) {
     const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
       .from("profiles")
       .select("код_компании, company_code")
-      .eq("id", userId)
+      .eq("id", finalUserId)
       .maybeSingle();
 
     if (profileCheckError) {
@@ -135,7 +166,7 @@ export async function POST(request: NextRequest) {
     
     // Используем mapProfileToDb для маппинга на вашу сложную схему (УДАЛЕНО: businessId не передаем!)
     const profileDataMapped = mapProfileToDb({
-      id: userId,
+      id: finalUserId,
       email: normalizedEmail,
       fullName,
       shortName,
@@ -155,7 +186,7 @@ export async function POST(request: NextRequest) {
     
     const finalProfileData: Record<string, any> = {
         ...cleanProfileDataMapped,
-        id: userId,
+        id: finalUserId,
         email: normalizedEmail,
         full_name: fullName, 
         first_name: firstName.trim(),
@@ -190,7 +221,7 @@ export async function POST(request: NextRequest) {
     const { error: updateProfileError } = await supabaseAdmin
       .from("profiles")
       .update(finalProfileData) 
-      .eq("id", userId); 
+      .eq("id", finalUserId); 
 
     if (updateProfileError) {
       const { error: insertError } = await supabaseAdmin
@@ -201,7 +232,7 @@ export async function POST(request: NextRequest) {
         console.error("[register-director] Final Error INSERTING profile", {
           message: insertError.message,
           details: insertError.details || insertError.hint || insertError.code,
-          userId,
+          userId: finalUserId,
         });
         return NextResponse.json(
           {
@@ -221,7 +252,7 @@ export async function POST(request: NextRequest) {
         .from("businesses")
         .insert({
             id: businessId,
-            owner_profile_id: userId,
+            owner_profile_id: finalUserId,
             название: `${firstName.trim()} ${lastName.trim()} Business`, // Имя по умолчанию
             код_компании: companyCode,
             активен: true,
@@ -236,7 +267,7 @@ export async function POST(request: NextRequest) {
     const { error: staffError } = await supabaseAdmin
         .from("staff")
         .insert({
-            profile_id: userId,
+            profile_id: finalUserId,
             business_id: businessId,
             роль: "директор",
             должность: "владелец",
@@ -250,12 +281,12 @@ export async function POST(request: NextRequest) {
     
     // !!! КОНЕЦ ИСПРАВЛЕНИЯ !!!
     
-    console.log("[register-director] Success", { userId, email: normalizedEmail });
+    console.log("[register-director] Success", { userId: finalUserId, email: normalizedEmail });
 
     return NextResponse.json(
       {
         success: true,
-        userId,
+        userId: finalUserId,
       },
       { status: 200 }
     );

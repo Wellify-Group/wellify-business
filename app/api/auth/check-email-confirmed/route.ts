@@ -1,68 +1,80 @@
-// app/api/auth/check-email-confirmed/route.ts (ФИНАЛЬНЫЙ КОД С ЗАЩИТОЙ ОТ ОШИБКИ СБОРКИ)
+// app/api/auth/check-email-confirmed/route.ts
+// Проверяет подтверждение email через getUserById (не listUsers)
 
-import { NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
-// Принудительно динамический рендеринг, т.к. используем request.url и Admin Client
+// Принудительно динамический рендеринг
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs'; // Явно указываем Node.js Runtime
+export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   let supabaseAdmin;
   try {
-    // Админ-клиент с service_role (единая логика выбора DEV/MAIN ключей)
-    // !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Оборачиваем создание Admin Client в try/catch !!!
-    try {
-        supabaseAdmin = createAdminSupabaseClient();
-    } catch (e) {
-        // Если Admin Client не может быть создан (ключи не настроены), 
-        // возвращаем 500 ошибку с явным сообщением.
-        console.error("[check-email-confirmed] Admin Client Creation Failed:", e);
-        return NextResponse.json(
-          { 
-            success: false, 
-            emailConfirmed: false, 
-            error: "admin_client_setup_error",
-            details: "SUPABASE_SERVICE_ROLE_KEY is likely missing or incorrect."
-          },
-          { status: 500 }
-        );
-    }
-    // !!! КОНЕЦ КРИТИЧЕСКОГО ИСПРАВЛЕНИЯ !!!
+    supabaseAdmin = createAdminSupabaseClient();
+  } catch (e: any) {
+    console.error('[check-email-confirmed] Admin Client Creation Failed:', e?.message);
+    return NextResponse.json(
+      {
+        success: false,
+        emailConfirmed: false,
+        error: 'admin_client_setup_error',
+        details: 'SUPABASE_SERVICE_ROLE_KEY is likely missing or incorrect.',
+      },
+      { status: 500 }
+    );
+  }
 
-
+  try {
     const { searchParams } = new URL(req.url);
-    const email = searchParams.get("email");
+    const userId = searchParams.get('userId');
+    const email = searchParams.get('email'); // Fallback для обратной совместимости
 
-    if (!email) {
+    // Приоритет: userId, если нет - email (для обратной совместимости)
+    if (!userId && !email) {
       return NextResponse.json(
-        { success: false, emailConfirmed: false, error: "email_required" },
+        { success: false, emailConfirmed: false, error: 'userId_or_email_required' },
         { status: 400 }
       );
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    let user = null;
 
-    // Берем список пользователей и ищем нужный e-mail
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers();
+    if (userId) {
+      // Используем getUserById (предпочтительный метод)
+      const { data: userData, error: getUserError } =
+        await supabaseAdmin.auth.admin.getUserById(userId);
 
-    if (error) {
-      console.error(
-        "[check-email-confirmed] admin.listUsers error:",
-        error.message || error
-      );
-      return NextResponse.json(
-        { success: false, emailConfirmed: false, error: "admin_error" },
-        { status: 500 }
-      );
+      if (getUserError) {
+        console.error('[check-email-confirmed] getUserById error:', getUserError.message);
+        return NextResponse.json(
+          { success: false, emailConfirmed: false, error: 'user_not_found' },
+          { status: 404 }
+        );
+      }
+
+      user = userData?.user ?? null;
+    } else if (email) {
+      // Fallback: поиск по email через listUsers (для обратной совместимости)
+      const normalizedEmail = email.trim().toLowerCase();
+      const { data: usersData, error: listError } =
+        await supabaseAdmin.auth.admin.listUsers();
+
+      if (listError) {
+        console.error('[check-email-confirmed] listUsers error:', listError.message);
+        return NextResponse.json(
+          { success: false, emailConfirmed: false, error: 'admin_error' },
+          { status: 500 }
+        );
+      }
+
+      user =
+        usersData?.users?.find(
+          (u) => u.email && u.email.toLowerCase() === normalizedEmail
+        ) ?? null;
     }
 
-    const user =
-      data?.users?.find(
-        (u) => u.email && u.email.toLowerCase() === normalizedEmail
-      ) ?? null;
-
-    // Пользователь в принципе не найден - считаем, что не подтвержден
+    // Пользователь не найден
     if (!user) {
       return NextResponse.json(
         { success: true, emailConfirmed: false },
@@ -75,12 +87,14 @@ export async function GET(req: Request) {
     // НЕ проверяем user_metadata.email_verified, так как оно может быть установлено вручную
     const emailConfirmed = Boolean((user as any).email_confirmed_at);
 
-    console.log("[check-email-confirmed] User check:", {
-      email: normalizedEmail,
+    // Безопасное логирование (без PII)
+    const maskedEmail = user.email
+      ? `${user.email.substring(0, 3)}***@${user.email.split('@')[1] ?? '***'}`
+      : 'N/A';
+    console.log('[check-email-confirmed] User check:', {
       userId: user.id,
-      email_confirmed_at: (user as any).email_confirmed_at,
-      confirmed_at: (user as any).confirmed_at,
-      email_verified: (user.user_metadata as any)?.email_verified,
+      email: maskedEmail,
+      email_confirmed_at: (user as any).email_confirmed_at ? 'SET' : 'NULL',
       emailConfirmed,
     });
 
@@ -88,13 +102,13 @@ export async function GET(req: Request) {
       { success: true, emailConfirmed },
       { status: 200 }
     );
-  } catch (err) {
-    console.error("[check-email-confirmed] unexpected error:", err);
+  } catch (err: any) {
+    console.error('[check-email-confirmed] unexpected error:', err?.message || err);
     return NextResponse.json(
       {
         success: false,
         emailConfirmed: false,
-        error: "unexpected_error",
+        error: 'unexpected_error',
       },
       { status: 500 }
     );

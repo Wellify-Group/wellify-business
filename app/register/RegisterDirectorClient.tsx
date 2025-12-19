@@ -63,6 +63,9 @@ export default function RegisterDirectorClient() {
   const [registeredUserEmail, setRegisteredUserEmail] = useState<string | null>(
     null
   );
+  const [registeredUserPhone, setRegisteredUserPhone] = useState<string | null>(
+    null
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -251,9 +254,16 @@ export default function RegisterDirectorClient() {
       }
 
       // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request !!!
+      if (!registeredUserPhone) {
+        setRegisterError("Телефон должен быть подтвержден через Telegram.");
+        return;
+      }
+      
       const payload = {
+        userId: registeredUserId, // Передаем userId для прямого getUserById
         email: registeredUserEmail,
         password: personal.password,
+        phone: registeredUserPhone, // Phone из Telegram верификации
         firstName: personal.firstName.trim(),
         lastName: personal.lastName.trim(),
         middleName: personal.middleName.trim() || null, // ГАРАНТИРУЕМ null
@@ -303,7 +313,11 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  const handleTelegramVerified = async () => {
+  const handleTelegramVerified = async (phone?: string) => {
+    // Сохраняем phone если передан
+    if (phone) {
+      setRegisteredUserPhone(phone);
+    }
     // Переходим на шаг 4 - успешное завершение
     setStep(4);
     setMaxStepReached(4);
@@ -313,7 +327,7 @@ export default function RegisterDirectorClient() {
 
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
-    if (!email.trim()) return;
+    if (!email.trim() || !registeredUserId) return; // Требуем userId
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -322,11 +336,9 @@ export default function RegisterDirectorClient() {
       if (cancelled) return;
 
       try {
-        const res = await fetch(
-          `/api/auth/check-email-confirmed?email=${encodeURIComponent(
-            email.trim()
-          )}`
-        );
+        // Используем userId (предпочтительно) вместо email
+        const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
+        const res = await fetch(url);
 
         if (!res.ok) {
           return;
@@ -361,7 +373,7 @@ export default function RegisterDirectorClient() {
       clearTimeout(initial);
       if (intervalId) clearInterval(intervalId);
     };
-  }, [emailStatus, email]);
+  }, [emailStatus, email, registeredUserId]); // Добавили registeredUserId в зависимости
 
   // ---------- render helpers ----------
 

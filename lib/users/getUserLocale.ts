@@ -49,7 +49,7 @@ export async function getUserLocaleFromMetadata(userId: string): Promise<Locale>
   try {
     // Для доступа к auth.users нужен admin клиент
     // В продакшене это должно быть через API route с admin ключом
-    const { createAdminSupabaseClient } = await import('@/lib/supabase/server');
+    const { createAdminSupabaseClient } = await import('@/lib/supabase/admin');
     const supabase = createAdminSupabaseClient();
     
     const { data, error } = await supabase.auth.admin.getUserById(userId);

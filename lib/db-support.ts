@@ -1,7 +1,7 @@
 // lib/db-support.ts
 // Database functions for support system using Supabase
 
-import { createAdminSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type SupportSession = {
   id: string;

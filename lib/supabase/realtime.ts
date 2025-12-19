@@ -1,4 +1,4 @@
-import { createAdminSupabaseClient } from "./server";
+import { createAdminSupabaseClient } from "./admin";
 
 /**
  * Send a broadcast message to Supabase Realtime channel

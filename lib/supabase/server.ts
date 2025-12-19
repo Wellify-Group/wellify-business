@@ -1,6 +1,10 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
+// lib/supabase/server.ts
+// Server client for Supabase
+// Uses unified env module for consistent MAIN/DEV handling
+
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { getSupabasePublicEnv } from './env';
 
 /**
  * Server client for Supabase
@@ -8,8 +12,9 @@ import { createClient } from '@supabase/supabase-js'
  */
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Используем единый env модуль вместо прямого чтения process.env
+  const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
 
   if (!supabaseUrl) {
     throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
@@ -37,25 +42,4 @@ export async function createServerSupabaseClient() {
       },
     },
   });
-}
-
-/**
- * Admin client with service role key
- * Use this for admin operations that bypass RLS
- */
-export function createAdminSupabaseClient() {
-  const { serverConfig } = require('@/lib/config/serverConfig.server');
-  const supabaseUrl = serverConfig.supabaseUrl;
-  const supabaseServiceRoleKey = serverConfig.supabaseServiceRoleKey;
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase admin environment variables: SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY are required');
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
 }
