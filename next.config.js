@@ -4,6 +4,9 @@ if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHAS
   console.log('[next.config.js] NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL ? 'SET' : 'MISSING');
   console.log('[next.config.js] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'MISSING');
   console.log('[next.config.js] NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'MISSING');
+  console.log('[next.config.js] NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:', process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ? 'SET' : 'MISSING');
+  console.log('[next.config.js] NEXT_PUBLIC_TELEGRAM_API_URL:', process.env.NEXT_PUBLIC_TELEGRAM_API_URL ? 'SET' : 'MISSING');
+  console.log('[next.config.js] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL ? 'SET' : 'MISSING');
   console.log('[next.config.js] VERCEL_ENV:', process.env.VERCEL_ENV || 'not set');
 }
 
@@ -23,6 +26,7 @@ const nextConfig = {
   publicRuntimeConfig: {
     logoPath: '/logo.svg',
   },
+  // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: ЭКСПОРТ ПУБЛИЧНЫХ ПЕРЕМЕННЫХ !!!
   // Явно указываем NEXT_PUBLIC_* переменные для встраивания в клиентский bundle
   // Это гарантирует, что переменные будут доступны в браузере
   env: {
@@ -31,6 +35,9 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME,
     NEXT_PUBLIC_TELEGRAM_API_URL: process.env.NEXT_PUBLIC_TELEGRAM_API_URL,
+    NEXT_PUBLIC_TELEGRAM_API_URL_MAIN: process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN,
+    NEXT_PUBLIC_TELEGRAM_API_URL_DEV: process.env.NEXT_PUBLIC_TELEGRAM_API_URL_DEV,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   },
   // Явная настройка webpack для гарантированного встраивания переменных
   webpack: (config, { isServer }) => {
@@ -45,6 +52,9 @@ const nextConfig = {
           'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''),
           'process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME': JSON.stringify(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || ''),
           'process.env.NEXT_PUBLIC_TELEGRAM_API_URL': JSON.stringify(process.env.NEXT_PUBLIC_TELEGRAM_API_URL || ''),
+          'process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN': JSON.stringify(process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN || ''),
+          'process.env.NEXT_PUBLIC_TELEGRAM_API_URL_DEV': JSON.stringify(process.env.NEXT_PUBLIC_TELEGRAM_API_URL_DEV || ''),
+          'process.env.NEXT_PUBLIC_SITE_URL': JSON.stringify(process.env.NEXT_PUBLIC_SITE_URL || ''),
         })
       );
     }
