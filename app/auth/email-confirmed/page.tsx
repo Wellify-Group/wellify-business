@@ -50,9 +50,13 @@ function EmailConfirmedContent() {
         }
         
         console.log("[email-confirmed] Status param:", searchParams?.get("status"));
-
+        console.log("[email-confirmed] All search params:", Object.fromEntries(searchParams?.entries() || []));
+        console.log("[email-confirmed] Full URL:", typeof window !== "undefined" ? window.location.href : "N/A");
+        
         const supabase = createBrowserSupabaseClient();
         const { data, error } = await supabase.auth.getUser();
+        
+        console.log("[email-confirmed] getUser result:", { hasUser: !!data.user, hasError: !!error, errorMessage: error?.message });
         
         // Проверяем наличие статуса в URL параметрах
         const statusParam = searchParams?.get("status");
@@ -66,12 +70,29 @@ function EmailConfirmedContent() {
         }
 
         if (statusParam === "invalid_or_expired") {
+          console.log("[email-confirmed] Status invalid_or_expired from URL param");
           setStatus("invalid_or_expired");
+          return;
+        }
+        
+        // Если есть параметры code или token в URL, но статус не установлен,
+        // это значит, что ссылка пришла напрямую, минуя /auth/confirm
+        // Пытаемся обработать здесь
+        const codeParam = searchParams?.get("code");
+        const tokenParam = searchParams?.get("token");
+        const tokenHashParam = searchParams?.get("token_hash");
+        const typeParam = searchParams?.get("type");
+        
+        if (codeParam || tokenParam || tokenHashParam) {
+          console.log("[email-confirmed] Found confirmation params in URL, but status not set. Redirecting to /auth/confirm");
+          // Редиректим на /auth/confirm для обработки
+          router.push(`/auth/confirm?${new URLSearchParams(searchParams?.toString() || "").toString()}`);
           return;
         }
         
         if (!data.user) {
           // Если пользователь не найден, возможно, ссылка невалидна
+          console.log("[email-confirmed] No user found, setting invalid_or_expired");
           setStatus("invalid_or_expired");
           return;
         }
