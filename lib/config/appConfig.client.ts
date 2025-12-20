@@ -2,6 +2,21 @@
 // Клиентский конфиг - только NEXT_PUBLIC_* переменные
 // Безопасно для использования в браузере
 
+// Валидация обязательных переменных окружения
+if (typeof window !== 'undefined') {
+  const requiredVars = [
+    'NEXT_PUBLIC_APP_URL',
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  ];
+
+  const missing = requiredVars.filter((v) => !process.env[v]);
+  
+  if (missing.length > 0) {
+    console.error('❌ Отсутствуют обязательные переменные окружения:', missing.join(', '));
+    console.error('Убедитесь, что переменные установлены в Vercel и deployment пересобран.');
+  }
+}
 
 // Используем функцию вместо константы, чтобы переменные читались во время выполнения
 // Это гарантирует, что Next.js встроит их значения в bundle
