@@ -842,7 +842,10 @@ export default function RegisterDirectorClient() {
                       Отправляем...
                     </>
                   ) : emailStatus === "link_sent" ? (
-                    <>Ожидание подтверждения</>
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Ожидание...
+                    </>
                   ) : (
                     <>
                       Далее
