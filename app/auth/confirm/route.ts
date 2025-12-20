@@ -19,9 +19,54 @@ export async function GET(request: Request) {
     allParams: Object.fromEntries(url.searchParams.entries())
   });
 
-  // Если есть token или token_hash в query (формат ссылок Supabase)
+  // ПРИОРИТЕТ: Сначала обрабатываем code (PKCE flow) - это основной метод для email confirmation
+  if (code) {
+    console.log("[auth/confirm] Processing code via exchangeCodeForSession (PKCE flow)");
+
+    try {
+      const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (error) {
+        console.error("[auth/confirm] exchangeCodeForSession error:", error.message);
+        
+        // Проверяем, не является ли ошибка "already confirmed" или "token already used"
+        const errorMsg = error.message?.toLowerCase() || "";
+        if (
+          errorMsg.includes("already confirmed") ||
+          errorMsg.includes("email already verified") ||
+          errorMsg.includes("token already used") ||
+          errorMsg.includes("link has already been used") ||
+          errorMsg.includes("already been verified")
+        ) {
+          return NextResponse.redirect(new URL("/auth/email-confirmed?status=already_confirmed", url));
+        }
+
+        // Проверяем, может быть пользователь уже подтвержден (повторный переход по ссылке)
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user?.email_confirmed_at) {
+            console.log("[auth/confirm] User already confirmed despite error, redirecting to success");
+            return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
+          }
+        } catch (checkError) {
+          // Игнорируем ошибку проверки
+        }
+
+        return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+      }
+
+      // Успешное подтверждение через PKCE
+      console.log("[auth/confirm] exchangeCodeForSession success, user:", data.user?.id, "email_confirmed_at:", data.user?.email_confirmed_at);
+      return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
+    } catch (err: any) {
+      console.error("[auth/confirm] Unexpected error (code):", err);
+      return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+    }
+  }
+
+  // Fallback: Если есть token или token_hash в query (старый формат ссылок Supabase)
   // Обрабатываем токен ТОЛЬКО после перехода по ссылке из письма
-  // type может быть "signup" или отсутствовать - пробуем обработать в любом случае
   if (token || tokenHash) {
     try {
       const supabase = await createServerSupabaseClient();
@@ -71,51 +116,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // Если есть code, обрабатываем через exchangeCodeForSession (PKCE-авторизация)
-  if (code) {
-    console.log("[auth/confirm] Processing code via exchangeCodeForSession (PKCE flow)");
-
-    try {
-      const supabase = await createServerSupabaseClient();
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (error) {
-      console.error("[auth/confirm] exchangeCodeForSession error:", error);
-      
-      // Проверяем, не является ли ошибка "already confirmed" или "token already used"
-      const errorMsg = error.message?.toLowerCase() || "";
-      if (
-        errorMsg.includes("already confirmed") ||
-        errorMsg.includes("email already verified") ||
-        errorMsg.includes("token already used") ||
-        errorMsg.includes("link has already been used") ||
-        errorMsg.includes("already been verified")
-      ) {
-        return NextResponse.redirect(new URL("/auth/email-confirmed?status=already_confirmed", url));
-      }
-
-      // Проверяем, может быть пользователь уже подтвержден (повторный переход по ссылке)
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user?.email_confirmed_at) {
-          console.log("[auth/confirm] User already confirmed despite error, redirecting to success");
-          return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
-        }
-      } catch (checkError) {
-        // Игнорируем ошибку проверки
-      }
-
-      return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
-    }
-
-    // Успешное подтверждение
-    console.log("[auth/confirm] exchangeCodeForSession success, user:", data.user?.id);
-    return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
-  } catch (err: any) {
-    console.error("[auth/confirm] Unexpected error:", err);
-    return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
-  }
-  }
 
   // Если нет ни code, ни token - это невалидный запрос
   console.log("[auth/confirm] No code or token provided, redirecting to invalid_or_expired");

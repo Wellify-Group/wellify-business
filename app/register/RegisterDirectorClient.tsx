@@ -345,6 +345,7 @@ export default function RegisterDirectorClient() {
 
   // ---------- слушатель изменений состояния аутентификации ----------
   // Реагирует на подтверждение email в других вкладках через onAuthStateChange
+  // Это обеспечивает синхронизацию между вкладками через cookies/session
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
     if (!registeredUserId) return;
@@ -354,9 +355,9 @@ export default function RegisterDirectorClient() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log("[register] onAuthStateChange event:", event, "hasSession:", !!session);
+      console.log("[register] onAuthStateChange event:", event, "hasSession:", !!session, "userId:", session?.user?.id);
       
-      // Обрабатываем события SIGNED_IN, USER_UPDATED и TOKEN_REFRESHED
+      // Обрабатываем события SIGNED_IN, USER_UPDATED, TOKEN_REFRESHED и SIGNED_OUT
       if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
         if (!session?.user) {
           console.log("[register] No user in session");
@@ -372,6 +373,8 @@ export default function RegisterDirectorClient() {
         // Проверяем, что email подтвержден
         if (session.user.email_confirmed_at) {
           console.log("[register] Email confirmed via onAuthStateChange, email_confirmed_at:", session.user.email_confirmed_at);
+          
+          // Обновляем состояние
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
