@@ -163,12 +163,15 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
+      // ВАЖНО: emailRedirectTo должен указывать на роут, который обрабатывает код подтверждения
+      // Роут /auth/confirm обрабатывает код и обменивает его на сессию через exchangeCodeForSession
+      // После этого пользователь редиректится на /auth/email-confirmed
       const redirectTo =
         typeof window !== "undefined"
-          ? `${window.location.origin}/email-confirmed`
+          ? `${window.location.origin}/auth/confirm`
           : `${
               process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
-            }/email-confirmed`;
+            }/auth/confirm`;
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -323,8 +326,43 @@ export default function RegisterDirectorClient() {
     setMaxStepReached(4);
   };
 
-  // ---------- polling e-mail confirmation ----------
+  // ---------- слушатель изменений состояния аутентификации ----------
+  // Реагирует на подтверждение email в других вкладках через onAuthStateChange
+  useEffect(() => {
+    if (emailStatus !== "link_sent" && emailStatus !== "verified") return;
+    if (!registeredUserId) return;
 
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Обрабатываем события SIGNED_IN и USER_UPDATED
+      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        if (!session?.user) return;
+
+        // Проверяем, что это наш пользователь
+        if (session.user.id !== registeredUserId) return;
+
+        // Проверяем, что email подтвержден
+        if (session.user.email_confirmed_at) {
+          console.log("[register] Email confirmed via onAuthStateChange");
+          setEmailStatus("verified");
+          setEmailVerified(true);
+          setRegisterError(null);
+
+          // Переходим на шаг 3 (Telegram)
+          setStep(3);
+          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [emailStatus, registeredUserId, supabase]);
+
+  // ---------- polling e-mail confirmation (fallback) ----------
+  // Оставляем polling как резервный механизм на случай, если onAuthStateChange не сработает
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
     if (!email.trim() || !registeredUserId) return; // Требуем userId

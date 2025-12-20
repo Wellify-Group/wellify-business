@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { CheckCircle2 } from "lucide-react";
 
 export default function EmailConfirmedPage() {
   const [loading, setLoading] = useState(true);
@@ -53,30 +54,98 @@ export default function EmailConfirmedPage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
-      <div className="max-w-md w-full rounded-2xl bg-[#050816] border border-white/5 px-8 py-10 text-center">
-        <h1 className="text-white text-xl font-semibold mb-3">
+      <div 
+        className="max-w-md w-full rounded-2xl border px-8 py-10 text-center shadow-lg"
+        style={{
+          backgroundColor: 'var(--email-confirmed-card-bg)',
+          borderColor: 'var(--email-confirmed-border)',
+        }}
+      >
+        <div className="flex justify-center mb-4">
+          <div 
+            className="flex h-16 w-16 items-center justify-center rounded-full"
+            style={{
+              backgroundColor: 'var(--email-confirmed-success-bg)',
+            }}
+          >
+            <CheckCircle2 
+              className="h-10 w-10"
+              style={{
+                color: 'var(--email-confirmed-success-text)',
+              }}
+            />
+          </div>
+        </div>
+
+        <h1 
+          className="text-xl font-semibold mb-3"
+          style={{
+            color: 'var(--email-confirmed-text)',
+          }}
+        >
           E-mail подтверждён
         </h1>
 
         {loading ? (
-          <p className="text-sm text-zinc-400">
+          <p 
+            className="text-sm"
+            style={{
+              color: 'var(--email-confirmed-muted)',
+            }}
+          >
             Завершаем подтверждение...
           </p>
         ) : (
           <>
-            <p className="text-sm text-zinc-300">
+            <p 
+              className="text-sm mb-4"
+              style={{
+                color: 'var(--email-confirmed-muted)',
+              }}
+            >
               Ваша почта успешно подтверждена.
             </p>
             {email && (
-              <p className="mt-3 text-xs text-zinc-500">
+              <p 
+                className="mb-6 text-xs"
+                style={{
+                  color: 'var(--email-confirmed-muted)',
+                }}
+              >
                 {email}
               </p>
             )}
             <div className="mt-6 flex justify-center gap-3">
-              <a href="/login" className="text-sm text-blue-400">
+              <a 
+                href="/auth/login" 
+                className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                style={{
+                  color: 'var(--email-confirmed-primary)',
+                  backgroundColor: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
                 Войти
               </a>
-              <a href="/register" className="text-sm text-blue-400">
+              <a 
+                href="/register" 
+                className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                style={{
+                  color: 'var(--email-confirmed-primary)',
+                  backgroundColor: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(37, 99, 235, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
                 Регистрация
               </a>
             </div>
