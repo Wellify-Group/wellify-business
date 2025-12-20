@@ -22,6 +22,28 @@ function EmailConfirmedContent() {
   useEffect(() => {
     const run = async () => {
       try {
+        // Проверяем hash фрагмент на наличие ошибок от Supabase
+        if (typeof window !== "undefined" && window.location.hash) {
+          const hash = window.location.hash;
+          // Если в hash есть ошибка (например, #error=access_denied&error_code=otp_expired)
+          if (hash.includes("error=") || hash.includes("error_code=")) {
+            // Проверяем тип ошибки
+            const hashParams = new URLSearchParams(hash.substring(1));
+            const errorCode = hashParams.get("error_code");
+            
+            // Если это ошибка истекшего токена или невалидной ссылки
+            if (errorCode === "otp_expired" || errorCode === "token_expired" || hashParams.get("error") === "access_denied") {
+              setStatus("invalid_or_expired");
+              // Очищаем hash после обработки
+              window.history.replaceState(null, "", window.location.pathname + window.location.search);
+              return;
+            }
+            
+            // Очищаем hash после обработки
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          }
+        }
+
         const supabase = createBrowserSupabaseClient();
         const { data, error } = await supabase.auth.getUser();
         
