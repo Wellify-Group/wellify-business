@@ -27,6 +27,7 @@ import {
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -334,7 +335,7 @@ export default function RegisterDirectorClient() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       // Обрабатываем события SIGNED_IN и USER_UPDATED
       if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         if (!session?.user) return;
