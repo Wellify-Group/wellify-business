@@ -50,14 +50,14 @@ function EmailConfirmedContent() {
           const supabase = createBrowserSupabaseClient();
           const { data } = await supabase.auth.getUser();
           
-          // Проверяем, что email действительно подтвержден
-          if (data.user?.email_confirmed_at && data.user?.id) {
+          // Проверяем, что email действительно подтвержден в Supabase Auth
+          if (data.user?.email_confirmed_at && data.user?.id && data.user?.email) {
+            console.log("[email-confirmed] Email confirmed in auth, syncing profile");
             setStatus("success");
-            if (data.user?.email) {
-              setEmail(data.user.email);
-            }
+            setEmail(data.user.email);
             
-            // Синхронизируем профиль - устанавливаем email_verified = true в БД
+            // ВАЖНО: Синхронизируем профиль ТОЛЬКО если email_confirmed_at установлен
+            // Это установит email_verified = true в таблице profiles
             try {
               const res = await fetch("/api/auth/email-sync-profile", {
                 method: "POST",
@@ -71,7 +71,7 @@ function EmailConfirmedContent() {
               if (!res.ok) {
                 console.error("[email-confirmed] Failed to sync profile");
               } else {
-                console.log("[email-confirmed] Profile synced successfully");
+                console.log("[email-confirmed] Profile synced successfully, email_verified should be true now");
               }
             } catch (syncError) {
               console.error("[email-confirmed] Error syncing profile", syncError);
@@ -82,10 +82,59 @@ function EmailConfirmedContent() {
             }
             return;
           } else {
-            // Если статус success, но email не подтвержден - возможно, еще обрабатывается
-            // Показываем loading
-            console.log("[email-confirmed] Status is success but email not confirmed yet, showing loading");
+            // Если статус success, но email_confirmed_at еще не установлен
+            // Это может произойти, если exchangeCodeForSession еще обрабатывается
+            // Показываем loading и ждем с retry
+            console.log("[email-confirmed] Status is success but email_confirmed_at not set yet, retrying...");
             setStatus("loading");
+            
+            // Retry с интервалом 500ms до 10 раз (максимум 5 секунд)
+            let retryCount = 0;
+            const maxRetries = 10;
+            const retryInterval = 500;
+            
+            const checkConfirmation = async () => {
+              const retrySupabase = createBrowserSupabaseClient();
+              const { data: retryData } = await retrySupabase.auth.getUser();
+              
+              if (retryData.user?.email_confirmed_at && retryData.user?.id && retryData.user?.email) {
+                console.log("[email-confirmed] Email confirmed on retry, syncing profile");
+                setStatus("success");
+                setEmail(retryData.user.email);
+                
+                // Синхронизируем профиль
+                try {
+                  const res = await fetch("/api/auth/email-sync-profile", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      userId: retryData.user.id,
+                      email: retryData.user.email,
+                    }),
+                  });
+                  if (!res.ok) {
+                    console.error("[email-confirmed] Failed to sync profile");
+                  } else {
+                    console.log("[email-confirmed] Profile synced successfully");
+                  }
+                } catch (syncError) {
+                  console.error("[email-confirmed] Error syncing profile", syncError);
+                }
+                
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("wellify_email_confirmed", "true");
+                }
+              } else if (retryCount < maxRetries) {
+                retryCount++;
+                setTimeout(checkConfirmation, retryInterval);
+              } else {
+                console.error("[email-confirmed] Email not confirmed after retries, showing error");
+                setStatus("error");
+              }
+            };
+            
+            // Первая попытка через 500ms
+            setTimeout(checkConfirmation, retryInterval);
             return;
           }
         }
