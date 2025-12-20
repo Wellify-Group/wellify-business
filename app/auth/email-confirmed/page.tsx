@@ -22,14 +22,52 @@ function EmailConfirmedContent() {
   useEffect(() => {
     const run = async () => {
       try {
-        const supabase = createBrowserSupabaseClient();
-        const { data, error } = await supabase.auth.getUser();
-        
-        // Проверяем наличие статуса в URL параметрах
+        // КРИТИЧНО: Статус определяется ТОЛЬКО из URL параметра status,
+        // который устанавливает /auth/confirm после успешной обработки токена
         const statusParam = searchParams?.get("status");
+        
+        if (statusParam === "success") {
+          // Успешное подтверждение - пользователь перешел по ссылке из письма
+          setStatus("success");
+          
+          // Получаем данные пользователя для синхронизации профиля
+          const supabase = createBrowserSupabaseClient();
+          const { data } = await supabase.auth.getUser();
+          
+          if (data.user?.email) {
+            setEmail(data.user.email);
+          }
+          
+          // ВАЖНО: Синхронизация профиля ТОЛЬКО после успешного подтверждения
+          if (data.user?.id && data.user?.email) {
+            try {
+              const res = await fetch("/api/auth/email-sync-profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: data.user.id,
+                  email: data.user.email,
+                }),
+              });
+
+              if (!res.ok) {
+                console.error("[email-confirmed] Failed to sync profile");
+              }
+            } catch (syncError) {
+              console.error("[email-confirmed] Error syncing profile", syncError);
+            }
+          }
+          
+          if (typeof window !== "undefined") {
+            localStorage.setItem("wellify_email_confirmed", "true");
+          }
+          return;
+        }
         
         if (statusParam === "already_confirmed") {
           setStatus("already_confirmed");
+          const supabase = createBrowserSupabaseClient();
+          const { data } = await supabase.auth.getUser();
           if (data.user?.email) {
             setEmail(data.user.email);
           }
@@ -41,43 +79,9 @@ function EmailConfirmedContent() {
           return;
         }
         
-        if (!data.user) {
-          // Если пользователь не найден, возможно, ссылка невалидна
-          setStatus("invalid_or_expired");
-          return;
-        }
-
-        setEmail(data.user.email ?? null);
-
-        // Автоматическая синхронизация профиля после подтверждения email
-        if (data.user.id && data.user.email && data.user.email_confirmed_at) {
-          try {
-            const res = await fetch("/api/auth/email-sync-profile", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: data.user.id,
-                email: data.user.email,
-              }),
-            });
-
-            if (!res.ok) {
-              console.error("[email-confirmed] Failed to sync profile");
-            }
-          } catch (syncError) {
-            console.error("[email-confirmed] Error syncing profile", syncError);
-          }
-        }
-
-        // Проверяем, подтвержден ли email
-        if (data.user.email_confirmed_at) {
-          setStatus("success");
-          if (typeof window !== "undefined") {
-            localStorage.setItem("wellify_email_confirmed", "true");
-          }
-        } else {
-          setStatus("error");
-        }
+        // Если нет статуса в URL - это невалидная ситуация
+        // (пользователь попал на страницу напрямую без параметров)
+        setStatus("invalid_or_expired");
       } catch (err) {
         console.error("[email-confirmed] Error:", err);
         setStatus("error");

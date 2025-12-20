@@ -8,14 +8,16 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const token = url.searchParams.get("token");
+  const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
 
-  // Если есть token в query (старый формат ссылок Supabase)
-  if (token && type === "signup") {
+  // Если есть token или token_hash в query (формат ссылок Supabase)
+  // Обрабатываем токен ТОЛЬКО после перехода по ссылке из письма
+  if ((token || tokenHash) && type === "signup") {
     try {
       const supabase = await createServerSupabaseClient();
       const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: token,
+        token_hash: tokenHash || token || "",
         type: 'signup',
       });
 
