@@ -410,11 +410,11 @@ export default function RegisterDirectorClient() {
           table: 'profiles',
           filter: `id=eq.${registeredUserId}`,
         },
-        (payload) => {
+        (payload: { new: { id: string; email_verified?: boolean }; old: Record<string, any> }) => {
           console.log("[register] Realtime UPDATE event received:", payload);
           
           // Проверяем, что email_verified стал true
-          const newRecord = payload.new as { id: string; email_verified?: boolean };
+          const newRecord = payload.new;
           if (newRecord.email_verified === true) {
             console.log("[register] email_verified became true via Realtime, transitioning to step 3");
             setEmailStatus("verified");
