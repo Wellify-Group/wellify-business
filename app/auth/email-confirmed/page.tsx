@@ -93,6 +93,44 @@ function EmailConfirmedContent() {
         }
 
         if (statusParam === "invalid_or_expired") {
+          // Проверяем, может быть email уже подтвержден на самом деле
+          // (Supabase обработал токен, но редиректит с ошибкой)
+          const supabase = createBrowserSupabaseClient();
+          const { data } = await supabase.auth.getUser();
+          
+          if (data.user?.email_confirmed_at) {
+            // Email уже подтвержден - показываем успех
+            console.log("[email-confirmed] Email already confirmed despite invalid_or_expired status");
+            setStatus("success");
+            if (data.user?.email) {
+              setEmail(data.user.email);
+            }
+            
+            // Синхронизируем профиль
+            if (data.user?.id && data.user?.email) {
+              try {
+                const res = await fetch("/api/auth/email-sync-profile", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    userId: data.user.id,
+                    email: data.user.email,
+                  }),
+                });
+                if (!res.ok) {
+                  console.error("[email-confirmed] Failed to sync profile");
+                }
+              } catch (syncError) {
+                console.error("[email-confirmed] Error syncing profile", syncError);
+              }
+            }
+            
+            if (typeof window !== "undefined") {
+              localStorage.setItem("wellify_email_confirmed", "true");
+            }
+            return;
+          }
+          
           setStatus("invalid_or_expired");
           return;
         }
