@@ -22,6 +22,24 @@ function EmailConfirmedContent() {
   useEffect(() => {
     const run = async () => {
       try {
+        // Если есть параметры code/token в URL, но нет статуса,
+        // редиректим на /auth/confirm для обработки
+        const codeParam = searchParams?.get("code");
+        const tokenParam = searchParams?.get("token");
+        const tokenHashParam = searchParams?.get("token_hash");
+        
+        if (codeParam || tokenParam || tokenHashParam) {
+          console.log("[email-confirmed] Found confirmation params in URL, redirecting to /auth/confirm");
+          const confirmUrl = new URL("/auth/confirm", window.location.origin);
+          if (codeParam) confirmUrl.searchParams.set("code", codeParam);
+          if (tokenParam) confirmUrl.searchParams.set("token", tokenParam);
+          if (tokenHashParam) confirmUrl.searchParams.set("token_hash", tokenHashParam);
+          const typeParam = searchParams?.get("type");
+          if (typeParam) confirmUrl.searchParams.set("type", typeParam);
+          window.location.href = confirmUrl.toString();
+          return;
+        }
+        
         // КРИТИЧНО: Статус определяется ТОЛЬКО из URL параметра status,
         // который устанавливает /auth/confirm после успешной обработки токена
         const statusParam = searchParams?.get("status");

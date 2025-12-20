@@ -11,14 +11,27 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
 
+  console.log("[auth/confirm] Request received:", {
+    code: code ? `${code.substring(0, 20)}...` : null,
+    token: token ? `${token.substring(0, 20)}...` : null,
+    tokenHash: tokenHash ? `${tokenHash.substring(0, 20)}...` : null,
+    type,
+    allParams: Object.fromEntries(url.searchParams.entries())
+  });
+
   // Если есть token или token_hash в query (формат ссылок Supabase)
   // Обрабатываем токен ТОЛЬКО после перехода по ссылке из письма
-  if ((token || tokenHash) && type === "signup") {
+  // type может быть "signup" или отсутствовать - пробуем обработать в любом случае
+  if (token || tokenHash) {
     try {
       const supabase = await createServerSupabaseClient();
+      // Используем type из URL, если есть, иначе пробуем 'signup'
+      const otpType = type || 'signup';
+      console.log("[auth/confirm] Attempting verifyOtp with type:", otpType);
+      
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash || token || "",
-        type: 'signup',
+        type: otpType as any,
       });
 
       if (error) {
@@ -38,6 +51,7 @@ export async function GET(request: Request) {
       }
 
       // Успешное подтверждение
+      console.log("[auth/confirm] verifyOtp success, user:", data.user?.id);
       return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
     } catch (err: any) {
       console.error("[auth/confirm] Unexpected error (token):", err);
@@ -45,9 +59,9 @@ export async function GET(request: Request) {
     }
   }
 
-  if (!code) {
-    return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
-  }
+  // Если есть code, обрабатываем через exchangeCodeForSession
+  if (code) {
+    console.log("[auth/confirm] Processing code via exchangeCodeForSession");
 
   try {
     const supabase = await createServerSupabaseClient();
@@ -72,10 +86,16 @@ export async function GET(request: Request) {
     }
 
     // Успешное подтверждение
+    console.log("[auth/confirm] exchangeCodeForSession success, user:", data.user?.id);
     return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
   } catch (err: any) {
     console.error("[auth/confirm] Unexpected error:", err);
     return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
   }
+  }
+
+  // Если нет ни code, ни token - это невалидный запрос
+  console.log("[auth/confirm] No code or token provided, redirecting to invalid_or_expired");
+  return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
 }
 
