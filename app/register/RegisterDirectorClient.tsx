@@ -177,12 +177,10 @@ export default function RegisterDirectorClient() {
       // ВАЖНО: emailRedirectTo должен указывать на роут, который обрабатывает код подтверждения
       // Роут /auth/confirm обрабатывает код и обменивает его на сессию через exchangeCodeForSession
       // После этого пользователь редиректится на /auth/email-confirmed
-      // ВАЖНО: Используем только прямое статическое обращение к NEXT_PUBLIC_APP_URL
-      // для гарантии, что Next.js встроит значение в клиентский бандл
-      const redirectTo =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/auth/confirm`
-          : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/auth/confirm`;
+      // КРИТИЧНО: emailRedirectTo должен быть абсолютным URL и должен быть в whitelist в Supabase Dashboard
+      const redirectTo = typeof window !== "undefined"
+        ? `${window.location.origin}/auth/confirm`
+        : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/auth/confirm`;
 
       console.log("[register] Attempting signUp with:", {
         email: email.trim(),
@@ -190,10 +188,14 @@ export default function RegisterDirectorClient() {
         hasPassword: !!personal.password,
       });
 
+      // КРИТИЧНО: Supabase отправляет письмо только если:
+      // 1. Email confirmation включен в настройках
+      // 2. emailRedirectTo добавлен в whitelist в Supabase Dashboard → Authentication → URL Configuration
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password: personal.password,
         options: {
+          emailRedirectTo: redirectTo,
           data: {
             first_name: personal.firstName.trim(),
             last_name: personal.lastName.trim(),
@@ -202,7 +204,6 @@ export default function RegisterDirectorClient() {
             birth_date: personal.birthDate || null,
             locale: localeForAPI,
           },
-          emailRedirectTo: redirectTo,
         },
       });
 
