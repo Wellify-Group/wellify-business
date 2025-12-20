@@ -184,6 +184,12 @@ export default function RegisterDirectorClient() {
           ? `${window.location.origin}/auth/confirm`
           : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/auth/confirm`;
 
+      console.log("[register] Attempting signUp with:", {
+        email: email.trim(),
+        redirectTo,
+        hasPassword: !!personal.password,
+      });
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: personal.password,
@@ -198,6 +204,13 @@ export default function RegisterDirectorClient() {
           },
           emailRedirectTo: redirectTo,
         },
+      });
+
+      console.log("[register] signUp response:", {
+        hasUser: !!data?.user,
+        userId: data?.user?.id,
+        emailConfirmed: data?.user?.email_confirmed_at,
+        error: error?.message,
       });
 
       if (error) {
@@ -236,6 +249,7 @@ export default function RegisterDirectorClient() {
         return;
       }
 
+      console.log("[register] SignUp successful, user created:", data.user.id);
       setRegisteredUserId(data.user.id);
       setRegisteredUserEmail(data.user.email ?? email.trim());
 
