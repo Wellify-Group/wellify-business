@@ -46,97 +46,71 @@ function EmailConfirmedContent() {
         
         if (statusParam === "success") {
           // Успешное подтверждение - пользователь перешел по ссылке из письма
-          // Получаем данные пользователя и проверяем финальный статус
-          const supabase = createBrowserSupabaseClient();
-          const { data } = await supabase.auth.getUser();
+          // Показываем success сразу, синхронизацию делаем в фоне
+          setStatus("success");
           
-          // Проверяем, что email действительно подтвержден в Supabase Auth
-          if (data.user?.email_confirmed_at && data.user?.id && data.user?.email) {
-            console.log("[email-confirmed] Email confirmed in auth, syncing profile");
-            setStatus("success");
-            setEmail(data.user.email);
-            
-            // ВАЖНО: Синхронизируем профиль ТОЛЬКО если email_confirmed_at установлен
-            // Это установит email_verified = true в таблице profiles
+          const supabase = createBrowserSupabaseClient();
+          
+          // Функция для синхронизации профиля (в фоне)
+          const syncProfile = async () => {
             try {
-              const res = await fetch("/api/auth/email-sync-profile", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  userId: data.user.id,
-                  email: data.user.email,
-                }),
-              });
+              const { data } = await supabase.auth.getUser();
+              
+              if (data.user?.email_confirmed_at && data.user?.id && data.user?.email) {
+                if (data.user.email) {
+                  setEmail(data.user.email);
+                }
+                
+                // Синхронизируем профиль - устанавливает email_verified = true в БД
+                const res = await fetch("/api/auth/email-sync-profile", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    userId: data.user.id,
+                    email: data.user.email,
+                  }),
+                });
 
-              if (!res.ok) {
-                console.error("[email-confirmed] Failed to sync profile");
+                if (!res.ok) {
+                  console.error("[email-confirmed] Failed to sync profile");
+                } else {
+                  console.log("[email-confirmed] Profile synced successfully, email_verified should be true now");
+                }
               } else {
-                console.log("[email-confirmed] Profile synced successfully, email_verified should be true now");
+                // Если getUser не вернул данные, пробуем еще раз через небольшую задержку
+                setTimeout(async () => {
+                  const { data: retryData } = await supabase.auth.getUser();
+                  if (retryData.user?.email_confirmed_at && retryData.user?.id && retryData.user?.email) {
+                    if (retryData.user.email) {
+                      setEmail(retryData.user.email);
+                    }
+                    try {
+                      await fetch("/api/auth/email-sync-profile", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          userId: retryData.user.id,
+                          email: retryData.user.email,
+                        }),
+                      });
+                    } catch (e) {
+                      console.error("[email-confirmed] Retry sync error", e);
+                    }
+                  }
+                }, 500);
               }
             } catch (syncError) {
               console.error("[email-confirmed] Error syncing profile", syncError);
             }
-            
-            if (typeof window !== "undefined") {
-              localStorage.setItem("wellify_email_confirmed", "true");
-            }
-            return;
-          } else {
-            // Если статус success, но email_confirmed_at еще не установлен
-            // Это может произойти, если exchangeCodeForSession еще обрабатывается
-            // Показываем loading и ждем с retry
-            console.log("[email-confirmed] Status is success but email_confirmed_at not set yet, retrying...");
-            setStatus("loading");
-            
-            // Retry с интервалом 500ms до 10 раз (максимум 5 секунд)
-            let retryCount = 0;
-            const maxRetries = 10;
-            const retryInterval = 500;
-            
-            const checkConfirmation = async () => {
-              const retrySupabase = createBrowserSupabaseClient();
-              const { data: retryData } = await retrySupabase.auth.getUser();
-              
-              if (retryData.user?.email_confirmed_at && retryData.user?.id && retryData.user?.email) {
-                console.log("[email-confirmed] Email confirmed on retry, syncing profile");
-                setStatus("success");
-                setEmail(retryData.user.email);
-                
-                // Синхронизируем профиль
-                try {
-                  const res = await fetch("/api/auth/email-sync-profile", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      userId: retryData.user.id,
-                      email: retryData.user.email,
-                    }),
-                  });
-                  if (!res.ok) {
-                    console.error("[email-confirmed] Failed to sync profile");
-                  } else {
-                    console.log("[email-confirmed] Profile synced successfully");
-                  }
-                } catch (syncError) {
-                  console.error("[email-confirmed] Error syncing profile", syncError);
-                }
-                
-                if (typeof window !== "undefined") {
-                  localStorage.setItem("wellify_email_confirmed", "true");
-                }
-              } else if (retryCount < maxRetries) {
-                retryCount++;
-                setTimeout(checkConfirmation, retryInterval);
-              } else {
-                console.error("[email-confirmed] Email not confirmed after retries, showing error");
-                setStatus("error");
-              }
-            };
-            
-            // Первая попытка через 500ms
-            setTimeout(checkConfirmation, retryInterval);
-            return;
+          };
+          
+          // Синхронизируем в фоне (не блокируем показ success)
+          syncProfile();
+          
+          if (typeof window !== "undefined") {
+            localStorage.setItem("wellify_email_confirmed", "true");
           }
+          return;
         }
         
         if (statusParam === "already_confirmed") {

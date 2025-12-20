@@ -446,10 +446,13 @@ export default function RegisterDirectorClient() {
   }, [emailStatus, registeredUserId, supabase]);
 
   // ---------- polling e-mail confirmation (fallback) ----------
-  // Оставляем polling как резервный механизм на случай, если onAuthStateChange не сработает
+  // Проверяем email_verified в БД через API как резервный механизм
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
-    if (!email.trim() || !registeredUserId) return; // Требуем userId
+    if (!registeredUserId) return;
+    
+    // Если email уже подтвержден, не нужен polling
+    if (emailVerified) return;
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -495,7 +498,7 @@ export default function RegisterDirectorClient() {
       clearTimeout(initial);
       if (intervalId) clearInterval(intervalId);
     };
-  }, [emailStatus, email, registeredUserId]); // Добавили registeredUserId в зависимости
+  }, [emailStatus, registeredUserId, emailVerified]); // Добавили emailVerified в зависимости
 
   // ---------- render helpers ----------
 

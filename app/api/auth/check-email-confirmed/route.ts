@@ -64,8 +64,25 @@ export async function GET(req: Request) {
 
     // Реальное подтверждение e-mail в Supabase
     // email_confirmed_at заполняется ТОЛЬКО после клика по ссылке из письма
-    // НЕ проверяем user_metadata.email_verified, так как оно может быть установлено вручную
-    const emailConfirmed = Boolean((user as any).email_confirmed_at);
+    // Также проверяем email_verified в profiles для надежности
+    const emailConfirmedInAuth = Boolean((user as any).email_confirmed_at);
+    
+    // Проверяем также email_verified в profiles (может быть установлен триггером или API)
+    let emailVerifiedInProfile = false;
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email_verified')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      emailVerifiedInProfile = Boolean(profile?.email_verified);
+    } catch (profileError) {
+      console.error('[check-email-confirmed] Profile check error:', profileError);
+    }
+    
+    // Email считается подтвержденным, если подтвержден в Auth ИЛИ в профиле
+    const emailConfirmed = emailConfirmedInAuth || emailVerifiedInProfile;
 
     // Безопасное логирование (без PII)
     const maskedEmail = user.email
@@ -75,11 +92,12 @@ export async function GET(req: Request) {
       userId: user.id,
       email: maskedEmail,
       email_confirmed_at: (user as any).email_confirmed_at ? 'SET' : 'NULL',
+      email_verified_in_profile: emailVerifiedInProfile,
       emailConfirmed,
     });
 
     return NextResponse.json(
-      { success: true, emailConfirmed },
+      { success: true, emailConfirmed, emailVerified: emailVerifiedInProfile },
       { status: 200 }
     );
   } catch (err: any) {
