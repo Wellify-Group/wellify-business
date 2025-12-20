@@ -47,12 +47,21 @@ export function getSupabaseEnv(): {
 
 /**
  * Получает только публичные переменные (для client-side использования)
+ * ВАЖНО: Использует прямое статическое обращение к process.env.NEXT_PUBLIC_*
+ * чтобы Next.js мог статически вшить значения в клиентский бандл
+ * 
+ * НЕ использует промежуточные функции или динамический доступ,
+ * так как это мешает Next.js определить, какие переменные нужны клиенту
  */
 export function getSupabasePublicEnv(): {
   url: string;
   anonKey: string;
 } {
-  const { url, anonKey } = getSupabaseEnv();
+  // ВАЖНО: Прямое статическое обращение к переменным окружения
+  // Next.js может статически определить эти обращения и вшить значения в bundle
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  
   return { url, anonKey };
 }
 

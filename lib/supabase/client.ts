@@ -4,7 +4,6 @@
 
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { getSupabasePublicEnv } from './env';
 
 function isNextBuildPhase(): boolean {
   return (
@@ -30,9 +29,16 @@ function createMissingEnvProxy() {
 /**
  * Browser client for Supabase (with SSR support)
  * Use this in client components and browser-side code
+ * 
+ * ВАЖНО: Использует прямое статическое обращение к process.env.NEXT_PUBLIC_*
+ * для гарантии, что Next.js встроит значения в клиентский бандл
  */
 export function createBrowserSupabaseClient() {
-  const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
+  // ВАЖНО: Прямое статическое обращение к переменным окружения
+  // Это гарантирует, что Next.js статически определит эти переменные
+  // и встроит их значения в клиентский бандл во время сборки
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error(
@@ -48,15 +54,23 @@ export function createBrowserSupabaseClient() {
     throw new Error('Missing Supabase environment variables');
   }
 
+  // Гарантируем, что передаем строки, а не undefined
   return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }
 
 /**
  * Simple browser client (fallback, without SSR)
  * Use this if you need a simple client without cookie handling
+ * 
+ * ВАЖНО: Использует прямое статическое обращение к process.env.NEXT_PUBLIC_*
+ * для гарантии, что Next.js встроит значения в клиентский бандл
  */
 export function getSupabaseClient() {
-  const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
+  // ВАЖНО: Прямое статическое обращение к переменным окружения
+  // Это гарантирует, что Next.js статически определит эти переменные
+  // и встроит их значения в клиентский бандл во время сборки
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error(
@@ -70,5 +84,6 @@ export function getSupabaseClient() {
     throw new Error('Missing Supabase environment variables');
   }
 
+  // Гарантируем, что передаем строки, а не undefined
   return createClient(supabaseUrl, supabaseAnonKey);
 }

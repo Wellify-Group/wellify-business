@@ -1,16 +1,24 @@
 // lib/config/appConfig.client.ts
 // Клиентский конфиг - только NEXT_PUBLIC_* переменные
 // Безопасно для использования в браузере
+// ВАЖНО: Используем только прямое статическое обращение к process.env.NEXT_PUBLIC_*
+// для того, чтобы Next.js мог статически вшить значения в клиентский бандл
 
-// Валидация обязательных переменных окружения
+// Валидация обязательных переменных окружения (только в браузере, не во время сборки)
 if (typeof window !== 'undefined') {
-  const requiredVars = [
-    'NEXT_PUBLIC_APP_URL',
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  ];
-
-  const missing = requiredVars.filter((v) => !process.env[v]);
+  // ВАЖНО: Используем прямое статическое обращение к каждой переменной,
+  // а не динамический доступ через process.env[v], чтобы Next.js мог их статически определить
+  const missing: string[] = [];
+  
+  if (!process.env.NEXT_PUBLIC_APP_URL) {
+    missing.push('NEXT_PUBLIC_APP_URL');
+  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
   
   if (missing.length > 0) {
     console.error('❌ Отсутствуют обязательные переменные окружения:', missing.join(', '));
@@ -19,7 +27,8 @@ if (typeof window !== 'undefined') {
 }
 
 // Используем функцию вместо константы, чтобы переменные читались во время выполнения
-// Это гарантирует, что Next.js встроит их значения в bundle
+// ВАЖНО: Все обращения к process.env должны быть прямыми и статическими
+// (не через индексацию или циклы), чтобы Next.js мог вшить значения в bundle
 export function getAppConfig() {
   return {
     appUrl: process.env.NEXT_PUBLIC_APP_URL || '',
