@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
     // Получаем базовый URL для redirect
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
       (request.headers.get("origin") || "http://localhost:3000");
 
     const redirectTo = `${baseUrl}/auth/callback`;

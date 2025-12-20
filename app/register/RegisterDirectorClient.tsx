@@ -167,12 +167,12 @@ export default function RegisterDirectorClient() {
       // ВАЖНО: emailRedirectTo должен указывать на роут, который обрабатывает код подтверждения
       // Роут /auth/confirm обрабатывает код и обменивает его на сессию через exchangeCodeForSession
       // После этого пользователь редиректится на /auth/email-confirmed
+      // ВАЖНО: Используем только прямое статическое обращение к NEXT_PUBLIC_APP_URL
+      // для гарантии, что Next.js встроит значение в клиентский бандл
       const redirectTo =
         typeof window !== "undefined"
           ? `${window.location.origin}/auth/confirm`
-          : `${
-              process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
-            }/auth/confirm`;
+          : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/auth/confirm`;
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),

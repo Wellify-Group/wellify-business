@@ -53,7 +53,9 @@ export default function LoginPage() {
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  // ВАЖНО: Используем только прямое статическое обращение к NEXT_PUBLIC_APP_URL
+  // для гарантии, что Next.js встроит значение в клиентский бандл
+  const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
   // Check if user is already logged in
   useEffect(() => {
