@@ -71,13 +71,13 @@ export async function GET(request: Request) {
     }
   }
 
-  // Если есть code, обрабатываем через exchangeCodeForSession
+  // Если есть code, обрабатываем через exchangeCodeForSession (PKCE-авторизация)
   if (code) {
-    console.log("[auth/confirm] Processing code via exchangeCodeForSession");
+    console.log("[auth/confirm] Processing code via exchangeCodeForSession (PKCE flow)");
 
-  try {
-    const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const supabase = await createServerSupabaseClient();
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
       console.error("[auth/confirm] exchangeCodeForSession error:", error);

@@ -391,6 +391,57 @@ export default function RegisterDirectorClient() {
     };
   }, [emailStatus, registeredUserId, supabase]);
 
+  // ---------- Realtime подписка на изменения в таблице profiles ----------
+  // Реагирует на UPDATE события в таблице profiles, когда email_verified становится true
+  useEffect(() => {
+    if (emailStatus !== "link_sent") return;
+    if (!registeredUserId) return;
+
+    console.log("[register] Setting up Realtime subscription for profiles table, userId:", registeredUserId);
+
+    // Создаем канал для подписки на изменения в таблице profiles
+    const channel = supabase
+      .channel(`profiles:${registeredUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${registeredUserId}`,
+        },
+        (payload) => {
+          console.log("[register] Realtime UPDATE event received:", payload);
+          
+          // Проверяем, что email_verified стал true
+          const newRecord = payload.new as { id: string; email_verified?: boolean };
+          if (newRecord.email_verified === true) {
+            console.log("[register] email_verified became true via Realtime, transitioning to step 3");
+            setEmailStatus("verified");
+            setEmailVerified(true);
+            setRegisterError(null);
+
+            // Переходим на шаг 3 (Telegram)
+            setStep(3);
+            setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("[register] Realtime channel status:", status);
+        if (status === 'SUBSCRIBED') {
+          console.log("[register] Successfully subscribed to profiles Realtime channel");
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error("[register] Realtime channel error");
+        }
+      });
+
+    return () => {
+      console.log("[register] Cleaning up Realtime subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [emailStatus, registeredUserId, supabase]);
+
   // ---------- polling e-mail confirmation (fallback) ----------
   // Оставляем polling как резервный механизм на случай, если onAuthStateChange не сработает
   useEffect(() => {
