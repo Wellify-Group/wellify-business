@@ -16,7 +16,7 @@ export default function EmailConfirmedLayout({ children }: { children: ReactNode
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-zinc-950/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-gray-50/95 backdrop-blur-sm">
       {children}
     </div>
   );

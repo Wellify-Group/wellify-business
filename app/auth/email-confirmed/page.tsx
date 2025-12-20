@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 
 type ConfirmationStatus = 
   | "loading"
@@ -117,11 +116,11 @@ function EmailConfirmedContent() {
       return (
         <>
           <div className="flex justify-center mb-6">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-800/50">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
               <div className="h-8 w-8 border-4 border-[var(--accent-primary,#3b82f6)] border-t-transparent rounded-full animate-spin" />
             </div>
           </div>
-          <h1 className="text-2xl font-semibold mb-3 text-zinc-50">
+          <h1 className="text-2xl font-semibold mb-3 text-gray-900">
             Завершаем подтверждение...
           </h1>
         </>
@@ -133,28 +132,15 @@ function EmailConfirmedContent() {
         <>
           <div className="flex justify-center mb-6">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-              <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+              <CheckCircle2 className="h-12 w-12 text-emerald-500" />
             </div>
           </div>
-          <h1 className="text-2xl font-semibold mb-3 text-zinc-50">
+          <h1 className="text-2xl font-semibold mb-3 text-gray-900">
             E-mail подтверждён
           </h1>
-          <p className="text-sm mb-4 text-zinc-400">
+          <p className="text-sm mb-4 text-gray-600">
             Ваша почта успешно подтверждена. Теперь вы можете войти в систему.
           </p>
-          {email && (
-            <p className="mb-6 text-xs text-zinc-500">
-              {email}
-            </p>
-          )}
-          <div className="mt-8 flex flex-col gap-3">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-2xl bg-[var(--accent-primary,#2563eb)] text-white font-semibold text-sm shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
-            >
-              Войти
-            </Link>
-          </div>
         </>
       );
     }
@@ -164,30 +150,17 @@ function EmailConfirmedContent() {
         <>
           <div className="flex justify-center mb-6">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-              <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+              <CheckCircle2 className="h-12 w-12 text-emerald-500" />
             </div>
           </div>
-          <h1 className="text-2xl font-semibold mb-3 text-zinc-50">
+          <h1 className="text-2xl font-semibold mb-3 text-gray-900">
             E-mail уже подтверждён
           </h1>
-          <p className="text-sm mb-4 text-zinc-400">
+          <p className="text-sm mb-4 text-gray-600">
             Вы уже подтверждали эту почту ранее.
             <br />
             Вы можете войти в аккаунт, используя ваш e-mail и пароль.
           </p>
-          {email && (
-            <p className="mb-6 text-xs text-zinc-500">
-              {email}
-            </p>
-          )}
-          <div className="mt-8 flex flex-col gap-3">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-2xl bg-[var(--accent-primary,#2563eb)] text-white font-semibold text-sm shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
-            >
-              Войти
-            </Link>
-          </div>
         </>
       );
     }
@@ -197,13 +170,13 @@ function EmailConfirmedContent() {
         <>
           <div className="flex justify-center mb-6">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/10">
-              <XCircle className="h-12 w-12 text-amber-400" />
+              <XCircle className="h-12 w-12 text-amber-500" />
             </div>
           </div>
-          <h1 className="text-2xl font-semibold mb-3 text-zinc-50">
+          <h1 className="text-2xl font-semibold mb-3 text-gray-900">
             Ссылка недействительна
           </h1>
-          <p className="text-sm mb-4 text-zinc-400">
+          <p className="text-sm mb-4 text-gray-600">
             Ссылка подтверждения устарела или недействительна.
           </p>
         </>
@@ -215,13 +188,13 @@ function EmailConfirmedContent() {
       <>
         <div className="flex justify-center mb-6">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/10">
-            <AlertCircle className="h-12 w-12 text-red-400" />
+            <AlertCircle className="h-12 w-12 text-red-500" />
           </div>
         </div>
-        <h1 className="text-2xl font-semibold mb-3 text-zinc-50">
+        <h1 className="text-2xl font-semibold mb-3 text-gray-900">
           Произошла ошибка
         </h1>
-        <p className="text-sm mb-4 text-zinc-400">
+        <p className="text-sm mb-4 text-gray-600">
           Не удалось подтвердить e-mail. Попробуйте ещё раз.
         </p>
       </>
@@ -230,19 +203,19 @@ function EmailConfirmedContent() {
 
   return (
     <div className="w-full max-w-md mx-auto px-4">
-      <div className="relative w-full rounded-[24px] border border-zinc-800/80 bg-zinc-950/70 backdrop-blur-2xl px-8 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.6)]">
+      <div className="relative w-full rounded-[24px] border border-gray-200 bg-white px-8 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.15)]">
         {renderContent()}
         
         {/* Кнопка закрытия внизу */}
-        <div className="mt-8 pt-6 border-t border-zinc-800/50">
+        <div className="mt-8 pt-6 border-t border-gray-200">
           <button
             onClick={handleClose}
-            className="inline-flex items-center justify-center h-10 px-6 rounded-xl border border-zinc-700/70 bg-zinc-900/80 text-zinc-200 font-medium text-sm hover:bg-zinc-800/80 transition-colors w-full"
+            className="inline-flex items-center justify-center h-10 px-6 rounded-xl border border-gray-300 bg-gray-50 text-gray-700 font-medium text-sm hover:bg-gray-100 transition-colors w-full"
           >
             Закрыть окно
           </button>
           {!canClose && (
-            <p className="mt-3 text-xs text-zinc-500">
+            <p className="mt-3 text-xs text-gray-500">
               Вы можете просто закрыть эту вкладку браузера
             </p>
           )}
@@ -257,13 +230,13 @@ export default function EmailConfirmedPage() {
     <Suspense
       fallback={
         <div className="w-full max-w-md mx-auto px-4">
-          <div className="relative w-full rounded-[24px] border border-zinc-800/80 bg-zinc-950/70 backdrop-blur-2xl px-8 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.6)]">
+          <div className="relative w-full rounded-[24px] border border-gray-200 bg-white px-8 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.15)]">
             <div className="flex justify-center mb-6">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-800/50">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
                 <div className="h-8 w-8 border-4 border-[var(--accent-primary,#3b82f6)] border-t-transparent rounded-full animate-spin" />
               </div>
             </div>
-            <h1 className="text-2xl font-semibold mb-3 text-zinc-50">
+            <h1 className="text-2xl font-semibold mb-3 text-gray-900">
               Загрузка...
             </h1>
           </div>

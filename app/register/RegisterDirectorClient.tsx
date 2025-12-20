@@ -510,7 +510,6 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Иван"
               value={personal.firstName}
               onChange={handlePersonalChange("firstName")}
             />
@@ -525,7 +524,6 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Александрович"
               value={personal.middleName}
               onChange={handlePersonalChange("middleName")}
             />
@@ -540,7 +538,6 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Петров"
               value={personal.lastName}
               onChange={handlePersonalChange("lastName")}
             />
@@ -580,7 +577,7 @@ export default function RegisterDirectorClient() {
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Минимум 8 символов"
+              placeholder="От 8 символов"
               value={personal.password}
               onChange={handlePersonalChange("password")}
             />
@@ -845,7 +842,7 @@ export default function RegisterDirectorClient() {
                       Отправляем...
                     </>
                   ) : emailStatus === "link_sent" ? (
-                    <>Ждём подтверждения…</>
+                    <>Ожидание подтверждения</>
                   ) : (
                     <>
                       Далее
