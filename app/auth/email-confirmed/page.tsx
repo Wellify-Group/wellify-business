@@ -98,36 +98,40 @@ function EmailConfirmedContent() {
           const supabase = createBrowserSupabaseClient();
           const { data } = await supabase.auth.getUser();
           
-          if (data.user?.email_confirmed_at) {
-            // Email уже подтвержден - показываем успех
-            console.log("[email-confirmed] Email already confirmed despite invalid_or_expired status");
-            setStatus("success");
-            if (data.user?.email) {
-              setEmail(data.user.email);
+          if (data.user?.email_confirmed_at && data.user?.id) {
+            // Email уже подтвержден и сессия активна - закрываем окно или редиректим
+            console.log("[email-confirmed] Email already confirmed and session active, closing window");
+            
+            // Синхронизируем профиль перед закрытием
+            try {
+              await fetch("/api/auth/email-sync-profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: data.user.id,
+                  email: data.user.email,
+                }),
+              });
+            } catch (syncError) {
+              console.error("[email-confirmed] Error syncing profile", syncError);
             }
             
-            // Синхронизируем профиль
-            if (data.user?.id && data.user?.email) {
-              try {
-                const res = await fetch("/api/auth/email-sync-profile", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    userId: data.user.id,
-                    email: data.user.email,
-                  }),
-                });
-                if (!res.ok) {
-                  console.error("[email-confirmed] Failed to sync profile");
-                }
-              } catch (syncError) {
-                console.error("[email-confirmed] Error syncing profile", syncError);
-              }
-            }
-            
+            // Пытаемся закрыть окно (если открыто в новой вкладке)
             if (typeof window !== "undefined") {
               localStorage.setItem("wellify_email_confirmed", "true");
+              
+              // Пытаемся закрыть вкладку
+              setTimeout(() => {
+                window.close();
+                // Если не закрылось, пробуем вернуться назад
+                if (window.history.length > 1) {
+                  window.history.back();
+                }
+              }, 100);
             }
+            
+            // Показываем краткое сообщение об успехе перед закрытием
+            setStatus("success");
             return;
           }
           

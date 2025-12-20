@@ -47,6 +47,18 @@ export async function GET(request: Request) {
         }
 
         console.error("[auth/confirm] verifyOtp error:", error);
+        
+        // Проверяем, может быть пользователь уже подтвержден (повторный переход)
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData?.user?.email_confirmed_at) {
+            console.log("[auth/confirm] User already confirmed, redirecting to success");
+            return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
+          }
+        } catch (checkError) {
+          // Игнорируем ошибку проверки
+        }
+        
         return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
       }
 
@@ -80,6 +92,17 @@ export async function GET(request: Request) {
         errorMsg.includes("already been verified")
       ) {
         return NextResponse.redirect(new URL("/auth/email-confirmed?status=already_confirmed", url));
+      }
+
+      // Проверяем, может быть пользователь уже подтвержден (повторный переход по ссылке)
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.email_confirmed_at) {
+          console.log("[auth/confirm] User already confirmed despite error, redirecting to success");
+          return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
+        }
+      } catch (checkError) {
+        // Игнорируем ошибку проверки
       }
 
       return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));

@@ -346,22 +346,32 @@ export default function RegisterDirectorClient() {
   // ---------- слушатель изменений состояния аутентификации ----------
   // Реагирует на подтверждение email в других вкладках через onAuthStateChange
   useEffect(() => {
-    if (emailStatus !== "link_sent" && emailStatus !== "verified") return;
+    if (emailStatus !== "link_sent") return;
     if (!registeredUserId) return;
+
+    console.log("[register] Setting up onAuthStateChange listener for userId:", registeredUserId);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      // Обрабатываем события SIGNED_IN и USER_UPDATED
-      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-        if (!session?.user) return;
+      console.log("[register] onAuthStateChange event:", event, "hasSession:", !!session);
+      
+      // Обрабатываем события SIGNED_IN, USER_UPDATED и TOKEN_REFRESHED
+      if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
+        if (!session?.user) {
+          console.log("[register] No user in session");
+          return;
+        }
 
         // Проверяем, что это наш пользователь
-        if (session.user.id !== registeredUserId) return;
+        if (session.user.id !== registeredUserId) {
+          console.log("[register] User ID mismatch:", session.user.id, "!=", registeredUserId);
+          return;
+        }
 
         // Проверяем, что email подтвержден
         if (session.user.email_confirmed_at) {
-          console.log("[register] Email confirmed via onAuthStateChange");
+          console.log("[register] Email confirmed via onAuthStateChange, email_confirmed_at:", session.user.email_confirmed_at);
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
@@ -369,11 +379,14 @@ export default function RegisterDirectorClient() {
           // Переходим на шаг 3 (Telegram)
           setStep(3);
           setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+        } else {
+          console.log("[register] User signed in but email not confirmed yet");
         }
       }
     });
 
     return () => {
+      console.log("[register] Cleaning up onAuthStateChange listener");
       subscription.unsubscribe();
     };
   }, [emailStatus, registeredUserId, supabase]);
