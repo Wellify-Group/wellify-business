@@ -22,94 +22,11 @@ function EmailConfirmedContent() {
   useEffect(() => {
     const run = async () => {
       try {
-        // Проверяем hash фрагмент на наличие ошибок от Supabase
-        if (typeof window !== "undefined" && window.location.hash) {
-          const hash = window.location.hash;
-          console.log("[email-confirmed] Hash fragment:", hash);
-          // Если в hash есть ошибка (например, #error=access_denied&error_code=otp_expired)
-          if (hash.includes("error=") || hash.includes("error_code=")) {
-            // Проверяем тип ошибки
-            const hashParams = new URLSearchParams(hash.substring(1));
-            const errorCode = hashParams.get("error_code");
-            const error = hashParams.get("error");
-            
-            console.log("[email-confirmed] Error from hash:", { error, errorCode });
-            
-            // Если это ошибка истекшего токена или невалидной ссылки
-            if (errorCode === "otp_expired" || errorCode === "token_expired" || error === "access_denied") {
-              console.log("[email-confirmed] Setting status to invalid_or_expired from hash");
-              setStatus("invalid_or_expired");
-              // Очищаем hash после обработки
-              window.history.replaceState(null, "", window.location.pathname + window.location.search);
-              return;
-            }
-            
-            // Очищаем hash после обработки
-            window.history.replaceState(null, "", window.location.pathname + window.location.search);
-          }
-        }
-        
-        console.log("[email-confirmed] Status param:", searchParams?.get("status"));
-        console.log("[email-confirmed] All search params:", Object.fromEntries(searchParams?.entries() || []));
-        console.log("[email-confirmed] Full URL:", typeof window !== "undefined" ? window.location.href : "N/A");
-        
         const supabase = createBrowserSupabaseClient();
         const { data, error } = await supabase.auth.getUser();
         
-        console.log("[email-confirmed] getUser result:", { hasUser: !!data.user, hasError: !!error, errorMessage: error?.message });
-        
-        // СНАЧАЛА проверяем наличие параметров code/token - если они есть,
-        // нужно обработать их через /auth/confirm, даже если есть статус в URL
-        const codeParam = searchParams?.get("code");
-        const tokenParam = searchParams?.get("token");
-        const tokenHashParam = searchParams?.get("token_hash");
-        const typeParam = searchParams?.get("type");
-        
-        if (codeParam || tokenParam || tokenHashParam) {
-          console.log("[email-confirmed] Found confirmation params (code/token) in URL, redirecting to /auth/confirm for processing");
-          // Редиректим на /auth/confirm для обработки
-          const confirmUrl = new URL("/auth/confirm", window.location.origin);
-          if (codeParam) confirmUrl.searchParams.set("code", codeParam);
-          if (tokenParam) confirmUrl.searchParams.set("token", tokenParam);
-          if (tokenHashParam) confirmUrl.searchParams.set("token_hash", tokenHashParam);
-          if (typeParam) confirmUrl.searchParams.set("type", typeParam);
-          window.location.href = confirmUrl.toString();
-          return;
-        }
-        
-        // ТОЛЬКО ЕСЛИ нет code/token, проверяем статус в URL параметрах
-        // Статус определяется ТОЛЬКО параметром status из URL, который устанавливает /auth/confirm
+        // Проверяем наличие статуса в URL параметрах
         const statusParam = searchParams?.get("status");
-        
-        if (statusParam === "success") {
-          setStatus("success");
-          // Пытаемся получить email пользователя для отображения (опционально)
-          if (data.user?.email) {
-            setEmail(data.user.email);
-          }
-          // Автоматическая синхронизация профиля после подтверждения email
-          if (data.user?.id && data.user?.email) {
-            try {
-              const res = await fetch("/api/auth/email-sync-profile", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  userId: data.user.id,
-                  email: data.user.email,
-                }),
-              });
-              if (!res.ok) {
-                console.error("[email-confirmed] Failed to sync profile");
-              }
-            } catch (syncError) {
-              console.error("[email-confirmed] Error syncing profile", syncError);
-            }
-          }
-          if (typeof window !== "undefined") {
-            localStorage.setItem("wellify_email_confirmed", "true");
-          }
-          return;
-        }
         
         if (statusParam === "already_confirmed") {
           setStatus("already_confirmed");
@@ -120,15 +37,47 @@ function EmailConfirmedContent() {
         }
 
         if (statusParam === "invalid_or_expired") {
-          console.log("[email-confirmed] Status invalid_or_expired from URL param");
           setStatus("invalid_or_expired");
           return;
         }
         
-        // Если нет статуса в URL и нет code/token - это невалидная ситуация
-        // Значит, пользователь попал на страницу напрямую без параметров
-        console.log("[email-confirmed] No status param and no code/token found, setting invalid_or_expired");
-        setStatus("invalid_or_expired");
+        if (!data.user) {
+          // Если пользователь не найден, возможно, ссылка невалидна
+          setStatus("invalid_or_expired");
+          return;
+        }
+
+        setEmail(data.user.email ?? null);
+
+        // Автоматическая синхронизация профиля после подтверждения email
+        if (data.user.id && data.user.email && data.user.email_confirmed_at) {
+          try {
+            const res = await fetch("/api/auth/email-sync-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: data.user.email,
+              }),
+            });
+
+            if (!res.ok) {
+              console.error("[email-confirmed] Failed to sync profile");
+            }
+          } catch (syncError) {
+            console.error("[email-confirmed] Error syncing profile", syncError);
+          }
+        }
+
+        // Проверяем, подтвержден ли email
+        if (data.user.email_confirmed_at) {
+          setStatus("success");
+          if (typeof window !== "undefined") {
+            localStorage.setItem("wellify_email_confirmed", "true");
+          }
+        } else {
+          setStatus("error");
+        }
       } catch (err) {
         console.error("[email-confirmed] Error:", err);
         setStatus("error");

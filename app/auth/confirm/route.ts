@@ -8,37 +8,18 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const token = url.searchParams.get("token");
-  const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
 
-  // Логируем полный URL для отладки
-  console.log("[auth/confirm] Full URL:", url.toString());
-  console.log("[auth/confirm] Request params:", { 
-    code: code ? `${code.substring(0, 20)}...` : null, 
-    token: token ? `${token.substring(0, 20)}...` : null, 
-    tokenHash: tokenHash ? `${tokenHash.substring(0, 20)}...` : null, 
-    type,
-    allParams: Object.fromEntries(url.searchParams.entries())
-  });
-
-  // Если есть token или token_hash в query (формат ссылок Supabase)
-  // Пробуем обработать как signup, даже если type не указан явно
-  if (token || tokenHash) {
+  // Если есть token в query (старый формат ссылок Supabase)
+  if (token && type === "signup") {
     try {
       const supabase = await createServerSupabaseClient();
-      // Пробуем использовать type из URL, если не указан - используем 'signup'
-      const otpType = (type === "signup" || !type) ? 'signup' : type;
-      
-      console.log("[auth/confirm] Attempting verifyOtp with type:", otpType);
-      
       const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: tokenHash || token || "",
-        type: otpType as any,
+        token_hash: token,
+        type: 'signup',
       });
 
       if (error) {
-        console.error("[auth/confirm] verifyOtp error:", error.message, error.status);
-        
         // Проверяем, не является ли ошибка "already confirmed" или "token already used"
         const errorMsg = error.message?.toLowerCase() || "";
         if (
@@ -50,11 +31,11 @@ export async function GET(request: Request) {
           return NextResponse.redirect(new URL("/auth/email-confirmed?status=already_confirmed", url));
         }
 
+        console.error("[auth/confirm] verifyOtp error:", error);
         return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
       }
 
       // Успешное подтверждение
-      console.log("[auth/confirm] verifyOtp success, user:", data.user?.id);
       return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
     } catch (err: any) {
       console.error("[auth/confirm] Unexpected error (token):", err);
@@ -62,9 +43,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Если нет ни code, ни token - это невалидный запрос
   if (!code) {
-    console.log("[auth/confirm] No code or token provided");
     return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
   }
 
@@ -73,7 +52,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error("[auth/confirm] exchangeCodeForSession error:", error.message, error.status);
+      console.error("[auth/confirm] exchangeCodeForSession error:", error);
       
       // Проверяем, не является ли ошибка "already confirmed" или "token already used"
       const errorMsg = error.message?.toLowerCase() || "";
@@ -91,7 +70,6 @@ export async function GET(request: Request) {
     }
 
     // Успешное подтверждение
-    console.log("[auth/confirm] exchangeCodeForSession success, user:", data.user?.id);
     return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
   } catch (err: any) {
     console.error("[auth/confirm] Unexpected error:", err);
