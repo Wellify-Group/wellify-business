@@ -46,18 +46,18 @@ function EmailConfirmedContent() {
         
         if (statusParam === "success") {
           // Успешное подтверждение - пользователь перешел по ссылке из письма
-          setStatus("success");
-          
-          // Получаем данные пользователя для синхронизации профиля
+          // Получаем данные пользователя и проверяем финальный статус
           const supabase = createBrowserSupabaseClient();
           const { data } = await supabase.auth.getUser();
           
-          if (data.user?.email) {
-            setEmail(data.user.email);
-          }
-          
-          // ВАЖНО: Синхронизация профиля ТОЛЬКО после успешного подтверждения
-          if (data.user?.id && data.user?.email) {
+          // Проверяем, что email действительно подтвержден
+          if (data.user?.email_confirmed_at && data.user?.id) {
+            setStatus("success");
+            if (data.user?.email) {
+              setEmail(data.user.email);
+            }
+            
+            // Синхронизируем профиль - устанавливаем email_verified = true в БД
             try {
               const res = await fetch("/api/auth/email-sync-profile", {
                 method: "POST",
@@ -70,16 +70,24 @@ function EmailConfirmedContent() {
 
               if (!res.ok) {
                 console.error("[email-confirmed] Failed to sync profile");
+              } else {
+                console.log("[email-confirmed] Profile synced successfully");
               }
             } catch (syncError) {
               console.error("[email-confirmed] Error syncing profile", syncError);
             }
+            
+            if (typeof window !== "undefined") {
+              localStorage.setItem("wellify_email_confirmed", "true");
+            }
+            return;
+          } else {
+            // Если статус success, но email не подтвержден - возможно, еще обрабатывается
+            // Показываем loading
+            console.log("[email-confirmed] Status is success but email not confirmed yet, showing loading");
+            setStatus("loading");
+            return;
           }
-          
-          if (typeof window !== "undefined") {
-            localStorage.setItem("wellify_email_confirmed", "true");
-          }
-          return;
         }
         
         if (statusParam === "already_confirmed") {
@@ -99,12 +107,17 @@ function EmailConfirmedContent() {
           const { data } = await supabase.auth.getUser();
           
           if (data.user?.email_confirmed_at && data.user?.id) {
-            // Email уже подтвержден и сессия активна - закрываем окно или редиректим
-            console.log("[email-confirmed] Email already confirmed and session active, closing window");
+            // Email уже подтвержден и сессия активна - показываем success вместо ошибки
+            console.log("[email-confirmed] Email already confirmed and session active, showing success");
             
-            // Синхронизируем профиль перед закрытием
+            setStatus("success");
+            if (data.user?.email) {
+              setEmail(data.user.email);
+            }
+            
+            // Синхронизируем профиль
             try {
-              await fetch("/api/auth/email-sync-profile", {
+              const res = await fetch("/api/auth/email-sync-profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -112,26 +125,16 @@ function EmailConfirmedContent() {
                   email: data.user.email,
                 }),
               });
+              if (!res.ok) {
+                console.error("[email-confirmed] Failed to sync profile");
+              }
             } catch (syncError) {
               console.error("[email-confirmed] Error syncing profile", syncError);
             }
             
-            // Пытаемся закрыть окно (если открыто в новой вкладке)
             if (typeof window !== "undefined") {
               localStorage.setItem("wellify_email_confirmed", "true");
-              
-              // Пытаемся закрыть вкладку
-              setTimeout(() => {
-                window.close();
-                // Если не закрылось, пробуем вернуться назад
-                if (window.history.length > 1) {
-                  window.history.back();
-                }
-              }, 100);
             }
-            
-            // Показываем краткое сообщение об успехе перед закрытием
-            setStatus("success");
             return;
           }
           
@@ -139,8 +142,43 @@ function EmailConfirmedContent() {
           return;
         }
         
-        // Если нет статуса в URL - это невалидная ситуация
-        // (пользователь попал на страницу напрямую без параметров)
+        // Если нет статуса в URL - проверяем текущую сессию
+        // Может быть, пользователь уже подтвержден и попал сюда напрямую
+        const supabase = createBrowserSupabaseClient();
+        const { data } = await supabase.auth.getUser();
+        
+        if (data.user?.email_confirmed_at && data.user?.id) {
+          // Email уже подтвержден - показываем success
+          console.log("[email-confirmed] No status param but email already confirmed, showing success");
+          setStatus("success");
+          if (data.user?.email) {
+            setEmail(data.user.email);
+          }
+          
+          // Синхронизируем профиль
+          try {
+            const res = await fetch("/api/auth/email-sync-profile", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: data.user.id,
+                email: data.user.email,
+              }),
+            });
+            if (!res.ok) {
+              console.error("[email-confirmed] Failed to sync profile");
+            }
+          } catch (syncError) {
+            console.error("[email-confirmed] Error syncing profile", syncError);
+          }
+          
+          if (typeof window !== "undefined") {
+            localStorage.setItem("wellify_email_confirmed", "true");
+          }
+          return;
+        }
+        
+        // Если нет статуса и email не подтвержден - это невалидная ситуация
         setStatus("invalid_or_expired");
       } catch (err) {
         console.error("[email-confirmed] Error:", err);

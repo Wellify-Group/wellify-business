@@ -43,17 +43,11 @@ export async function GET(request: Request) {
         }
 
         // Проверяем, может быть пользователь уже подтвержден (повторный переход по ссылке)
-        try {
-          const { data: userData } = await supabase.auth.getUser();
-          if (userData?.user?.email_confirmed_at) {
-            console.log("[auth/confirm] User already confirmed despite error, redirecting to success");
-            return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
-          }
-        } catch (checkError) {
-          // Игнорируем ошибку проверки
-        }
-
-        return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+        // ВАЖНО: Проверяем БЕЗ использования supabase клиента, так как сессия может быть еще не установлена
+        // Но если код уже был использован, значит пользователь уже подтвержден
+        // В этом случае просто редиректим на success - страница сама проверит статус через getUser()
+        console.log("[auth/confirm] Code already used or invalid, but might be already confirmed - redirecting to success for final check");
+        return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
       }
 
       // Успешное подтверждение через PKCE
@@ -93,18 +87,10 @@ export async function GET(request: Request) {
 
         console.error("[auth/confirm] verifyOtp error:", error);
         
-        // Проверяем, может быть пользователь уже подтвержден (повторный переход)
-        try {
-          const { data: userData } = await supabase.auth.getUser();
-          if (userData?.user?.email_confirmed_at) {
-            console.log("[auth/confirm] User already confirmed, redirecting to success");
-            return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
-          }
-        } catch (checkError) {
-          // Игнорируем ошибку проверки
-        }
-        
-        return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+        // Если токен уже использован, значит пользователь уже подтвержден
+        // Редиректим на success - страница сама проверит финальный статус
+        console.log("[auth/confirm] Token already used or invalid, but might be already confirmed - redirecting to success for final check");
+        return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
       }
 
       // Успешное подтверждение
