@@ -778,8 +778,8 @@ export default function RegisterDirectorClient() {
   // ---------- main render ----------
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-background px-4 md:px-6 pt-28 pb-10">
-      <div className="relative w-full max-w-[720px]">
+    <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
+      <div className="relative w-full max-w-xl">
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
