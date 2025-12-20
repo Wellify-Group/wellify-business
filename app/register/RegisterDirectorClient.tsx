@@ -537,7 +537,6 @@ export default function RegisterDirectorClient() {
 
     return () => {
       cancelled = true;
-      clearTimeout(initial);
       if (intervalId) clearInterval(intervalId);
     };
   }, [emailStatus, registeredUserId, emailVerified]); // Добавили emailVerified в зависимости
