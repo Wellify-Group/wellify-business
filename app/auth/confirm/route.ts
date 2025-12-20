@@ -11,7 +11,15 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
 
-  console.log("[auth/confirm] Request params:", { code: code?.substring(0, 20), token: token?.substring(0, 20), tokenHash: tokenHash?.substring(0, 20), type });
+  // Логируем полный URL для отладки
+  console.log("[auth/confirm] Full URL:", url.toString());
+  console.log("[auth/confirm] Request params:", { 
+    code: code ? `${code.substring(0, 20)}...` : null, 
+    token: token ? `${token.substring(0, 20)}...` : null, 
+    tokenHash: tokenHash ? `${tokenHash.substring(0, 20)}...` : null, 
+    type,
+    allParams: Object.fromEntries(url.searchParams.entries())
+  });
 
   // Если есть token или token_hash в query (формат ссылок Supabase)
   if ((token || tokenHash) && type === "signup") {
