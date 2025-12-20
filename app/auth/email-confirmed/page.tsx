@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, X } from "lucide-react";
 
 export default function EmailConfirmedPage() {
   const [loading, setLoading] = useState(true);
@@ -52,15 +52,37 @@ export default function EmailConfirmedPage() {
     run();
   }, []);
 
+  const handleClose = () => {
+    // Пытаемся закрыть окно, если оно было открыто через window.open
+    if (window.opener) {
+      window.close();
+    } else {
+      // Если не можем закрыть, редиректим на главную или регистрацию
+      window.location.href = '/register';
+    }
+  };
+
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
       <div 
-        className="max-w-md w-full rounded-2xl border px-8 py-10 text-center shadow-lg"
+        className="relative max-w-md w-full rounded-2xl border px-8 py-10 text-center shadow-lg"
         style={{
           backgroundColor: 'var(--email-confirmed-card-bg)',
           borderColor: 'var(--email-confirmed-border)',
         }}
       >
+        {/* Кнопка закрытия */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          style={{
+            color: 'var(--email-confirmed-muted)',
+          }}
+          aria-label="Закрыть"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
         <div className="flex justify-center mb-4">
           <div 
             className="flex h-16 w-16 items-center justify-center rounded-full"
