@@ -22,12 +22,18 @@ export async function GET(request: Request) {
   });
 
   // Если есть token или token_hash в query (формат ссылок Supabase)
-  if ((token || tokenHash) && type === "signup") {
+  // Пробуем обработать как signup, даже если type не указан явно
+  if (token || tokenHash) {
     try {
       const supabase = await createServerSupabaseClient();
+      // Пробуем использовать type из URL, если не указан - используем 'signup'
+      const otpType = (type === "signup" || !type) ? 'signup' : type;
+      
+      console.log("[auth/confirm] Attempting verifyOtp with type:", otpType);
+      
       const { data, error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash || token || "",
-        type: 'signup',
+        type: otpType as any,
       });
 
       if (error) {

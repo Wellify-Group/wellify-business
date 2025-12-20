@@ -84,9 +84,14 @@ function EmailConfirmedContent() {
         const typeParam = searchParams?.get("type");
         
         if (codeParam || tokenParam || tokenHashParam) {
-          console.log("[email-confirmed] Found confirmation params in URL, but status not set. Redirecting to /auth/confirm");
+          console.log("[email-confirmed] Found confirmation params in URL, redirecting to /auth/confirm for processing");
           // Редиректим на /auth/confirm для обработки
-          router.push(`/auth/confirm?${new URLSearchParams(searchParams?.toString() || "").toString()}`);
+          const confirmUrl = new URL("/auth/confirm", window.location.origin);
+          if (codeParam) confirmUrl.searchParams.set("code", codeParam);
+          if (tokenParam) confirmUrl.searchParams.set("token", tokenParam);
+          if (tokenHashParam) confirmUrl.searchParams.set("token_hash", tokenHashParam);
+          if (typeParam) confirmUrl.searchParams.set("type", typeParam);
+          window.location.href = confirmUrl.toString();
           return;
         }
         
