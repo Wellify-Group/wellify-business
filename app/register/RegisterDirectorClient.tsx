@@ -427,7 +427,7 @@ export default function RegisterDirectorClient() {
           }
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
         console.log("[register] Realtime channel status:", status);
         if (status === 'SUBSCRIBED') {
           console.log("[register] Successfully subscribed to profiles Realtime channel");
