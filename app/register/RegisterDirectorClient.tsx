@@ -343,6 +343,36 @@ export default function RegisterDirectorClient() {
     setMaxStepReached(4);
   };
 
+  // ---------- Проверка при монтировании, если email уже подтвержден ----------
+  // Если пользователь вернулся на страницу после подтверждения email
+  useEffect(() => {
+    if (emailStatus !== "link_sent") return;
+    if (!registeredUserId) return;
+    if (emailVerified) return; // Уже подтвержден
+    
+    // Проверяем сразу при монтировании, если на шаге 2
+    const checkInitialStatus = async () => {
+      try {
+        const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && (data.emailConfirmed || data.emailVerified)) {
+            console.log("[register] Email already verified on mount, transitioning to step 3");
+            setEmailStatus("verified");
+            setEmailVerified(true);
+            setStep(3);
+            setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+          }
+        }
+      } catch (e) {
+        console.error("[register] Initial check error", e);
+      }
+    };
+    
+    checkInitialStatus();
+  }, [emailStatus, registeredUserId, emailVerified]);
+
   // ---------- слушатель изменений состояния аутентификации ----------
   // Реагирует на подтверждение email в других вкладках через onAuthStateChange
   // Это обеспечивает синхронизацию между вкладками через cookies/session
@@ -471,13 +501,24 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
-        // !!! КРИТИЧНО: ЛОГИКА ПОДТВЕРЖДЕНИЯ EMAIL - НЕ МЕНЯЕМ !!!
-        if (data.success && data.emailConfirmed) {
+        // Проверяем emailConfirmed (из Auth) ИЛИ emailVerified (из профиля)
+        // emailVerified из профиля - это основной индикатор, т.к. он устанавливается после подтверждения
+        const isVerified = data.success && (data.emailConfirmed || data.emailVerified);
+        
+        console.log("[register] Polling check result:", {
+          success: data.success,
+          emailConfirmed: data.emailConfirmed,
+          emailVerified: data.emailVerified,
+          isVerified,
+        });
+
+        if (isVerified) {
+          console.log("[register] Email verified via polling, transitioning to step 3");
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
 
-          setStep(3); // ОСТАВЛЯЕМ ПЕРЕХОД НА ШАГ 3 (для Dev, где он работает)
+          setStep(3);
           setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
 
           if (intervalId) {
@@ -490,7 +531,8 @@ export default function RegisterDirectorClient() {
       }
     };
 
-    const initial = setTimeout(check, 3000);
+    // Первая проверка сразу, затем каждые 1.5 секунды
+    check(); // Проверяем сразу
     intervalId = setInterval(check, 1500);
 
     return () => {

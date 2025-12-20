@@ -97,7 +97,13 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json(
-      { success: true, emailConfirmed, emailVerified: emailVerifiedInProfile },
+      { 
+        success: true, 
+        emailConfirmed, 
+        emailVerified: emailVerifiedInProfile,
+        // Для обратной совместимости
+        emailConfirmedInAuth: emailConfirmedInAuth,
+      },
       { status: 200 }
     );
   } catch (err: any) {
