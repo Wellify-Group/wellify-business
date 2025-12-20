@@ -4,6 +4,7 @@
 
 import { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   CardHeader,
@@ -23,6 +24,8 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -57,6 +60,7 @@ export default function RegisterDirectorClient() {
   });
 
   const [email, setEmail] = useState("");
+  const [emailExistsError, setEmailExistsError] = useState(false);
 
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -76,6 +80,9 @@ export default function RegisterDirectorClient() {
   >("idle");
   const [emailVerified, setEmailVerified] = useState(false);
 
+  // Показ/скрытие пароля
+  const [showPassword, setShowPassword] = useState(false);
+
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
   const localeForAPI =
@@ -91,6 +98,7 @@ export default function RegisterDirectorClient() {
 
   const handleNextFromStep1 = () => {
     setRegisterError(null);
+    setEmailExistsError(false);
 
     if (!personal.firstName.trim() || !personal.lastName.trim()) {
       setRegisterError("Укажите имя и фамилию директора.");
@@ -113,6 +121,7 @@ export default function RegisterDirectorClient() {
     }
 
     setRegisterError(null);
+    setEmailExistsError(false);
     setStep(2);
     setMaxStepReached((prev) => (prev < 2 ? 2 : prev));
   };
@@ -126,6 +135,7 @@ export default function RegisterDirectorClient() {
     if (emailStatus === "sending" || emailStatus === "link_sent") return;
 
     setRegisterError(null);
+    setEmailExistsError(false);
 
     if (!email.trim()) {
       setRegisterError("Укажите рабочий e-mail.");
@@ -197,12 +207,18 @@ export default function RegisterDirectorClient() {
         if (
           msg.includes("already") ||
           msg.includes("exists") ||
-          msg.includes("registered")
+          msg.includes("registered") ||
+          msg.includes("user already registered") ||
+          msg.includes("email already exists")
         ) {
+          setEmailExistsError(true);
           setRegisterError(
-            "Этот e-mail уже зарегистрирован. Попробуйте войти в систему."
+            "Этот e-mail уже зарегистрирован."
           );
+          // Блокируем переход на следующие шаги
+          setMaxStepReached(2);
         } else {
+          setEmailExistsError(false);
           setRegisterError(
             error.message ||
               "Не удалось отправить письмо. Попробуйте ещё раз позже."
@@ -494,7 +510,6 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Иван"
               value={personal.firstName}
               onChange={handlePersonalChange("firstName")}
             />
@@ -509,7 +524,6 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Александрович"
               value={personal.middleName}
               onChange={handlePersonalChange("middleName")}
             />
@@ -524,7 +538,6 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Петров"
               value={personal.lastName}
               onChange={handlePersonalChange("lastName")}
             />
@@ -561,13 +574,25 @@ export default function RegisterDirectorClient() {
               <Lock className="h-4 w-4 text-zinc-500" />
             </div>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Минимум 8 символов"
+              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              placeholder="От 8 символов"
               value={personal.password}
               onChange={handlePersonalChange("password")}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-3 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -577,7 +602,7 @@ export default function RegisterDirectorClient() {
           </label>
           <div className="relative">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
               placeholder="Повторите пароль"
@@ -603,26 +628,68 @@ export default function RegisterDirectorClient() {
           <input
             type="email"
             autoComplete="email"
-            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+            className={`
+              h-10 w-full rounded-2xl border bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors
+              ${emailExistsError 
+                ? "border-rose-600/80 focus:border-rose-500" 
+                : "border-zinc-800/80 focus:border-[var(--accent-primary,#3b82f6)]"
+              }
+            `}
             placeholder="you@business.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailExistsError) {
+                setEmailExistsError(false);
+                setRegisterError(null);
+              }
+            }}
           />
         </div>
+        {emailExistsError && (
+          <p className="text-xs text-rose-400 mt-1">
+            Этот e-mail уже зарегистрирован.
+          </p>
+        )}
       </div>
 
+      {emailExistsError && (
+        <div className="mt-2 flex flex-col gap-2 text-xs">
+          <p className="text-zinc-400">
+            Вы можете войти в аккаунт или восстановить пароль.
+          </p>
+          <div className="flex gap-3">
+            <Link
+              href="/login"
+              className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
+            >
+              Войти
+            </Link>
+            <span className="text-zinc-600">•</span>
+            <Link
+              href="/forgot-password"
+              className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
+            >
+              Забыли пароль?
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="mt-2 flex flex-col gap-1 text-xs text-zinc-500">
-        <p>
-          Этот адрес будет использоваться для входа, уведомлений по сменам и
-          восстановления доступа.
-        </p>
-        {emailStatus === "link_sent" && (
+        {!emailExistsError && (
+          <p>
+            Этот адрес будет использоваться для входа, уведомлений по сменам и
+            восстановления доступа.
+          </p>
+        )}
+        {emailStatus === "link_sent" && !emailExistsError && (
           <p className="text-emerald-400">
             Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
             после чего мы автоматически продолжим регистрацию.
           </p>
         )}
-        {emailStatus === "verified" && (
+        {emailStatus === "verified" && !emailExistsError && (
           <p className="text-emerald-400">
             E-mail подтвержден. Можно переходить к шагу Telegram.
           </p>
@@ -695,8 +762,8 @@ export default function RegisterDirectorClient() {
   // ---------- main render ----------
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-background px-4 pt-28 pb-10">
-      <div className="relative w-full max-w-3xl">
+    <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
+      <div className="relative w-full max-w-xl">
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
@@ -751,7 +818,7 @@ export default function RegisterDirectorClient() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
               )}
-              {step === 2 && (
+              {step === 2 && !emailExistsError && (
                 <button
                   type="button"
                   onClick={() => {
@@ -775,7 +842,10 @@ export default function RegisterDirectorClient() {
                       Отправляем...
                     </>
                   ) : emailStatus === "link_sent" ? (
-                    <>Ждём подтверждения…</>
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Ожидание...
+                    </>
                   ) : (
                     <>
                       Далее
