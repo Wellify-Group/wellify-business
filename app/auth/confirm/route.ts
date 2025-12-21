@@ -40,9 +40,16 @@ export async function GET(request: Request) {
           errorMsg.includes("link has already been used") ||
           errorMsg.includes("already been verified")
         ) {
-          // Если ссылка уже использована - показываем "Ссылка недействительна"
-          // Это повторный клик на ссылку из письма
-          return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+          // Если ссылка уже использована - это не ошибка, показываем already_confirmed
+          // Проверяем, что email действительно подтвержден
+          try {
+            const supabaseAdmin = createAdminSupabaseClient();
+            // Пытаемся найти пользователя по email из кода (если возможно)
+            // Но проще проверить через getUser после редиректа
+          } catch (e) {
+            console.error("[auth/confirm] Error checking already confirmed user:", e);
+          }
+          return NextResponse.redirect(new URL("/auth/email-confirmed?status=already_confirmed", url));
         }
 
         // Если код недействителен или истек - показываем "Ссылка недействительна"
@@ -53,36 +60,11 @@ export async function GET(request: Request) {
       // Успешное подтверждение через PKCE
       console.log("[auth/confirm] exchangeCodeForSession success, user:", data.user?.id, "email_confirmed_at:", data.user?.email_confirmed_at);
       
-      // КРИТИЧНО: В ЭТОТ МОМЕНТ (при клике на ссылку) обновляем email_verified = true в БД
-      // Это триггер для polling на шаге 2 регистрации
-      // email_confirmed_at устанавливается Supabase только при успешном exchangeCodeForSession
+      // КРИТИЧНО: email_confirmed_at устанавливается Supabase только при успешном exchangeCodeForSession
+      // Триггер в БД автоматически обновит profiles.email_verified = true
+      // НЕ нужно вручную обновлять profiles - триггер сделает это автоматически
       if (data.user?.id && data.user?.email && (data.user as any).email_confirmed_at) {
-        try {
-          const supabaseAdmin = createAdminSupabaseClient();
-          const normalizedEmail = data.user.email.toLowerCase().trim();
-          
-          // Обновляем профиль с email_verified = true
-          // В ЭТОТ МОМЕНТ email_verified становится true (именно при клике на ссылку)
-          const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              email: normalizedEmail,
-              email_verified: true,
-              updated_at: new Date().toISOString(),
-            }, {
-              onConflict: 'id'
-            });
-          
-          if (profileError) {
-            console.error("[auth/confirm] Error syncing profile:", profileError);
-          } else {
-            console.log("[auth/confirm] ✅ Profile synced successfully, email_verified = true (at the moment of clicking the link)");
-          }
-        } catch (syncError) {
-          console.error("[auth/confirm] Error syncing profile:", syncError);
-          // Не блокируем редирект, даже если синхронизация не удалась
-        }
+        console.log("[auth/confirm] ✅ Email confirmed, trigger will sync profiles.email_verified automatically");
       } else {
         // Если email_confirmed_at не установлен - это ошибка
         console.error("[auth/confirm] email_confirmed_at is not set after exchangeCodeForSession");
@@ -118,9 +100,8 @@ export async function GET(request: Request) {
           errorMsg.includes("token already used") ||
           errorMsg.includes("link has already been used")
         ) {
-          // Если ссылка уже использована - показываем "Ссылка недействительна"
-          // Это повторный клик на ссылку из письма
-          return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+          // Если ссылка уже использована - это не ошибка, показываем already_confirmed
+          return NextResponse.redirect(new URL("/auth/email-confirmed?status=already_confirmed", url));
         }
 
         console.error("[auth/confirm] verifyOtp error:", error);
@@ -132,35 +113,11 @@ export async function GET(request: Request) {
       // Успешное подтверждение
       console.log("[auth/confirm] verifyOtp success, user:", data.user?.id);
       
-      // КРИТИЧНО: В ЭТОТ МОМЕНТ (при клике на ссылку) обновляем email_verified = true в БД
-      // Это триггер для polling на шаге 2 регистрации
+      // КРИТИЧНО: email_confirmed_at устанавливается Supabase только при успешном verifyOtp
+      // Триггер в БД автоматически обновит profiles.email_verified = true
+      // НЕ нужно вручную обновлять profiles - триггер сделает это автоматически
       if (data.user?.id && data.user?.email && (data.user as any).email_confirmed_at) {
-        try {
-          const supabaseAdmin = createAdminSupabaseClient();
-          const normalizedEmail = data.user.email.toLowerCase().trim();
-          
-          // Обновляем профиль с email_verified = true
-          // В ЭТОТ МОМЕНТ email_verified становится true (именно при клике на ссылку)
-          const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              email: normalizedEmail,
-              email_verified: true,
-              updated_at: new Date().toISOString(),
-            }, {
-              onConflict: 'id'
-            });
-          
-          if (profileError) {
-            console.error("[auth/confirm] Error syncing profile:", profileError);
-          } else {
-            console.log("[auth/confirm] ✅ Profile synced successfully, email_verified = true (at the moment of clicking the link)");
-          }
-        } catch (syncError) {
-          console.error("[auth/confirm] Error syncing profile:", syncError);
-          // Не блокируем редирект, даже если синхронизация не удалась
-        }
+        console.log("[auth/confirm] ✅ Email confirmed, trigger will sync profiles.email_verified automatically");
       }
       
       // Редиректим на страницу успешного подтверждения

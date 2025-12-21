@@ -86,6 +86,7 @@ export default function RegisterDirectorClient() {
 
   // Показ/скрытие пароля
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
@@ -267,7 +268,7 @@ export default function RegisterDirectorClient() {
           // Пользователь может ввести другую почту и отправить письмо снова
           setEmailExistsError(true);
           setRegisterError(
-            "Этот e-mail уже зарегистрирован. Введите другую почту или войдите в существующий аккаунт."
+            "Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль."
           );
           // Блокируем переход на следующие шаги
           setMaxStepReached(2);
@@ -289,6 +290,18 @@ export default function RegisterDirectorClient() {
         setRegisterError(
           "Не удалось создать учетную запись. Попробуйте ещё раз."
         );
+        return;
+      }
+
+      // Проверка: если data.user.identities пустой массив - это кейс "уже зарегистрирован"
+      if (data.user.identities && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        console.log("[register] User exists but has no identities - email already registered");
+        setEmailExistsError(true);
+        setRegisterError(
+          "Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль."
+        );
+        setMaxStepReached(2);
+        setEmailStatus("idle");
         return;
       }
 
@@ -614,9 +627,9 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
-        // КРИТИЧНО: Проверяем ТОЛЬКО emailConfirmed из Auth (email_confirmed_at)
+        // КРИТИЧНО: Проверяем emailConfirmed из Auth (email_confirmed_at) - единственный источник истины
         // email_confirmed_at устанавливается Supabase ТОЛЬКО при клике на ссылку из письма
-        // emailVerified из профиля может быть установлен ошибочно, поэтому не полагаемся на него
+        // profiles.email_verified синхронизируется триггером из email_confirmed_at, но проверяем только email_confirmed_at
         const isVerified = data.success && data.emailConfirmed === true;
         
         console.log("[register] Polling check result:", {
@@ -962,13 +975,25 @@ export default function RegisterDirectorClient() {
           </label>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPasswordConfirm ? "text" : "password"}
               autoComplete="new-password"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
               placeholder="Повторите пароль"
               value={personal.passwordConfirm}
               onChange={handlePersonalChange("passwordConfirm")}
             />
+            <button
+              type="button"
+              onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+              className="absolute inset-y-0 right-3 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors"
+              tabIndex={-1}
+            >
+              {showPasswordConfirm ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -1008,19 +1033,16 @@ export default function RegisterDirectorClient() {
         </div>
         {emailExistsError && (
           <p className="text-xs text-rose-400 mt-1">
-            Этот e-mail уже зарегистрирован. Введите другую почту.
+            Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.
           </p>
         )}
       </div>
 
       {emailExistsError && (
-        <div className="mt-2 flex flex-col gap-2 text-xs">
-          <p className="text-zinc-400">
-            Вы можете войти в аккаунт или восстановить пароль.
-          </p>
+        <div className="mt-3 flex flex-col gap-2 text-xs">
           <div className="flex gap-3">
             <Link
-              href="/login"
+              href="/auth/login"
               className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
             >
               Войти
@@ -1152,7 +1174,7 @@ export default function RegisterDirectorClient() {
 
   return (
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
-      <div className="relative w-full max-w-xl">
+      <div className="relative w-full max-w-[640px]">
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
