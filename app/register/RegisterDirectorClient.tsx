@@ -108,36 +108,37 @@ export default function RegisterDirectorClient() {
       setRegisteredUserEmail(savedEmail);
       setEmail(savedEmail);
       
-      // Если письмо было отправлено, восстанавливаем статус
-      if (emailStatus === "idle") {
-        setEmailStatus("link_sent");
-        setStep(2);
-        setMaxStepReached(2);
-      }
+      // Восстанавливаем статус "link_sent" чтобы запустить polling
+      setEmailStatus("link_sent");
+      setStep(2);
+      setMaxStepReached(2);
       
-      // Если email уже подтвержден, переходим на шаг 3
-      if (emailConfirmedFlag === "true") {
-        // Проверяем через API для надежности
-        const checkStatus = async () => {
-          try {
-            const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(savedUserId)}`;
-            const res = await fetch(url);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success && (data.emailConfirmed || data.emailVerified)) {
-                console.log("[register] Email confirmed on restore, transitioning to step 3");
-                setEmailStatus("verified");
-                setEmailVerified(true);
-                setStep(3);
-                setMaxStepReached(3);
-              }
+      // Немедленно проверяем статус через API
+      const checkStatusImmediately = async () => {
+        try {
+          const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(savedUserId)}`;
+          const res = await fetch(url, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            const isVerified = data.success && (data.emailVerified === true || data.emailConfirmed === true);
+            
+            if (isVerified) {
+              console.log("[register] ✅ Email already verified on restore, transitioning to step 3");
+              setEmailStatus("verified");
+              setEmailVerified(true);
+              setStep(3);
+              setMaxStepReached(3);
+            } else {
+              console.log("[register] Email not verified yet, polling will continue");
             }
-          } catch (e) {
-            console.error("[register] Restore check error", e);
           }
-        };
-        checkStatus();
-      }
+        } catch (e) {
+          console.error("[register] Restore check error", e);
+        }
+      };
+      
+      // Проверяем сразу
+      checkStatusImmediately();
     }
   }, []); // Только при монтировании
 
@@ -314,6 +315,28 @@ export default function RegisterDirectorClient() {
       }
 
       setEmailStatus("link_sent");
+      
+      // Немедленно запускаем проверку статуса (polling запустится автоматически через useEffect)
+      // Но также делаем первую проверку сразу для быстрого обнаружения подтверждения
+      setTimeout(async () => {
+        try {
+          const checkUrl = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(data.user.id)}`;
+          const checkRes = await fetch(checkUrl, { cache: 'no-store' });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            const isVerified = checkData.success && (checkData.emailVerified === true || checkData.emailConfirmed === true);
+            if (isVerified) {
+              console.log("[register] ✅ Email already verified immediately after signup!");
+              setEmailStatus("verified");
+              setEmailVerified(true);
+              setStep(3);
+              setMaxStepReached(3);
+            }
+          }
+        } catch (e) {
+          console.error("[register] Immediate check error", e);
+        }
+      }, 500); // Небольшая задержка для того, чтобы триггер успел обновить email_verified
     } catch (err) {
       console.error("[register] handleSendEmailLink error", err);
       setEmailStatus("error");
@@ -682,71 +705,99 @@ export default function RegisterDirectorClient() {
     };
   }, [emailStatus, registeredUserId, supabase]);
 
-  // ---------- polling e-mail confirmation (fallback) ----------
-  // Проверяем email_verified в БД через API как резервный механизм
+  // ---------- polling e-mail confirmation (основной механизм) ----------
+  // Проверяем email_verified в БД через API - это основной способ отслеживания подтверждения
   useEffect(() => {
+    // Запускаем polling только если письмо отправлено и есть userId
     if (emailStatus !== "link_sent") return;
     if (!registeredUserId) return;
     
-    // Если email уже подтвержден, не нужен polling
-    if (emailVerified) return;
+    // Если email уже подтвержден, останавливаем polling
+    if (emailVerified) {
+      console.log("[register] Email already verified, stopping polling");
+      return;
+    }
+
+    console.log("[register] Starting email confirmation polling for userId:", registeredUserId);
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
 
     const check = async () => {
-      if (cancelled) return;
+      if (cancelled) {
+        console.log("[register] Polling cancelled, stopping check");
+        return;
+      }
 
       try {
-        // Используем userId (предпочтительно) вместо email
+        // Используем userId для проверки статуса
         const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
-        const res = await fetch(url);
+        const res = await fetch(url, {
+          cache: 'no-store', // Отключаем кеш для актуальных данных
+        });
 
         if (!res.ok) {
+          console.warn("[register] Polling check failed, status:", res.status);
           return;
         }
 
         const data = await res.json();
 
-        // Проверяем emailConfirmed (из Auth) ИЛИ emailVerified (из профиля)
-        // emailVerified из профиля - это основной индикатор, т.к. он устанавливается после подтверждения
-        const isVerified = data.success && (data.emailConfirmed || data.emailVerified);
+        // Проверяем emailVerified из профиля (основной индикатор) ИЛИ emailConfirmed из Auth
+        // emailVerified из профиля устанавливается триггером после подтверждения email
+        const isVerified = data.success && (data.emailVerified === true || data.emailConfirmed === true);
         
         console.log("[register] Polling check result:", {
           success: data.success,
           emailConfirmed: data.emailConfirmed,
           emailVerified: data.emailVerified,
           isVerified,
+          userId: registeredUserId,
         });
 
-        if (isVerified) {
-          console.log("[register] Email verified via polling, transitioning to step 3");
+        if (isVerified && !cancelled) {
+          console.log("[register] ✅ Email verified via polling! Transitioning to step 3");
+          
+          // Обновляем состояние
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
 
+          // Переходим на шаг 3 (Telegram)
           setStep(3);
           setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
 
+          // Останавливаем polling
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
+          
+          // Очищаем флаг из localStorage, так как он больше не нужен
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("wellify_email_confirmed");
+          }
         }
       } catch (e) {
-        console.error("[register] check-email-confirmed error", e);
+        console.error("[register] Polling check error:", e);
       }
     };
 
-    // Первая проверка сразу, затем каждые 1.5 секунды
-    check(); // Проверяем сразу
+    // Первая проверка сразу (без задержки)
+    check();
+    
+    // Затем проверяем каждые 1.5 секунды
     intervalId = setInterval(check, 1500);
 
     return () => {
+      console.log("[register] Cleaning up polling");
       cancelled = true;
-      if (intervalId) clearInterval(intervalId);
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
     };
-  }, [emailStatus, registeredUserId, emailVerified]); // Добавили emailVerified в зависимости
+  }, [emailStatus, registeredUserId, emailVerified]);
 
   // ---------- render helpers ----------
 
