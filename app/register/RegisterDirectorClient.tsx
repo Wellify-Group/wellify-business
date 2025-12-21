@@ -209,13 +209,12 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      // ВАЖНО: emailRedirectTo должен указывать на роут, который обрабатывает код подтверждения
+      // ВАЖНО: emailRedirectTo должен указывать на роут согласно INTERNAL_RULES.md
       // По INTERNAL_RULES.md: options.emailRedirectTo должен быть `/email-confirmed`
-      // Но мы используем /auth/confirm для обработки кода, затем редирект на /auth/email-confirmed
       // КРИТИЧНО: emailRedirectTo должен быть абсолютным URL и должен быть в whitelist в Supabase Dashboard
       const redirectTo = typeof window !== "undefined"
-        ? `${window.location.origin}/auth/confirm`
-        : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/auth/confirm`;
+        ? `${window.location.origin}/email-confirmed`
+        : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/email-confirmed`;
 
       console.log("[register] Attempting signUp with:", {
         email: email.trim(),
@@ -294,9 +293,10 @@ export default function RegisterDirectorClient() {
       
       // Немедленно запускаем проверку статуса (polling запустится автоматически через useEffect)
       // Но также делаем первую проверку сразу для быстрого обнаружения подтверждения
+      // По INTERNAL_RULES.md: используется email для polling
       setTimeout(async () => {
         try {
-          const checkUrl = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(data.user.id)}`;
+          const checkUrl = `/api/auth/check-email-confirmed?email=${encodeURIComponent(email.trim())}`;
           const checkRes = await fetch(checkUrl, { cache: 'no-store' });
           if (checkRes.ok) {
             const checkData = await checkRes.json();
@@ -577,8 +577,8 @@ export default function RegisterDirectorClient() {
       }
 
       try {
-        // Используем userId для проверки статуса
-        const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
+        // По INTERNAL_RULES.md: используется email для polling
+        const url = `/api/auth/check-email-confirmed?email=${encodeURIComponent(registeredUserEmail || email.trim())}`;
         const res = await fetch(url, {
           cache: 'no-store', // Отключаем кеш для актуальных данных
         });

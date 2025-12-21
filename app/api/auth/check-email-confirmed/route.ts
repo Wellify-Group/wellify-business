@@ -32,17 +32,40 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
+    const email = searchParams.get('email');
 
-    if (!userId) {
+    // Поддерживаем оба параметра: userId (приоритет) или email
+    if (!userId && !email) {
       return NextResponse.json(
-        { success: false, emailConfirmed: false, error: 'userId_required' },
+        { success: false, emailConfirmed: false, error: 'userId_or_email_required' },
         { status: 400 }
       );
     }
 
-    // Используем getUserById (надежный метод, не зависит от поиска по email)
-    const { data: userData, error: getUserError } =
-      await supabaseAdmin.auth.admin.getUserById(userId);
+    let userData;
+    let getUserError;
+
+    if (userId) {
+      // Используем getUserById (надежный метод, не зависит от поиска по email)
+      const result = await supabaseAdmin.auth.admin.getUserById(userId);
+      userData = result.data;
+      getUserError = result.error;
+    } else if (email) {
+      // Ищем пользователя по email
+      const normalizedEmail = email.toLowerCase().trim();
+      const result = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (result.error) {
+        getUserError = result.error;
+      } else {
+        const user = result.data.users.find(u => u.email?.toLowerCase().trim() === normalizedEmail);
+        if (user) {
+          userData = { user };
+        } else {
+          getUserError = { message: 'user_not_found' };
+        }
+      }
+    }
 
     if (getUserError) {
       console.error('[check-email-confirmed] getUserById error:', getUserError.message);
@@ -73,7 +96,7 @@ export async function GET(req: Request) {
       const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('email_verified')
-        .eq('id', userId)
+        .eq('id', user.id)
         .maybeSingle();
       
       emailVerifiedInProfile = Boolean(profile?.email_verified);

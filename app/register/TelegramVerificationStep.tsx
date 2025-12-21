@@ -26,7 +26,8 @@ type SessionStatus = {
 };
 
 // TELEGRAM_API_URL is server-only, use API routes instead
-// This component should use /api/telegram/link-session and /api/telegram/session-status endpoints
+// This component should use /api/telegram/create-session and /api/telegram/session-status endpoints
+// По INTERNAL_RULES.md: используется /api/telegram/create-session
 
 export function TelegramVerificationStep({
   onVerified,
@@ -58,7 +59,8 @@ export function TelegramVerificationStep({
         setLoading(true);
         setError(null);
 
-        const resp = await fetch("/api/telegram/link-session", {
+        // По INTERNAL_RULES.md: используется /api/telegram/create-session
+        const resp = await fetch("/api/telegram/create-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, email, language }),
@@ -80,7 +82,7 @@ export function TelegramVerificationStep({
         setTelegramLink(json.telegramLink);
         setPolling(true);
       } catch (e) {
-        console.error("[telegram] link-session error", e);
+        console.error("[telegram] create-session error", e);
         setError(t<string>("register_error_internal"));
       } finally {
         setLoading(false);
