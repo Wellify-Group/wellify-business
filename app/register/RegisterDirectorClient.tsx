@@ -1,10 +1,9 @@
-// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД)
+// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД - ИСПРАВЛЕНИЕ ОШИБКИ ССЫЛКИ)
 
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Card,
   CardHeader,
@@ -24,13 +23,10 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle2,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -60,15 +56,11 @@ export default function RegisterDirectorClient() {
   });
 
   const [email, setEmail] = useState("");
-  const [emailExistsError, setEmailExistsError] = useState(false);
 
   const [registerError, setRegisterError] = useState<string | null>(null);
 
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
   const [registeredUserEmail, setRegisteredUserEmail] = useState<string | null>(
-    null
-  );
-  const [registeredUserPhone, setRegisteredUserPhone] = useState<string | null>(
     null
   );
 
@@ -80,52 +72,10 @@ export default function RegisterDirectorClient() {
   >("idle");
   const [emailVerified, setEmailVerified] = useState(false);
 
-  // Шаг 4: состояние готовности данных
-  const [step4DataReady, setStep4DataReady] = useState(false);
-  const [step4Polling, setStep4Polling] = useState(false);
-
-  // Показ/скрытие пароля
-  const [showPassword, setShowPassword] = useState(false);
-
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
   const localeForAPI =
     language === "ua" ? "uk" : (language as "ru" | "uk" | "en" | string);
-
-  // Функция для сброса регистрации
-  const resetRegistration = () => {
-    console.log("[register] Resetting registration");
-    setRegisteredUserId(null);
-    setRegisteredUserEmail(null);
-    setRegisteredUserPhone(null);
-    setEmail("");
-    setEmailStatus("idle");
-    setEmailVerified(false);
-    setStep(1);
-    setMaxStepReached(1);
-    setRegisterError(null);
-    setEmailExistsError(false);
-    
-    // Очищаем localStorage
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("wellify_registration_userId");
-      localStorage.removeItem("wellify_registration_email");
-      localStorage.removeItem("wellify_email_confirmed");
-    }
-  };
-
-  // ---------- Очистка localStorage при монтировании (сброс при обновлении страницы) ----------
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    // При обновлении страницы очищаем все данные регистрации из localStorage
-    // Это обеспечивает полный сброс при обновлении страницы
-    localStorage.removeItem("wellify_registration_userId");
-    localStorage.removeItem("wellify_registration_email");
-    localStorage.removeItem("wellify_email_confirmed");
-    
-    console.log("[register] Page loaded - registration state reset");
-  }, []); // Только при монтировании
 
   // ---------- helpers ----------
 
@@ -137,7 +87,6 @@ export default function RegisterDirectorClient() {
 
   const handleNextFromStep1 = () => {
     setRegisterError(null);
-    setEmailExistsError(false);
 
     if (!personal.firstName.trim() || !personal.lastName.trim()) {
       setRegisterError("Укажите имя и фамилию директора.");
@@ -160,7 +109,6 @@ export default function RegisterDirectorClient() {
     }
 
     setRegisterError(null);
-    setEmailExistsError(false);
     setStep(2);
     setMaxStepReached((prev) => (prev < 2 ? 2 : prev));
   };
@@ -174,7 +122,6 @@ export default function RegisterDirectorClient() {
     if (emailStatus === "sending" || emailStatus === "link_sent") return;
 
     setRegisterError(null);
-    setEmailExistsError(false);
 
     if (!email.trim()) {
       setRegisterError("Укажите рабочий e-mail.");
@@ -213,27 +160,17 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      // ВАЖНО: emailRedirectTo должен указывать на роут согласно INTERNAL_RULES.md
-      // По INTERNAL_RULES.md: options.emailRedirectTo должен быть `/email-confirmed`
-      // КРИТИЧНО: emailRedirectTo должен быть абсолютным URL и должен быть в whitelist в Supabase Dashboard
-      const redirectTo = typeof window !== "undefined"
-        ? `${window.location.origin}/email-confirmed`
-        : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/email-confirmed`;
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/email-confirmed`
+          : `${
+              process.env.NEXT_PUBLIC_SITE_URL ?? "https://dev.wellifyglobal.com"
+            }/email-confirmed`;
 
-      console.log("[register] Attempting signUp with:", {
-        email: email.trim(),
-        redirectTo,
-        hasPassword: !!personal.password,
-      });
-
-      // КРИТИЧНО: Supabase отправляет письмо только если:
-      // 1. Email confirmation включен в настройках
-      // 2. emailRedirectTo добавлен в whitelist в Supabase Dashboard → Authentication → URL Configuration
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: email.trim(),
         password: personal.password,
         options: {
-          emailRedirectTo: redirectTo,
           data: {
             first_name: personal.firstName.trim(),
             last_name: personal.lastName.trim(),
@@ -242,14 +179,8 @@ export default function RegisterDirectorClient() {
             birth_date: personal.birthDate || null,
             locale: localeForAPI,
           },
+          emailRedirectTo: redirectTo,
         },
-      });
-
-      console.log("[register] signUp response:", {
-        hasUser: !!data?.user,
-        userId: data?.user?.id,
-        emailConfirmed: data?.user?.email_confirmed_at,
-        error: error?.message,
       });
 
       if (error) {
@@ -259,26 +190,12 @@ export default function RegisterDirectorClient() {
         if (
           msg.includes("already") ||
           msg.includes("exists") ||
-          msg.includes("registered") ||
-          msg.includes("user already registered") ||
-          msg.includes("email already exists")
+          msg.includes("registered")
         ) {
-          // Если email уже зарегистрирован - показываем уведомление
-          // Пользователь может ввести другую почту и отправить письмо снова
-          // Если email уже зарегистрирован - показываем уведомление
-          // Пользователь может ввести другую почту и отправить письмо снова
-          setEmailExistsError(true);
           setRegisterError(
-            "Этот e-mail уже зарегистрирован. Введите другую почту или войдите в существующий аккаунт."
+            "Этот e-mail уже зарегистрирован. Попробуйте войти в систему."
           );
-          // Блокируем переход на следующие шаги
-          setMaxStepReached(2);
-          // Сбрасываем статус, чтобы можно было ввести другую почту
-          setEmailStatus("idle");
-          // Сбрасываем статус, чтобы можно было ввести другую почту
-          setEmailStatus("idle");
         } else {
-          setEmailExistsError(false);
           setRegisterError(
             error.message ||
               "Не удалось отправить письмо. Попробуйте ещё раз позже."
@@ -296,27 +213,17 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      console.log("[register] SignUp successful, user created:", data.user.id);
-      
       // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНЫЙ ВЫХОД ПОСЛЕ SIGNUP !!!
       // Это предотвратит ошибку "Ссылка недействительна" при клике на письмо
-      // Supabase автоматически создает сессию после signUp, что вызывает race condition
-      // при клике по ссылке подтверждения. Принудительный выход решает эту проблему.
       if (data?.user) {
         await supabase.auth.signOut();
-        console.log("[register] ✅ Signed out after signUp to prevent race condition");
       }
       // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
 
       setRegisteredUserId(data.user.id);
       setRegisteredUserEmail(data.user.email ?? email.trim());
 
-      // НЕ сохраняем в localStorage - при обновлении страницы все должно сброситься
       setEmailStatus("link_sent");
-      
-      // КРИТИЧНО: НЕ проверяем email_verified сразу после signUp
-      // email_verified должен быть FALSE до момента клика на ссылку в письме
-      // Polling запустится автоматически через useEffect и будет проверять каждые 1.5 секунды
     } catch (err) {
       console.error("[register] handleSendEmailLink error", err);
       setEmailStatus("error");
@@ -343,87 +250,53 @@ export default function RegisterDirectorClient() {
       setIsSubmitting(true);
       setRegisterError(null);
 
-      // По INTERNAL_RULES.md: проверяем наличие сессии пользователя
-      let session = (await supabase.auth.getSession()).data.session;
-      
-      // Если нет сессии, восстанавливаем через signInWithPassword
-      if (!session && registeredUserEmail && personal.password) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: registeredUserEmail,
-          password: personal.password,
-        });
-
-        if (signInError) {
-          console.warn("[register] signIn error", signInError);
-          setRegisterError(
-            "Не удалось восстановить сессию. Попробуйте войти вручную."
-          );
-          return;
-        }
-
-        session = signInData?.session || null;
-      }
-
-      if (!session) {
-        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
-        return;
-      }
-
-      // По INTERNAL_RULES.md: загружаем профиль из БД через /api/auth/load-profile
-      const res = await fetch('/api/auth/load-profile', {
-        credentials: 'include',
-        cache: 'no-store',
-      });
-
-      // По INTERNAL_RULES.md: обработка 401 - показываем ошибку
-      if (res.status === 401) {
-        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
-        return;
-      }
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("[register] Load profile error:", res.status, errorData);
+      if (!emailVerified || !registeredUserEmail) {
         setRegisterError(
-          "Не удалось загрузить данные профиля. Попробуйте позже."
+          "E-mail должен быть подтвержден по ссылке из письма, прежде чем завершать регистрацию."
         );
         return;
       }
 
-      const data = await res.json();
+      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request: ГАРАНТИРУЕМ null для необязательных полей !!!
+      const payload = {
+        email: registeredUserEmail,
+        password: personal.password,
+        firstName: personal.firstName.trim(),
+        lastName: personal.lastName.trim(),
+        middleName: personal.middleName.trim() || null, // ГАРАНТИРУЕМ null
+        birthDate: personal.birthDate || null, // ГАРАНТИРУЕМ null
+        locale: localeForAPI,
+      };
+      // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
 
-      if (!data.success || !data.user) {
-        setRegisterError("Профиль не найден. Попробуйте войти заново.");
+      const res = await fetch("/api/auth/register-director", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        const msg =
+          data?.message ||
+          data?.error ||
+          "Не удалось завершить регистрацию директора.";
+        setRegisterError(msg);
         return;
       }
 
-      const profile = data.user;
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: registeredUserEmail,
+        password: personal.password,
+      });
 
-      // По INTERNAL_RULES.md: проверяем два условия
-      // Условие 1: phone должен быть заполнен
-      if (!profile?.phone || profile.phone.trim() === "") {
-        setRegisterError("Номер телефона не подтвержден. Пожалуйста, завершите верификацию Telegram.");
+      if (signInError) {
+        console.warn("[register] signIn error", signInError);
+        setRegisterError(
+          "Аккаунт создан, но не удалось выполнить вход. Попробуйте войти вручную."
+        );
         return;
-      }
-
-      // Условие 2: telegram_verified должен быть true
-      const isTelegramVerified = profile?.telegram_verified === true || 
-                                 profile?.telegram_verified === "true" || 
-                                 profile?.telegram_verified === 1;
-      
-      if (!isTelegramVerified) {
-        setRegisterError("Telegram не подтвержден. Пожалуйста, завершите верификацию Telegram.");
-        return;
-      }
-
-      // По INTERNAL_RULES.md: если оба условия выполнены → переход в дашборд
-      console.log("[register] ✅ All conditions met, redirecting to dashboard");
-      
-      // Очищаем localStorage после успешной регистрации
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("wellify_registration_userId");
-        localStorage.removeItem("wellify_registration_email");
-        localStorage.removeItem("wellify_email_confirmed");
       }
 
       router.push("/dashboard/director");
@@ -437,362 +310,66 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  const handleTelegramVerified = async (phone?: string) => {
-    // Сохраняем phone если передан
-    if (phone) {
-      setRegisteredUserPhone(phone);
-    }
+  const handleTelegramVerified = async () => {
     // Переходим на шаг 4 - успешное завершение
-    // По INTERNAL_RULES.md: при переходе на шаг 4 сразу очищаются ошибки
-    setRegisterError(null);
-    setStep4DataReady(false);
-    setStep4Polling(false);
     setStep(4);
     setMaxStepReached(4);
   };
 
-  // Убраны все проверки и восстановление из localStorage - при обновлении страницы все сбрасывается
+  // ---------- polling e-mail confirmation ----------
 
-  // ---------- Функция перехода на следующий шаг после подтверждения email ----------
-  const handleEmailVerified = useCallback(() => {
-    // Используем функциональное обновление состояния для проверки актуального значения
-    setEmailVerified((currentVerified) => {
-      if (currentVerified) {
-        console.log("[register] Email already verified, skipping");
-        return currentVerified; // Уже обработано
-      }
-      
-      console.log("[register] ✅ Email verified! Transitioning to step 3");
-      setEmailStatus("verified");
-      setRegisterError(null);
-      setStep(3);
-      setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-      return true; // Устанавливаем emailVerified = true
-    });
-  }, []); // Пустой массив зависимостей, так как используем функциональное обновление
-
-  // ---------- Realtime подписка на изменения в таблице profiles ----------
-  // КРИТИЧНО: Слушаем UPDATE события в таблице profiles для текущего пользователя
-  // Как только email_verified становится true - переходим на шаг 3
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
-    if (!registeredUserId) return;
-    if (emailVerified) return; // Уже подтвержден, не нужна подписка
-
-    console.log("[register] 🔔 Setting up Realtime subscription for profiles table, userId:", registeredUserId);
-
-    // Создаем канал для прослушивания изменений в таблице profiles
-    const channel = supabase
-      .channel(`schema-db-changes:profiles:${registeredUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${registeredUserId}`, // Слушаем только текущего пользователя
-        },
-        (payload: { new: { id: string; email_verified?: boolean }; old: Record<string, any> }) => {
-          console.log("[register] 📨 Realtime UPDATE event received:", {
-            userId: payload.new.id,
-            email_verified: payload.new.email_verified,
-            old_email_verified: payload.old?.email_verified,
-          });
-          
-          // Проверяем, что email_verified стал true
-          if (payload.new.email_verified === true) {
-            console.log("[register] ✅ email_verified became true via Realtime!");
-            
-            // Переходим на следующий шаг
-            handleEmailVerified();
-            
-            // Отписываемся от канала, чтобы не тратить ресурсы
-            console.log("[register] Unsubscribing from Realtime channel (email verified)");
-            supabase.removeChannel(channel);
-          }
-        }
-      )
-      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-        console.log("[register] Realtime channel status:", status);
-        if (status === 'SUBSCRIBED') {
-          console.log("[register] ✅ Successfully subscribed to profiles Realtime channel");
-        } else if (status === 'TIMED_OUT') {
-          console.warn("[register] ⚠️ Realtime channel timed out, but polling will continue");
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error("[register] ❌ Realtime channel error");
-        }
-      });
-
-    return () => {
-      console.log("[register] 🧹 Cleaning up Realtime subscription");
-      supabase.removeChannel(channel);
-    };
-  }, [emailStatus, registeredUserId, emailVerified, supabase, handleEmailVerified]);
-
-  // ---------- Слушатель изменений состояния аутентификации ----------
-  // КРИТИЧНО: При подтверждении email обновляется сессия, это должно триггерить переход
-  useEffect(() => {
-    if (emailStatus !== "link_sent") return;
-    if (!registeredUserId) return;
-    if (emailVerified) return; // Уже подтвержден
-
-    console.log("[register] 🔔 Setting up onAuthStateChange listener for userId:", registeredUserId);
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log("[register] 🔄 onAuthStateChange event:", event, "hasSession:", !!session, "userId:", session?.user?.id);
-      
-      // Обрабатываем события, которые могут означать подтверждение email
-      if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
-        if (!session?.user) {
-          console.log("[register] No user in session");
-          return;
-        }
-
-        // Проверяем, что это наш пользователь
-        if (session.user.id !== registeredUserId) {
-          console.log("[register] User ID mismatch:", session.user.id, "!=", registeredUserId);
-          return;
-        }
-
-        // Проверяем, что email подтвержден
-        if (session.user.email_confirmed_at) {
-          console.log("[register] ✅ Email confirmed via onAuthStateChange, email_confirmed_at:", session.user.email_confirmed_at);
-          
-          // Переходим на следующий шаг
-          handleEmailVerified();
-        } else {
-          console.log("[register] User signed in but email not confirmed yet");
-        }
-      }
-    });
-
-    return () => {
-      console.log("[register] 🧹 Cleaning up onAuthStateChange listener");
-      subscription.unsubscribe();
-    };
-  }, [emailStatus, registeredUserId, emailVerified, supabase, handleEmailVerified]);
-
-  // ---------- polling e-mail confirmation (основной механизм) ----------
-  // Проверяем email_verified в БД через API - это основной способ отслеживания подтверждения
-  useEffect(() => {
-    // Запускаем polling только если письмо отправлено и есть userId
-    if (emailStatus !== "link_sent") {
-      console.log("[register] Polling not started: emailStatus =", emailStatus);
-      return;
-    }
-    if (!registeredUserId) {
-      console.log("[register] Polling not started: no registeredUserId");
-      return;
-    }
-    
-    // Если email уже подтвержден, останавливаем polling
-    if (emailVerified) {
-      console.log("[register] Email already verified, stopping polling");
-      return;
-    }
-
-    console.log("[register] ✅ Starting email confirmation polling for userId:", registeredUserId);
+    if (!email.trim()) return;
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
 
     const check = async () => {
-      if (cancelled) {
-        console.log("[register] Polling cancelled, stopping check");
-        return;
-      }
+      if (cancelled) return;
 
       try {
-        // По INTERNAL_RULES.md: используется email для polling
-        const url = `/api/auth/check-email-confirmed?email=${encodeURIComponent(registeredUserEmail || email.trim())}`;
-        const res = await fetch(url, {
-          cache: 'no-store', // Отключаем кеш для актуальных данных
-        });
+        const res = await fetch(
+          `/api/auth/check-email-confirmed?email=${encodeURIComponent(
+            email.trim()
+          )}`
+        );
 
         if (!res.ok) {
-          console.warn("[register] Polling check failed, status:", res.status);
           return;
         }
 
         const data = await res.json();
 
-        // КРИТИЧНО: Проверяем ТОЛЬКО emailConfirmed из Auth (email_confirmed_at)
-        // email_confirmed_at устанавливается Supabase ТОЛЬКО при клике на ссылку из письма
-        // emailVerified из профиля может быть установлен ошибочно, поэтому не полагаемся на него
-        const isVerified = data.success && data.emailConfirmed === true;
-        
-        console.log("[register] Polling check result:", {
-          success: data.success,
-          emailConfirmed: data.emailConfirmed,
-          emailVerified: data.emailVerified,
-          isVerified,
-          userId: registeredUserId,
-        });
-
-        if (isVerified && !cancelled) {
-          console.log("[register] ✅ Email verified via polling!");
-          
-          // Обновляем состояние
+        // !!! КРИТИЧНО: ЛОГИКА ПОДТВЕРЖДЕНИЯ EMAIL - НЕ МЕНЯЕМ !!!
+        if (data.success && data.emailConfirmed) {
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
 
-          // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: УДАЛЯЕМ АВТОМАТИЧЕСКИЙ ПЕРЕХОД НА ШАГ 3!!!
-          // setStep(3); // УДАЛЕНО - теперь переход происходит при нажатии кнопки "Далее"
-          setMaxStepReached((prev) => (prev < 3 ? 3 : prev)); // Оставляем только обновление maxStepReached
+          // !!! ИСПРАВЛЕНИЕ: МЫ УДАЛЯЕМ АВТОМАТИЧЕСКИЙ ПЕРЕХОД НА ШАГ 3!!!
+          // setStep(3); // УДАЛЕНО - теперь это происходит при нажатии "Далее"
+          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
 
-          // Останавливаем polling
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
         }
       } catch (e) {
-        console.error("[register] Polling check error:", e);
+        console.error("[register] check-email-confirmed error", e);
       }
     };
 
-    // Первая проверка сразу (без задержки)
-    check();
-    
-    // Затем проверяем каждые 1.5 секунды
+    const initial = setTimeout(check, 3000);
     intervalId = setInterval(check, 1500);
 
     return () => {
-      console.log("[register] Cleaning up polling");
       cancelled = true;
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
+      clearTimeout(initial);
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [emailStatus, registeredUserId, emailVerified]);
-
-  // ---------- Polling для шага 4: проверка готовности данных Telegram ----------
-  // По INTERNAL_RULES.md: автоматическая проверка данных на шаге 4
-  useEffect(() => {
-    // Запускаем polling только на шаге 4
-    if (step !== 4) {
-      return;
-    }
-
-    // По INTERNAL_RULES.md: при переходе на шаг 4 сразу очищаются ошибки
-    setRegisterError(null);
-
-    console.log("[register] ✅ Starting step 4 polling for Telegram data readiness");
-
-    let cancelled = false;
-    let intervalId: NodeJS.Timeout | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    const check = async () => {
-      if (cancelled) {
-        console.log("[register] Step 4 polling cancelled");
-        return;
-      }
-
-      try {
-        // По INTERNAL_RULES.md: проверяем сессию через supabase.auth.getSession()
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        // По INTERNAL_RULES.md: если нет сессии или ошибка - просто ждем, ошибку не показываем
-        if (sessionError || !sessionData?.session) {
-          console.log("[register] Step 4: No session yet, waiting...");
-          return;
-        }
-
-        // По INTERNAL_RULES.md: используем /api/auth/load-profile с credentials: 'include'
-        const res = await fetch('/api/auth/load-profile', {
-          credentials: 'include',
-          cache: 'no-store',
-        });
-
-        // По INTERNAL_RULES.md: 401 ошибка - не показываем ошибку, просто ждем
-        if (res.status === 401) {
-          console.log("[register] Step 4: 401 Unauthorized, session not ready yet, waiting...");
-          return;
-        }
-
-        if (!res.ok) {
-          // По INTERNAL_RULES.md: другие ошибки логируются, но не показываются
-          console.warn("[register] Step 4: Load profile failed, status:", res.status);
-          return;
-        }
-
-        const data = await res.json();
-
-        if (!data.success || !data.user) {
-          console.log("[register] Step 4: Profile not loaded yet, waiting...");
-          return;
-        }
-
-        const profile = data.user;
-
-        // По INTERNAL_RULES.md: проверяем два условия
-        const hasPhone = profile?.phone && profile.phone.trim() !== "";
-        const isTelegramVerified = profile?.telegram_verified === true || 
-                                   profile?.telegram_verified === "true" || 
-                                   profile?.telegram_verified === 1;
-
-        console.log("[register] Step 4: Check result:", {
-          hasPhone,
-          isTelegramVerified,
-          phone: profile?.phone,
-          telegram_verified: profile?.telegram_verified,
-        });
-
-        if (hasPhone && isTelegramVerified) {
-          // По INTERNAL_RULES.md: данные готовы
-          console.log("[register] ✅ Step 4: Data ready! Phone and Telegram verified");
-          setStep4DataReady(true);
-          setRegisterError(null); // Убираем любое сообщение
-          
-          // Останавливаем polling
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
-          }
-        } else {
-          // По INTERNAL_RULES.md: данные не готовы - показываем информационное сообщение
-          // Сообщение отображается в renderStep4, здесь только включаем polling
-          if (!step4Polling) {
-            setStep4Polling(true);
-            // Не используем setRegisterError для информационного сообщения
-            // Оно отображается отдельно в renderStep4 синим цветом
-          }
-        }
-      } catch (e) {
-        // По INTERNAL_RULES.md: ошибки логируются, но не показываются
-        console.error("[register] Step 4 polling error:", e);
-      }
-    };
-
-    // По INTERNAL_RULES.md: первая проверка через 1.5 секунды (дает время БД обновиться)
-    timeoutId = setTimeout(() => {
-      check();
-      // Затем проверяем каждые 2 секунды
-      intervalId = setInterval(check, 2000);
-    }, 1500);
-
-    return () => {
-      console.log("[register] Cleaning up step 4 polling");
-      cancelled = true;
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-    };
-  }, [step, supabase, step4Polling]);
+  }, [emailStatus, email]);
 
   // ---------- render helpers ----------
 
@@ -874,6 +451,7 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              placeholder="Иван"
               value={personal.firstName}
               onChange={handlePersonalChange("firstName")}
             />
@@ -888,6 +466,7 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              placeholder="Александрович"
               value={personal.middleName}
               onChange={handlePersonalChange("middleName")}
             />
@@ -902,6 +481,7 @@ export default function RegisterDirectorClient() {
             <input
               type="text"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              placeholder="Петров"
               value={personal.lastName}
               onChange={handlePersonalChange("lastName")}
             />
@@ -938,25 +518,13 @@ export default function RegisterDirectorClient() {
               <Lock className="h-4 w-4 text-zinc-500" />
             </div>
             <input
-              type={showPassword ? "text" : "password"}
+              type="password"
               autoComplete="new-password"
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="От 8 символов"
+              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+              placeholder="Минимум 8 символов"
               value={personal.password}
               onChange={handlePersonalChange("password")}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-3 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors"
-              tabIndex={-1}
-            >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
           </div>
         </div>
 
@@ -966,7 +534,7 @@ export default function RegisterDirectorClient() {
           </label>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
+              type="password"
               autoComplete="new-password"
               className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
               placeholder="Повторите пароль"
@@ -992,79 +560,26 @@ export default function RegisterDirectorClient() {
           <input
             type="email"
             autoComplete="email"
-            className={`
-              h-10 w-full rounded-2xl border bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors
-              ${emailExistsError 
-                ? "border-rose-600/80 focus:border-rose-500" 
-                : "border-zinc-800/80 focus:border-[var(--accent-primary,#3b82f6)]"
-              }
-            `}
+            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
             placeholder="you@business.com"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (emailExistsError) {
-                setEmailExistsError(false);
-                setRegisterError(null);
-              }
-            }}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        {emailExistsError && (
-          <p className="text-xs text-rose-400 mt-1">
-            Этот e-mail уже зарегистрирован. Введите другую почту.
-          </p>
-        )}
       </div>
 
-      {emailExistsError && (
-        <div className="mt-2 flex flex-col gap-2 text-xs">
-          <p className="text-zinc-400">
-            Вы можете войти в аккаунт или восстановить пароль.
-          </p>
-          <div className="flex gap-3">
-            <Link
-              href="/login"
-              className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
-            >
-              Войти
-            </Link>
-            <span className="text-zinc-600">•</span>
-            <Link
-              href="/forgot-password"
-              className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
-            >
-              Забыли пароль?
-            </Link>
-          </div>
-        </div>
-      )}
-
       <div className="mt-2 flex flex-col gap-1 text-xs text-zinc-500">
-        {!emailExistsError && (
-          <p>
-            Этот адрес будет использоваться для входа, уведомлений по сменам и
-            восстановления доступа.
+        <p>
+          Этот адрес будет использоваться для входа, уведомлений по сменам и
+          восстановления доступа.
+        </p>
+        {emailStatus === "link_sent" && (
+          <p className="text-emerald-400">
+            Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
+            после чего мы автоматически продолжим регистрацию.
           </p>
         )}
-        {emailStatus === "link_sent" && !emailExistsError && (
-          <>
-            <p className="text-emerald-400">
-              Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
-              после чего мы автоматически продолжим регистрацию.
-            </p>
-            <div className="mt-3 pt-3 border-t border-zinc-800/50">
-              <button
-                type="button"
-                onClick={resetRegistration}
-                className="text-xs text-zinc-400 hover:text-zinc-200 underline transition-colors"
-              >
-                Начать регистрацию заново
-              </button>
-            </div>
-          </>
-        )}
-        {emailStatus === "verified" && !emailExistsError && (
+        {emailStatus === "verified" && (
           <p className="text-emerald-400">
             E-mail подтвержден. Можно переходить к шагу Telegram.
           </p>
@@ -1101,62 +616,44 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStep4 = () => {
-    // По INTERNAL_RULES.md: показываем информационное сообщение если данные не готовы
-    const showWaitingMessage = step4Polling && !step4DataReady;
-    
-    return (
-      <div className="flex flex-col items-center gap-6 py-8 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-          <CheckCircle2 className="h-12 w-12 text-emerald-400" />
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-xl font-semibold text-zinc-50">
-            {step4DataReady 
-              ? "Регистрация завершена успешно!" 
-              : "Завершение регистрации..."}
-          </h3>
-          <p className="max-w-md text-sm text-zinc-400">
-            {step4DataReady
-              ? "Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business."
-              : "Ожидаем подтверждения данных Telegram..."}
-          </p>
-        </div>
-        
-        {/* По INTERNAL_RULES.md: информационное сообщение (синий цвет) если данные не готовы */}
-        {showWaitingMessage && (
-          <div className="mt-2 flex items-start gap-2 rounded-2xl border border-blue-800/80 bg-blue-950/80 px-4 py-3 text-xs text-blue-50 max-w-md">
-            <Loader2 className="mt-0.5 h-4 w-4 animate-spin" />
-            <span>Ожидание подтверждения данных Telegram...</span>
-          </div>
-        )}
-
-        <Button
-          onClick={finishRegistration}
-          disabled={isSubmitting || !step4DataReady}
-          className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Переход в дашборд...
-            </>
-          ) : (
-            <>
-              Перейти в дашборд
-              <ArrowRight className="h-4 w-4" />
-            </>
-          )}
-        </Button>
+  const renderStep4 = () => (
+    <div className="flex flex-col items-center gap-6 py-8 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
+        <CheckCircle2 className="h-12 w-12 text-emerald-400" />
       </div>
-    );
-  };
+      <div className="space-y-2">
+        <h3 className="text-xl font-semibold text-zinc-50">
+          Регистрация завершена успешно!
+        </h3>
+        <p className="max-w-md text-sm text-zinc-400">
+          Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business.
+        </p>
+      </div>
+      <Button
+        onClick={finishRegistration}
+        disabled={isSubmitting}
+        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Переход в дашборд...
+          </>
+        ) : (
+          <>
+            Перейти в дашборд
+            <ArrowRight className="h-4 w-4" />
+          </>
+        )}
+      </Button>
+    </div>
+  );
 
   // ---------- main render ----------
 
   return (
-    <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
-      <div className="relative w-full max-w-xl">
+    <main className="flex min-h-screen items-start justify-center bg-background px-4 pt-28 pb-10">
+      <div className="relative w-full max-w-3xl">
         <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
@@ -1211,45 +708,31 @@ export default function RegisterDirectorClient() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
               )}
-              {step === 2 && !emailExistsError && (
+              {step === 2 && (
                 <button
                   type="button"
                   onClick={() => {
-                    // !!! ИСПРАВЛЕНИЕ: Если email подтвержден - переходим на шаг 3, иначе отправляем письмо
-                    if (emailVerified) {
-                      setStep(3);
-                    } else {
-                      // Вызываем отправку формы, как и раньше
-                      const form = document.getElementById(
-                        "step2-form"
-                      ) as HTMLFormElement | null;
-                      if (form) {
-                        form.requestSubmit();
-                      }
+                    const form = document.getElementById(
+                      "step2-form"
+                    ) as HTMLFormElement | null;
+                    if (form) {
+                      form.requestSubmit();
                     }
                   }}
                   disabled={
                     isSubmitting ||
                     emailStatus === "sending" ||
-                    (emailStatus === "link_sent" && !emailVerified) // Блокируем, пока не подтверждено
+                    emailStatus === "link_sent"
                   }
                   className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {emailVerified ? (
-                    <>
-                      Далее
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  ) : isSubmitting || emailStatus === "sending" ? (
+                  {isSubmitting || emailStatus === "sending" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Отправляем...
                     </>
                   ) : emailStatus === "link_sent" ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Ждём подтверждения…
-                    </>
+                    <>Ждём подтверждения…</>
                   ) : (
                     <>
                       Далее
