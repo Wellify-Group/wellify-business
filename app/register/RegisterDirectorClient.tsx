@@ -297,6 +297,17 @@ export default function RegisterDirectorClient() {
       }
 
       console.log("[register] SignUp successful, user created:", data.user.id);
+      
+      // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНЫЙ ВЫХОД ПОСЛЕ SIGNUP !!!
+      // Это предотвратит ошибку "Ссылка недействительна" при клике на письмо
+      // Supabase автоматически создает сессию после signUp, что вызывает race condition
+      // при клике по ссылке подтверждения. Принудительный выход решает эту проблему.
+      if (data?.user) {
+        await supabase.auth.signOut();
+        console.log("[register] ✅ Signed out after signUp to prevent race condition");
+      }
+      // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
+
       setRegisteredUserId(data.user.id);
       setRegisteredUserEmail(data.user.email ?? email.trim());
 
