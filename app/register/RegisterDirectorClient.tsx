@@ -88,6 +88,28 @@ export default function RegisterDirectorClient() {
   const localeForAPI =
     language === "ua" ? "uk" : (language as "ru" | "uk" | "en" | string);
 
+  // Функция для сброса регистрации
+  const resetRegistration = () => {
+    console.log("[register] Resetting registration");
+    setRegisteredUserId(null);
+    setRegisteredUserEmail(null);
+    setRegisteredUserPhone(null);
+    setEmail("");
+    setEmailStatus("idle");
+    setEmailVerified(false);
+    setStep(1);
+    setMaxStepReached(1);
+    setRegisterError(null);
+    setEmailExistsError(false);
+    
+    // Очищаем localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("wellify_registration_userId");
+      localStorage.removeItem("wellify_registration_email");
+      localStorage.removeItem("wellify_email_confirmed");
+    }
+  };
+
   // ---------- Восстановление состояния из localStorage при монтировании ----------
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -95,15 +117,14 @@ export default function RegisterDirectorClient() {
     // Восстанавливаем userId и email из localStorage
     const savedUserId = localStorage.getItem("wellify_registration_userId");
     const savedEmail = localStorage.getItem("wellify_registration_email");
-    const emailConfirmedFlag = localStorage.getItem("wellify_email_confirmed");
     
     if (savedUserId && savedEmail) {
       console.log("[register] Restoring registration state from localStorage:", {
         userId: savedUserId,
         email: savedEmail,
-        emailConfirmed: emailConfirmedFlag === "true"
       });
       
+      // Восстанавливаем состояние
       setRegisteredUserId(savedUserId);
       setRegisteredUserEmail(savedEmail);
       setEmail(savedEmail);
@@ -122,6 +143,13 @@ export default function RegisterDirectorClient() {
             const data = await res.json();
             const isVerified = data.success && (data.emailVerified === true || data.emailConfirmed === true);
             
+            console.log("[register] Restore check result:", {
+              success: data.success,
+              emailVerified: data.emailVerified,
+              emailConfirmed: data.emailConfirmed,
+              isVerified,
+            });
+            
             if (isVerified) {
               console.log("[register] ✅ Email already verified on restore, transitioning to step 3");
               setEmailStatus("verified");
@@ -129,15 +157,17 @@ export default function RegisterDirectorClient() {
               setStep(3);
               setMaxStepReached(3);
             } else {
-              console.log("[register] Email not verified yet, polling will continue");
+              console.log("[register] Email not verified yet, polling will start automatically");
             }
+          } else {
+            console.warn("[register] Restore check failed, status:", res.status);
           }
         } catch (e) {
           console.error("[register] Restore check error", e);
         }
       };
       
-      // Проверяем сразу
+      // Проверяем сразу (polling запустится автоматически через useEffect)
       checkStatusImmediately();
     }
   }, []); // Только при монтировании
@@ -709,8 +739,14 @@ export default function RegisterDirectorClient() {
   // Проверяем email_verified в БД через API - это основной способ отслеживания подтверждения
   useEffect(() => {
     // Запускаем polling только если письмо отправлено и есть userId
-    if (emailStatus !== "link_sent") return;
-    if (!registeredUserId) return;
+    if (emailStatus !== "link_sent") {
+      console.log("[register] Polling not started: emailStatus =", emailStatus);
+      return;
+    }
+    if (!registeredUserId) {
+      console.log("[register] Polling not started: no registeredUserId");
+      return;
+    }
     
     // Если email уже подтвержден, останавливаем polling
     if (emailVerified) {
@@ -718,7 +754,7 @@ export default function RegisterDirectorClient() {
       return;
     }
 
-    console.log("[register] Starting email confirmation polling for userId:", registeredUserId);
+    console.log("[register] ✅ Starting email confirmation polling for userId:", registeredUserId);
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -1053,10 +1089,21 @@ export default function RegisterDirectorClient() {
           </p>
         )}
         {emailStatus === "link_sent" && !emailExistsError && (
-          <p className="text-emerald-400">
-            Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
-            после чего мы автоматически продолжим регистрацию.
-          </p>
+          <>
+            <p className="text-emerald-400">
+              Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
+              после чего мы автоматически продолжим регистрацию.
+            </p>
+            <div className="mt-3 pt-3 border-t border-zinc-800/50">
+              <button
+                type="button"
+                onClick={resetRegistration}
+                className="text-xs text-zinc-400 hover:text-zinc-200 underline transition-colors"
+              >
+                Начать регистрацию заново
+              </button>
+            </div>
+          </>
         )}
         {emailStatus === "verified" && !emailExistsError && (
           <p className="text-emerald-400">
