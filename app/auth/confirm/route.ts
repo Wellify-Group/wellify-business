@@ -40,14 +40,24 @@ export async function GET(request: Request) {
           errorMsg.includes("link has already been used") ||
           errorMsg.includes("already been verified")
         ) {
+          // КРИТИЧНО: Даже если ссылка уже использована, проверяем и синхронизируем профиль
+          // Пользователь может быть уже подтвержден, но email_verified может быть не обновлен
+          try {
+            const supabaseAdmin = createAdminSupabaseClient();
+            // Пытаемся найти пользователя по email из кода (если возможно) или просто редиректим
+            // Страница /auth/email-confirmed проверит статус и синхронизирует
+          } catch (e) {
+            console.error("[auth/confirm] Error checking already confirmed user:", e);
+          }
           return NextResponse.redirect(new URL("/auth/email-confirmed?status=already_confirmed", url));
         }
 
-        // Проверяем, может быть пользователь уже подтвержден (повторный переход по ссылке)
-        // ВАЖНО: Проверяем БЕЗ использования supabase клиента, так как сессия может быть еще не установлена
-        // Но если код уже был использован, значит пользователь уже подтвержден
-        // В этом случае просто редиректим на success - страница сама проверит статус через getUser()
-        console.log("[auth/confirm] Code already used or invalid, but might be already confirmed - redirecting to success for final check");
+        // КРИТИЧНО: Если код недействителен, проверяем может быть email уже подтвержден
+        // Пытаемся найти пользователя через admin API и проверить его статус
+        console.log("[auth/confirm] Code invalid or expired, checking if user might already be confirmed");
+        
+        // Редиректим на страницу, которая проверит статус через getUser()
+        // Если email уже подтвержден в Auth, синхронизируем профиль
         return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
       }
 

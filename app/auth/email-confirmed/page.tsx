@@ -51,33 +51,65 @@ function EmailConfirmedContent() {
           
           const supabase = createBrowserSupabaseClient();
           
-          // Функция для синхронизации профиля (в фоне)
+          // КРИТИЧНО: Функция для синхронизации профиля (в фоне)
+          // Должна гарантированно обновить email_verified = true в БД
           const syncProfile = async () => {
             try {
-              const { data } = await supabase.auth.getUser();
+              // Пытаемся получить пользователя из сессии
+              const { data: sessionData } = await supabase.auth.getSession();
+              let user = sessionData?.session?.user;
               
-              if (data.user?.email_confirmed_at && data.user?.id && data.user?.email) {
-                if (data.user.email) {
-                  setEmail(data.user.email);
+              // Если нет в сессии, пытаемся через getUser
+              if (!user || !user.email_confirmed_at) {
+                const { data: userData } = await supabase.auth.getUser();
+                user = userData?.user;
+              }
+              
+              if (user?.email_confirmed_at && user?.id && user?.email) {
+                if (user.email) {
+                  setEmail(user.email);
                 }
+                
+                console.log("[email-confirmed] Syncing profile for confirmed user:", user.id);
                 
                 // Синхронизируем профиль - устанавливает email_verified = true в БД
                 const res = await fetch("/api/auth/email-sync-profile", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    userId: data.user.id,
-                    email: data.user.email,
+                    userId: user.id,
+                    email: user.email,
                   }),
                 });
 
                 if (!res.ok) {
-                  console.error("[email-confirmed] Failed to sync profile");
+                  const errorData = await res.json().catch(() => ({}));
+                  console.error("[email-confirmed] Failed to sync profile:", res.status, errorData);
+                  
+                  // Пробуем еще раз через задержку
+                  setTimeout(async () => {
+                    try {
+                      const retryRes = await fetch("/api/auth/email-sync-profile", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          userId: user.id,
+                          email: user.email,
+                        }),
+                      });
+                      if (retryRes.ok) {
+                        console.log("[email-confirmed] ✅ Profile synced on retry, email_verified = true");
+                      }
+                    } catch (e) {
+                      console.error("[email-confirmed] Retry sync error", e);
+                    }
+                  }, 1000);
                 } else {
-                  console.log("[email-confirmed] Profile synced successfully, email_verified should be true now");
+                  console.log("[email-confirmed] ✅ Profile synced successfully, email_verified = true");
                 }
               } else {
                 // Если getUser не вернул данные, пробуем еще раз через небольшую задержку
+                console.log("[email-confirmed] User data not ready, retrying in 500ms");
                 setTimeout(async () => {
                   const { data: retryData } = await supabase.auth.getUser();
                   if (retryData.user?.email_confirmed_at && retryData.user?.id && retryData.user?.email) {
@@ -85,7 +117,7 @@ function EmailConfirmedContent() {
                       setEmail(retryData.user.email);
                     }
                     try {
-                      await fetch("/api/auth/email-sync-profile", {
+                      const retryRes = await fetch("/api/auth/email-sync-profile", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -93,6 +125,9 @@ function EmailConfirmedContent() {
                           email: retryData.user.email,
                         }),
                       });
+                      if (retryRes.ok) {
+                        console.log("[email-confirmed] ✅ Profile synced on delayed retry, email_verified = true");
+                      }
                     } catch (e) {
                       console.error("[email-confirmed] Retry sync error", e);
                     }
@@ -124,32 +159,43 @@ function EmailConfirmedContent() {
         }
 
         if (statusParam === "invalid_or_expired") {
-          // Проверяем, может быть email уже подтвержден на самом деле
-          // (Supabase обработал токен, но редиректит с ошибкой)
+          // КРИТИЧНО: Проверяем, может быть email уже подтвержден на самом деле
+          // Даже если ссылка недействительна, email мог быть подтвержден ранее
           const supabase = createBrowserSupabaseClient();
-          const { data } = await supabase.auth.getUser();
           
-          if (data.user?.email_confirmed_at && data.user?.id) {
-            // Email уже подтвержден и сессия активна - показываем success вместо ошибки
-            console.log("[email-confirmed] Email already confirmed and session active, showing success");
+          // Пытаемся получить пользователя из сессии
+          const { data: sessionData } = await supabase.auth.getSession();
+          let user = sessionData?.session?.user;
+          
+          // Если нет в сессии, пытаемся через getUser
+          if (!user) {
+            const { data: userData } = await supabase.auth.getUser();
+            user = userData?.user;
+          }
+          
+          if (user?.email_confirmed_at && user?.id) {
+            // Email уже подтвержден - показываем success вместо ошибки
+            console.log("[email-confirmed] ✅ Email already confirmed (link was invalid but email is confirmed), syncing profile");
             
             setStatus("success");
-            if (data.user?.email) {
-              setEmail(data.user.email);
+            if (user.email) {
+              setEmail(user.email);
             }
             
-            // Синхронизируем профиль
+            // КРИТИЧНО: Синхронизируем профиль - обновляем email_verified = true
             try {
               const res = await fetch("/api/auth/email-sync-profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  userId: data.user.id,
-                  email: data.user.email,
+                  userId: user.id,
+                  email: user.email,
                 }),
               });
-              if (!res.ok) {
-                console.error("[email-confirmed] Failed to sync profile");
+              if (res.ok) {
+                console.log("[email-confirmed] ✅ Profile synced successfully, email_verified = true");
+              } else {
+                console.error("[email-confirmed] Failed to sync profile, status:", res.status);
               }
             } catch (syncError) {
               console.error("[email-confirmed] Error syncing profile", syncError);
@@ -161,6 +207,7 @@ function EmailConfirmedContent() {
             return;
           }
           
+          // Если email не подтвержден, показываем ошибку
           setStatus("invalid_or_expired");
           return;
         }
