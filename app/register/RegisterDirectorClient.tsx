@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -30,7 +30,6 @@ import {
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -177,6 +176,7 @@ export default function RegisterDirectorClient() {
     setRegisterError(null);
     setEmailExistsError(false);
 
+    // Валидация
     if (!email.trim()) {
       setRegisterError("Укажите рабочий e-mail.");
       setEmailStatus("error");
@@ -190,14 +190,8 @@ export default function RegisterDirectorClient() {
       return;
     }
 
-    if (
-      !personal.firstName.trim() ||
-      !personal.lastName.trim() ||
-      !personal.password
-    ) {
-      setRegisterError(
-        "Пожалуйста, заполните личные данные и пароль на шаге 1."
-      );
+    if (!personal.firstName.trim() || !personal.lastName.trim() || !personal.password) {
+      setRegisterError("Пожалуйста, заполните личные данные и пароль на шаге 1.");
       setEmailStatus("error");
       return;
     }
@@ -214,22 +208,10 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      // ВАЖНО: emailRedirectTo должен указывать на роут согласно INTERNAL_RULES.md
-      // По INTERNAL_RULES.md: options.emailRedirectTo должен быть `/email-confirmed`
-      // КРИТИЧНО: emailRedirectTo должен быть абсолютным URL и должен быть в whitelist в Supabase Dashboard
       const redirectTo = typeof window !== "undefined"
         ? `${window.location.origin}/email-confirmed`
         : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/email-confirmed`;
 
-      console.log("[register] Attempting signUp with:", {
-        email: email.trim(),
-        redirectTo,
-        hasPassword: !!personal.password,
-      });
-
-      // КРИТИЧНО: Supabase отправляет письмо только если:
-      // 1. Email confirmation включен в настройках
-      // 2. emailRedirectTo добавлен в whitelist в Supabase Dashboard → Authentication → URL Configuration
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password: personal.password,
@@ -246,16 +228,8 @@ export default function RegisterDirectorClient() {
         },
       });
 
-      console.log("[register] signUp response:", {
-        hasUser: !!data?.user,
-        userId: data?.user?.id,
-        emailConfirmed: data?.user?.email_confirmed_at,
-        error: error?.message,
-      });
-
+      // Проверка на существующий email
       if (error) {
-        console.error("[register] signUp error", error);
-        setEmailStatus("error");
         const msg = error.message?.toLowerCase() || "";
         if (
           msg.includes("already") ||
@@ -264,68 +238,38 @@ export default function RegisterDirectorClient() {
           msg.includes("user already registered") ||
           msg.includes("email already exists")
         ) {
-          // Если email уже зарегистрирован - показываем уведомление
-          // Пользователь может ввести другую почту и отправить письмо снова
           setEmailExistsError(true);
-          setRegisterError(
-            "Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль."
-          );
-          // Блокируем переход на следующие шаги
+          setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
           setMaxStepReached(2);
-          // Сбрасываем статус, чтобы можно было ввести другую почту
           setEmailStatus("idle");
-        } else {
-          setEmailExistsError(false);
-          setRegisterError(
-            error.message ||
-              "Не удалось отправить письмо. Попробуйте ещё раз позже."
-          );
+          return;
         }
+        setRegisterError(error.message || "Не удалось отправить письмо. Попробуйте ещё раз позже.");
+        setEmailStatus("error");
         return;
       }
 
       if (!data?.user) {
-        console.error("[register] signUp returned no user", { data });
+        setRegisterError("Не удалось создать учетную запись. Попробуйте ещё раз.");
         setEmailStatus("error");
-        setRegisterError(
-          "Не удалось создать учетную запись. Попробуйте ещё раз."
-        );
         return;
       }
 
-      // Проверка: если data.user.identities пустой массив - это кейс "уже зарегистрирован"
+      // Проверка: если identities пустой массив - email уже зарегистрирован
       if (data.user.identities && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        console.log("[register] User exists but has no identities - email already registered");
         setEmailExistsError(true);
-        setRegisterError(
-          "Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль."
-        );
+        setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
         setMaxStepReached(2);
         setEmailStatus("idle");
         return;
       }
 
-      console.log("[register] SignUp successful, user created:", data.user.id);
-      
-      // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: ПРИНУДИТЕЛЬНЫЙ ВЫХОД ПОСЛЕ SIGNUP !!!
-      // Это предотвратит ошибку "Ссылка недействительна" при клике на письмо
-      // Supabase автоматически создает сессию после signUp, что вызывает race condition
-      // при клике по ссылке подтверждения. Принудительный выход решает эту проблему.
-      if (data?.user) {
-        await supabase.auth.signOut();
-        console.log("[register] ✅ Signed out after signUp to prevent race condition");
-      }
-      // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
+      // Принудительный выход после signUp (предотвращает race condition)
+      await supabase.auth.signOut();
 
       setRegisteredUserId(data.user.id);
       setRegisteredUserEmail(data.user.email ?? email.trim());
-
-      // НЕ сохраняем в localStorage - при обновлении страницы все должно сброситься
       setEmailStatus("link_sent");
-      
-      // КРИТИЧНО: НЕ проверяем email_verified сразу после signUp
-      // email_verified должен быть FALSE до момента клика на ссылку в письме
-      // Polling запустится автоматически через useEffect и будет проверять каждые 1.5 секунды
     } catch (err) {
       console.error("[register] handleSendEmailLink error", err);
       setEmailStatus("error");
@@ -460,199 +404,40 @@ export default function RegisterDirectorClient() {
     setMaxStepReached(4);
   };
 
-  // Убраны все проверки и восстановление из localStorage - при обновлении страницы все сбрасывается
-
-  // ---------- Функция перехода на следующий шаг после подтверждения email ----------
-  const handleEmailVerified = useCallback(() => {
-    // Используем функциональное обновление состояния для проверки актуального значения
-    setEmailVerified((currentVerified) => {
-      if (currentVerified) {
-        console.log("[register] Email already verified, skipping");
-        return currentVerified; // Уже обработано
-      }
-      
-      console.log("[register] ✅ Email verified! Transitioning to step 3");
-      setEmailStatus("verified");
-      setRegisterError(null);
-      setStep(3);
-      setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-      return true; // Устанавливаем emailVerified = true
-    });
-  }, []); // Пустой массив зависимостей, так как используем функциональное обновление
-
-  // ---------- Realtime подписка на изменения в таблице profiles ----------
-  // КРИТИЧНО: Слушаем UPDATE события в таблице profiles для текущего пользователя
-  // Как только email_verified становится true - переходим на шаг 3
+  // ---------- polling e-mail confirmation ----------
+  // Проверяем email_verified в profiles через API
   useEffect(() => {
-    if (emailStatus !== "link_sent") return;
-    if (!registeredUserId) return;
-    if (emailVerified) return; // Уже подтвержден, не нужна подписка
-
-    console.log("[register] 🔔 Setting up Realtime subscription for profiles table, userId:", registeredUserId);
-
-    // Создаем канал для прослушивания изменений в таблице profiles
-    const channel = supabase
-      .channel(`schema-db-changes:profiles:${registeredUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${registeredUserId}`, // Слушаем только текущего пользователя
-        },
-        (payload: { new: { id: string; email_verified?: boolean }; old: Record<string, any> }) => {
-          console.log("[register] 📨 Realtime UPDATE event received:", {
-            userId: payload.new.id,
-            email_verified: payload.new.email_verified,
-            old_email_verified: payload.old?.email_verified,
-          });
-          
-          // Проверяем, что email_verified стал true
-          if (payload.new.email_verified === true) {
-            console.log("[register] ✅ email_verified became true via Realtime!");
-            
-            // Переходим на следующий шаг
-            handleEmailVerified();
-            
-            // Отписываемся от канала, чтобы не тратить ресурсы
-            console.log("[register] Unsubscribing from Realtime channel (email verified)");
-            supabase.removeChannel(channel);
-          }
-        }
-      )
-      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-        console.log("[register] Realtime channel status:", status);
-        if (status === 'SUBSCRIBED') {
-          console.log("[register] ✅ Successfully subscribed to profiles Realtime channel");
-        } else if (status === 'TIMED_OUT') {
-          console.warn("[register] ⚠️ Realtime channel timed out, but polling will continue");
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error("[register] ❌ Realtime channel error");
-        }
-      });
-
-    return () => {
-      console.log("[register] 🧹 Cleaning up Realtime subscription");
-      supabase.removeChannel(channel);
-    };
-  }, [emailStatus, registeredUserId, emailVerified, supabase, handleEmailVerified]);
-
-  // ---------- Слушатель изменений состояния аутентификации ----------
-  // КРИТИЧНО: При подтверждении email обновляется сессия, это должно триггерить переход
-  useEffect(() => {
-    if (emailStatus !== "link_sent") return;
-    if (!registeredUserId) return;
-    if (emailVerified) return; // Уже подтвержден
-
-    console.log("[register] 🔔 Setting up onAuthStateChange listener for userId:", registeredUserId);
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log("[register] 🔄 onAuthStateChange event:", event, "hasSession:", !!session, "userId:", session?.user?.id);
-      
-      // Обрабатываем события, которые могут означать подтверждение email
-      if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
-        if (!session?.user) {
-          console.log("[register] No user in session");
-          return;
-        }
-
-        // Проверяем, что это наш пользователь
-        if (session.user.id !== registeredUserId) {
-          console.log("[register] User ID mismatch:", session.user.id, "!=", registeredUserId);
-          return;
-        }
-
-        // Проверяем, что email подтвержден
-        if (session.user.email_confirmed_at) {
-          console.log("[register] ✅ Email confirmed via onAuthStateChange, email_confirmed_at:", session.user.email_confirmed_at);
-          
-          // Переходим на следующий шаг
-          handleEmailVerified();
-        } else {
-          console.log("[register] User signed in but email not confirmed yet");
-        }
-      }
-    });
-
-    return () => {
-      console.log("[register] 🧹 Cleaning up onAuthStateChange listener");
-      subscription.unsubscribe();
-    };
-  }, [emailStatus, registeredUserId, emailVerified, supabase, handleEmailVerified]);
-
-  // ---------- polling e-mail confirmation (основной механизм) ----------
-  // Проверяем email_verified в БД через API - это основной способ отслеживания подтверждения
-  useEffect(() => {
-    // Запускаем polling только если письмо отправлено и есть userId
-    if (emailStatus !== "link_sent") {
-      console.log("[register] Polling not started: emailStatus =", emailStatus);
+    if (emailStatus !== "link_sent" || !registeredUserEmail) {
       return;
     }
-    if (!registeredUserId) {
-      console.log("[register] Polling not started: no registeredUserId");
-      return;
-    }
-    
-    // Если email уже подтвержден, останавливаем polling
+
     if (emailVerified) {
-      console.log("[register] Email already verified, stopping polling");
-      return;
+      return; // Уже подтвержден, не нужно проверять
     }
-
-    console.log("[register] ✅ Starting email confirmation polling for userId:", registeredUserId);
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
 
     const check = async () => {
-      if (cancelled) {
-        console.log("[register] Polling cancelled, stopping check");
-        return;
-      }
+      if (cancelled) return;
 
       try {
-        // По INTERNAL_RULES.md: используется email для polling
         const url = `/api/auth/check-email-confirmed?email=${encodeURIComponent(registeredUserEmail || email.trim())}`;
-        const res = await fetch(url, {
-          cache: 'no-store', // Отключаем кеш для актуальных данных
-        });
+        const res = await fetch(url, { cache: 'no-store' });
 
-        if (!res.ok) {
-          console.warn("[register] Polling check failed, status:", res.status);
-          return;
-        }
+        if (!res.ok) return;
 
         const data = await res.json();
 
-        // КРИТИЧНО: Проверяем emailConfirmed из Auth (email_confirmed_at) - единственный источник истины
-        // email_confirmed_at устанавливается Supabase ТОЛЬКО при клике на ссылку из письма
-        // profiles.email_verified синхронизируется триггером из email_confirmed_at, но проверяем только email_confirmed_at
-        const isVerified = data.success && data.emailConfirmed === true;
-        
-        console.log("[register] Polling check result:", {
-          success: data.success,
-          emailConfirmed: data.emailConfirmed,
-          emailVerified: data.emailVerified,
-          isVerified,
-          userId: registeredUserId,
-        });
+        // Проверяем emailVerified из profiles (синхронизируется триггером)
+        const isVerified = data.success && data.emailVerified === true;
 
         if (isVerified && !cancelled) {
-          console.log("[register] ✅ Email verified via polling!");
-          
-          // Обновляем состояние
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
+          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
 
-          // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: УДАЛЯЕМ АВТОМАТИЧЕСКИЙ ПЕРЕХОД НА ШАГ 3!!!
-          // setStep(3); // УДАЛЕНО - теперь переход происходит при нажатии кнопки "Далее"
-          setMaxStepReached((prev) => (prev < 3 ? 3 : prev)); // Оставляем только обновление maxStepReached
-
-          // Останавливаем polling
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
@@ -663,21 +448,16 @@ export default function RegisterDirectorClient() {
       }
     };
 
-    // Первая проверка сразу (без задержки)
+    // Первая проверка сразу
     check();
-    
-    // Затем проверяем каждые 1.5 секунды
+    // Затем каждые 1.5 секунды
     intervalId = setInterval(check, 1500);
 
     return () => {
-      console.log("[register] Cleaning up polling");
       cancelled = true;
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [emailStatus, registeredUserId, emailVerified]);
+  }, [emailStatus, registeredUserEmail, emailVerified, email]);
 
   // ---------- Polling для шага 4: проверка готовности данных Telegram ----------
   // По INTERNAL_RULES.md: автоматическая проверка данных на шаге 4
@@ -1065,24 +845,12 @@ export default function RegisterDirectorClient() {
             восстановления доступа.
           </p>
         )}
-        {emailStatus === "link_sent" && !emailExistsError && (
-          <>
-            <p className="text-emerald-400">
-              Письмо с подтверждением отправлено. Перейдите по ссылке в письме,
-              после чего мы автоматически продолжим регистрацию.
-            </p>
-            <div className="mt-3 pt-3 border-t border-zinc-800/50">
-              <button
-                type="button"
-                onClick={resetRegistration}
-                className="text-xs text-zinc-400 hover:text-zinc-200 underline transition-colors"
-              >
-                Начать регистрацию заново
-              </button>
-            </div>
-          </>
+        {emailStatus === "link_sent" && !emailVerified && !emailExistsError && (
+          <p className="text-emerald-400">
+            Письмо с подтверждением отправлено. Перейдите по ссылке в письме.
+          </p>
         )}
-        {emailStatus === "verified" && !emailExistsError && (
+        {emailStatus === "verified" && emailVerified && !emailExistsError && (
           <p className="text-emerald-400">
             E-mail подтвержден. Можно переходить к шагу Telegram.
           </p>
