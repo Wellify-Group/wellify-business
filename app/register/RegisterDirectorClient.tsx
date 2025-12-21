@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, useCallback, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -425,21 +425,97 @@ export default function RegisterDirectorClient() {
 
   // Убраны все проверки и восстановление из localStorage - при обновлении страницы все сбрасывается
 
-  // ---------- слушатель изменений состояния аутентификации ----------
-  // Реагирует на подтверждение email в других вкладках через onAuthStateChange
-  // Это обеспечивает синхронизацию между вкладками через cookies/session
+  // ---------- Функция перехода на следующий шаг после подтверждения email ----------
+  const handleEmailVerified = useCallback(() => {
+    // Используем функциональное обновление состояния для проверки актуального значения
+    setEmailVerified((currentVerified) => {
+      if (currentVerified) {
+        console.log("[register] Email already verified, skipping");
+        return currentVerified; // Уже обработано
+      }
+      
+      console.log("[register] ✅ Email verified! Transitioning to step 3");
+      setEmailStatus("verified");
+      setRegisterError(null);
+      setStep(3);
+      setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+      return true; // Устанавливаем emailVerified = true
+    });
+  }, []); // Пустой массив зависимостей, так как используем функциональное обновление
+
+  // ---------- Realtime подписка на изменения в таблице profiles ----------
+  // КРИТИЧНО: Слушаем UPDATE события в таблице profiles для текущего пользователя
+  // Как только email_verified становится true - переходим на шаг 3
   useEffect(() => {
     if (emailStatus !== "link_sent") return;
     if (!registeredUserId) return;
+    if (emailVerified) return; // Уже подтвержден, не нужна подписка
 
-    console.log("[register] Setting up onAuthStateChange listener for userId:", registeredUserId);
+    console.log("[register] 🔔 Setting up Realtime subscription for profiles table, userId:", registeredUserId);
+
+    // Создаем канал для прослушивания изменений в таблице profiles
+    const channel = supabase
+      .channel(`schema-db-changes:profiles:${registeredUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${registeredUserId}`, // Слушаем только текущего пользователя
+        },
+        (payload) => {
+          console.log("[register] 📨 Realtime UPDATE event received:", {
+            userId: payload.new.id,
+            email_verified: payload.new.email_verified,
+            old_email_verified: payload.old?.email_verified,
+          });
+          
+          // Проверяем, что email_verified стал true
+          if (payload.new.email_verified === true) {
+            console.log("[register] ✅ email_verified became true via Realtime!");
+            
+            // Переходим на следующий шаг
+            handleEmailVerified();
+            
+            // Отписываемся от канала, чтобы не тратить ресурсы
+            console.log("[register] Unsubscribing from Realtime channel (email verified)");
+            supabase.removeChannel(channel);
+          }
+        }
+      )
+      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
+        console.log("[register] Realtime channel status:", status);
+        if (status === 'SUBSCRIBED') {
+          console.log("[register] ✅ Successfully subscribed to profiles Realtime channel");
+        } else if (status === 'TIMED_OUT') {
+          console.warn("[register] ⚠️ Realtime channel timed out, but polling will continue");
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error("[register] ❌ Realtime channel error");
+        }
+      });
+
+    return () => {
+      console.log("[register] 🧹 Cleaning up Realtime subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [emailStatus, registeredUserId, emailVerified, supabase, handleEmailVerified]);
+
+  // ---------- Слушатель изменений состояния аутентификации ----------
+  // КРИТИЧНО: При подтверждении email обновляется сессия, это должно триггерить переход
+  useEffect(() => {
+    if (emailStatus !== "link_sent") return;
+    if (!registeredUserId) return;
+    if (emailVerified) return; // Уже подтвержден
+
+    console.log("[register] 🔔 Setting up onAuthStateChange listener for userId:", registeredUserId);
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log("[register] onAuthStateChange event:", event, "hasSession:", !!session, "userId:", session?.user?.id);
+      console.log("[register] 🔄 onAuthStateChange event:", event, "hasSession:", !!session, "userId:", session?.user?.id);
       
-      // Обрабатываем события SIGNED_IN, USER_UPDATED, TOKEN_REFRESHED и SIGNED_OUT
+      // Обрабатываем события, которые могут означать подтверждение email
       if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "TOKEN_REFRESHED") {
         if (!session?.user) {
           console.log("[register] No user in session");
@@ -454,16 +530,10 @@ export default function RegisterDirectorClient() {
 
         // Проверяем, что email подтвержден
         if (session.user.email_confirmed_at) {
-          console.log("[register] Email confirmed via onAuthStateChange, email_confirmed_at:", session.user.email_confirmed_at);
+          console.log("[register] ✅ Email confirmed via onAuthStateChange, email_confirmed_at:", session.user.email_confirmed_at);
           
-          // Обновляем состояние
-          setEmailStatus("verified");
-          setEmailVerified(true);
-          setRegisterError(null);
-
-          // Переходим на шаг 3 (Telegram)
-          setStep(3);
-          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
+          // Переходим на следующий шаг
+          handleEmailVerified();
         } else {
           console.log("[register] User signed in but email not confirmed yet");
         }
@@ -471,61 +541,10 @@ export default function RegisterDirectorClient() {
     });
 
     return () => {
-      console.log("[register] Cleaning up onAuthStateChange listener");
+      console.log("[register] 🧹 Cleaning up onAuthStateChange listener");
       subscription.unsubscribe();
     };
-  }, [emailStatus, registeredUserId, supabase]);
-
-  // ---------- Realtime подписка на изменения в таблице profiles ----------
-  // Реагирует на UPDATE события в таблице profiles, когда email_verified становится true
-  useEffect(() => {
-    if (emailStatus !== "link_sent") return;
-    if (!registeredUserId) return;
-
-    console.log("[register] Setting up Realtime subscription for profiles table, userId:", registeredUserId);
-
-    // Создаем канал для подписки на изменения в таблице profiles
-    const channel = supabase
-      .channel(`profiles:${registeredUserId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${registeredUserId}`,
-        },
-        (payload: { new: { id: string; email_verified?: boolean }; old: Record<string, any> }) => {
-          console.log("[register] Realtime UPDATE event received:", payload);
-          
-          // Проверяем, что email_verified стал true
-          const newRecord = payload.new;
-          if (newRecord.email_verified === true) {
-            console.log("[register] email_verified became true via Realtime, transitioning to step 3");
-            setEmailStatus("verified");
-            setEmailVerified(true);
-            setRegisterError(null);
-
-            // Переходим на шаг 3 (Telegram)
-            setStep(3);
-            setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-          }
-        }
-      )
-      .subscribe((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-        console.log("[register] Realtime channel status:", status);
-        if (status === 'SUBSCRIBED') {
-          console.log("[register] Successfully subscribed to profiles Realtime channel");
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error("[register] Realtime channel error");
-        }
-      });
-
-    return () => {
-      console.log("[register] Cleaning up Realtime subscription");
-      supabase.removeChannel(channel);
-    };
-  }, [emailStatus, registeredUserId, supabase]);
+  }, [emailStatus, registeredUserId, emailVerified, supabase, handleEmailVerified]);
 
   // ---------- polling e-mail confirmation (основной механизм) ----------
   // Проверяем email_verified в БД через API - это основной способ отслеживания подтверждения
