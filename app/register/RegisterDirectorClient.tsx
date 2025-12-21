@@ -263,12 +263,20 @@ export default function RegisterDirectorClient() {
           msg.includes("user already registered") ||
           msg.includes("email already exists")
         ) {
+          // Если email уже зарегистрирован - показываем уведомление
+          // Пользователь может ввести другую почту и отправить письмо снова
+          // Если email уже зарегистрирован - показываем уведомление
+          // Пользователь может ввести другую почту и отправить письмо снова
           setEmailExistsError(true);
           setRegisterError(
-            "Этот e-mail уже зарегистрирован."
+            "Этот e-mail уже зарегистрирован. Введите другую почту или войдите в существующий аккаунт."
           );
           // Блокируем переход на следующие шаги
           setMaxStepReached(2);
+          // Сбрасываем статус, чтобы можно было ввести другую почту
+          setEmailStatus("idle");
+          // Сбрасываем статус, чтобы можно было ввести другую почту
+          setEmailStatus("idle");
         } else {
           setEmailExistsError(false);
           setRegisterError(
@@ -1011,7 +1019,7 @@ export default function RegisterDirectorClient() {
         </div>
         {emailExistsError && (
           <p className="text-xs text-rose-400 mt-1">
-            Этот e-mail уже зарегистрирован.
+            Этот e-mail уже зарегистрирован. Введите другую почту.
           </p>
         )}
       </div>
