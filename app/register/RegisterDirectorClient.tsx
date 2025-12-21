@@ -210,8 +210,8 @@ export default function RegisterDirectorClient() {
         .join(" ");
 
       // ВАЖНО: emailRedirectTo должен указывать на роут, который обрабатывает код подтверждения
-      // Роут /auth/confirm обрабатывает код и обменивает его на сессию через exchangeCodeForSession
-      // После этого пользователь редиректится на /auth/email-confirmed
+      // По INTERNAL_RULES.md: options.emailRedirectTo должен быть `/email-confirmed`
+      // Но мы используем /auth/confirm для обработки кода, затем редирект на /auth/email-confirmed
       // КРИТИЧНО: emailRedirectTo должен быть абсолютным URL и должен быть в whitelist в Supabase Dashboard
       const redirectTo = typeof window !== "undefined"
         ? `${window.location.origin}/auth/confirm`

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -52,6 +53,37 @@ export async function GET(request: Request) {
 
       // Успешное подтверждение через PKCE
       console.log("[auth/confirm] exchangeCodeForSession success, user:", data.user?.id, "email_confirmed_at:", data.user?.email_confirmed_at);
+      
+      // КРИТИЧНО: Синхронизируем профиль сразу после подтверждения
+      // Это обновляет email_verified в БД автоматически
+      if (data.user?.id && data.user?.email && (data.user as any).email_confirmed_at) {
+        try {
+          const supabaseAdmin = createAdminSupabaseClient();
+          const normalizedEmail = data.user.email.toLowerCase().trim();
+          
+          // Обновляем или создаем профиль с email_verified = true
+          const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              email: normalizedEmail,
+              email_verified: true,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'id'
+            });
+          
+          if (profileError) {
+            console.error("[auth/confirm] Error syncing profile:", profileError);
+          } else {
+            console.log("[auth/confirm] ✅ Profile synced successfully, email_verified = true");
+          }
+        } catch (syncError) {
+          console.error("[auth/confirm] Error syncing profile:", syncError);
+          // Не блокируем редирект, даже если синхронизация не удалась
+        }
+      }
+      
       return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
     } catch (err: any) {
       console.error("[auth/confirm] Unexpected error (code):", err);
@@ -95,6 +127,37 @@ export async function GET(request: Request) {
 
       // Успешное подтверждение
       console.log("[auth/confirm] verifyOtp success, user:", data.user?.id);
+      
+      // КРИТИЧНО: Синхронизируем профиль сразу после подтверждения
+      // Это обновляет email_verified в БД автоматически
+      if (data.user?.id && data.user?.email && (data.user as any).email_confirmed_at) {
+        try {
+          const supabaseAdmin = createAdminSupabaseClient();
+          const normalizedEmail = data.user.email.toLowerCase().trim();
+          
+          // Обновляем или создаем профиль с email_verified = true
+          const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              email: normalizedEmail,
+              email_verified: true,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'id'
+            });
+          
+          if (profileError) {
+            console.error("[auth/confirm] Error syncing profile:", profileError);
+          } else {
+            console.log("[auth/confirm] ✅ Profile synced successfully, email_verified = true");
+          }
+        } catch (syncError) {
+          console.error("[auth/confirm] Error syncing profile:", syncError);
+          // Не блокируем редирект, даже если синхронизация не удалась
+        }
+      }
+      
       return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
     } catch (err: any) {
       console.error("[auth/confirm] Unexpected error (token):", err);
