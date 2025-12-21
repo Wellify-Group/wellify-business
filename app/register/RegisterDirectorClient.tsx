@@ -80,6 +80,10 @@ export default function RegisterDirectorClient() {
   >("idle");
   const [emailVerified, setEmailVerified] = useState(false);
 
+  // Шаг 4: состояние готовности данных
+  const [step4DataReady, setStep4DataReady] = useState(false);
+  const [step4Polling, setStep4Polling] = useState(false);
+
   // Показ/скрытие пароля
   const [showPassword, setShowPassword] = useState(false);
 
@@ -339,62 +343,82 @@ export default function RegisterDirectorClient() {
       setIsSubmitting(true);
       setRegisterError(null);
 
-      if (!emailVerified || !registeredUserEmail) {
-        setRegisterError(
-          "E-mail должен быть подтвержден по ссылке из письма, прежде чем завершать регистрацию."
-        );
-        return;
-      }
-
-      // !!! КРИТИЧНО: ИСПРАВЛЕНИЕ 400 Bad Request !!!
-      if (!registeredUserPhone) {
-        setRegisterError("Телефон должен быть подтвержден через Telegram.");
-        return;
-      }
+      // По INTERNAL_RULES.md: проверяем наличие сессии пользователя
+      let session = (await supabase.auth.getSession()).data.session;
       
-      const payload = {
-        userId: registeredUserId, // Передаем userId для прямого getUserById
-        email: registeredUserEmail,
-        password: personal.password,
-        phone: registeredUserPhone, // Phone из Telegram верификации
-        firstName: personal.firstName.trim(),
-        lastName: personal.lastName.trim(),
-        middleName: personal.middleName.trim() || null, // ГАРАНТИРУЕМ null
-        birthDate: personal.birthDate || null, // ГАРАНТИРУЕМ null
-        locale: localeForAPI,
-      };
-      // !!! КОНЕЦ КРИТИЧНОГО ИСПРАВЛЕНИЯ !!!
+      // Если нет сессии, восстанавливаем через signInWithPassword
+      if (!session && registeredUserEmail && personal.password) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: registeredUserEmail,
+          password: personal.password,
+        });
 
-      const res = await fetch("/api/auth/register-director", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        if (signInError) {
+          console.warn("[register] signIn error", signInError);
+          setRegisterError(
+            "Не удалось восстановить сессию. Попробуйте войти вручную."
+          );
+          return;
+        }
 
-      const data = await res.json().catch(() => null);
+        session = signInData?.session || null;
+      }
 
-      if (!res.ok || !data?.success) {
-        const msg =
-          data?.message ||
-          data?.error ||
-          "Не удалось завершить регистрацию директора.";
-        setRegisterError(msg);
+      if (!session) {
+        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
         return;
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: registeredUserEmail,
-        password: personal.password,
+      // По INTERNAL_RULES.md: загружаем профиль из БД через /api/auth/load-profile
+      const res = await fetch('/api/auth/load-profile', {
+        credentials: 'include',
+        cache: 'no-store',
       });
 
-      if (signInError) {
-        console.warn("[register] signIn error", signInError);
+      // По INTERNAL_RULES.md: обработка 401 - показываем ошибку
+      if (res.status === 401) {
+        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+        return;
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("[register] Load profile error:", res.status, errorData);
         setRegisterError(
-          "Аккаунт создан, но не удалось выполнить вход. Попробуйте войти вручную."
+          "Не удалось загрузить данные профиля. Попробуйте позже."
         );
         return;
       }
 
+      const data = await res.json();
+
+      if (!data.success || !data.user) {
+        setRegisterError("Профиль не найден. Попробуйте войти заново.");
+        return;
+      }
+
+      const profile = data.user;
+
+      // По INTERNAL_RULES.md: проверяем два условия
+      // Условие 1: phone должен быть заполнен
+      if (!profile?.phone || profile.phone.trim() === "") {
+        setRegisterError("Номер телефона не подтвержден. Пожалуйста, завершите верификацию Telegram.");
+        return;
+      }
+
+      // Условие 2: telegram_verified должен быть true
+      const isTelegramVerified = profile?.telegram_verified === true || 
+                                 profile?.telegram_verified === "true" || 
+                                 profile?.telegram_verified === 1;
+      
+      if (!isTelegramVerified) {
+        setRegisterError("Telegram не подтвержден. Пожалуйста, завершите верификацию Telegram.");
+        return;
+      }
+
+      // По INTERNAL_RULES.md: если оба условия выполнены → переход в дашборд
+      console.log("[register] ✅ All conditions met, redirecting to dashboard");
+      
       // Очищаем localStorage после успешной регистрации
       if (typeof window !== "undefined") {
         localStorage.removeItem("wellify_registration_userId");
@@ -419,6 +443,10 @@ export default function RegisterDirectorClient() {
       setRegisteredUserPhone(phone);
     }
     // Переходим на шаг 4 - успешное завершение
+    // По INTERNAL_RULES.md: при переходе на шаг 4 сразу очищаются ошибки
+    setRegisterError(null);
+    setStep4DataReady(false);
+    setStep4Polling(false);
     setStep(4);
     setMaxStepReached(4);
   };
@@ -640,6 +668,130 @@ export default function RegisterDirectorClient() {
       }
     };
   }, [emailStatus, registeredUserId, emailVerified]);
+
+  // ---------- Polling для шага 4: проверка готовности данных Telegram ----------
+  // По INTERNAL_RULES.md: автоматическая проверка данных на шаге 4
+  useEffect(() => {
+    // Запускаем polling только на шаге 4
+    if (step !== 4) {
+      return;
+    }
+
+    // По INTERNAL_RULES.md: при переходе на шаг 4 сразу очищаются ошибки
+    setRegisterError(null);
+
+    console.log("[register] ✅ Starting step 4 polling for Telegram data readiness");
+
+    let cancelled = false;
+    let intervalId: NodeJS.Timeout | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const check = async () => {
+      if (cancelled) {
+        console.log("[register] Step 4 polling cancelled");
+        return;
+      }
+
+      try {
+        // По INTERNAL_RULES.md: проверяем сессию через supabase.auth.getSession()
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        // По INTERNAL_RULES.md: если нет сессии или ошибка - просто ждем, ошибку не показываем
+        if (sessionError || !sessionData?.session) {
+          console.log("[register] Step 4: No session yet, waiting...");
+          return;
+        }
+
+        // По INTERNAL_RULES.md: используем /api/auth/load-profile с credentials: 'include'
+        const res = await fetch('/api/auth/load-profile', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+
+        // По INTERNAL_RULES.md: 401 ошибка - не показываем ошибку, просто ждем
+        if (res.status === 401) {
+          console.log("[register] Step 4: 401 Unauthorized, session not ready yet, waiting...");
+          return;
+        }
+
+        if (!res.ok) {
+          // По INTERNAL_RULES.md: другие ошибки логируются, но не показываются
+          console.warn("[register] Step 4: Load profile failed, status:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data.success || !data.user) {
+          console.log("[register] Step 4: Profile not loaded yet, waiting...");
+          return;
+        }
+
+        const profile = data.user;
+
+        // По INTERNAL_RULES.md: проверяем два условия
+        const hasPhone = profile?.phone && profile.phone.trim() !== "";
+        const isTelegramVerified = profile?.telegram_verified === true || 
+                                   profile?.telegram_verified === "true" || 
+                                   profile?.telegram_verified === 1;
+
+        console.log("[register] Step 4: Check result:", {
+          hasPhone,
+          isTelegramVerified,
+          phone: profile?.phone,
+          telegram_verified: profile?.telegram_verified,
+        });
+
+        if (hasPhone && isTelegramVerified) {
+          // По INTERNAL_RULES.md: данные готовы
+          console.log("[register] ✅ Step 4: Data ready! Phone and Telegram verified");
+          setStep4DataReady(true);
+          setRegisterError(null); // Убираем любое сообщение
+          
+          // Останавливаем polling
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+        } else {
+          // По INTERNAL_RULES.md: данные не готовы - показываем информационное сообщение
+          // Сообщение отображается в renderStep4, здесь только включаем polling
+          if (!step4Polling) {
+            setStep4Polling(true);
+            // Не используем setRegisterError для информационного сообщения
+            // Оно отображается отдельно в renderStep4 синим цветом
+          }
+        }
+      } catch (e) {
+        // По INTERNAL_RULES.md: ошибки логируются, но не показываются
+        console.error("[register] Step 4 polling error:", e);
+      }
+    };
+
+    // По INTERNAL_RULES.md: первая проверка через 1.5 секунды (дает время БД обновиться)
+    timeoutId = setTimeout(() => {
+      check();
+      // Затем проверяем каждые 2 секунды
+      intervalId = setInterval(check, 2000);
+    }, 1500);
+
+    return () => {
+      console.log("[register] Cleaning up step 4 polling");
+      cancelled = true;
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+  }, [step, supabase, step4Polling]);
 
   // ---------- render helpers ----------
 
@@ -948,38 +1100,56 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStep4 = () => (
-    <div className="flex flex-col items-center gap-6 py-8 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-        <CheckCircle2 className="h-12 w-12 text-emerald-400" />
-      </div>
-      <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-zinc-50">
-          Регистрация завершена успешно!
-        </h3>
-        <p className="max-w-md text-sm text-zinc-400">
-          Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business.
-        </p>
-      </div>
-      <Button
-        onClick={finishRegistration}
-        disabled={isSubmitting}
-        className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Переход в дашборд...
-          </>
-        ) : (
-          <>
-            Перейти в дашборд
-            <ArrowRight className="h-4 w-4" />
-          </>
+  const renderStep4 = () => {
+    // По INTERNAL_RULES.md: показываем информационное сообщение если данные не готовы
+    const showWaitingMessage = step4Polling && !step4DataReady;
+    
+    return (
+      <div className="flex flex-col items-center gap-6 py-8 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
+          <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold text-zinc-50">
+            {step4DataReady 
+              ? "Регистрация завершена успешно!" 
+              : "Завершение регистрации..."}
+          </h3>
+          <p className="max-w-md text-sm text-zinc-400">
+            {step4DataReady
+              ? "Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business."
+              : "Ожидаем подтверждения данных Telegram..."}
+          </p>
+        </div>
+        
+        {/* По INTERNAL_RULES.md: информационное сообщение (синий цвет) если данные не готовы */}
+        {showWaitingMessage && (
+          <div className="mt-2 flex items-start gap-2 rounded-2xl border border-blue-800/80 bg-blue-950/80 px-4 py-3 text-xs text-blue-50 max-w-md">
+            <Loader2 className="mt-0.5 h-4 w-4 animate-spin" />
+            <span>Ожидание подтверждения данных Telegram...</span>
+          </div>
         )}
-      </Button>
-    </div>
-  );
+
+        <Button
+          onClick={finishRegistration}
+          disabled={isSubmitting || !step4DataReady}
+          className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Переход в дашборд...
+            </>
+          ) : (
+            <>
+              Перейти в дашборд
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </div>
+    );
+  };
 
   // ---------- main render ----------
 
