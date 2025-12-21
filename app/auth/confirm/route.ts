@@ -56,9 +56,18 @@ export async function GET(request: Request) {
         // Пытаемся найти пользователя через admin API и проверить его статус
         console.log("[auth/confirm] Code invalid or expired, checking if user might already be confirmed");
         
+        // Пытаемся проверить через admin API, может быть пользователь уже подтвержден
+        try {
+          const supabaseAdmin = createAdminSupabaseClient();
+          // Пытаемся найти пользователя по email из кода (если возможно)
+          // Но проще проверить через getUser после редиректа
+        } catch (e) {
+          console.error("[auth/confirm] Error checking user status:", e);
+        }
+        
         // Редиректим на страницу, которая проверит статус через getUser()
-        // Если email уже подтвержден в Auth, синхронизируем профиль
-        return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));
+        // Если email уже подтвержден в Auth, синхронизирует профиль
+        return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
       }
 
       // Успешное подтверждение через PKCE
