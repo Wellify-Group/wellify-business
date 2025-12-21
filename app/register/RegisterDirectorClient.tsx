@@ -110,66 +110,17 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  // ---------- Восстановление состояния из localStorage при монтировании ----------
+  // ---------- Очистка localStorage при монтировании (сброс при обновлении страницы) ----------
   useEffect(() => {
     if (typeof window === "undefined") return;
     
-    // Восстанавливаем userId и email из localStorage
-    const savedUserId = localStorage.getItem("wellify_registration_userId");
-    const savedEmail = localStorage.getItem("wellify_registration_email");
+    // При обновлении страницы очищаем все данные регистрации из localStorage
+    // Это обеспечивает полный сброс при обновлении страницы
+    localStorage.removeItem("wellify_registration_userId");
+    localStorage.removeItem("wellify_registration_email");
+    localStorage.removeItem("wellify_email_confirmed");
     
-    if (savedUserId && savedEmail) {
-      console.log("[register] Restoring registration state from localStorage:", {
-        userId: savedUserId,
-        email: savedEmail,
-      });
-      
-      // Восстанавливаем состояние
-      setRegisteredUserId(savedUserId);
-      setRegisteredUserEmail(savedEmail);
-      setEmail(savedEmail);
-      
-      // Восстанавливаем статус "link_sent" чтобы запустить polling
-      setEmailStatus("link_sent");
-      setStep(2);
-      setMaxStepReached(2);
-      
-      // Немедленно проверяем статус через API
-      const checkStatusImmediately = async () => {
-        try {
-          const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(savedUserId)}`;
-          const res = await fetch(url, { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            const isVerified = data.success && (data.emailVerified === true || data.emailConfirmed === true);
-            
-            console.log("[register] Restore check result:", {
-              success: data.success,
-              emailVerified: data.emailVerified,
-              emailConfirmed: data.emailConfirmed,
-              isVerified,
-            });
-            
-            if (isVerified) {
-              console.log("[register] ✅ Email already verified on restore, transitioning to step 3");
-              setEmailStatus("verified");
-              setEmailVerified(true);
-              setStep(3);
-              setMaxStepReached(3);
-            } else {
-              console.log("[register] Email not verified yet, polling will start automatically");
-            }
-          } else {
-            console.warn("[register] Restore check failed, status:", res.status);
-          }
-        } catch (e) {
-          console.error("[register] Restore check error", e);
-        }
-      };
-      
-      // Проверяем сразу (polling запустится автоматически через useEffect)
-      checkStatusImmediately();
-    }
+    console.log("[register] Page loaded - registration state reset");
   }, []); // Только при монтировании
 
   // ---------- helpers ----------
@@ -338,12 +289,7 @@ export default function RegisterDirectorClient() {
       setRegisteredUserId(data.user.id);
       setRegisteredUserEmail(data.user.email ?? email.trim());
 
-      // Сохраняем userId в localStorage для восстановления при перезагрузке
-      if (typeof window !== "undefined") {
-        localStorage.setItem("wellify_registration_userId", data.user.id);
-        localStorage.setItem("wellify_registration_email", data.user.email ?? email.trim());
-      }
-
+      // НЕ сохраняем в localStorage - при обновлении страницы все должно сброситься
       setEmailStatus("link_sent");
       
       // Немедленно запускаем проверку статуса (polling запустится автоматически через useEffect)
@@ -477,161 +423,7 @@ export default function RegisterDirectorClient() {
     setMaxStepReached(4);
   };
 
-  // ---------- Проверка при монтировании, если email уже подтвержден ----------
-  // Если пользователь вернулся на страницу после подтверждения email
-  useEffect(() => {
-    // Проверяем, если есть userId (даже если emailStatus еще не "link_sent")
-    // Это нужно для случая, когда пользователь вернулся на страницу после подтверждения
-    if (!registeredUserId) {
-      // Пытаемся восстановить из localStorage
-      if (typeof window !== "undefined") {
-        const savedUserId = localStorage.getItem("wellify_registration_userId");
-        if (savedUserId) {
-          // userId будет восстановлен в другом useEffect, просто выходим здесь
-          return;
-        }
-      }
-      return;
-    }
-    
-    // Если emailStatus еще не "link_sent", но есть userId - проверяем статус
-    // Это может быть случай, когда пользователь вернулся на страницу после подтверждения
-    if (emailStatus !== "link_sent" && emailStatus !== "verified") {
-      // Проверяем, может быть email уже подтвержден
-      const emailConfirmedFlag = typeof window !== "undefined" 
-        ? localStorage.getItem("wellify_email_confirmed") 
-        : null;
-      
-      if (emailConfirmedFlag === "true") {
-        // Флаг есть, но статус не обновлен - проверяем через API
-        const checkStatus = async () => {
-          try {
-            const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
-            const res = await fetch(url);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success && (data.emailConfirmed || data.emailVerified)) {
-                console.log("[register] Email confirmed but status not updated, fixing state");
-                setEmailStatus("verified");
-                setEmailVerified(true);
-                setStep(3);
-                setMaxStepReached(3);
-              }
-            }
-          } catch (e) {
-            console.error("[register] Status fix check error", e);
-          }
-        };
-        checkStatus();
-      }
-      return;
-    }
-    
-    if (emailStatus !== "link_sent") return;
-    if (emailVerified) return; // Уже подтвержден
-    
-    // Проверяем localStorage флаг (устанавливается на странице email-confirmed)
-    const checkLocalStorage = () => {
-      if (typeof window !== "undefined") {
-        const emailConfirmedFlag = localStorage.getItem("wellify_email_confirmed");
-        if (emailConfirmedFlag === "true") {
-          console.log("[register] Found wellify_email_confirmed flag in localStorage, checking status");
-          // Флаг найден, но нужно проверить через API для надежности
-          return true;
-        }
-      }
-      return false;
-    };
-    
-    // Проверяем сразу при монтировании, если на шаге 2
-    const checkInitialStatus = async () => {
-      try {
-        // Сначала проверяем localStorage
-        const hasLocalStorageFlag = checkLocalStorage();
-        
-        // Проверяем через API
-        const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && (data.emailConfirmed || data.emailVerified)) {
-            console.log("[register] Email already verified on mount, transitioning to step 3");
-            setEmailStatus("verified");
-            setEmailVerified(true);
-            setStep(3);
-            setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-            return;
-          }
-        }
-        
-        // Если localStorage флаг есть, но API еще не подтвердил - проверяем еще раз через небольшую задержку
-        if (hasLocalStorageFlag) {
-          console.log("[register] localStorage flag found but API not confirmed yet, retrying in 1 second");
-          setTimeout(async () => {
-            try {
-              const retryUrl = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
-              const retryRes = await fetch(retryUrl);
-              if (retryRes.ok) {
-                const retryData = await retryRes.json();
-                if (retryData.success && (retryData.emailConfirmed || retryData.emailVerified)) {
-                  console.log("[register] Email verified on retry, transitioning to step 3");
-                  setEmailStatus("verified");
-                  setEmailVerified(true);
-                  setStep(3);
-                  setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-                }
-              }
-            } catch (e) {
-              console.error("[register] Retry check error", e);
-            }
-          }, 1000);
-        }
-      } catch (e) {
-        console.error("[register] Initial check error", e);
-      }
-    };
-    
-    checkInitialStatus();
-  }, [emailStatus, registeredUserId, emailVerified]);
-
-  // ---------- Слушатель событий storage для синхронизации между вкладками ----------
-  // Реагирует на изменение localStorage в других вкладках
-  useEffect(() => {
-    if (emailStatus !== "link_sent") return;
-    if (!registeredUserId) return;
-    if (emailVerified) return; // Уже подтвержден
-
-    const handleStorageChange = async (e: StorageEvent) => {
-      // Проверяем, изменился ли флаг wellify_email_confirmed
-      if (e.key === "wellify_email_confirmed" && e.newValue === "true") {
-        console.log("[register] wellify_email_confirmed flag changed in another tab, checking status");
-        
-        // Проверяем статус через API
-        try {
-          const url = `/api/auth/check-email-confirmed?userId=${encodeURIComponent(registeredUserId)}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && (data.emailConfirmed || data.emailVerified)) {
-              console.log("[register] Email verified via storage event, transitioning to step 3");
-              setEmailStatus("verified");
-              setEmailVerified(true);
-              setStep(3);
-              setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-            }
-          }
-        } catch (e) {
-          console.error("[register] Storage event check error", e);
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, [emailStatus, registeredUserId, emailVerified]);
+  // Убраны все проверки и восстановление из localStorage - при обновлении страницы все сбрасывается
 
   // ---------- слушатель изменений состояния аутентификации ----------
   // Реагирует на подтверждение email в других вкладках через onAuthStateChange
@@ -807,11 +599,6 @@ export default function RegisterDirectorClient() {
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
-          }
-          
-          // Очищаем флаг из localStorage, так как он больше не нужен
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("wellify_email_confirmed");
           }
         }
       } catch (e) {
