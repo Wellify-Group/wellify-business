@@ -55,6 +55,7 @@ export async function GET(request: Request) {
       
       // КРИТИЧНО: В ЭТОТ МОМЕНТ (при клике на ссылку) обновляем email_verified = true в БД
       // Это триггер для polling на шаге 2 регистрации
+      // email_confirmed_at устанавливается Supabase только при успешном exchangeCodeForSession
       if (data.user?.id && data.user?.email && (data.user as any).email_confirmed_at) {
         try {
           const supabaseAdmin = createAdminSupabaseClient();
@@ -82,6 +83,9 @@ export async function GET(request: Request) {
           console.error("[auth/confirm] Error syncing profile:", syncError);
           // Не блокируем редирект, даже если синхронизация не удалась
         }
+      } else {
+        // Если email_confirmed_at не установлен - это ошибка
+        console.error("[auth/confirm] email_confirmed_at is not set after exchangeCodeForSession");
       }
       
       return NextResponse.redirect(new URL("/auth/email-confirmed?status=success", url));

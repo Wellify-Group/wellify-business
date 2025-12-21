@@ -303,28 +303,9 @@ export default function RegisterDirectorClient() {
       // НЕ сохраняем в localStorage - при обновлении страницы все должно сброситься
       setEmailStatus("link_sent");
       
-      // Немедленно запускаем проверку статуса (polling запустится автоматически через useEffect)
-      // Но также делаем первую проверку сразу для быстрого обнаружения подтверждения
-      // По INTERNAL_RULES.md: используется email для polling
-      setTimeout(async () => {
-        try {
-          const checkUrl = `/api/auth/check-email-confirmed?email=${encodeURIComponent(email.trim())}`;
-          const checkRes = await fetch(checkUrl, { cache: 'no-store' });
-          if (checkRes.ok) {
-            const checkData = await checkRes.json();
-            const isVerified = checkData.success && (checkData.emailVerified === true || checkData.emailConfirmed === true);
-            if (isVerified) {
-              console.log("[register] ✅ Email already verified immediately after signup!");
-              setEmailStatus("verified");
-              setEmailVerified(true);
-              setStep(3);
-              setMaxStepReached(3);
-            }
-          }
-        } catch (e) {
-          console.error("[register] Immediate check error", e);
-        }
-      }, 500); // Небольшая задержка для того, чтобы триггер успел обновить email_verified
+      // КРИТИЧНО: НЕ проверяем email_verified сразу после signUp
+      // email_verified должен быть FALSE до момента клика на ссылку в письме
+      // Polling запустится автоматически через useEffect и будет проверять каждые 1.5 секунды
     } catch (err) {
       console.error("[register] handleSendEmailLink error", err);
       setEmailStatus("error");
@@ -626,9 +607,10 @@ export default function RegisterDirectorClient() {
 
         const data = await res.json();
 
-        // Проверяем emailVerified из профиля (основной индикатор) ИЛИ emailConfirmed из Auth
-        // emailVerified из профиля устанавливается триггером после подтверждения email
-        const isVerified = data.success && (data.emailVerified === true || data.emailConfirmed === true);
+        // КРИТИЧНО: Проверяем ТОЛЬКО emailConfirmed из Auth (email_confirmed_at)
+        // email_confirmed_at устанавливается Supabase ТОЛЬКО при клике на ссылку из письма
+        // emailVerified из профиля может быть установлен ошибочно, поэтому не полагаемся на него
+        const isVerified = data.success && data.emailConfirmed === true;
         
         console.log("[register] Polling check result:", {
           success: data.success,
@@ -646,15 +628,15 @@ export default function RegisterDirectorClient() {
           setEmailVerified(true);
           setRegisterError(null);
 
-          // Переходим на шаг 3 (Telegram)
-          setStep(3);
-          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-
           // Останавливаем polling
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
+
+          // Переходим на шаг 3 (Telegram)
+          setStep(3);
+          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
         }
       } catch (e) {
         console.error("[register] Polling check error:", e);

@@ -104,8 +104,10 @@ export async function GET(req: Request) {
       console.error('[check-email-confirmed] Profile check error:', profileError);
     }
     
-    // Email считается подтвержденным, если подтвержден в Auth ИЛИ в профиле
-    const emailConfirmed = emailConfirmedInAuth || emailVerifiedInProfile;
+    // КРИТИЧНО: Email считается подтвержденным ТОЛЬКО если подтвержден в Auth (email_confirmed_at)
+    // email_verified в профиле может быть установлен ошибочно, поэтому проверяем ТОЛЬКО email_confirmed_at
+    // email_verified в профиле используется только как дополнительная информация
+    const emailConfirmed = emailConfirmedInAuth;
 
     // Безопасное логирование (без PII)
     const maskedEmail = user.email
