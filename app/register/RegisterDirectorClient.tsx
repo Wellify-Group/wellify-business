@@ -464,7 +464,7 @@ export default function RegisterDirectorClient() {
           table: 'profiles',
           filter: `id=eq.${registeredUserId}`, // Слушаем только текущего пользователя
         },
-        (payload) => {
+        (payload: { new: { id: string; email_verified?: boolean }; old: Record<string, any> }) => {
           console.log("[register] 📨 Realtime UPDATE event received:", {
             userId: payload.new.id,
             email_verified: payload.new.email_verified,
