@@ -35,3 +35,8 @@ yarn-error.log*
 next-env.d.ts
 
 node_modules
+
+# railway / railpack
+railpack.json
+railpack-plan.json
+Dockerfile
