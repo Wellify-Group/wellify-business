@@ -621,22 +621,22 @@ export default function RegisterDirectorClient() {
         });
 
         if (isVerified && !cancelled) {
-          console.log("[register] ✅ Email verified via polling! Transitioning to step 3");
+          console.log("[register] ✅ Email verified via polling!");
           
           // Обновляем состояние
           setEmailStatus("verified");
           setEmailVerified(true);
           setRegisterError(null);
 
+          // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: УДАЛЯЕМ АВТОМАТИЧЕСКИЙ ПЕРЕХОД НА ШАГ 3!!!
+          // setStep(3); // УДАЛЕНО - теперь переход происходит при нажатии кнопки "Далее"
+          setMaxStepReached((prev) => (prev < 3 ? 3 : prev)); // Оставляем только обновление maxStepReached
+
           // Останавливаем polling
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
-
-          // Переходим на шаг 3 (Telegram)
-          setStep(3);
-          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
         }
       } catch (e) {
         console.error("[register] Polling check error:", e);
@@ -1204,21 +1204,32 @@ export default function RegisterDirectorClient() {
                 <button
                   type="button"
                   onClick={() => {
-                    const form = document.getElementById(
-                      "step2-form"
-                    ) as HTMLFormElement | null;
-                    if (form) {
-                      form.requestSubmit();
+                    // !!! ИСПРАВЛЕНИЕ: Если email подтвержден - переходим на шаг 3, иначе отправляем письмо
+                    if (emailVerified) {
+                      setStep(3);
+                    } else {
+                      // Вызываем отправку формы, как и раньше
+                      const form = document.getElementById(
+                        "step2-form"
+                      ) as HTMLFormElement | null;
+                      if (form) {
+                        form.requestSubmit();
+                      }
                     }
                   }}
                   disabled={
                     isSubmitting ||
                     emailStatus === "sending" ||
-                    emailStatus === "link_sent"
+                    (emailStatus === "link_sent" && !emailVerified) // Блокируем, пока не подтверждено
                   }
                   className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isSubmitting || emailStatus === "sending" ? (
+                  {emailVerified ? (
+                    <>
+                      Далее
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  ) : isSubmitting || emailStatus === "sending" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Отправляем...
@@ -1226,7 +1237,7 @@ export default function RegisterDirectorClient() {
                   ) : emailStatus === "link_sent" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Ожидание...
+                      Ждём подтверждения…
                     </>
                   ) : (
                     <>
