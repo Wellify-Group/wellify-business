@@ -2,9 +2,8 @@
 
 "use client";
 
-import { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   Card,
   CardHeader,
@@ -59,7 +58,8 @@ export default function RegisterDirectorClient() {
   });
 
   const [email, setEmail] = useState("");
-  const [emailExistsError, setEmailExistsError] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "verified" | "error">("idle");
+  const [emailVerified, setEmailVerified] = useState(false);
 
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -72,12 +72,6 @@ export default function RegisterDirectorClient() {
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // e-mail verification
-  const [emailStatus, setEmailStatus] = useState<
-    "idle" | "sending" | "link_sent" | "verified" | "error"
-  >("idle");
-  const [emailVerified, setEmailVerified] = useState(false);
 
   // Шаг 4: состояние готовности данных
   const [step4DataReady, setStep4DataReady] = useState(false);
@@ -104,13 +98,11 @@ export default function RegisterDirectorClient() {
     setStep(1);
     setMaxStepReached(1);
     setRegisterError(null);
-    setEmailExistsError(false);
     
     // Очищаем localStorage
     if (typeof window !== "undefined") {
       localStorage.removeItem("wellify_registration_userId");
       localStorage.removeItem("wellify_registration_email");
-      localStorage.removeItem("wellify_email_confirmed");
     }
   };
 
@@ -122,7 +114,6 @@ export default function RegisterDirectorClient() {
     // Это обеспечивает полный сброс при обновлении страницы
     localStorage.removeItem("wellify_registration_userId");
     localStorage.removeItem("wellify_registration_email");
-    localStorage.removeItem("wellify_email_confirmed");
     
     console.log("[register] Page loaded - registration state reset");
   }, []); // Только при монтировании
@@ -135,9 +126,8 @@ export default function RegisterDirectorClient() {
       setPersonal((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
-  const handleNextFromStep1 = () => {
+  const handleNextFromStep1 = async () => {
     setRegisterError(null);
-    setEmailExistsError(false);
 
     if (!personal.firstName.trim() || !personal.lastName.trim()) {
       setRegisterError("Укажите имя и фамилию директора.");
@@ -160,23 +150,16 @@ export default function RegisterDirectorClient() {
     }
 
     setRegisterError(null);
-    setEmailExistsError(false);
     setStep(2);
     setMaxStepReached((prev) => (prev < 2 ? 2 : prev));
   };
 
-  const handleSubmitStep2 = async (e: FormEvent) => {
-    e.preventDefault();
-    await handleSendEmailLink();
-  };
-
-  const handleSendEmailLink = async () => {
-    if (emailStatus === "sending" || emailStatus === "link_sent") return;
+  const handleSendEmailConfirmation = async () => {
+    if (emailStatus === "sending" || emailStatus === "sent") return;
 
     setRegisterError(null);
-    setEmailExistsError(false);
 
-    // Валидация
+    // Валидация email
     if (!email.trim()) {
       setRegisterError("Укажите рабочий e-mail.");
       setEmailStatus("error");
@@ -208,15 +191,12 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      // НОВАЯ ТАКТИКА: Создаем пользователя БЕЗ подтверждения email через Supabase
-      // Затем генерируем кастомный токен и отправляем письмо через наш API
-      // НЕ передаем emailRedirectTo, чтобы Supabase не отправлял стандартное письмо
+      // Создаем пользователя в Supabase Auth (без подтверждения email)
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password: personal.password,
         options: {
-          // ВАЖНО: Не передаем emailRedirectTo - мы сами отправляем письмо через Resend
-          // Передаем только метаданные пользователя
+          // НЕ передаем emailRedirectTo - мы сами отправляем письмо
           data: {
             first_name: personal.firstName.trim(),
             last_name: personal.lastName.trim(),
@@ -238,10 +218,8 @@ export default function RegisterDirectorClient() {
           msg.includes("user already registered") ||
           msg.includes("email already exists")
         ) {
-          setEmailExistsError(true);
           setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
-          setMaxStepReached(2);
-          setEmailStatus("idle");
+          setEmailStatus("error");
           return;
         }
         setRegisterError(error.message || "Не удалось создать учетную запись. Попробуйте ещё раз.");
@@ -257,57 +235,49 @@ export default function RegisterDirectorClient() {
 
       // Проверка: если identities пустой массив - email уже зарегистрирован
       if (data.user.identities && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        setEmailExistsError(true);
         setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
-        setMaxStepReached(2);
-        setEmailStatus("idle");
+        setEmailStatus("error");
         return;
       }
 
       const userId = data.user.id;
       const userEmail = data.user.email ?? email.trim();
 
-      // НОВАЯ ТАКТИКА: Отправляем кастомное письмо через наш API
-      try {
-        const emailResponse = await fetch('/api/auth/send-custom-email-confirmation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId,
-            email: userEmail,
-            firstName: personal.firstName.trim(),
-            lastName: personal.lastName.trim(),
-          }),
-        });
+      // Отправляем письмо подтверждения через наш API
+      const emailResponse = await fetch('/api/auth/send-email-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email: userEmail,
+          firstName: personal.firstName.trim(),
+          lastName: personal.lastName.trim(),
+        }),
+      });
 
-        if (!emailResponse.ok) {
-          const errorData = await emailResponse.json().catch(() => ({}));
-          console.error('[register] Failed to send custom email:', errorData);
-          setRegisterError("Не удалось отправить письмо. Попробуйте ещё раз позже.");
-          setEmailStatus("error");
-          return;
-        }
-
-        // Принудительный выход после signUp (предотвращает race condition)
-        await supabase.auth.signOut();
-
-        setRegisteredUserId(userId);
-        setRegisteredUserEmail(userEmail);
-        setEmailStatus("link_sent");
-      } catch (emailError) {
-        console.error('[register] Error sending custom email:', emailError);
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json().catch(() => ({}));
+        console.error('[register] Failed to send email confirmation:', errorData);
         setRegisterError("Не удалось отправить письмо. Попробуйте ещё раз позже.");
         setEmailStatus("error");
         return;
       }
+
+      // Принудительный выход после signUp (предотвращает race condition)
+      await supabase.auth.signOut();
+
+      setRegisteredUserId(userId);
+      setRegisteredUserEmail(userEmail);
+      setEmailStatus("sent");
     } catch (err) {
-      console.error("[register] handleSendEmailLink error", err);
+      console.error("[register] handleSendEmailConfirmation error", err);
       setEmailStatus("error");
       setRegisterError("Внутренняя ошибка. Попробуйте позже.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleBack = () => {
     setRegisterError(null);
@@ -406,7 +376,6 @@ export default function RegisterDirectorClient() {
       if (typeof window !== "undefined") {
         localStorage.removeItem("wellify_registration_userId");
         localStorage.removeItem("wellify_registration_email");
-        localStorage.removeItem("wellify_email_confirmed");
       }
 
       router.push("/dashboard/director");
@@ -434,15 +403,11 @@ export default function RegisterDirectorClient() {
     setMaxStepReached(4);
   };
 
-  // ---------- polling e-mail confirmation ----------
-  // Проверяем email_verified в profiles через API
+  // ---------- Polling для проверки подтверждения email (шаг 2) ----------
   useEffect(() => {
-    if (emailStatus !== "link_sent" || !registeredUserEmail) {
+    // Запускаем polling только если письмо отправлено и email еще не подтвержден
+    if (emailStatus !== "sent" || !registeredUserId || emailVerified) {
       return;
-    }
-
-    if (emailVerified) {
-      return; // Уже подтвержден, не нужно проверять
     }
 
     let cancelled = false;
@@ -452,14 +417,14 @@ export default function RegisterDirectorClient() {
       if (cancelled) return;
 
       try {
-        const url = `/api/auth/check-email-confirmed?email=${encodeURIComponent(registeredUserEmail || email.trim())}`;
+        const url = `/api/auth/check-email-status?userId=${encodeURIComponent(registeredUserId)}`;
         const res = await fetch(url, { cache: 'no-store' });
 
         if (!res.ok) return;
 
         const data = await res.json();
 
-        // Проверяем emailVerified из profiles (синхронизируется триггером)
+        // Проверяем emailVerified
         const isVerified = data.success && data.emailVerified === true;
 
         if (isVerified && !cancelled) {
@@ -474,20 +439,25 @@ export default function RegisterDirectorClient() {
           }
         }
       } catch (e) {
-        console.error("[register] Polling check error:", e);
+        console.error("[register] Email status polling error:", e);
       }
     };
 
-    // Первая проверка сразу
-    check();
-    // Затем каждые 1.5 секунды
-    intervalId = setInterval(check, 1500);
+    // Первая проверка через 2 секунды
+    setTimeout(() => {
+      if (!cancelled) {
+        check();
+        // Затем проверяем каждые 2 секунды
+        intervalId = setInterval(check, 2000);
+      }
+    }, 2000);
 
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
     };
-  }, [emailStatus, registeredUserEmail, emailVerified, email]);
+  }, [emailStatus, registeredUserId, emailVerified]);
+
 
   // ---------- Polling для шага 4: проверка готовности данных Telegram ----------
   // По INTERNAL_RULES.md: автоматическая проверка данных на шаге 4
@@ -811,7 +781,7 @@ export default function RegisterDirectorClient() {
   );
 
   const renderStep2 = () => (
-    <form id="step2-form" className="space-y-5" onSubmit={handleSubmitStep2}>
+    <div className="space-y-5">
       <div className="space-y-1.5">
         <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
           Рабочий e-mail
@@ -823,65 +793,38 @@ export default function RegisterDirectorClient() {
           <input
             type="email"
             autoComplete="email"
-            className={`
-              h-10 w-full rounded-2xl border bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors
-              ${emailExistsError 
-                ? "border-rose-600/80 focus:border-rose-500" 
-                : "border-zinc-800/80 focus:border-[var(--accent-primary,#3b82f6)]"
-              }
-            `}
+            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
             placeholder="you@business.com"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
-              if (emailExistsError) {
-                setEmailExistsError(false);
+              if (emailStatus === "error") {
+                setEmailStatus("idle");
                 setRegisterError(null);
               }
             }}
+            disabled={emailStatus === "sending" || emailStatus === "sent"}
           />
         </div>
       </div>
 
-      {emailExistsError && (
-        <div className="mt-3 flex flex-col gap-2 text-xs">
-          <div className="flex gap-3">
-            <Link
-              href="/auth/login"
-              className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
-            >
-              Войти
-            </Link>
-            <span className="text-zinc-600">•</span>
-            <Link
-              href="/forgot-password"
-              className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
-            >
-              Забыли пароль?
-            </Link>
-          </div>
-        </div>
-      )}
-
       <div className="mt-2 flex flex-col gap-1 text-xs text-zinc-500">
-        {!emailExistsError && (
-          <p>
-            Этот адрес будет использоваться для входа, уведомлений по сменам и
-            восстановления доступа.
-          </p>
-        )}
-        {emailStatus === "link_sent" && !emailVerified && !emailExistsError && (
-          <p className="text-emerald-400">
+        <p>
+          Этот адрес будет использоваться для входа, уведомлений по сменам и
+          восстановления доступа.
+        </p>
+        {emailStatus === "sent" && !emailVerified && (
+          <p className="text-emerald-400 mt-2">
             Письмо с подтверждением отправлено. Перейдите по ссылке в письме.
           </p>
         )}
-        {emailStatus === "verified" && emailVerified && !emailExistsError && (
-          <p className="text-emerald-400">
+        {emailStatus === "verified" && emailVerified && (
+          <p className="text-emerald-400 mt-2">
             E-mail подтвержден. Можно переходить к шагу Telegram.
           </p>
         )}
       </div>
-    </form>
+    </div>
   );
 
   const renderStep3 = () => {
@@ -891,9 +834,7 @@ export default function RegisterDirectorClient() {
           <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
             <AlertCircle className="mt-0.5 h-4 w-4" />
             <span>
-              Не удалось получить данные регистрации. Вернитесь на шаг 2,
-              отправьте письмо ещё раз и подтвердите e-mail по ссылке из
-              письма.
+              Не удалось получить данные регистрации. Вернитесь на шаг 1 и попробуйте ещё раз.
             </span>
           </div>
         </div>
@@ -1022,27 +963,20 @@ export default function RegisterDirectorClient() {
                   <ArrowRight className="h-4 w-4" />
                 </button>
               )}
-              {step === 2 && !emailExistsError && (
+              {step === 2 && (
                 <button
                   type="button"
                   onClick={() => {
-                    // !!! ИСПРАВЛЕНИЕ: Если email подтвержден - переходим на шаг 3, иначе отправляем письмо
                     if (emailVerified) {
                       setStep(3);
                     } else {
-                      // Вызываем отправку формы, как и раньше
-                      const form = document.getElementById(
-                        "step2-form"
-                      ) as HTMLFormElement | null;
-                      if (form) {
-                        form.requestSubmit();
-                      }
+                      handleSendEmailConfirmation();
                     }
                   }}
                   disabled={
                     isSubmitting ||
                     emailStatus === "sending" ||
-                    (emailStatus === "link_sent" && !emailVerified) // Блокируем, пока не подтверждено
+                    (emailStatus === "sent" && !emailVerified)
                   }
                   className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
@@ -1056,14 +990,14 @@ export default function RegisterDirectorClient() {
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Отправляем...
                     </>
-                  ) : emailStatus === "link_sent" ? (
+                  ) : emailStatus === "sent" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Ждём подтверждения…
                     </>
                   ) : (
                     <>
-                      Далее
+                      Отправить письмо
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}

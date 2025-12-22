@@ -1,82 +1,112 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+// app/api/auth/check-email-status/route.ts
+// Проверяет статус подтверждения email для polling на фронтенде
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+import { NextResponse } from 'next/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
-/**
- * POST /api/auth/check-email-status
- * Проверяет статус подтверждения email по адресу email (без необходимости в сессии)
- */
-export async function POST(request: NextRequest) {
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export async function GET(req: Request) {
   try {
-    const body = await request.json();
-    const { email } = body;
+    const supabaseAdmin = createAdminSupabaseClient();
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+    const email = searchParams.get('email');
 
-    if (!email || typeof email !== "string") {
+    // Поддерживаем оба параметра: userId (приоритет) или email
+    if (!userId && !email) {
       return NextResponse.json(
-        { success: false, error: "Email is required" },
+        { success: false, emailVerified: false, error: 'userId_or_email_required' },
         { status: 400 }
       );
     }
 
-    const supabaseAdmin = createAdminSupabaseClient();
+    let userData;
+    let getUserError;
 
-    // Проверяем пользователя в auth.users по email (это более надежно)
-    const normalizedEmail = email.toLowerCase().trim();
-    
-    // Получаем список пользователей и ищем по email
-    const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (usersError) {
-      console.error("Error listing users:", usersError);
-      return NextResponse.json(
-        { success: false, error: usersError.message },
-        { status: 500 }
-      );
-    }
-
-    const user = usersData?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
-
-    if (!user) {
-      return NextResponse.json({
-        success: true,
-        emailVerified: false,
-        message: "User not found",
-      });
-    }
-
-    // Проверяем email_confirmed_at из auth.users (это основной источник истины)
-    // Важно: проверяем не только наличие, но и что это не null/undefined
-    const emailVerified = !!user.email_confirmed_at && user.email_confirmed_at !== null;
-
-    // Дополнительная проверка: убеждаемся, что email_confirmed_at - это валидная дата
-    let isValidConfirmation = false;
-    if (user.email_confirmed_at) {
-      try {
-        const confirmedDate = new Date(user.email_confirmed_at);
-        isValidConfirmation = !isNaN(confirmedDate.getTime()) && confirmedDate.getTime() > 0;
-      } catch (e) {
-        isValidConfirmation = false;
+    if (userId) {
+      // Используем getUserById (надежный метод)
+      const result = await supabaseAdmin.auth.admin.getUserById(userId);
+      userData = result.data;
+      getUserError = result.error;
+    } else if (email) {
+      // Ищем пользователя по email
+      const normalizedEmail = email.toLowerCase().trim();
+      const result = await supabaseAdmin.auth.admin.listUsers();
+      
+      if (result.error) {
+        getUserError = result.error;
+      } else {
+        const user = result.data.users.find(u => u.email?.toLowerCase().trim() === normalizedEmail);
+        if (user) {
+          userData = { user };
+        } else {
+          getUserError = { message: 'user_not_found' };
+        }
       }
     }
 
-    const finalEmailVerified = emailVerified && isValidConfirmation;
+    if (getUserError) {
+      console.error('[check-email-status] Error getting user:', getUserError.message);
+      return NextResponse.json(
+        { success: false, emailVerified: false, error: 'user_not_found' },
+        { status: 404 }
+      );
+    }
 
-    return NextResponse.json({
-      success: true,
-      emailVerified: finalEmailVerified,
+    const user = userData?.user ?? null;
+
+    if (!user) {
+      return NextResponse.json(
+        { success: true, emailVerified: false },
+        { status: 200 }
+      );
+    }
+
+    // Проверяем email_verified в profiles (основной индикатор)
+    let emailVerifiedInProfile = false;
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email_verified')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      emailVerifiedInProfile = Boolean(profile?.email_verified);
+    } catch (profileError) {
+      console.error('[check-email-status] Profile check error:', profileError);
+    }
+    
+    // Также проверяем email_confirmed_at для дополнительной информации
+    const emailConfirmedInAuth = Boolean((user as any).email_confirmed_at);
+
+    // Основной индикатор - email_verified из profiles
+    const emailVerified = emailVerifiedInProfile;
+
+    console.log('[check-email-status] User check:', {
       userId: user.id,
-      emailConfirmedAt: user.email_confirmed_at,
+      emailVerified,
+      emailConfirmedInAuth,
     });
-  } catch (error: any) {
-    console.error("Unexpected error checking email status:", error);
+
     return NextResponse.json(
-      { success: false, error: error.message || "Internal server error" },
+      { 
+        success: true, 
+        emailVerified: emailVerified,
+        emailConfirmed: emailVerified, // Для обратной совместимости
+      },
+      { status: 200 }
+    );
+  } catch (err: any) {
+    console.error('[check-email-status] Unexpected error:', err?.message || err);
+    return NextResponse.json(
+      {
+        success: false,
+        emailVerified: false,
+        error: 'unexpected_error',
+      },
       { status: 500 }
     );
   }
 }
-
