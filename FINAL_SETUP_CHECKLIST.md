@@ -11,18 +11,19 @@
 -- =====================================================
 
 -- 1. Создание таблицы email_verifications для хранения кастомных токенов
+-- ВАЖНО: Токен хранится в виде хеша (SHA256) для безопасности
 CREATE TABLE IF NOT EXISTS email_verifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Может быть NULL
   email TEXT NOT NULL,
-  token TEXT NOT NULL UNIQUE,
+  token_hash TEXT NOT NULL UNIQUE, -- Хеш токена (SHA256), НЕ сам токен!
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  verified_at TIMESTAMPTZ,
+  used_at TIMESTAMPTZ, -- Когда токен был использован (NULL = не использован)
   expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '24 hours') NOT NULL
 );
 
 -- Индексы для быстрого поиска
-CREATE INDEX IF NOT EXISTS idx_email_verifications_token ON email_verifications(token);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_token_hash ON email_verifications(token_hash);
 CREATE INDEX IF NOT EXISTS idx_email_verifications_user_id ON email_verifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_email_verifications_email ON email_verifications(email);
 
@@ -162,7 +163,7 @@ COMMENT ON FUNCTION confirm_user_email(UUID) IS
 5. Проверьте в Supabase:
    - `auth.users.email_confirmed_at` должен быть заполнен
    - `profiles.email_verified` должен быть `true`
-   - `email_verifications.verified_at` должен быть заполнен
+   - `email_verifications.used_at` должен быть заполнен (после подтверждения)
 
 ---
 
