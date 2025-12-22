@@ -208,9 +208,14 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      const redirectTo = typeof window !== "undefined"
-        ? `${window.location.origin}/email-confirmed`
-        : `${process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com"}/email-confirmed`;
+      // Используем Railway URL для обработки подтверждения email
+      // Railway сервис обработает подтверждение и редиректит на фронтенд
+      // APP_BASE_URL указывает на Railway сервис (wellify-auth-service)
+      const railwayAuthUrl = typeof window !== "undefined"
+        ? `${window.location.origin}` // На клиенте используем текущий origin (Railway проксирует запросы)
+        : (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com");
+      
+      const redirectTo = `${railwayAuthUrl}/api/auth/confirm-email`;
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
