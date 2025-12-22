@@ -27,38 +27,69 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, email, firstName, lastName } = body;
 
+    console.log('[send-custom-email-confirmation] Request received:', { userId, email: email ? `${email.substring(0, 10)}...` : null });
+
     if (!userId || !email) {
+      console.error('[send-custom-email-confirmation] Missing required fields:', { userId: !!userId, email: !!email });
       return NextResponse.json(
         { success: false, error: 'userId and email are required' },
         { status: 400 }
       );
     }
 
-    const supabaseAdmin = createAdminSupabaseClient();
-
-    // Генерируем уникальный токен
-    const token = generateSecureToken();
-    
-    // Хешируем токен для безопасного хранения в БД
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    
-    // Сохраняем хеш токена в БД (используем существующую структуру таблицы)
-    const { error: insertError } = await supabaseAdmin
-      .from('email_verifications')
-      .insert({
-        user_id: userId, // Сохраняем user_id для удобства поиска
-        email: email.toLowerCase().trim(),
-        token_hash: tokenHash,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 часа
-      });
-
-    if (insertError) {
-      console.error('[send-custom-email-confirmation] Error inserting token:', insertError);
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = createAdminSupabaseClient();
+      console.log('[send-custom-email-confirmation] Supabase admin client created');
+    } catch (supabaseError: any) {
+      console.error('[send-custom-email-confirmation] Failed to create Supabase admin client:', supabaseError?.message);
       return NextResponse.json(
-        { success: false, error: 'Failed to create verification token' },
+        { success: false, error: 'Database connection failed' },
         { status: 500 }
       );
     }
+
+    // Генерируем уникальный токен
+    const token = generateSecureToken();
+    console.log('[send-custom-email-confirmation] Token generated');
+    
+    // Хешируем токен для безопасного хранения в БД
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    console.log('[send-custom-email-confirmation] Token hashed');
+    
+    // Сохраняем хеш токена в БД (используем существующую структуру таблицы)
+    // user_id может быть NULL, если колонка не обязательна
+    const insertData: any = {
+      email: email.toLowerCase().trim(),
+      token_hash: tokenHash,
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 часа
+    };
+    
+    // Добавляем user_id только если он передан (колонка может быть опциональной)
+    if (userId) {
+      insertData.user_id = userId;
+    }
+    
+    console.log('[send-custom-email-confirmation] Inserting into email_verifications:', { email: insertData.email, hasUserId: !!insertData.user_id });
+    
+    const { error: insertError } = await supabaseAdmin
+      .from('email_verifications')
+      .insert(insertData);
+
+    if (insertError) {
+      console.error('[send-custom-email-confirmation] Error inserting token:', insertError);
+      console.error('[send-custom-email-confirmation] Insert data:', insertData);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Failed to create verification token',
+          details: insertError.message 
+        },
+        { status: 500 }
+      );
+    }
+    
+    console.log('[send-custom-email-confirmation] Token saved to database');
 
     // Формируем ссылку подтверждения
     const authServiceUrl = getAuthServiceUrl();
@@ -142,8 +173,13 @@ export async function POST(request: NextRequest) {
 
   } catch (err: any) {
     console.error('[send-custom-email-confirmation] Unexpected error:', err);
+    console.error('[send-custom-email-confirmation] Error stack:', err?.stack);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { 
+        success: false, 
+        error: 'Internal server error',
+        details: err?.message || 'Unknown error'
+      },
       { status: 500 }
     );
   }
