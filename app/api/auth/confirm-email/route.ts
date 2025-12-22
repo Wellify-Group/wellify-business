@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     if (token) {
       console.log("[confirm-email] Processing custom token from database");
 
-      // Хешируем токен для поиска в БД
+      // Хешируем токен для поиска в БД (определяем один раз, используем везде)
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
       // Ищем запись в таблице email_verifications по хешу токена
@@ -109,8 +109,7 @@ export async function GET(request: NextRequest) {
         
         userId = user.id;
         
-        // Обновляем запись, добавляя user_id для будущих запросов
-        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        // Обновляем запись, добавляя user_id для будущих запросов (используем уже определенный tokenHash)
         await supabaseAdmin
           .from('email_verifications')
           .update({ user_id: userId })
@@ -123,8 +122,7 @@ export async function GET(request: NextRequest) {
       const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(userId);
       
       if (existingUser?.user?.email_confirmed_at) {
-        // Email уже подтвержден - помечаем токен как использованный
-        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        // Email уже подтвержден - помечаем токен как использованный (используем уже определенный tokenHash)
         await supabaseAdmin
           .from('email_verifications')
           .update({ used_at: new Date().toISOString() })
@@ -156,8 +154,7 @@ export async function GET(request: NextRequest) {
         // Не критично, продолжаем
       }
 
-      // Помечаем токен как использованный
-      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      // Помечаем токен как использованный (используем уже определенный tokenHash)
       await supabaseAdmin
         .from('email_verifications')
         .update({ used_at: new Date().toISOString() })
