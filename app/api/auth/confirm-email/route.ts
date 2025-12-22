@@ -46,11 +46,14 @@ export async function GET(request: NextRequest) {
     if (token) {
       console.log("[confirm-email] Processing custom token from database");
 
-      // Ищем запись в таблице email_verifications по токену
+      // Хешируем токен для поиска в БД
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+      // Ищем запись в таблице email_verifications по хешу токена
       const { data: verification, error: verificationError } = await supabaseAdmin
         .from('email_verifications')
         .select('*')
-        .eq('token', token)
+        .eq('token_hash', tokenHash)
         .maybeSingle();
 
       if (verificationError) {
@@ -79,16 +82,40 @@ export async function GET(request: NextRequest) {
       }
 
       // Проверяем, использован ли уже токен
-      if (verification.verified_at) {
+      if (verification.used_at) {
         console.log("[confirm-email] ✅ Token already used (repeated click)");
         return NextResponse.redirect(
           new URL(`${frontendBaseUrl}/auth/email-confirmed?status=already_confirmed`)
         );
       }
 
-      // ПЕРВЫЙ КЛИК - подтверждаем email через прямой SQL запрос
-      const userId = verification.user_id;
+      // ПЕРВЫЙ КЛИК - подтверждаем email
       const userEmail = verification.email;
+      
+      // Получаем user_id из записи или находим пользователя по email
+      let userId = verification.user_id;
+      
+      if (!userId) {
+        // Если user_id не сохранен, ищем пользователя по email
+        const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+        const user = usersData?.users?.find(u => u.email?.toLowerCase().trim() === userEmail.toLowerCase().trim());
+        
+        if (!user) {
+          console.error("[confirm-email] User not found for email:", userEmail);
+          return NextResponse.redirect(
+            new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
+          );
+        }
+        
+        userId = user.id;
+        
+        // Обновляем запись, добавляя user_id для будущих запросов
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        await supabaseAdmin
+          .from('email_verifications')
+          .update({ user_id: userId })
+          .eq('token_hash', tokenHash);
+      }
 
       console.log("[confirm-email] ✅ First-time confirmation, user:", userId, "email:", userEmail);
 
@@ -97,10 +124,11 @@ export async function GET(request: NextRequest) {
       
       if (existingUser?.user?.email_confirmed_at) {
         // Email уже подтвержден - помечаем токен как использованный
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
         await supabaseAdmin
           .from('email_verifications')
-          .update({ verified_at: new Date().toISOString() })
-          .eq('token', token);
+          .update({ used_at: new Date().toISOString() })
+          .eq('token_hash', tokenHash);
         
         return NextResponse.redirect(
           new URL(`${frontendBaseUrl}/auth/email-confirmed?status=already_confirmed`)
@@ -129,10 +157,11 @@ export async function GET(request: NextRequest) {
       }
 
       // Помечаем токен как использованный
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       await supabaseAdmin
         .from('email_verifications')
-        .update({ verified_at: new Date().toISOString() })
-        .eq('token', token);
+        .update({ used_at: new Date().toISOString() })
+        .eq('token_hash', tokenHash);
 
       console.log("[confirm-email] ✅ Email confirmed successfully via custom token");
       return NextResponse.redirect(

@@ -39,13 +39,16 @@ export async function POST(request: NextRequest) {
     // Генерируем уникальный токен
     const token = generateSecureToken();
     
-    // Сохраняем токен в БД
+    // Хешируем токен для безопасного хранения в БД
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    
+    // Сохраняем хеш токена в БД (используем существующую структуру таблицы)
     const { error: insertError } = await supabaseAdmin
       .from('email_verifications')
       .insert({
-        user_id: userId,
+        user_id: userId, // Сохраняем user_id для удобства поиска
         email: email.toLowerCase().trim(),
-        token: token,
+        token_hash: tokenHash,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 часа
       });
 
