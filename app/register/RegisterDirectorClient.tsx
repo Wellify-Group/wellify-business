@@ -841,11 +841,6 @@ export default function RegisterDirectorClient() {
             }}
           />
         </div>
-        {emailExistsError && (
-          <p className="text-xs text-rose-400 mt-1">
-            Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.
-          </p>
-        )}
       </div>
 
       {emailExistsError && (
