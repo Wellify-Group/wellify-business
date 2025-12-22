@@ -208,20 +208,15 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      // Используем Railway URL для обработки подтверждения email
-      // Railway сервис обработает подтверждение и редиректит на фронтенд
-      // APP_BASE_URL указывает на Railway сервис (wellify-auth-service)
-      const railwayAuthUrl = typeof window !== "undefined"
-        ? `${window.location.origin}` // На клиенте используем текущий origin (Railway проксирует запросы)
-        : (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://business.wellifyglobal.com");
-      
-      const redirectTo = `${railwayAuthUrl}/api/auth/confirm-email`;
-
+      // НОВАЯ ТАКТИКА: Создаем пользователя БЕЗ подтверждения email через Supabase
+      // Затем генерируем кастомный токен и отправляем письмо через наш API
+      // НЕ передаем emailRedirectTo, чтобы Supabase не отправлял стандартное письмо
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password: personal.password,
         options: {
-          emailRedirectTo: redirectTo,
+          // ВАЖНО: Не передаем emailRedirectTo - мы сами отправляем письмо через Resend
+          // Передаем только метаданные пользователя
           data: {
             first_name: personal.firstName.trim(),
             last_name: personal.lastName.trim(),
@@ -249,7 +244,7 @@ export default function RegisterDirectorClient() {
           setEmailStatus("idle");
           return;
         }
-        setRegisterError(error.message || "Не удалось отправить письмо. Попробуйте ещё раз позже.");
+        setRegisterError(error.message || "Не удалось создать учетную запись. Попробуйте ещё раз.");
         setEmailStatus("error");
         return;
       }
@@ -269,12 +264,42 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // Принудительный выход после signUp (предотвращает race condition)
-      await supabase.auth.signOut();
+      const userId = data.user.id;
+      const userEmail = data.user.email ?? email.trim();
 
-      setRegisteredUserId(data.user.id);
-      setRegisteredUserEmail(data.user.email ?? email.trim());
-      setEmailStatus("link_sent");
+      // НОВАЯ ТАКТИКА: Отправляем кастомное письмо через наш API
+      try {
+        const emailResponse = await fetch('/api/auth/send-custom-email-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            email: userEmail,
+            firstName: personal.firstName.trim(),
+            lastName: personal.lastName.trim(),
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json().catch(() => ({}));
+          console.error('[register] Failed to send custom email:', errorData);
+          setRegisterError("Не удалось отправить письмо. Попробуйте ещё раз позже.");
+          setEmailStatus("error");
+          return;
+        }
+
+        // Принудительный выход после signUp (предотвращает race condition)
+        await supabase.auth.signOut();
+
+        setRegisteredUserId(userId);
+        setRegisteredUserEmail(userEmail);
+        setEmailStatus("link_sent");
+      } catch (emailError) {
+        console.error('[register] Error sending custom email:', emailError);
+        setRegisterError("Не удалось отправить письмо. Попробуйте ещё раз позже.");
+        setEmailStatus("error");
+        return;
+      }
     } catch (err) {
       console.error("[register] handleSendEmailLink error", err);
       setEmailStatus("error");

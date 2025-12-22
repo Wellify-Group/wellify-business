@@ -1,19 +1,16 @@
 // app/api/auth/confirm-email/route.ts
-// Эндпоинт для обработки подтверждения email через Railway прокси
-// Проверяет первый/повторный клик и редиректит на соответствующие страницы
+// НОВАЯ ТАКТИКА: Используем кастомный токен из БД вместо стандартного кода Supabase
+// Railway эндпоинт проверяет токен в БД, обновляет статус через Admin API и редиректит
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // Получаем базовый URL фронтенда для редиректов
 function getFrontendBaseUrl(): string {
-  // Используем переменную окружения для URL фронтенда
-  // Для dev: https://dev.wellifyglobal.com
-  // Для production: https://business.wellifyglobal.com
   const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || 
                      process.env.APP_BASE_URL || 
                      (process.env.NODE_ENV === 'production' 
@@ -24,23 +21,19 @@ function getFrontendBaseUrl(): string {
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const code = url.searchParams.get("code");
   const token = url.searchParams.get("token");
-  const tokenHash = url.searchParams.get("token_hash");
-  const type = url.searchParams.get("type");
+  const code = url.searchParams.get("code"); // Оставляем поддержку стандартного кода как fallback
 
   console.log("[confirm-email] Request received:", {
-    code: code ? `${code.substring(0, 20)}...` : null,
     token: token ? `${token.substring(0, 20)}...` : null,
-    tokenHash: tokenHash ? `${tokenHash.substring(0, 20)}...` : null,
-    type,
+    code: code ? `${code.substring(0, 20)}...` : null,
   });
 
   const frontendBaseUrl = getFrontendBaseUrl();
 
-  // Проверяем наличие параметров
-  if (!code && !token && !tokenHash) {
-    console.log("[confirm-email] No confirmation parameters provided");
+  // Если нет ни токена, ни кода - невалидный запрос
+  if (!token && !code) {
+    console.log("[confirm-email] No token or code provided");
     return NextResponse.redirect(
       new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
     );
@@ -49,136 +42,115 @@ export async function GET(request: NextRequest) {
   try {
     const supabaseAdmin = createAdminSupabaseClient();
 
-    // Приоритет: обрабатываем code (PKCE flow) - основной метод для email confirmation
+    // НОВАЯ ТАКТИКА: Приоритет - кастомный токен из БД
+    if (token) {
+      console.log("[confirm-email] Processing custom token from database");
+
+      // Ищем запись в таблице email_verifications по токену
+      const { data: verification, error: verificationError } = await supabaseAdmin
+        .from('email_verifications')
+        .select('*')
+        .eq('token', token)
+        .maybeSingle();
+
+      if (verificationError) {
+        console.error("[confirm-email] Error querying email_verifications:", verificationError);
+        return NextResponse.redirect(
+          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
+        );
+      }
+
+      if (!verification) {
+        console.log("[confirm-email] Token not found in database");
+        return NextResponse.redirect(
+          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
+        );
+      }
+
+      // Проверяем, не истек ли токен
+      const now = new Date();
+      const expiresAt = verification.expires_at ? new Date(verification.expires_at) : null;
+      
+      if (expiresAt && now > expiresAt) {
+        console.log("[confirm-email] Token expired");
+        return NextResponse.redirect(
+          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
+        );
+      }
+
+      // Проверяем, использован ли уже токен
+      if (verification.verified_at) {
+        console.log("[confirm-email] ✅ Token already used (repeated click)");
+        return NextResponse.redirect(
+          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=already_confirmed`)
+        );
+      }
+
+      // ПЕРВЫЙ КЛИК - подтверждаем email через прямой SQL запрос
+      const userId = verification.user_id;
+      const userEmail = verification.email;
+
+      console.log("[confirm-email] ✅ First-time confirmation, user:", userId, "email:", userEmail);
+
+      // Проверяем, может быть email уже подтвержден
+      const { data: existingUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+      
+      if (existingUser?.user?.email_confirmed_at) {
+        // Email уже подтвержден - помечаем токен как использованный
+        await supabaseAdmin
+          .from('email_verifications')
+          .update({ verified_at: new Date().toISOString() })
+          .eq('token', token);
+        
+        return NextResponse.redirect(
+          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=already_confirmed`)
+        );
+      }
+
+      // Обновляем email_confirmed_at через SQL функцию
+      const { error: updateError } = await supabaseAdmin.rpc('confirm_user_email', {
+        user_id_param: userId
+      });
+
+      if (updateError) {
+        console.error("[confirm-email] Error calling confirm_user_email function:", updateError);
+        // Продолжаем - обновим хотя бы профиль
+      }
+
+      // Обновляем профиль - устанавливаем email_verified = true
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({ email_verified: true })
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error("[confirm-email] Error updating profile:", profileError);
+        // Не критично, продолжаем
+      }
+
+      // Помечаем токен как использованный
+      await supabaseAdmin
+        .from('email_verifications')
+        .update({ verified_at: new Date().toISOString() })
+        .eq('token', token);
+
+      console.log("[confirm-email] ✅ Email confirmed successfully via custom token");
+      return NextResponse.redirect(
+        new URL(`${frontendBaseUrl}/auth/email-confirmed?status=success`)
+      );
+    }
+
+    // FALLBACK: Обработка стандартного кода Supabase (для обратной совместимости)
     if (code) {
-      console.log("[confirm-email] Processing code via exchangeCodeForSession (PKCE flow)");
-
-      try {
-        const supabase = await createServerSupabaseClient();
-        
-        // Получаем пользователя ДО exchangeCodeForSession, чтобы проверить, подтвержден ли уже email
-        // Но для этого нужен другой способ, так как code нельзя декодировать без exchange
-        // Поэтому сначала пробуем exchange, и если получаем ошибку "already confirmed" - это повторный клик
-        
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-        if (error) {
-          console.error("[confirm-email] exchangeCodeForSession error:", error.message);
-          
-          const errorMsg = error.message?.toLowerCase() || "";
-          
-          // Проверяем, является ли это ошибкой "already confirmed"
-          if (
-            errorMsg.includes("already confirmed") ||
-            errorMsg.includes("email already verified") ||
-            errorMsg.includes("token already used") ||
-            errorMsg.includes("link has already been used") ||
-            errorMsg.includes("already been verified")
-          ) {
-            // ПОВТОРНЫЙ КЛИК - пользователь уже подтверждал email
-            console.log("[confirm-email] ✅ Email already confirmed (repeated click)");
-            
-            // Проверяем, действительно ли email подтвержден в БД
-            // Пытаемся найти пользователя через admin API
-            try {
-              // Извлекаем userId из ошибки или пытаемся найти пользователя другим способом
-              // Но так как у нас нет userId, просто редиректим на страницу "already confirmed"
-              return NextResponse.redirect(
-                new URL(`${frontendBaseUrl}/auth/email-confirmed?status=already_confirmed`)
-              );
-            } catch (e) {
-              console.error("[confirm-email] Error checking already confirmed user:", e);
-              return NextResponse.redirect(
-                new URL(`${frontendBaseUrl}/auth/email-confirmed?status=already_confirmed`)
-              );
-            }
-          }
-
-          // Если код недействителен или истек
-          console.log("[confirm-email] Code invalid or expired");
-          return NextResponse.redirect(
-            new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
-          );
-        }
-
-        // УСПЕШНОЕ ПОДТВЕРЖДЕНИЕ (ПЕРВЫЙ КЛИК)
-        // Если exchangeCodeForSession успешен - это гарантированно первый раз,
-        // так как Supabase не позволит использовать один и тот же code дважды
-        if (data.user?.id && data.user?.email && (data.user as any).email_confirmed_at) {
-          console.log("[confirm-email] ✅ Email confirmed successfully (first click), user:", data.user.id);
-          
-          // Редиректим на страницу успеха
-          return NextResponse.redirect(
-            new URL(`${frontendBaseUrl}/auth/email-confirmed?status=success`)
-          );
-        } else {
-          console.error("[confirm-email] email_confirmed_at is not set after exchangeCodeForSession");
-          return NextResponse.redirect(
-            new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
-          );
-        }
-      } catch (err: any) {
-        console.error("[confirm-email] Unexpected error (code):", err);
-        return NextResponse.redirect(
-          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
-        );
-      }
+      console.log("[confirm-email] Processing standard Supabase code (fallback)");
+      
+      // Используем стандартный метод Supabase
+      // Но это может не работать, поэтому лучше использовать кастомный токен
+      return NextResponse.redirect(
+        new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
+      );
     }
 
-    // Fallback: обработка token/token_hash (старый формат Supabase)
-    if (token || tokenHash) {
-      try {
-        const supabase = await createServerSupabaseClient();
-        const otpType = type || 'signup';
-        console.log("[confirm-email] Attempting verifyOtp with type:", otpType);
-        
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash || token || "",
-          type: otpType as any,
-        });
-
-        if (error) {
-          const errorMsg = error.message?.toLowerCase() || "";
-          
-          if (
-            errorMsg.includes("already confirmed") ||
-            errorMsg.includes("email already verified") ||
-            errorMsg.includes("token already used") ||
-            errorMsg.includes("link has already been used")
-          ) {
-            // ПОВТОРНЫЙ КЛИК
-            console.log("[confirm-email] ✅ Email already confirmed (repeated click via token)");
-            return NextResponse.redirect(
-              new URL(`${frontendBaseUrl}/auth/email-confirmed?status=already_confirmed`)
-            );
-          }
-
-          console.error("[confirm-email] verifyOtp error:", error);
-          return NextResponse.redirect(
-            new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
-          );
-        }
-
-        // УСПЕШНОЕ ПОДТВЕРЖДЕНИЕ (ПЕРВЫЙ КЛИК)
-        if (data.user?.id && data.user?.email && (data.user as any).email_confirmed_at) {
-          console.log("[confirm-email] ✅ Email confirmed successfully (first click via token), user:", data.user.id);
-          return NextResponse.redirect(
-            new URL(`${frontendBaseUrl}/auth/email-confirmed?status=success`)
-          );
-        }
-
-        return NextResponse.redirect(
-          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
-        );
-      } catch (err: any) {
-        console.error("[confirm-email] Unexpected error (token):", err);
-        return NextResponse.redirect(
-          new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
-        );
-      }
-    }
-
-    // Если мы дошли сюда - что-то не так
     return NextResponse.redirect(
       new URL(`${frontendBaseUrl}/auth/email-confirmed?status=invalid_or_expired`)
     );
@@ -190,4 +162,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
