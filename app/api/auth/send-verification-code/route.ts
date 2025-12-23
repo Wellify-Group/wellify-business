@@ -54,6 +54,19 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseAdmin = getSupabaseAdmin();
+    
+    // Проверяем наличие Resend API ключа
+    if (!process.env.RESEND_API_KEY) {
+      console.error('RESEND_API_KEY is not configured');
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Email service is not configured. Please contact support.' 
+        },
+        { status: 500 }
+      );
+    }
+    
     const mailerService = new MailerService();
 
     // Если userId не передан, ищем пользователя по email
@@ -78,9 +91,6 @@ export async function POST(request: NextRequest) {
       targetUserId = user.id;
     }
 
-    // Генерируем код
-    const code = generateVerificationCode();
-
     // Удаляем старые коды для этого пользователя
     await supabaseAdmin
       .from('email_verifications')
@@ -88,23 +98,70 @@ export async function POST(request: NextRequest) {
       .eq('user_id', targetUserId)
       .eq('email', email.toLowerCase());
 
+    // Генерируем код (после удаления старых, чтобы избежать конфликтов)
+    let code = generateVerificationCode();
+    let attempts = 0;
+    const maxAttempts = 5;
+
     // Сохраняем новый код в БД (код хранится в поле token)
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 15); // Код действителен 15 минут
 
-    const { error: insertError } = await supabaseAdmin
-      .from('email_verifications')
-      .insert({
-        user_id: targetUserId,
-        email: email.toLowerCase(),
-        token: code, // Используем поле token для хранения кода
-        expires_at: expiresAt.toISOString(),
-      });
+    let insertData;
+    let insertError;
+    
+    // Пытаемся вставить код, если уникальность нарушена - генерируем новый
+    do {
+      const { data, error } = await supabaseAdmin
+        .from('email_verifications')
+        .insert({
+          user_id: targetUserId,
+          email: email.toLowerCase(),
+          token: code, // Используем поле token для хранения кода
+          expires_at: expiresAt.toISOString(),
+        })
+        .select();
+
+      insertData = data;
+      insertError = error;
+
+      // Если ошибка уникальности - генерируем новый код
+      if (insertError && insertError.code === '23505' && attempts < maxAttempts) {
+        code = generateVerificationCode();
+        attempts++;
+        console.log(`Code collision detected, generating new code (attempt ${attempts})`);
+      } else {
+        break;
+      }
+    } while (attempts < maxAttempts);
 
     if (insertError) {
-      console.error('Error saving verification code:', insertError);
+      console.error('Error saving verification code:', {
+        error: insertError,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        code: insertError.code,
+        userId: targetUserId,
+        email: email.toLowerCase(),
+      });
+      
+      // Более детальное сообщение об ошибке
+      let errorMessage = 'Failed to save verification code';
+      if (insertError.code === '42P01') {
+        errorMessage = 'Database table email_verifications does not exist. Please run migration.';
+      } else if (insertError.code === '23505') {
+        errorMessage = 'Verification code already exists. Please try again.';
+      } else if (insertError.message) {
+        errorMessage = `Database error: ${insertError.message}`;
+      }
+      
       return NextResponse.json(
-        { success: false, error: 'Failed to save verification code' },
+        { 
+          success: false, 
+          error: errorMessage,
+          details: process.env.NODE_ENV === 'development' ? insertError : undefined
+        },
         { status: 500 }
       );
     }
@@ -112,10 +169,22 @@ export async function POST(request: NextRequest) {
     // Отправляем код на email
     try {
       await mailerService.sendVerificationCode(email, code);
+      console.log('Verification code email sent successfully to:', email);
     } catch (emailError: any) {
-      console.error('Error sending email:', emailError);
+      console.error('Error sending email via Resend:', {
+        error: emailError,
+        message: emailError.message,
+        email: email,
+      });
+      
+      // Если код уже сохранен в БД, но email не отправился - это не критично
+      // Пользователь может запросить новый код
       return NextResponse.json(
-        { success: false, error: 'Failed to send email: ' + emailError.message },
+        { 
+          success: false, 
+          error: 'Failed to send email. Please check your Resend API configuration.',
+          details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
+        },
         { status: 500 }
       );
     }
