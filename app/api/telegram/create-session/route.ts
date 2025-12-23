@@ -69,6 +69,13 @@ export async function POST(request: NextRequest) {
                 );
             }
             
+            if (resp.status === 404) {
+                return NextResponse.json(
+                    { error: `Эндпоинт Telegram бота не найден (404). Проверьте, что URL Railway сервиса правильный и эндпоинт /telegram/create-session существует.` },
+                    { status: 404 }
+                );
+            }
+            
             // Для всех остальных ошибок
             return NextResponse.json(
                 { error: `Ошибка при подключении к Telegram боту. Код: ${resp.status}` },
@@ -77,10 +84,18 @@ export async function POST(request: NextRequest) {
         }
         
         // Если Railway вернул ошибку в JSON
-        if (!resp.ok && json.error) {
+        if (!resp.ok) {
             console.error('[telegram/create-session] Railway error response:', json);
+            
+            if (resp.status === 404) {
+                return NextResponse.json(
+                    { error: `Эндпоинт Telegram бота не найден (404). Проверьте, что URL Railway сервиса правильный и эндпоинт /telegram/create-session существует.` },
+                    { status: 404 }
+                );
+            }
+            
             return NextResponse.json(
-                { error: json.error || `Ошибка Telegram бота: ${resp.status}` },
+                { error: json?.error || `Ошибка Telegram бота: ${resp.status}` },
                 { status: resp.status }
             );
         }
