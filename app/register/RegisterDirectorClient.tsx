@@ -86,7 +86,6 @@ export default function RegisterDirectorClient() {
 
   // Показ/скрытие пароля
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
