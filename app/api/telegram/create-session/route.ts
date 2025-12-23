@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         // Получаем ответ от Railway
         // При ошибке 502/500 тело может быть невалидным JSON, поэтому используем try/catch
         let json;
-        let responseText: string;
+        let responseText: string = '';
         try {
             responseText = await resp.text();
             console.log('[telegram/create-session] Railway response body:', responseText);
