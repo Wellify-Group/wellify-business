@@ -172,57 +172,45 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      // Создаем пользователя в Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: personal.email.trim().toLowerCase(),
-        password: personal.password,
-        options: {
-          data: {
-            first_name: personal.firstName.trim(),
-            last_name: personal.lastName.trim(),
-            middle_name: personal.middleName.trim() || null,
-            full_name: fullName || null,
-            birth_date: personal.birthDate || null,
-            locale: localeForAPI,
-          },
+      // Создаем пользователя через API без отправки письма от Supabase
+      // Используем admin API, чтобы не отправлять автоматическое письмо подтверждения
+      const createUserResponse = await fetch('/api/auth/create-user-without-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email: personal.email.trim().toLowerCase(),
+          password: personal.password,
+          first_name: personal.firstName.trim(),
+          last_name: personal.lastName.trim(),
+          middle_name: personal.middleName.trim() || null,
+          full_name: fullName || null,
+          birth_date: personal.birthDate || null,
+          locale: localeForAPI,
+        }),
       });
 
-      // Проверка на существующий email
-      if (error) {
-        const msg = error.message?.toLowerCase() || "";
-        if (
-          msg.includes("already") ||
-          msg.includes("exists") ||
-          msg.includes("registered") ||
-          msg.includes("user already registered") ||
-          msg.includes("email already exists")
-        ) {
+      const createUserData = await createUserResponse.json();
+
+      if (!createUserData.success || !createUserData.user) {
+        const errorMessage = createUserData.error || 'Не удалось создать учетную запись. Попробуйте ещё раз.';
+        
+        // Проверка на существующий email
+        if (errorMessage.toLowerCase().includes('already') || 
+            errorMessage.toLowerCase().includes('exists') ||
+            errorMessage.toLowerCase().includes('registered')) {
           setEmailExistsError(true);
           setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
           return;
         }
-        setRegisterError(error.message || "Не удалось создать учетную запись. Попробуйте ещё раз.");
+        
+        setRegisterError(errorMessage);
         return;
       }
 
-      if (!data?.user) {
-        setRegisterError("Не удалось создать учетную запись. Попробуйте ещё раз.");
-        return;
-      }
-
-      // Проверка: если identities пустой массив - email уже зарегистрирован
-      if (data.user.identities && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-        setEmailExistsError(true);
-        setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
-        return;
-      }
-
-      const userId = data.user.id;
-      const userEmail = data.user.email ?? personal.email.trim();
-
-      // Принудительный выход после signUp (предотвращает race condition)
-      await supabase.auth.signOut();
+      const userId = createUserData.user.id;
+      const userEmail = createUserData.user.email ?? personal.email.trim();
 
       setRegisteredUserId(userId);
       setRegisteredUserEmail(userEmail);
