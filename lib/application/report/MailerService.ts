@@ -43,7 +43,7 @@ export class MailerService {
 
     try {
       const emailData: any = {
-        from: this.fromEmail,
+        from: `WELLIFY Business <${this.fromEmail}>`,
         to: options.to,
         subject: options.subject,
       };
@@ -134,21 +134,6 @@ export class MailerService {
         padding: 32px 24px 28px 24px;
       }
 
-      /* Текст-логотип */
-      .brand {
-        text-align: center;
-        font-size: 11px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: #64748B; /* light muted-foreground */
-        margin-bottom: 16px;
-      }
-
-      .brand strong {
-        font-weight: 600;
-        color: #0F172A; /* основний текст */
-      }
-
       /* Заголовок по центру */
       .title {
         font-size: 22px;
@@ -156,7 +141,7 @@ export class MailerService {
         font-weight: 700;
         text-align: center;
         color: #0F172A;
-        margin: 0 0 16px 0;
+        margin: 0 0 24px 0;
       }
 
       .paragraph {
@@ -235,14 +220,6 @@ export class MailerService {
           border-color: rgba(148, 163, 184, 0.24);
         }
 
-        .brand {
-          color: #9CA3AF;
-        }
-
-        .brand strong {
-          color: #E2E8F0;
-        }
-
         .title {
           color: #E2E8F0;
         }
@@ -275,12 +252,6 @@ export class MailerService {
         <tr>
           <td align="center" style="background-color:#F8FAFC;">
             <div class="inner" style="background-color:#FFFFFF;">
-              <!-- Brand text with logo -->
-              <div class="brand" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <img src="https://wellifyglobal.com/logo.png" alt="WELLIFY" style="height: 24px; width: auto;" />
-                <span>WELLIFY <strong>BUSINESS</strong></span>
-              </div>
-
               <h1 class="title">Підтвердження email</h1>
 
               <p class="paragraph">
@@ -389,21 +360,6 @@ WELLIFY BUSINESS
         padding: 32px 24px 28px 24px;
       }
 
-      /* Текст-логотип */
-      .brand {
-        text-align: center;
-        font-size: 11px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: #64748B; /* light muted-foreground */
-        margin-bottom: 16px;
-      }
-
-      .brand strong {
-        font-weight: 600;
-        color: #0F172A; /* основний текст */
-      }
-
       /* Заголовок по центру */
       .title {
         font-size: 22px;
@@ -411,7 +367,7 @@ WELLIFY BUSINESS
         font-weight: 700;
         text-align: center;
         color: #0F172A;
-        margin: 0 0 16px 0;
+        margin: 0 0 24px 0;
       }
 
       .paragraph {
@@ -490,14 +446,6 @@ WELLIFY BUSINESS
           border-color: rgba(148, 163, 184, 0.24);
         }
 
-        .brand {
-          color: #9CA3AF;
-        }
-
-        .brand strong {
-          color: #E2E8F0;
-        }
-
         .title {
           color: #E2E8F0;
         }
@@ -530,11 +478,6 @@ WELLIFY BUSINESS
         <tr>
           <td align="center" style="background-color:#F8FAFC;">
             <div class="inner" style="background-color:#FFFFFF;">
-              <!-- Brand text -->
-              <div class="brand">
-                <span>WELLIFY <strong>BUSINESS</strong></span>
-              </div>
-
               <h1 class="title">Восстановление пароля</h1>
 
               <p class="paragraph">
