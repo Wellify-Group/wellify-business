@@ -335,6 +335,260 @@ WELLIFY BUSINESS
       text,
     });
   }
+
+  /**
+   * Send password reset code
+   */
+  async sendPasswordResetCode(email: string, code: string): Promise<void> {
+    const html = `
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <title>Код восстановления пароля | WELLIFY business</title>
+
+    <!-- Дозволяємо світлу та темну тему -->
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+
+    <style>
+      /* Скидання */
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #F8FAFC; /* light: background */
+        color: #0F172A;            /* light: foreground */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /* Кореневий контейнер */
+      .wrapper {
+        width: 100%;
+        background-color: #F8FAFC; /* light page bg */
+        padding: 32px 0;
+      }
+
+      .inner {
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+        background-color: #FFFFFF;   /* light card */
+        border-radius: 16px;
+        border: 1px solid #E2E8F0;   /* light border */
+        padding: 32px 24px 28px 24px;
+      }
+
+      /* Текст-логотип */
+      .brand {
+        text-align: center;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #64748B; /* light muted-foreground */
+        margin-bottom: 16px;
+      }
+
+      .brand strong {
+        font-weight: 600;
+        color: #0F172A; /* основний текст */
+      }
+
+      /* Заголовок по центру */
+      .title {
+        font-size: 22px;
+        line-height: 1.3;
+        font-weight: 700;
+        text-align: center;
+        color: #0F172A;
+        margin: 0 0 16px 0;
+      }
+
+      .paragraph {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #64748B; /* muted-foreground */
+        margin: 0 0 8px 0;
+        text-align: center;
+      }
+
+      .paragraph-small {
+        font-size: 12px;
+        line-height: 1.6;
+        color: #9CA3AF; /* soft text */
+        margin: 16px 0 8px 0;
+        text-align: left;
+      }
+
+      .nowrap {
+        white-space: nowrap;
+      }
+
+      /* Код подтверждения */
+      .code-container {
+        padding: 24px 0 16px 0;
+        text-align: center;
+      }
+
+      .code-label {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #64748B;
+        margin: 0 0 12px 0;
+        text-align: center;
+      }
+
+      .code-box {
+        display: inline-block;
+        font-size: 36px;
+        font-weight: 700;
+        letter-spacing: 12px;
+        color: #0F172A;
+        background-color: #F1F5F9;
+        border: 2px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 20px 32px;
+        margin: 0 auto;
+        font-family: 'Courier New', monospace;
+      }
+
+      .footer {
+        margin-top: 16px;
+        text-align: left;
+      }
+
+      .footer-note {
+        font-size: 11px;
+        line-height: 1.6;
+        color: #9CA3AF;
+        margin: 0;
+      }
+
+      /* --- ТЕМНА ТЕМА (строго за токенами WELLIFY) --- */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #050B13; /* dark background */
+          color: #E2E8F0;            /* dark foreground */
+        }
+
+        .wrapper {
+          background-color: #050B13;
+        }
+
+        .inner {
+          background-color: #0B1320;
+          border-color: rgba(148, 163, 184, 0.24);
+        }
+
+        .brand {
+          color: #9CA3AF;
+        }
+
+        .brand strong {
+          color: #E2E8F0;
+        }
+
+        .title {
+          color: #E2E8F0;
+        }
+
+        .paragraph {
+          color: #94A3B8;
+        }
+
+        .code-label {
+          color: #94A3B8;
+        }
+
+        .code-box {
+          color: #E2E8F0;
+          background-color: #1E293B;
+          border-color: rgba(148, 163, 184, 0.24);
+        }
+
+        .paragraph-small,
+        .footer-note {
+          color: #9CA3AF;
+        }
+      }
+    </style>
+  </head>
+
+  <body bgcolor="#F8FAFC" style="background-color:#F8FAFC;">
+    <div class="wrapper">
+      <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color:#F8FAFC;">
+        <tr>
+          <td align="center" style="background-color:#F8FAFC;">
+            <div class="inner" style="background-color:#FFFFFF;">
+              <!-- Brand text -->
+              <div class="brand">
+                <span>WELLIFY <strong>BUSINESS</strong></span>
+              </div>
+
+              <h1 class="title">Восстановление пароля</h1>
+
+              <p class="paragraph">
+                Вы запросили восстановление пароля в системе
+                <span class="nowrap"><strong>WELLIFY business</strong>.</span>
+              </p>
+              <p class="paragraph">
+                Введите код подтверждения ниже для создания нового пароля.
+              </p>
+
+              <div class="code-container">
+                <p class="code-label">Ваш код подтверждения:</p>
+                <div class="code-box">${code}</div>
+              </div>
+
+              <p class="paragraph-small">
+                Код действителен в течение 15 минут.
+              </p>
+
+              <div class="footer">
+                <p class="footer-note">
+                  Если вы не запрашивали восстановление пароля в <span class="nowrap">WELLIFY business</span>, просто проигнорируйте это письмо.
+                </p>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>
+    `;
+
+    const text = `
+WELLIFY BUSINESS
+
+Восстановление пароля
+
+Вы запросили восстановление пароля в системе WELLIFY business.
+
+Ваш код подтверждения: ${code}
+
+Введите этот код на сайте для создания нового пароля.
+Код действителен в течение 15 минут.
+
+Если вы не запрашивали восстановление пароля в WELLIFY business, просто проигнорируйте это письмо.
+    `;
+
+    await this.sendMail({
+      to: email,
+      subject: 'Код восстановления пароля - WELLIFY Business',
+      html,
+      text,
+    });
+  }
 }
 
 

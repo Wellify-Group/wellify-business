@@ -71,6 +71,14 @@ export default function RegisterDirectorClient() {
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Состояние для шага 2: ввод email или ввод кода
+  const [step2Email, setStep2Email] = useState<string>('');
+  const [step2CodeSent, setStep2CodeSent] = useState(false);
+  const [step2Code, setStep2Code] = useState(['', '', '', '', '', '']);
+  const [step2IsLoading, setStep2IsLoading] = useState(false);
+  const [step2IsResending, setStep2IsResending] = useState(false);
+  const [step2Error, setStep2Error] = useState<string | null>(null);
 
   // Шаг 3: состояние готовности данных
   const [step3DataReady, setStep3DataReady] = useState(false);
@@ -214,34 +222,9 @@ export default function RegisterDirectorClient() {
 
       setRegisteredUserId(userId);
       setRegisteredUserEmail(userEmail);
-
-      // Отправляем код подтверждения на email
-      try {
-        const sendCodeResponse = await fetch('/api/auth/send-verification-code', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: userEmail,
-            userId: userId,
-          }),
-        });
-
-        const sendCodeData = await sendCodeResponse.json();
-        
-        if (!sendCodeData.success) {
-          console.error('Failed to send verification code:', sendCodeData.error);
-          setRegisterError('Не удалось отправить код подтверждения. Попробуйте еще раз.');
-          return;
-        }
-      } catch (codeError) {
-        console.error('Error sending verification code:', codeError);
-        setRegisterError('Ошибка при отправке кода подтверждения. Попробуйте еще раз.');
-        return;
-      }
+      setStep2Email(userEmail); // Устанавливаем email для шага 2
       
-      // Переходим на шаг 2 (Подтверждение email)
+      // Переходим на шаг 2 (Подтверждение email) - код будет отправлен на шаге 2
       setStep(2);
       setMaxStepReached(2);
     } catch (err) {
@@ -362,32 +345,167 @@ export default function RegisterDirectorClient() {
     }
   };
 
-  const handleEmailVerified = async () => {
-    // Email подтвержден, восстанавливаем сессию и переходим на шаг 3 (Telegram)
-    setRegisterError(null);
-    
-    // Восстанавливаем сессию пользователя для продолжения регистрации
-    if (registeredUserEmail && personal.password) {
-      try {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: registeredUserEmail,
-          password: personal.password,
-        });
+  // Отправка кода на шаге 2
+  const handleStep2SendCode = async () => {
+    if (!step2Email.trim()) {
+      setStep2Error('Введите email адрес');
+      return;
+    }
 
-        if (signInError) {
-          console.error('[register] Sign in after email verification error:', signInError);
-          setRegisterError('Не удалось восстановить сессию. Попробуйте войти вручную.');
-          return;
-        }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(step2Email.trim())) {
+      setStep2Error('Введите корректный e-mail адрес');
+      return;
+    }
 
-        console.log('[register] ✅ Session restored after email verification');
-      } catch (error) {
-        console.error('[register] Error restoring session:', error);
-        setRegisterError('Ошибка при восстановлении сессии. Попробуйте войти вручную.');
+    setStep2IsLoading(true);
+    setStep2Error(null);
+
+    try {
+      const sendCodeResponse = await fetch('/api/auth/send-verification-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: step2Email.trim().toLowerCase(),
+          userId: registeredUserId,
+        }),
+      });
+
+      const sendCodeData = await sendCodeResponse.json();
+      
+      if (!sendCodeData.success) {
+        setStep2Error(sendCodeData.error || 'Не удалось отправить код. Попробуйте еще раз.');
         return;
       }
+
+      setStep2CodeSent(true);
+      setRegisteredUserEmail(step2Email.trim().toLowerCase());
+      setStep2Code(['', '', '', '', '', '']);
+      // Фокус на первое поле кода
+      setTimeout(() => {
+        document.getElementById('step2-code-0')?.focus();
+      }, 100);
+    } catch (error) {
+      console.error('Error sending verification code:', error);
+      setStep2Error('Ошибка при отправке кода. Попробуйте еще раз.');
+    } finally {
+      setStep2IsLoading(false);
     }
+  };
+
+  // Изменение email на шаге 2
+  const handleStep2ChangeEmail = () => {
+    setStep2CodeSent(false);
+    setStep2Code(['', '', '', '', '', '']);
+    setStep2Error(null);
+  };
+
+  // Повторная отправка кода
+  const handleStep2ResendCode = async () => {
+    setStep2IsResending(true);
+    setStep2Error(null);
+
+    try {
+      const sendCodeResponse = await fetch('/api/auth/send-verification-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: step2Email.trim().toLowerCase(),
+          userId: registeredUserId,
+        }),
+      });
+
+      const sendCodeData = await sendCodeResponse.json();
+      
+      if (!sendCodeData.success) {
+        setStep2Error(sendCodeData.error || 'Не удалось отправить код. Попробуйте еще раз.');
+        return;
+      }
+
+      setStep2Code(['', '', '', '', '', '']);
+      setStep2Error(null);
+      // Фокус на первое поле кода
+      setTimeout(() => {
+        document.getElementById('step2-code-0')?.focus();
+      }, 100);
+    } catch (error) {
+      console.error('Error resending verification code:', error);
+      setStep2Error('Ошибка при отправке кода. Попробуйте еще раз.');
+    } finally {
+      setStep2IsResending(false);
+    }
+  };
+
+  // Проверка кода на шаге 2
+  const handleStep2VerifyCode = async () => {
+    const codeString = step2Code.join('');
     
+    if (codeString.length !== 6) {
+      setStep2Error('Введите полный код из 6 цифр');
+      return;
+    }
+
+    setStep2IsLoading(true);
+    setStep2Error(null);
+
+    try {
+      const response = await fetch('/api/auth/verify-email-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: step2Email.trim().toLowerCase(),
+          code: codeString,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Email подтвержден, восстанавливаем сессию и переходим на шаг 3 (Telegram)
+        if (registeredUserEmail && personal.password) {
+          try {
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: registeredUserEmail,
+              password: personal.password,
+            });
+
+            if (signInError) {
+              console.error('[register] Sign in after email verification error:', signInError);
+              setStep2Error('Не удалось восстановить сессию. Попробуйте войти вручную.');
+              return;
+            }
+
+            console.log('[register] ✅ Session restored after email verification');
+          } catch (error) {
+            console.error('[register] Error restoring session:', error);
+            setStep2Error('Ошибка при восстановлении сессии. Попробуйте войти вручную.');
+            return;
+          }
+        }
+        
+        setStep(3);
+        setMaxStepReached(3);
+      } else {
+        setStep2Error(data.error || 'Неверный код. Попробуйте еще раз.');
+        setStep2Code(['', '', '', '', '', '']);
+        document.getElementById('step2-code-0')?.focus();
+      }
+    } catch (error: any) {
+      setStep2Error('Ошибка при проверке кода. Попробуйте еще раз.');
+      console.error('Verify code error:', error);
+    } finally {
+      setStep2IsLoading(false);
+    }
+  };
+
+  const handleEmailVerified = async () => {
+    // Эта функция больше не используется, но оставляем для совместимости
     setStep(3);
     setMaxStepReached(3);
   };
@@ -760,8 +878,40 @@ export default function RegisterDirectorClient() {
     </div>
   );
 
+  const handleStep2CodeChange = (index: number, value: string) => {
+    if (value.length > 1) return;
+    if (!/^\d*$/.test(value)) return;
+
+    const newCode = [...step2Code];
+    newCode[index] = value;
+    setStep2Code(newCode);
+    setStep2Error(null);
+
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`step2-code-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleStep2CodeKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !step2Code[index] && index > 0) {
+      const prevInput = document.getElementById(`step2-code-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
+  const handleStep2CodePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim();
+    if (/^\d{6}$/.test(pastedData)) {
+      setStep2Code(pastedData.split(''));
+      setStep2Error(null);
+      document.getElementById('step2-code-5')?.focus();
+    }
+  };
+
   const renderStep2 = () => {
-    if (!registeredUserEmail) {
+    if (!registeredUserId) {
       return (
         <div className="space-y-4">
           <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
@@ -775,12 +925,143 @@ export default function RegisterDirectorClient() {
     }
 
     return (
-      <div className="flex justify-center">
-        <EmailVerificationCode
-          email={registeredUserEmail}
-          onSuccess={handleEmailVerified}
-          onCancel={handleBack}
-        />
+      <div className="space-y-6">
+        {!step2CodeSent ? (
+          // Ввод email
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                Рабочий e-mail
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+                  <Mail className="h-4 w-4 text-zinc-500" />
+                </div>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
+                  placeholder="you@business.com"
+                  value={step2Email}
+                  onChange={(e) => {
+                    setStep2Email(e.target.value);
+                    setStep2Error(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleStep2SendCode();
+                    }
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-zinc-500">
+                На этот адрес будет отправлен код подтверждения.
+              </p>
+            </div>
+
+            {step2Error && (
+              <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+                <AlertCircle className="mt-0.5 h-4 w-4" />
+                <span>{step2Error}</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleStep2SendCode}
+              disabled={step2IsLoading || !step2Email.trim()}
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {step2IsLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Отправка кода...
+                </>
+              ) : (
+                <>
+                  Отправить код
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          // Ввод кода
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold text-zinc-50">Подтверждение email</h3>
+              <p className="text-sm text-zinc-400">
+                Мы отправили код подтверждения на <br />
+                <span className="font-medium text-zinc-300">{step2Email}</span>
+              </p>
+            </div>
+
+            <div className="flex justify-center gap-2">
+              {step2Code.map((digit, index) => (
+                <input
+                  key={index}
+                  id={`step2-code-${index}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleStep2CodeChange(index, e.target.value)}
+                  onKeyDown={(e) => handleStep2CodeKeyDown(index, e)}
+                  onPaste={index === 0 ? handleStep2CodePaste : undefined}
+                  className="h-14 w-12 rounded-xl border border-zinc-800/80 bg-zinc-950/60 text-center text-2xl font-bold text-zinc-50 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)] focus:ring-2 focus:ring-[var(--accent-primary,#3b82f6)] focus:ring-offset-2 focus:ring-offset-zinc-950 disabled:opacity-50"
+                  disabled={step2IsLoading}
+                  autoFocus={index === 0}
+                />
+              ))}
+            </div>
+
+            {step2Error && (
+              <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+                <AlertCircle className="mt-0.5 h-4 w-4" />
+                <span>{step2Error}</span>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleStep2VerifyCode}
+                disabled={step2IsLoading || step2Code.join('').length !== 6}
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {step2IsLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Проверка...
+                  </>
+                ) : (
+                  <>
+                    Подтвердить
+                    <CheckCircle2 className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={handleStep2ResendCode}
+                  disabled={step2IsResending}
+                  className="text-[var(--accent-primary,#3b82f6)] hover:underline transition-colors disabled:opacity-50"
+                >
+                  {step2IsResending ? 'Отправка...' : 'Отправить код повторно'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStep2ChangeEmail}
+                  className="text-zinc-400 hover:text-zinc-300 transition-colors"
+                >
+                  Изменить email
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -891,7 +1172,7 @@ export default function RegisterDirectorClient() {
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800/80 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800/80 hover:border-zinc-600/70 transition-all"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Назад

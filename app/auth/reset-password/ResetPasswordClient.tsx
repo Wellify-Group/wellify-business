@@ -12,8 +12,9 @@ export function ResetPasswordClient() {
   const router = useRouter();
   const [supabase] = useState(() => createBrowserSupabaseClient());
   
-  // Получаем токен из query параметров (Supabase может использовать разные имена)
-  const token = searchParams.get("token") || searchParams.get("access_token") || searchParams.get("code");
+  // Получаем email и code из query параметров
+  const email = searchParams.get("email");
+  const code = searchParams.get("code");
   
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -21,34 +22,63 @@ export function ResetPasswordClient() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasSession, setHasSession] = useState<boolean | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(true);
+  const [isValid, setIsValid] = useState(false);
 
-  // Проверяем сессию при загрузке (Supabase устанавливает сессию автоматически при переходе по ссылке)
+  // Проверяем код при загрузке
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setHasSession(!!session);
-      if (session?.user?.email) {
-        setUserEmail(session.user.email);
+    const verifyCode = async () => {
+      if (!email || !code) {
+        setIsVerifying(false);
+        setIsValid(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/verify-password-reset-code', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email,
+            code: code,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setIsValid(true);
+        } else {
+          setIsValid(false);
+          setError(data.error || 'Неверный или истекший код');
+        }
+      } catch (error: any) {
+        console.error('Verify code error:', error);
+        setIsValid(false);
+        setError('Ошибка при проверке кода');
+      } finally {
+        setIsVerifying(false);
       }
     };
-    checkSession();
-  }, [supabase]);
 
-  // Показываем загрузку, пока проверяем сессию
-  if (hasSession === null) {
+    verifyCode();
+  }, [email, code]);
+
+  // Показываем загрузку, пока проверяем код
+  if (isVerifying) {
     return (
       <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10">
         <div className="text-center text-sm text-muted-foreground">
-          Загрузка...
+          Проверка кода...
         </div>
       </div>
     );
   }
 
-  // Если нет сессии и нет токена, показываем ошибку
-  if (hasSession === false && !token) {
+  // Если код недействителен
+  if (!isValid || !email || !code) {
     return (
       <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10">
         <div className="text-center">
@@ -58,14 +88,14 @@ export function ResetPasswordClient() {
             </div>
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-2">
-            Недействительная ссылка
+            Недействительный код
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Ссылка для сброса пароля недействительна или устарела. Запросите новую ссылку для сброса пароля.
+            {error || 'Код для сброса пароля недействителен или устарел. Запросите новый код.'}
           </p>
-          <Link href="/auth/forgot-password">
+          <Link href="/forgot-password">
             <Button variant="outline" className="w-full">
-              Запросить новую ссылку
+              Запросить новый код
             </Button>
           </Link>
         </div>
@@ -92,57 +122,27 @@ export function ResetPasswordClient() {
     setIsLoading(true);
 
     try {
-      // Если есть сессия, используем Supabase клиент напрямую
-      if (hasSession) {
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: password,
-        });
+      // Используем API endpoint для сброса пароля
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, password, code }),
+      });
 
-        if (updateError) {
-          console.error("[reset-password] Update error", updateError);
-          setError(updateError.message || "Не удалось изменить пароль. Попробуйте ещё раз.");
-          setIsLoading(false);
-          return;
-        }
+      const data = await res.json().catch(() => null);
 
-        setSuccess("Пароль успешно изменён. Теперь вы можете войти в систему.");
-        
-        // Через 2 секунды редиректим на страницу входа
-        setTimeout(() => {
-          router.push("/auth/login");
-        }, 2000);
+      if (!res.ok || !data.success) {
+        setError(data?.error || data?.message || "Не удалось сбросить пароль. Попробуйте ещё раз.");
         setIsLoading(false);
         return;
       }
 
-      // Если нет сессии, но есть email, используем API endpoint
-      if (userEmail) {
-        const res = await fetch("/api/auth/reset-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: userEmail, password }),
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok || !data.success) {
-          setError(data?.message || "Не удалось сбросить пароль. Попробуйте ещё раз.");
-          setIsLoading(false);
-          return;
-        }
-
-        setSuccess("Пароль успешно изменён. Теперь вы можете войти в систему.");
-        
-        // Через 2 секунды редиректим на страницу входа
-        setTimeout(() => {
-          router.push("/auth/login");
-        }, 2000);
-        setIsLoading(false);
-        return;
-      }
-
-      // Если нет ни сессии, ни email, показываем ошибку
-      setError("Сессия недействительна. Запросите новую ссылку для сброса пароля.");
+      setSuccess("Пароль успешно изменён. Теперь вы можете войти в систему.");
+      
+      // Через 2 секунды редиректим на страницу входа
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 2000);
       setIsLoading(false);
     } catch (err: any) {
       console.error("[reset-password] Error", err);

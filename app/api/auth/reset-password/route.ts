@@ -39,18 +39,35 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, password, email } = body;
+    const { email, password, code } = body;
 
-    if (!password) {
+    if (!email || !password || !code) {
       return NextResponse.json(
-        { success: false, message: "Пароль обязателен" },
+        { success: false, error: "Email, password and code are required" },
         { status: 400 }
       );
     }
 
     if (password.length < 8) {
       return NextResponse.json(
-        { success: false, message: "Пароль должен содержать минимум 8 символов" },
+        { success: false, error: "Пароль должен содержать минимум 8 символов" },
+        { status: 400 }
+      );
+    }
+
+    // Валидация email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid email format" },
+        { status: 400 }
+      );
+    }
+
+    // Валидация кода (6 цифр)
+    if (!/^\d{6}$/.test(code)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid code format. Code must be 6 digits" },
         { status: 400 }
       );
     }
@@ -61,7 +78,7 @@ export async function POST(request: NextRequest) {
     if (!supabaseUrl || !supabaseServiceRoleKey) {
       console.error("[reset-password] Missing Supabase envs");
       return NextResponse.json(
-        { success: false, message: "Server configuration error" },
+        { success: false, error: "Server configuration error" },
         { status: 500 }
       );
     }
@@ -74,70 +91,74 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Если передан email, используем его для обновления пароля
-    if (email) {
-      // Находим пользователя по email
-      const { data: usersData, error: listError } =
-        await supabaseAdmin.auth.admin.listUsers({
-          page: 1,
-          perPage: 1000,
-        });
+    // Проверяем код
+    const { data: verification, error: findError } = await supabaseAdmin
+      .from('email_verifications')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .eq('token', code)
+      .not('verified_at', 'is', null) // Код должен быть подтвержден
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-      if (listError) {
-        console.error("[reset-password] Error listing users", listError);
-        return NextResponse.json(
-          { success: false, message: "Failed to find user" },
-          { status: 500 }
-        );
-      }
-
-      const normalizedEmail = email.trim().toLowerCase();
-      const user = usersData?.users?.find(
-        (u) => u.email && u.email.trim().toLowerCase() === normalizedEmail
-      );
-
-      if (!user) {
-        return NextResponse.json(
-          { success: false, message: "Пользователь не найден" },
-          { status: 404 }
-        );
-      }
-
-      // Обновляем пароль через admin API
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-        user.id,
-        { password: password }
-      );
-
-      if (updateError) {
-        console.error("[reset-password] Update error", updateError);
-        return NextResponse.json(
-          {
-            success: false,
-            message: updateError.message || "Не удалось изменить пароль. Попробуйте ещё раз.",
-          },
-          { status: 500 }
-        );
-      }
-
+    if (findError || !verification) {
       return NextResponse.json(
-        {
-          success: true,
-          message: "Пароль успешно изменён",
-        },
-        { status: 200 }
+        { success: false, error: "Invalid or unverified code" },
+        { status: 400 }
       );
     }
 
-    // Если email не передан, но есть токен, пытаемся использовать обычный клиент
-    // Это работает только если сессия уже установлена на клиенте
-    // В этом случае клиент должен использовать updateUser напрямую
+    // Находим пользователя по email
+    const { data: usersData, error: listError } =
+      await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+
+    if (listError) {
+      console.error("[reset-password] Error listing users", listError);
+      return NextResponse.json(
+        { success: false, error: "Failed to find user" },
+        { status: 500 }
+      );
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = usersData?.users?.find(
+      (u) => u.email && u.email.trim().toLowerCase() === normalizedEmail
+    );
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Пользователь не найден" },
+        { status: 404 }
+      );
+    }
+
+    // Обновляем пароль через admin API
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      user.id,
+      { password: password }
+    );
+
+    if (updateError) {
+      console.error("[reset-password] Update error", updateError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: updateError.message || "Не удалось изменить пароль. Попробуйте ещё раз.",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       {
-        success: false,
-        message: "Email обязателен для сброса пароля через API",
+        success: true,
+        message: "Пароль успешно изменён",
       },
-      { status: 400 }
+      { status: 200 }
     );
   } catch (error: any) {
     console.error("[reset-password] Unexpected error", error);
