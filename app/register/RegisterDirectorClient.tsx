@@ -142,17 +142,6 @@ export default function RegisterDirectorClient() {
       return;
     }
 
-    if (!personal.email.trim()) {
-      setRegisterError("Укажите рабочий e-mail.");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(personal.email.trim())) {
-      setRegisterError("Введите корректный e-mail адрес.");
-      return;
-    }
-
     if (!personal.birthDate) {
       setRegisterError("Укажите дату рождения директора.");
       return;
@@ -172,59 +161,8 @@ export default function RegisterDirectorClient() {
     setIsSubmitting(true);
 
     try {
-      const fullName = [
-        personal.firstName.trim(),
-        personal.middleName.trim(),
-        personal.lastName.trim(),
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      // Создаем пользователя через API без отправки письма от Supabase
-      // Используем admin API, чтобы не отправлять автоматическое письмо подтверждения
-      const createUserResponse = await fetch('/api/auth/create-user-without-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: personal.email.trim().toLowerCase(),
-          password: personal.password,
-          first_name: personal.firstName.trim(),
-          last_name: personal.lastName.trim(),
-          middle_name: personal.middleName.trim() || null,
-          full_name: fullName || null,
-          birth_date: personal.birthDate || null,
-          locale: localeForAPI,
-        }),
-      });
-
-      const createUserData = await createUserResponse.json();
-
-      if (!createUserData.success || !createUserData.user) {
-        const errorMessage = createUserData.error || 'Не удалось создать учетную запись. Попробуйте ещё раз.';
-        
-        // Проверка на существующий email
-        if (errorMessage.toLowerCase().includes('already') || 
-            errorMessage.toLowerCase().includes('exists') ||
-            errorMessage.toLowerCase().includes('registered')) {
-          setEmailExistsError(true);
-          setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
-          return;
-        }
-        
-        setRegisterError(errorMessage);
-        return;
-      }
-
-      const userId = createUserData.user.id;
-      const userEmail = createUserData.user.email ?? personal.email.trim();
-
-      setRegisteredUserId(userId);
-      setRegisteredUserEmail(userEmail);
-      setStep2Email(userEmail); // Устанавливаем email для шага 2
-      
-      // Переходим на шаг 2 (Подтверждение email) - код будет отправлен на шаге 2
+      // На шаге 1 только сохраняем данные, пользователь будет создан на шаге 2 после ввода email
+      // Переходим на шаг 2 (ввод email)
       setStep(2);
       setMaxStepReached(2);
     } catch (err) {
@@ -362,6 +300,58 @@ export default function RegisterDirectorClient() {
     setStep2Error(null);
 
     try {
+      // Если пользователь еще не создан, создаем его
+      if (!registeredUserId) {
+        const fullName = [
+          personal.firstName.trim(),
+          personal.middleName.trim(),
+          personal.lastName.trim(),
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        const createUserResponse = await fetch('/api/auth/create-user-without-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: step2Email.trim().toLowerCase(),
+            password: personal.password,
+            first_name: personal.firstName.trim(),
+            last_name: personal.lastName.trim(),
+            middle_name: personal.middleName.trim() || null,
+            full_name: fullName || null,
+            birth_date: personal.birthDate || null,
+            locale: localeForAPI,
+          }),
+        });
+
+        const createUserData = await createUserResponse.json();
+
+        if (!createUserData.success || !createUserData.user) {
+          const errorMessage = createUserData.error || 'Не удалось создать учетную запись. Попробуйте ещё раз.';
+          
+          // Проверка на существующий email
+          if (errorMessage.toLowerCase().includes('already') || 
+              errorMessage.toLowerCase().includes('exists') ||
+              errorMessage.toLowerCase().includes('registered')) {
+            setStep2Error("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
+            return;
+          }
+          
+          setStep2Error(errorMessage);
+          return;
+        }
+
+        const userId = createUserData.user.id;
+        const userEmail = createUserData.user.email ?? step2Email.trim().toLowerCase();
+
+        setRegisteredUserId(userId);
+        setRegisteredUserEmail(userEmail);
+      }
+
+      // Отправляем код подтверждения
       const sendCodeResponse = await fetch('/api/auth/send-verification-code', {
         method: 'POST',
         headers: {
@@ -746,54 +736,6 @@ export default function RegisterDirectorClient() {
             />
           </div>
         </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
-          Рабочий e-mail
-        </label>
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-            <Mail className="h-4 w-4 text-zinc-500" />
-          </div>
-          <input
-            type="email"
-            autoComplete="email"
-            className={`
-              h-10 w-full rounded-2xl border bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors
-              ${emailExistsError 
-                ? "border-rose-600/80 focus:border-rose-500" 
-                : "border-zinc-800/80 focus:border-[var(--accent-primary,#3b82f6)]"
-              }
-            `}
-            placeholder="you@business.com"
-            value={personal.email}
-            onChange={handlePersonalChange("email")}
-          />
-        </div>
-        {emailExistsError && (
-          <div className="mt-3 flex flex-col gap-2 text-xs">
-            <div className="flex gap-3">
-              <Link
-                href="/auth/login"
-                className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
-              >
-                Войти
-              </Link>
-              <span className="text-zinc-600">•</span>
-              <Link
-                href="/forgot-password"
-                className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
-              >
-                Забыли пароль?
-              </Link>
-            </div>
-          </div>
-        )}
-        <p className="mt-2 text-xs text-zinc-500">
-          Этот адрес будет использоваться для входа, уведомлений по сменам и
-          восстановления доступа.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
