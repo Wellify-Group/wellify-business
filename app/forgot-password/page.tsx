@@ -16,10 +16,10 @@ export default function ForgotPasswordPage() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSendCode = async () => {
-    setError("");
+    setError(null);
 
     // Валидация email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
       if (res.ok && data.success) {
         setCodeSent(true);
         setCode(['', '', '', '', '', '']);
-        setError("");
+        setError(null);
         // Фокус на первое поле кода
         setTimeout(() => {
           document.getElementById('forgot-code-0')?.focus();
@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
 
   const handleResendCode = async () => {
     setIsResending(true);
-    setError("");
+    setError(null);
 
     try {
       const res = await fetch("/api/auth/forgot-password", {
@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
 
       if (res.ok && data.success) {
         setCode(['', '', '', '', '', '']);
-        setError("");
+        setError(null);
         setTimeout(() => {
           document.getElementById('forgot-code-0')?.focus();
         }, 100);
@@ -210,7 +210,7 @@ export default function ForgotPasswordPage() {
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
-                        setError("");
+                        setError(null);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
