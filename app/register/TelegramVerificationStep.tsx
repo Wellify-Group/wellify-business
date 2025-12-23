@@ -60,30 +60,63 @@ export function TelegramVerificationStep({
         setError(null);
 
         // По INTERNAL_RULES.md: используется /api/telegram/create-session
+        console.log("[telegram] Creating session with:", { userId, email, language });
+        
         const resp = await fetch("/api/telegram/create-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, email, language }),
         });
 
+        console.log("[telegram] Response status:", resp.status);
+        console.log("[telegram] Response ok:", resp.ok);
+        console.log("[telegram] Response headers:", Object.fromEntries(resp.headers.entries()));
+
+        const responseData = await resp.json();
+        console.log("[telegram] Response data:", responseData);
+
         if (!resp.ok) {
+          const errorMessage = responseData?.error || responseData?.details || `HTTP ${resp.status}: ${resp.statusText}`;
+          console.error("[telegram] Error creating session:", {
+            status: resp.status,
+            statusText: resp.statusText,
+            error: errorMessage,
+            fullResponse: responseData
+          });
           setError(
-            t<string>("register_error_internal")
+            errorMessage || t<string>("register_error_internal")
           );
           return;
         }
 
-        const json = (await resp.json()) as {
+        const json = responseData as {
           sessionToken: string;
           telegramLink: string;
         };
 
+        if (!json.sessionToken || !json.telegramLink) {
+          console.error("[telegram] Invalid response format:", json);
+          setError("Неверный формат ответа от сервера. Попробуйте еще раз.");
+          return;
+        }
+
+        console.log("[telegram] Session created successfully:", {
+          sessionToken: json.sessionToken.substring(0, 20) + "...",
+          telegramLink: json.telegramLink
+        });
+
         setSessionToken(json.sessionToken);
         setTelegramLink(json.telegramLink);
         setPolling(true);
-      } catch (e) {
-        console.error("[telegram] create-session error", e);
-        setError(t<string>("register_error_internal"));
+      } catch (e: any) {
+        console.error("[telegram] create-session error:", e);
+        console.error("[telegram] Error details:", {
+          message: e?.message,
+          stack: e?.stack,
+          name: e?.name
+        });
+        const errorMessage = e?.message || "Неизвестная ошибка при создании сессии Telegram";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
