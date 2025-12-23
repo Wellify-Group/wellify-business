@@ -275,33 +275,34 @@ export class MailerService {
         <tr>
           <td align="center" style="background-color:#F8FAFC;">
             <div class="inner" style="background-color:#FFFFFF;">
-              <!-- Brand text -->
-              <div class="brand">
+              <!-- Brand text with logo -->
+              <div class="brand" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <img src="https://wellifyglobal.com/logo.png" alt="WELLIFY" style="height: 24px; width: auto;" />
                 <span>WELLIFY <strong>BUSINESS</strong></span>
               </div>
 
-              <h1 class="title">Подтверждение email</h1>
+              <h1 class="title">Підтвердження email</h1>
 
               <p class="paragraph">
-                Вы начали регистрацию в системе управления сменами
+                Ви розпочали реєстрацію в системі управління змінами
                 <span class="nowrap"><strong>WELLIFY business</strong>.</span>
               </p>
               <p class="paragraph">
-                Введите код подтверждения ниже для завершения регистрации.
+                Введіть код підтвердження нижче для завершення реєстрації.
               </p>
 
               <div class="code-container">
-                <p class="code-label">Ваш код подтверждения:</p>
+                <p class="code-label">Ваш код підтвердження:</p>
                 <div class="code-box">${code}</div>
               </div>
 
               <p class="paragraph-small">
-                Код действителен в течение 15 минут.
+                Код дійсний протягом 15 хвилин.
               </p>
 
               <div class="footer">
                 <p class="footer-note">
-                  Если вы не регистрировались в <span class="nowrap">WELLIFY business</span>, просто проигнорируйте это письмо.
+                  Якщо ви не реєструвалися в <span class="nowrap">WELLIFY business</span>, просто проігноруйте цей лист.
                 </p>
               </div>
             </div>
@@ -316,21 +317,21 @@ export class MailerService {
     const text = `
 WELLIFY BUSINESS
 
-Подтверждение email
+Підтвердження email
 
-Вы начали регистрацию в системе управления сменами WELLIFY business.
+Ви розпочали реєстрацію в системі управління змінами WELLIFY business.
 
-Ваш код подтверждения: ${code}
+Ваш код підтвердження: ${code}
 
-Введите этот код на сайте для подтверждения вашего email адреса.
-Код действителен в течение 15 минут.
+Введіть цей код на сайті для підтвердження вашої email адреси.
+Код дійсний протягом 15 хвилин.
 
-Если вы не регистрировались в WELLIFY business, просто проигнорируйте это письмо.
+Якщо ви не реєструвалися в WELLIFY business, просто проігноруйте цей лист.
     `;
 
     await this.sendMail({
       to: email,
-      subject: 'Код подтверждения email - WELLIFY Business',
+      subject: 'Код підтвердження email - WELLIFY Business',
       html,
       text,
     });

@@ -22,6 +22,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: "WELLIFY business - вся выручка, смены и сотрудники в одном кабинете",
   description: "Управляйте своим бизнесом эффективно. WELLIFY business - платформа для контроля смен, выручки, сотрудников и аналитики в реальном времени.",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
   openGraph: {
     title: "WELLIFY business - вся выручка, смены и сотрудники в одном кабинете",
     description: "Управляйте своим бизнесом эффективно. WELLIFY business - платформа для контроля смен, выручки, сотрудников и аналитики в реальном времени.",
