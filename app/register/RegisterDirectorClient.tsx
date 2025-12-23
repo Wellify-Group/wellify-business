@@ -840,19 +840,6 @@ export default function RegisterDirectorClient() {
   };
 
   const renderStep2 = () => {
-    if (!registeredUserId) {
-      return (
-        <div className="space-y-4">
-          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
-            <AlertCircle className="mt-0.5 h-4 w-4" />
-            <span>
-              Не удалось получить данные регистрации. Вернитесь на шаг 1 и попробуйте ещё раз.
-            </span>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="space-y-6">
         {!step2CodeSent ? (
