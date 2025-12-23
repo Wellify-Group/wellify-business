@@ -28,8 +28,9 @@ import {
 import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
+import { EmailVerificationCode } from "@/components/auth/email-verification-code";
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 interface PersonalForm {
   firstName: string;
@@ -225,8 +226,34 @@ export default function RegisterDirectorClient() {
 
       setRegisteredUserId(userId);
       setRegisteredUserEmail(userEmail);
+
+      // Отправляем код подтверждения на email
+      try {
+        const sendCodeResponse = await fetch('/api/auth/send-verification-code', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            userId: userId,
+          }),
+        });
+
+        const sendCodeData = await sendCodeResponse.json();
+        
+        if (!sendCodeData.success) {
+          console.error('Failed to send verification code:', sendCodeData.error);
+          setRegisterError('Не удалось отправить код подтверждения. Попробуйте еще раз.');
+          return;
+        }
+      } catch (codeError) {
+        console.error('Error sending verification code:', codeError);
+        setRegisterError('Ошибка при отправке кода подтверждения. Попробуйте еще раз.');
+        return;
+      }
       
-      // Переходим на шаг 2 (Telegram)
+      // Переходим на шаг 2 (Подтверждение email)
       setStep(2);
       setMaxStepReached(2);
     } catch (err) {
@@ -245,6 +272,8 @@ export default function RegisterDirectorClient() {
   const canGoToStep = (target: Step) => {
     if (target === 1) return true;
     if (target === 2) return maxStepReached >= 2;
+    if (target === 3) return maxStepReached >= 3;
+    if (target === 4) return maxStepReached >= 4;
     return false;
   };
 
@@ -345,29 +374,59 @@ export default function RegisterDirectorClient() {
     }
   };
 
+  const handleEmailVerified = async () => {
+    // Email подтвержден, восстанавливаем сессию и переходим на шаг 3 (Telegram)
+    setRegisterError(null);
+    
+    // Восстанавливаем сессию пользователя для продолжения регистрации
+    if (registeredUserEmail && personal.password) {
+      try {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: registeredUserEmail,
+          password: personal.password,
+        });
+
+        if (signInError) {
+          console.error('[register] Sign in after email verification error:', signInError);
+          setRegisterError('Не удалось восстановить сессию. Попробуйте войти вручную.');
+          return;
+        }
+
+        console.log('[register] ✅ Session restored after email verification');
+      } catch (error) {
+        console.error('[register] Error restoring session:', error);
+        setRegisterError('Ошибка при восстановлении сессии. Попробуйте войти вручную.');
+        return;
+      }
+    }
+    
+    setStep(3);
+    setMaxStepReached(3);
+  };
+
   const handleTelegramVerified = async (phone?: string) => {
     // Сохраняем phone если передан
     if (phone) {
       setRegisteredUserPhone(phone);
     }
-    // Переходим на шаг 3 - успешное завершение
+    // Переходим на шаг 4 - успешное завершение
     setRegisterError(null);
     setStep3DataReady(false);
     setStep3Polling(false);
-    setStep(3);
-    setMaxStepReached(3);
+    setStep(4);
+    setMaxStepReached(4);
   };
 
-  // ---------- Polling для шага 3: проверка готовности данных Telegram ----------
+  // ---------- Polling для шага 4: проверка готовности данных Telegram ----------
   useEffect(() => {
-    // Запускаем polling только на шаге 3
-    if (step !== 3) {
+    // Запускаем polling только на шаге 4
+    if (step !== 4) {
       return;
     }
 
     setRegisterError(null);
 
-    console.log("[register] ✅ Starting step 3 polling for Telegram data readiness");
+    console.log("[register] ✅ Starting step 4 polling for Telegram data readiness");
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -384,7 +443,7 @@ export default function RegisterDirectorClient() {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError || !sessionData?.session) {
-          console.log("[register] Step 3: No session yet, waiting...");
+          console.log("[register] Step 4: No session yet, waiting...");
           return;
         }
 
@@ -395,19 +454,19 @@ export default function RegisterDirectorClient() {
         });
 
         if (res.status === 401) {
-          console.log("[register] Step 3: 401 Unauthorized, session not ready yet, waiting...");
+          console.log("[register] Step 4: 401 Unauthorized, session not ready yet, waiting...");
           return;
         }
 
         if (!res.ok) {
-          console.warn("[register] Step 3: Load profile failed, status:", res.status);
+          console.warn("[register] Step 4: Load profile failed, status:", res.status);
           return;
         }
 
         const data = await res.json();
 
         if (!data.success || !data.user) {
-          console.log("[register] Step 3: Profile not loaded yet, waiting...");
+          console.log("[register] Step 4: Profile not loaded yet, waiting...");
           return;
         }
 
@@ -419,7 +478,7 @@ export default function RegisterDirectorClient() {
                                    profile?.telegram_verified === "true" || 
                                    profile?.telegram_verified === 1;
 
-        console.log("[register] Step 3: Check result:", {
+        console.log("[register] Step 4: Check result:", {
           hasPhone,
           isTelegramVerified,
           phone: profile?.phone,
@@ -427,7 +486,7 @@ export default function RegisterDirectorClient() {
         });
 
         if (hasPhone && isTelegramVerified) {
-          console.log("[register] ✅ Step 3: Data ready! Phone and Telegram verified");
+          console.log("[register] ✅ Step 4: Data ready! Phone and Telegram verified");
           setStep3DataReady(true);
           setRegisterError(null);
           
@@ -458,7 +517,7 @@ export default function RegisterDirectorClient() {
     }, 1500);
 
     return () => {
-      console.log("[register] Cleaning up step 3 polling");
+      console.log("[register] Cleaning up step 4 polling");
       cancelled = true;
       if (intervalId) {
         clearInterval(intervalId);
@@ -476,7 +535,8 @@ export default function RegisterDirectorClient() {
   const renderTabs = () => {
     const tabs: { id: Step; label: string }[] = [
       { id: 1, label: "Основные данные" },
-      { id: 2, label: "Telegram" },
+      { id: 2, label: "Email" },
+      { id: 3, label: "Telegram" },
     ];
 
     return (
@@ -515,7 +575,7 @@ export default function RegisterDirectorClient() {
       descriptionText =
         "Укажите личные данные директора, e-mail и задайте пароль для входа.";
     } else {
-      // для шага 2 описание убираем, чтобы не дублировать текст про подтверждение телефона
+      // для остальных шагов описание убираем
       descriptionText = null;
     }
 
@@ -713,6 +773,31 @@ export default function RegisterDirectorClient() {
   );
 
   const renderStep2 = () => {
+    if (!registeredUserEmail) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+            <AlertCircle className="mt-0.5 h-4 w-4" />
+            <span>
+              Не удалось получить данные регистрации. Вернитесь на шаг 1 и попробуйте ещё раз.
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex justify-center">
+        <EmailVerificationCode
+          email={registeredUserEmail}
+          onSuccess={handleEmailVerified}
+          onCancel={handleBack}
+        />
+      </div>
+    );
+  };
+
+  const renderStep3 = () => {
     if (!registeredUserId || !registeredUserEmail) {
       return (
         <div className="space-y-4">
@@ -738,7 +823,7 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStep3 = () => {
+  const renderStep4 = () => {
     const showWaitingMessage = step3Polling && !step3DataReady;
     
     return (
@@ -809,11 +894,12 @@ export default function RegisterDirectorClient() {
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
           </CardContent>
 
           <CardFooter className="relative flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
             <div className="flex items-center gap-2">
-              {step > 1 && step < 3 && (
+              {step > 1 && step < 4 && (
                 <button
                   type="button"
                   onClick={handleBack}
