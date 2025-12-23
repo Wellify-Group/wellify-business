@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Отмечаем код как использованный
+    // Отмечаем код как использованный (используем verified_at, так как used_at может не существовать)
     await supabaseAdmin
       .from('email_verifications')
       .update({ verified_at: new Date().toISOString() })
