@@ -1,9 +1,8 @@
-// app/register/RegisterDirectorClient.tsx (ФИНАЛЬНЫЙ КОД)
-
 "use client";
 
 import { useState, useEffect, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Card,
   CardHeader,
@@ -30,12 +29,13 @@ import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 interface PersonalForm {
   firstName: string;
   middleName: string;
   lastName: string;
+  email: string;
   birthDate: string;
   password: string;
   passwordConfirm: string;
@@ -52,16 +52,14 @@ export default function RegisterDirectorClient() {
     firstName: "",
     middleName: "",
     lastName: "",
+    email: "",
     birthDate: "",
     password: "",
     passwordConfirm: "",
   });
 
-  const [email, setEmail] = useState("");
-  const [emailStatus, setEmailStatus] = useState<"idle" | "sending" | "sent" | "verified" | "error">("idle");
-  const [emailVerified, setEmailVerified] = useState(false);
-
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [emailExistsError, setEmailExistsError] = useState(false);
 
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
   const [registeredUserEmail, setRegisteredUserEmail] = useState<string | null>(
@@ -73,9 +71,9 @@ export default function RegisterDirectorClient() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Шаг 4: состояние готовности данных
-  const [step4DataReady, setStep4DataReady] = useState(false);
-  const [step4Polling, setStep4Polling] = useState(false);
+  // Шаг 3: состояние готовности данных
+  const [step3DataReady, setStep3DataReady] = useState(false);
+  const [step3Polling, setStep3Polling] = useState(false);
 
   // Показ/скрытие пароля
   const [showPassword, setShowPassword] = useState(false);
@@ -92,12 +90,10 @@ export default function RegisterDirectorClient() {
     setRegisteredUserId(null);
     setRegisteredUserEmail(null);
     setRegisteredUserPhone(null);
-    setEmail("");
-    setEmailStatus("idle");
-    setEmailVerified(false);
     setStep(1);
     setMaxStepReached(1);
     setRegisterError(null);
+    setEmailExistsError(false);
     
     // Очищаем localStorage
     if (typeof window !== "undefined") {
@@ -110,13 +106,11 @@ export default function RegisterDirectorClient() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     
-    // При обновлении страницы очищаем все данные регистрации из localStorage
-    // Это обеспечивает полный сброс при обновлении страницы
     localStorage.removeItem("wellify_registration_userId");
     localStorage.removeItem("wellify_registration_email");
     
     console.log("[register] Page loaded - registration state reset");
-  }, []); // Только при монтировании
+  }, []);
 
   // ---------- helpers ----------
 
@@ -124,13 +118,29 @@ export default function RegisterDirectorClient() {
     (field: keyof PersonalForm) =>
     (e: ChangeEvent<HTMLInputElement>) => {
       setPersonal((prev) => ({ ...prev, [field]: e.target.value }));
+      if (emailExistsError && field === "email") {
+        setEmailExistsError(false);
+        setRegisterError(null);
+      }
     };
 
   const handleNextFromStep1 = async () => {
     setRegisterError(null);
+    setEmailExistsError(false);
 
     if (!personal.firstName.trim() || !personal.lastName.trim()) {
       setRegisterError("Укажите имя и фамилию директора.");
+      return;
+    }
+
+    if (!personal.email.trim()) {
+      setRegisterError("Укажите рабочий e-mail.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(personal.email.trim())) {
+      setRegisterError("Введите корректный e-mail адрес.");
       return;
     }
 
@@ -150,36 +160,6 @@ export default function RegisterDirectorClient() {
     }
 
     setRegisterError(null);
-    setStep(2);
-    setMaxStepReached((prev) => (prev < 2 ? 2 : prev));
-  };
-
-  const handleSendEmailConfirmation = async () => {
-    if (emailStatus === "sending" || emailStatus === "sent") return;
-
-    setRegisterError(null);
-
-    // Валидация email
-    if (!email.trim()) {
-      setRegisterError("Укажите рабочий e-mail.");
-      setEmailStatus("error");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      setRegisterError("Введите корректный e-mail адрес.");
-      setEmailStatus("error");
-      return;
-    }
-
-    if (!personal.firstName.trim() || !personal.lastName.trim() || !personal.password) {
-      setRegisterError("Пожалуйста, заполните личные данные и пароль на шаге 1.");
-      setEmailStatus("error");
-      return;
-    }
-
-    setEmailStatus("sending");
     setIsSubmitting(true);
 
     try {
@@ -191,12 +171,11 @@ export default function RegisterDirectorClient() {
         .filter(Boolean)
         .join(" ");
 
-      // Создаем пользователя в Supabase Auth (без подтверждения email)
+      // Создаем пользователя в Supabase Auth
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: personal.email.trim().toLowerCase(),
         password: personal.password,
         options: {
-          // НЕ передаем emailRedirectTo - мы сами отправляем письмо
           data: {
             first_name: personal.firstName.trim(),
             last_name: personal.lastName.trim(),
@@ -218,66 +197,45 @@ export default function RegisterDirectorClient() {
           msg.includes("user already registered") ||
           msg.includes("email already exists")
         ) {
+          setEmailExistsError(true);
           setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
-          setEmailStatus("error");
           return;
         }
         setRegisterError(error.message || "Не удалось создать учетную запись. Попробуйте ещё раз.");
-        setEmailStatus("error");
         return;
       }
 
       if (!data?.user) {
         setRegisterError("Не удалось создать учетную запись. Попробуйте ещё раз.");
-        setEmailStatus("error");
         return;
       }
 
       // Проверка: если identities пустой массив - email уже зарегистрирован
       if (data.user.identities && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setEmailExistsError(true);
         setRegisterError("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
-        setEmailStatus("error");
         return;
       }
 
       const userId = data.user.id;
-      const userEmail = data.user.email ?? email.trim();
-
-      // Отправляем письмо подтверждения через наш API
-      const emailResponse = await fetch('/api/auth/send-email-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          email: userEmail,
-          firstName: personal.firstName.trim(),
-          lastName: personal.lastName.trim(),
-        }),
-      });
-
-      if (!emailResponse.ok) {
-        const errorData = await emailResponse.json().catch(() => ({}));
-        console.error('[register] Failed to send email confirmation:', errorData);
-        setRegisterError("Не удалось отправить письмо. Попробуйте ещё раз позже.");
-        setEmailStatus("error");
-        return;
-      }
+      const userEmail = data.user.email ?? personal.email.trim();
 
       // Принудительный выход после signUp (предотвращает race condition)
       await supabase.auth.signOut();
 
       setRegisteredUserId(userId);
       setRegisteredUserEmail(userEmail);
-      setEmailStatus("sent");
+      
+      // Переходим на шаг 2 (Telegram)
+      setStep(2);
+      setMaxStepReached(2);
     } catch (err) {
-      console.error("[register] handleSendEmailConfirmation error", err);
-      setEmailStatus("error");
+      console.error("[register] handleNextFromStep1 error", err);
       setRegisterError("Внутренняя ошибка. Попробуйте позже.");
     } finally {
       setIsSubmitting(false);
     }
   };
-
 
   const handleBack = () => {
     setRegisterError(null);
@@ -287,7 +245,6 @@ export default function RegisterDirectorClient() {
   const canGoToStep = (target: Step) => {
     if (target === 1) return true;
     if (target === 2) return maxStepReached >= 2;
-    if (target === 3) return emailVerified && maxStepReached >= 3;
     return false;
   };
 
@@ -296,7 +253,7 @@ export default function RegisterDirectorClient() {
       setIsSubmitting(true);
       setRegisterError(null);
 
-      // По INTERNAL_RULES.md: проверяем наличие сессии пользователя
+      // Проверяем наличие сессии пользователя
       let session = (await supabase.auth.getSession()).data.session;
       
       // Если нет сессии, восстанавливаем через signInWithPassword
@@ -322,13 +279,12 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // По INTERNAL_RULES.md: загружаем профиль из БД через /api/auth/load-profile
+      // Загружаем профиль из БД через /api/auth/load-profile
       const res = await fetch('/api/auth/load-profile', {
         credentials: 'include',
         cache: 'no-store',
       });
 
-      // По INTERNAL_RULES.md: обработка 401 - показываем ошибку
       if (res.status === 401) {
         setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
         return;
@@ -352,7 +308,7 @@ export default function RegisterDirectorClient() {
 
       const profile = data.user;
 
-      // По INTERNAL_RULES.md: проверяем два условия
+      // Проверяем два условия
       // Условие 1: phone должен быть заполнен
       if (!profile?.phone || profile.phone.trim() === "") {
         setRegisterError("Номер телефона не подтвержден. Пожалуйста, завершите верификацию Telegram.");
@@ -369,7 +325,7 @@ export default function RegisterDirectorClient() {
         return;
       }
 
-      // По INTERNAL_RULES.md: если оба условия выполнены → переход в дашборд
+      // Если оба условия выполнены → переход в дашборд
       console.log("[register] ✅ All conditions met, redirecting to dashboard");
       
       // Очищаем localStorage после успешной регистрации
@@ -394,83 +350,24 @@ export default function RegisterDirectorClient() {
     if (phone) {
       setRegisteredUserPhone(phone);
     }
-    // Переходим на шаг 4 - успешное завершение
-    // По INTERNAL_RULES.md: при переходе на шаг 4 сразу очищаются ошибки
+    // Переходим на шаг 3 - успешное завершение
     setRegisterError(null);
-    setStep4DataReady(false);
-    setStep4Polling(false);
-    setStep(4);
-    setMaxStepReached(4);
+    setStep3DataReady(false);
+    setStep3Polling(false);
+    setStep(3);
+    setMaxStepReached(3);
   };
 
-  // ---------- Polling для проверки подтверждения email (шаг 2) ----------
+  // ---------- Polling для шага 3: проверка готовности данных Telegram ----------
   useEffect(() => {
-    // Запускаем polling только если письмо отправлено и email еще не подтвержден
-    if (emailStatus !== "sent" || !registeredUserId || emailVerified) {
+    // Запускаем polling только на шаге 3
+    if (step !== 3) {
       return;
     }
 
-    let cancelled = false;
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const check = async () => {
-      if (cancelled) return;
-
-      try {
-        const url = `/api/auth/check-email-status?userId=${encodeURIComponent(registeredUserId)}`;
-        const res = await fetch(url, { cache: 'no-store' });
-
-        if (!res.ok) return;
-
-        const data = await res.json();
-
-        // Проверяем emailVerified
-        const isVerified = data.success && data.emailVerified === true;
-
-        if (isVerified && !cancelled) {
-          setEmailStatus("verified");
-          setEmailVerified(true);
-          setRegisterError(null);
-          setMaxStepReached((prev) => (prev < 3 ? 3 : prev));
-
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-        }
-      } catch (e) {
-        console.error("[register] Email status polling error:", e);
-      }
-    };
-
-    // Первая проверка через 2 секунды
-    setTimeout(() => {
-      if (!cancelled) {
-        check();
-        // Затем проверяем каждые 2 секунды
-        intervalId = setInterval(check, 2000);
-      }
-    }, 2000);
-
-    return () => {
-      cancelled = true;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [emailStatus, registeredUserId, emailVerified]);
-
-
-  // ---------- Polling для шага 4: проверка готовности данных Telegram ----------
-  // По INTERNAL_RULES.md: автоматическая проверка данных на шаге 4
-  useEffect(() => {
-    // Запускаем polling только на шаге 4
-    if (step !== 4) {
-      return;
-    }
-
-    // По INTERNAL_RULES.md: при переходе на шаг 4 сразу очищаются ошибки
     setRegisterError(null);
 
-    console.log("[register] ✅ Starting step 4 polling for Telegram data readiness");
+    console.log("[register] ✅ Starting step 3 polling for Telegram data readiness");
 
     let cancelled = false;
     let intervalId: NodeJS.Timeout | null = null;
@@ -478,54 +375,51 @@ export default function RegisterDirectorClient() {
 
     const check = async () => {
       if (cancelled) {
-        console.log("[register] Step 4 polling cancelled");
+        console.log("[register] Step 3 polling cancelled");
         return;
       }
 
       try {
-        // По INTERNAL_RULES.md: проверяем сессию через supabase.auth.getSession()
+        // Проверяем сессию через supabase.auth.getSession()
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        // По INTERNAL_RULES.md: если нет сессии или ошибка - просто ждем, ошибку не показываем
         if (sessionError || !sessionData?.session) {
-          console.log("[register] Step 4: No session yet, waiting...");
+          console.log("[register] Step 3: No session yet, waiting...");
           return;
         }
 
-        // По INTERNAL_RULES.md: используем /api/auth/load-profile с credentials: 'include'
+        // Используем /api/auth/load-profile с credentials: 'include'
         const res = await fetch('/api/auth/load-profile', {
           credentials: 'include',
           cache: 'no-store',
         });
 
-        // По INTERNAL_RULES.md: 401 ошибка - не показываем ошибку, просто ждем
         if (res.status === 401) {
-          console.log("[register] Step 4: 401 Unauthorized, session not ready yet, waiting...");
+          console.log("[register] Step 3: 401 Unauthorized, session not ready yet, waiting...");
           return;
         }
 
         if (!res.ok) {
-          // По INTERNAL_RULES.md: другие ошибки логируются, но не показываются
-          console.warn("[register] Step 4: Load profile failed, status:", res.status);
+          console.warn("[register] Step 3: Load profile failed, status:", res.status);
           return;
         }
 
         const data = await res.json();
 
         if (!data.success || !data.user) {
-          console.log("[register] Step 4: Profile not loaded yet, waiting...");
+          console.log("[register] Step 3: Profile not loaded yet, waiting...");
           return;
         }
 
         const profile = data.user;
 
-        // По INTERNAL_RULES.md: проверяем два условия
+        // Проверяем два условия
         const hasPhone = profile?.phone && profile.phone.trim() !== "";
         const isTelegramVerified = profile?.telegram_verified === true || 
                                    profile?.telegram_verified === "true" || 
                                    profile?.telegram_verified === 1;
 
-        console.log("[register] Step 4: Check result:", {
+        console.log("[register] Step 3: Check result:", {
           hasPhone,
           isTelegramVerified,
           phone: profile?.phone,
@@ -533,10 +427,9 @@ export default function RegisterDirectorClient() {
         });
 
         if (hasPhone && isTelegramVerified) {
-          // По INTERNAL_RULES.md: данные готовы
-          console.log("[register] ✅ Step 4: Data ready! Phone and Telegram verified");
-          setStep4DataReady(true);
-          setRegisterError(null); // Убираем любое сообщение
+          console.log("[register] ✅ Step 3: Data ready! Phone and Telegram verified");
+          setStep3DataReady(true);
+          setRegisterError(null);
           
           // Останавливаем polling
           if (intervalId) {
@@ -548,21 +441,16 @@ export default function RegisterDirectorClient() {
             timeoutId = null;
           }
         } else {
-          // По INTERNAL_RULES.md: данные не готовы - показываем информационное сообщение
-          // Сообщение отображается в renderStep4, здесь только включаем polling
-          if (!step4Polling) {
-            setStep4Polling(true);
-            // Не используем setRegisterError для информационного сообщения
-            // Оно отображается отдельно в renderStep4 синим цветом
+          if (!step3Polling) {
+            setStep3Polling(true);
           }
         }
       } catch (e) {
-        // По INTERNAL_RULES.md: ошибки логируются, но не показываются
-        console.error("[register] Step 4 polling error:", e);
+        console.error("[register] Step 3 polling error:", e);
       }
     };
 
-    // По INTERNAL_RULES.md: первая проверка через 1.5 секунды (дает время БД обновиться)
+    // Первая проверка через 1.5 секунды
     timeoutId = setTimeout(() => {
       check();
       // Затем проверяем каждые 2 секунды
@@ -570,7 +458,7 @@ export default function RegisterDirectorClient() {
     }, 1500);
 
     return () => {
-      console.log("[register] Cleaning up step 4 polling");
+      console.log("[register] Cleaning up step 3 polling");
       cancelled = true;
       if (intervalId) {
         clearInterval(intervalId);
@@ -581,15 +469,14 @@ export default function RegisterDirectorClient() {
         timeoutId = null;
       }
     };
-  }, [step, supabase, step4Polling]);
+  }, [step, supabase, step3Polling]);
 
   // ---------- render helpers ----------
 
   const renderTabs = () => {
     const tabs: { id: Step; label: string }[] = [
       { id: 1, label: "Основные данные" },
-      { id: 2, label: "E-mail" },
-      { id: 3, label: "Telegram" },
+      { id: 2, label: "Telegram" },
     ];
 
     return (
@@ -626,12 +513,9 @@ export default function RegisterDirectorClient() {
 
     if (step === 1) {
       descriptionText =
-        "Укажите личные данные директора и задайте пароль для входа.";
-    } else if (step === 2) {
-      descriptionText =
-        "Укажите рабочий e-mail, мы отправим письмо для подтверждения доступа в WELLIFY business.";
+        "Укажите личные данные директора, e-mail и задайте пароль для входа.";
     } else {
-      // для шага 3 описание убираем, чтобы не дублировать текст про подтверждение телефона
+      // для шага 2 описание убираем, чтобы не дублировать текст про подтверждение телефона
       descriptionText = null;
     }
 
@@ -696,6 +580,54 @@ export default function RegisterDirectorClient() {
             />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          Рабочий e-mail
+        </label>
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+            <Mail className="h-4 w-4 text-zinc-500" />
+          </div>
+          <input
+            type="email"
+            autoComplete="email"
+            className={`
+              h-10 w-full rounded-2xl border bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors
+              ${emailExistsError 
+                ? "border-rose-600/80 focus:border-rose-500" 
+                : "border-zinc-800/80 focus:border-[var(--accent-primary,#3b82f6)]"
+              }
+            `}
+            placeholder="you@business.com"
+            value={personal.email}
+            onChange={handlePersonalChange("email")}
+          />
+        </div>
+        {emailExistsError && (
+          <div className="mt-3 flex flex-col gap-2 text-xs">
+            <div className="flex gap-3">
+              <Link
+                href="/auth/login"
+                className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
+              >
+                Войти
+              </Link>
+              <span className="text-zinc-600">•</span>
+              <Link
+                href="/forgot-password"
+                className="text-[var(--accent-primary,#3b82f6)] hover:underline font-medium"
+              >
+                Забыли пароль?
+              </Link>
+            </div>
+          </div>
+        )}
+        <p className="mt-2 text-xs text-zinc-500">
+          Этот адрес будет использоваться для входа, уведомлений по сменам и
+          восстановления доступа.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -780,54 +712,7 @@ export default function RegisterDirectorClient() {
     </div>
   );
 
-  const renderStep2 = () => (
-    <div className="space-y-5">
-      <div className="space-y-1.5">
-        <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
-          Рабочий e-mail
-        </label>
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-            <Mail className="h-4 w-4 text-zinc-500" />
-          </div>
-          <input
-            type="email"
-            autoComplete="email"
-            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-            placeholder="you@business.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (emailStatus === "error") {
-                setEmailStatus("idle");
-                setRegisterError(null);
-              }
-            }}
-            disabled={emailStatus === "sending" || emailStatus === "sent"}
-          />
-        </div>
-      </div>
-
-      <div className="mt-2 flex flex-col gap-1 text-xs text-zinc-500">
-        <p>
-          Этот адрес будет использоваться для входа, уведомлений по сменам и
-          восстановления доступа.
-        </p>
-        {emailStatus === "sent" && !emailVerified && (
-          <p className="text-emerald-400 mt-2">
-            Письмо с подтверждением отправлено. Перейдите по ссылке в письме.
-          </p>
-        )}
-        {emailStatus === "verified" && emailVerified && (
-          <p className="text-emerald-400 mt-2">
-            E-mail подтвержден. Можно переходить к шагу Telegram.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderStep3 = () => {
+  const renderStep2 = () => {
     if (!registeredUserId || !registeredUserEmail) {
       return (
         <div className="space-y-4">
@@ -853,9 +738,8 @@ export default function RegisterDirectorClient() {
     );
   };
 
-  const renderStep4 = () => {
-    // По INTERNAL_RULES.md: показываем информационное сообщение если данные не готовы
-    const showWaitingMessage = step4Polling && !step4DataReady;
+  const renderStep3 = () => {
+    const showWaitingMessage = step3Polling && !step3DataReady;
     
     return (
       <div className="flex flex-col items-center gap-6 py-8 text-center">
@@ -864,18 +748,17 @@ export default function RegisterDirectorClient() {
         </div>
         <div className="space-y-2">
           <h3 className="text-xl font-semibold text-zinc-50">
-            {step4DataReady 
+            {step3DataReady 
               ? "Регистрация завершена успешно!" 
               : "Завершение регистрации..."}
           </h3>
           <p className="max-w-md text-sm text-zinc-400">
-            {step4DataReady
+            {step3DataReady
               ? "Все данные подтверждены. Теперь вы можете перейти в дашборд и начать работу с WELLIFY business."
               : "Ожидаем подтверждения данных Telegram..."}
           </p>
         </div>
         
-        {/* По INTERNAL_RULES.md: информационное сообщение (синий цвет) если данные не готовы */}
         {showWaitingMessage && (
           <div className="mt-2 flex items-start gap-2 rounded-2xl border border-blue-800/80 bg-blue-950/80 px-4 py-3 text-xs text-blue-50 max-w-md">
             <Loader2 className="mt-0.5 h-4 w-4 animate-spin" />
@@ -885,7 +768,7 @@ export default function RegisterDirectorClient() {
 
         <Button
           onClick={finishRegistration}
-          disabled={isSubmitting || !step4DataReady}
+          disabled={isSubmitting || !step3DataReady}
           className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSubmitting ? (
@@ -926,12 +809,11 @@ export default function RegisterDirectorClient() {
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
-            {step === 4 && renderStep4()}
           </CardContent>
 
           <CardFooter className="relative flex items-center justify-between px-10 pb-6 pt-2 text-xs text-zinc-500">
             <div className="flex items-center gap-2">
-              {step > 1 && step < 4 && (
+              {step > 1 && step < 3 && (
                 <button
                   type="button"
                   onClick={handleBack}
@@ -944,60 +826,29 @@ export default function RegisterDirectorClient() {
             </div>
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-[11px]">
               <span className="text-zinc-500">Уже есть аккаунт? </span>
-              <button
-                type="button"
-                onClick={() => router.push("/auth/login")}
+              <Link
+                href="/auth/login"
                 className="ml-1 font-medium text-zinc-200 underline-offset-4 hover:underline"
               >
                 Войти
-              </button>
+              </Link>
             </div>
             <div className="flex items-center gap-2">
               {step === 1 && (
                 <button
                   type="button"
                   onClick={handleNextFromStep1}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
-                >
-                  Далее
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-              {step === 2 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (emailVerified) {
-                      setStep(3);
-                    } else {
-                      handleSendEmailConfirmation();
-                    }
-                  }}
-                  disabled={
-                    isSubmitting ||
-                    emailStatus === "sending" ||
-                    (emailStatus === "sent" && !emailVerified)
-                  }
+                  disabled={isSubmitting}
                   className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {emailVerified ? (
-                    <>
-                      Далее
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  ) : isSubmitting || emailStatus === "sending" ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Отправляем...
-                    </>
-                  ) : emailStatus === "sent" ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Ждём подтверждения…
+                      Создание аккаунта...
                     </>
                   ) : (
                     <>
-                      Отправить письмо
+                      Далее
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
