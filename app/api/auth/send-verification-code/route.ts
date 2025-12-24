@@ -149,18 +149,29 @@ export async function POST(request: NextRequest) {
       
       // Более детальное сообщение об ошибке
       let errorMessage = 'Failed to save verification code';
+      let errorCode = 'DATABASE_ERROR';
+      
       if (insertError.code === '42P01') {
-        errorMessage = 'Database table email_verifications does not exist. Please run migration.';
+        errorMessage = 'Database table email_verifications does not exist. Please run migration in Supabase SQL Editor.';
+        errorCode = 'TABLE_NOT_FOUND';
       } else if (insertError.code === '23505') {
         errorMessage = 'Verification code already exists. Please try again.';
+        errorCode = 'DUPLICATE_CODE';
       } else if (insertError.message) {
-        errorMessage = `Database error: ${insertError.message}`;
+        // Если сообщение содержит информацию о таблице - показываем понятное сообщение
+        if (insertError.message.includes('email_verifications') || insertError.message.includes('schema cache')) {
+          errorMessage = 'Database table email_verifications does not exist. Please run migration in Supabase SQL Editor.';
+          errorCode = 'TABLE_NOT_FOUND';
+        } else {
+          errorMessage = `Database error: ${insertError.message}`;
+        }
       }
       
       return NextResponse.json(
         { 
           success: false, 
           error: errorMessage,
+          errorCode: errorCode,
           details: process.env.NODE_ENV === 'development' ? insertError : undefined
         },
         { status: 500 }
