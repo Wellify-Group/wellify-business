@@ -279,7 +279,7 @@ export default function LoginPage() {
                   className={cn(
                     "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                     activeTab === "office"
-                      ? "bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 text-white dark:text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] dark:shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 text-white shadow-[0_0_24px_rgba(88,130,255,0.6)] dark:shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
@@ -294,7 +294,7 @@ export default function LoginPage() {
                   className={cn(
                     "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                     activeTab === "terminal"
-                      ? "bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 text-white dark:text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] dark:shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 text-white shadow-[0_0_24px_rgba(88,130,255,0.6)] dark:shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
@@ -399,7 +399,7 @@ export default function LoginPage() {
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white dark:text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                            className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                           >
                             {isLoading ? (t("logging_in") || "Вход...") : (t("btn_login") || "Войти")}
                           </button>
@@ -446,7 +446,7 @@ export default function LoginPage() {
                                   onChange={(e) => handleCompanyIdChange(index, e.target.value)}
                                   onKeyDown={(e) => handleCompanyIdKeyDown(index, e)}
                                   onPaste={(e) => handleCompanyIdPaste(index, e)}
-                                  className="w-[70px] h-[56px] rounded-[20px] text-center text-[18px] font-mono tracking-widest focus:outline-none transition-all border-2 border-border bg-background focus:border-primary focus:ring-0 text-foreground dark:border-border/80 dark:bg-background/50"
+                                  className="w-[70px] h-[56px] rounded-[20px] text-center text-[18px] font-mono tracking-widest focus:outline-none transition-all border-2 border-border dark:border-border/80 bg-white dark:bg-background/50 focus:border-primary focus:ring-0 text-foreground shadow-sm dark:shadow-none"
                                 />
                               ))}
                             </div>
@@ -467,7 +467,7 @@ export default function LoginPage() {
                             <button
                               type="button"
                               onClick={handleContinueFromCompanyId}
-                              className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white dark:text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
+                              className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
                             >
                               {t("login_btn_continue")}
                             </button>
@@ -489,7 +489,7 @@ export default function LoginPage() {
                                 value={value}
                                 onChange={(e) => handlePinChange(index, e.target.value)}
                                 onKeyDown={(e) => handlePinKeyDown(index, e)}
-                                className="w-[56px] h-[64px] rounded-[20px] text-center text-[24px] font-bold focus:outline-none transition-all border-2 border-border bg-background focus:border-primary focus:ring-0 text-foreground dark:border-border/80 dark:bg-background/50"
+                                className="w-[56px] h-[64px] rounded-[20px] text-center text-[24px] font-bold focus:outline-none transition-all border-2 border-border dark:border-border/80 bg-white dark:bg-background/50 focus:border-primary focus:ring-0 text-foreground shadow-sm dark:shadow-none"
                               />
                             ))}
                           </div>
@@ -517,7 +517,7 @@ export default function LoginPage() {
                               type="button"
                               onClick={handleTerminalLogin}
                               disabled={isLoading}
-                              className="flex-1 inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white dark:text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                              className="flex-1 inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                             >
                               {isLoading ? (t("logging_in") || "Вход...") : t("btn_login")}
                             </button>

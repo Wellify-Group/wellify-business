@@ -11,7 +11,7 @@ function RegisterFallback() {
   
   return (
     <main className="flex pt-24 min-h-[calc(100vh-112px)] md:min-h-[calc(100vh-112px)] items-center justify-center px-4">
-      <div className="w-full max-w-xl rounded-3xl bg-card border border-border px-8 py-10 text-center shadow-[var(--shadow-modal)]">
+      <div className="w-full max-w-xl rounded-3xl bg-card border border-border px-8 py-10 text-center">
         <h1 className="text-foreground text-xl font-semibold mb-3">
           {t<string>("register_loading_title")}
         </h1>

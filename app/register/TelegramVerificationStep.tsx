@@ -233,7 +233,7 @@ export function TelegramVerificationStep({
               {t<string>("register_telegram_instruction")}
             </p>
           </div>
-          <div className="relative rounded-[24px] border border-border bg-card p-5 shadow-[var(--shadow-modal)] backdrop-blur-sm">
+          <div className="relative rounded-[24px] border border-border bg-card p-5 backdrop-blur-sm">
             <div className="absolute inset-0 rounded-[24px] bg-primary/5 opacity-50"></div>
             <button
               type="button"

@@ -662,7 +662,7 @@ export default function RegisterDirectorClient() {
               className={[
                 "flex-1 rounded-full px-3 py-1.5 text-center transition-all",
                 active
-                  ? "bg-gradient-to-r from-blue-600 to-blue-500 text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                  ? "bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 text-white shadow-[0_0_24px_rgba(88,130,255,0.6)] dark:shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
                   : reachable
                   ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   : "text-muted-foreground/50 cursor-default",
@@ -904,7 +904,7 @@ export default function RegisterDirectorClient() {
               type="button"
               onClick={handleStep2SendCode}
               disabled={step2IsLoading || !step2Email.trim()}
-              className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
             >
               {step2IsLoading ? (
                 <>
@@ -971,7 +971,7 @@ export default function RegisterDirectorClient() {
                 type="button"
                 onClick={handleStep2VerifyCode}
                 disabled={step2IsLoading || step2Code.join('').length !== 6}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {step2IsLoading ? (
                   <>
@@ -1118,7 +1118,7 @@ export default function RegisterDirectorClient() {
         <Button
           onClick={finishRegistration}
           disabled={isSubmitting || !step3DataReady}
-          className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-primary,#2563eb)] px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSubmitting ? (
             <>
@@ -1156,7 +1156,7 @@ export default function RegisterDirectorClient() {
   return (
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
       <div className="relative w-full max-w-[640px]">
-        <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
+        <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card backdrop-blur-2xl">
           <CardHeader className="px-10 pt-7 pb-4">
             {renderTabs()}
             {renderStepTitle()}
@@ -1204,7 +1204,7 @@ export default function RegisterDirectorClient() {
                   type="button"
                   onClick={handleNextFromStep1}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? (
                     <>

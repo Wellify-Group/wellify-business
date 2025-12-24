@@ -340,7 +340,7 @@ export default function ForgotPasswordPage() {
                   disabled={isSubmitting || !email}
                   whileHover={isSubmitting || !email ? undefined : { scale: 1.02 }}
                   whileTap={isSubmitting || !email ? undefined : { scale: 0.98 }}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? (
                     <>
@@ -409,7 +409,7 @@ export default function ForgotPasswordPage() {
                   disabled={isSubmitting || code.join('').length !== 6}
                   whileHover={isSubmitting || code.join('').length !== 6 ? undefined : { scale: 1.02 }}
                   whileTap={isSubmitting || code.join('').length !== 6 ? undefined : { scale: 0.98 }}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? (
                     <>

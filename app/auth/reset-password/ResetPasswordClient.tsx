@@ -153,7 +153,7 @@ export function ResetPasswordClient() {
 
   if (success) {
     return (
-      <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10 text-center">
+      <div className="w-full rounded-[32px] border border-border bg-card backdrop-blur-2xl px-10 py-10 text-center">
         <div className="flex justify-center mb-4">
           <div className="rounded-full bg-emerald-500/20 dark:bg-emerald-500/20 border-2 border-emerald-500/30 dark:border-emerald-500/30 p-4">
             <CheckCircle2 className="h-12 w-12 text-emerald-500 dark:text-emerald-400" />
@@ -167,7 +167,7 @@ export function ResetPasswordClient() {
         </p>
         <button
           onClick={() => router.push("/login")}
-          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors"
         >
           {t<string>("password_reset_go_to_login")}
           <ArrowRight className="h-4 w-4" />
@@ -177,7 +177,7 @@ export function ResetPasswordClient() {
   }
 
   return (
-    <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+    <div className="w-full rounded-[32px] border border-border bg-card backdrop-blur-2xl px-10 py-10">
       <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-foreground">
         {t<string>("password_reset_new_password_title")}
       </h1>
@@ -246,7 +246,7 @@ export function ResetPasswordClient() {
         <button
           type="submit"
           disabled={isLoading || !password || !passwordConfirm}
-          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isLoading ? (
             <>
