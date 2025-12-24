@@ -63,7 +63,7 @@ async function main() {
   
   console.log(`📝 Найдено ${allKeys.length} ключей перевода`);
   
-  const missing: Record<Language, string[]> = {
+  const missing: { en: string[]; ua: string[] } = {
     en: [],
     ua: [],
   };
