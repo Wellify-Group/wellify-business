@@ -302,8 +302,7 @@ export default function Home() {
 
       {/* BUSINESS CATEGORIES */}
       <section
-        className="relative px-4 pt-8 pb-10 sm:px-6 lg:px-8"
-        className="bg-background"
+        className="relative px-4 pt-8 pb-10 sm:px-6 lg:px-8 bg-background"
       >
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
@@ -365,8 +364,7 @@ export default function Home() {
 
       {/* CORE FEATURES */}
       <section
-        className="relative px-4 py-[60px] sm:px-6 lg:px-8"
-        className="bg-background"
+        className="relative px-4 py-[60px] sm:px-6 lg:px-8 bg-background"
       >
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-16 text-center text-3xl font-bold text-foreground">
@@ -438,8 +436,7 @@ export default function Home() {
       {/* HOW IT WORKS + QUICK START */}
       <section
         id="how-it-works"
-        className="relative px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32"
-        className="bg-background"
+        className="relative px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32 bg-background"
       >
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-16 text-center text-3xl font-bold text-foreground">
