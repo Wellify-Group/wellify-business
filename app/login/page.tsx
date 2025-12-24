@@ -269,7 +269,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
       <div className="relative w-full max-w-xl">
-        <Card className="relative z-10 w-full rounded-[28px] border border-[color:var(--color-border-strong)] dark:border-border bg-card dark:backdrop-blur-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-[var(--shadow-modal)]">
+        <Card className="relative z-10 w-full rounded-[28px] border border-[color:var(--color-border-strong)] dark:border-border bg-card dark:backdrop-blur-[14px]">
           <CardHeader className="px-8 pt-5 pb-0">
             <div className="flex flex-col gap-6">
               {/* Tabs */}
@@ -279,7 +279,7 @@ export default function LoginPage() {
                   className={cn(
                     "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                     activeTab === "office"
-                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 text-white dark:text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] dark:shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
@@ -294,7 +294,7 @@ export default function LoginPage() {
                   className={cn(
                     "flex-1 rounded-full px-3 py-1.5 text-center transition-all duration-250 ease-out",
                     activeTab === "terminal"
-                      ? "bg-gradient-to-r from-blue-600 to-blue-500 text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
+                      ? "bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 text-white dark:text-primary-foreground shadow-[0_0_24px_rgba(88,130,255,0.45)] dark:shadow-[0_0_24px_rgba(88,130,255,0.45)] translate-y-[-1px] font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
@@ -314,7 +314,7 @@ export default function LoginPage() {
               <CardDescription className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
                 {activeTab === "office"
                   ? (t("login_office_desc") || "Для владельцев и менеджеров")
-                  : (terminalStep === 1 ? "Введите ID компании" : "Введите пин-код сотрудника")}
+                  : (terminalStep === 1 ? t("login_terminal_enter_id") : t("login_terminal_enter_pin"))}
               </CardDescription>
             </div>
             </CardHeader>
@@ -399,7 +399,7 @@ export default function LoginPage() {
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                            className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white dark:text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                           >
                             {isLoading ? (t("logging_in") || "Вход...") : (t("btn_login") || "Войти")}
                           </button>
@@ -414,9 +414,9 @@ export default function LoginPage() {
 
                       <div className="text-center">
                         <p className="text-xs text-muted-foreground">
-                          Нет аккаунта?{" "}
+                          {t("login_no_account")}{" "}
                           <Link href="/register" className="font-medium text-primary hover:text-primary/80 hover:underline">
-                            Зарегистрироваться
+                            {t("login_register_link")}
                           </Link>
                         </p>
                       </div>
@@ -428,10 +428,10 @@ export default function LoginPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
-                      className="flex flex-col gap-6 py-4"
+                      className="flex flex-col gap-6"
                     >
                       {terminalStep === 1 && (
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                           <div className="flex justify-center">
                             <div className="flex items-center gap-2">
                               {companyIdBlocks.map((value, index) => (
@@ -446,7 +446,7 @@ export default function LoginPage() {
                                   onChange={(e) => handleCompanyIdChange(index, e.target.value)}
                                   onKeyDown={(e) => handleCompanyIdKeyDown(index, e)}
                                   onPaste={(e) => handleCompanyIdPaste(index, e)}
-                                  className="w-[70px] h-[56px] rounded-[20px] text-center text-[18px] font-mono tracking-widest focus:outline-none transition-all border border-border bg-background focus:border-primary focus:ring-0 text-foreground"
+                                  className="w-[70px] h-[56px] rounded-[20px] text-center text-[18px] font-mono tracking-widest focus:outline-none transition-all border-2 border-border bg-background focus:border-primary focus:ring-0 text-foreground dark:border-border/80 dark:bg-background/50"
                                 />
                               ))}
                             </div>
@@ -467,16 +467,16 @@ export default function LoginPage() {
                             <button
                               type="button"
                               onClick={handleContinueFromCompanyId}
-                              className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
+                              className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white dark:text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200"
                             >
-                              Продолжить
+                              {t("login_btn_continue")}
                             </button>
                           </div>
                         </div>
                       )}
 
                       {terminalStep === 2 && (
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                           <div className="flex justify-center gap-3">
                             {pin.map((value, index) => (
                               <input
@@ -489,7 +489,7 @@ export default function LoginPage() {
                                 value={value}
                                 onChange={(e) => handlePinChange(index, e.target.value)}
                                 onKeyDown={(e) => handlePinKeyDown(index, e)}
-                                className="w-[56px] h-[64px] rounded-[20px] text-center text-[24px] font-bold focus:outline-none transition-all border border-border bg-background focus:border-primary focus:ring-0 text-foreground"
+                                className="w-[56px] h-[64px] rounded-[20px] text-center text-[24px] font-bold focus:outline-none transition-all border-2 border-border bg-background focus:border-primary focus:ring-0 text-foreground dark:border-border/80 dark:bg-background/50"
                               />
                             ))}
                           </div>
@@ -517,9 +517,9 @@ export default function LoginPage() {
                               type="button"
                               onClick={handleTerminalLogin}
                               disabled={isLoading}
-                              className="flex-1 inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-6 text-sm font-semibold text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                              className="flex-1 inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white dark:text-primary-foreground shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                             >
-                              {isLoading ? "Вход..." : "Войти"}
+                              {isLoading ? (t("logging_in") || "Вход...") : t("btn_login")}
                             </button>
                           </div>
                         </div>

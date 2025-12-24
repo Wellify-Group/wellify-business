@@ -16,6 +16,12 @@ export const TRANSLATIONS = {
     btn_login: "Sign In",
     login_or_social: "OR LOGIN WITH",
     login_terminal_hint: "If you are a point employee — use the \"Terminal\" tab",
+    login_no_account: "No account?",
+    login_register_link: "Sign up",
+    login_terminal_title: "Terminal Login",
+    login_terminal_enter_id: "Enter company ID",
+    login_terminal_enter_pin: "Enter employee PIN",
+    login_btn_continue: "Continue",
     // --- PASSWORD RESET KEYS ---
     password_reset_title: "Password Recovery",
     password_reset_description: "Enter your email address, and we will send you a code to recover your password.",
@@ -516,6 +522,12 @@ export const TRANSLATIONS = {
   ua: {
     // --- LOGIN PAGE KEYS ---
     login_office_title: "Вхід в офіс",
+    login_no_account: "Немає акаунта?",
+    login_register_link: "Зареєструватися",
+    login_terminal_title: "Вхід в термінал",
+    login_terminal_enter_id: "Введіть ID компанії",
+    login_terminal_enter_pin: "Введіть пін-код співробітника",
+    login_btn_continue: "Продовжити",
     login_office_desc: "Увійдіть як директор або менеджер",
     login_btn_office: "Офіс",
     login_btn_terminal: "Термінал",
@@ -1033,6 +1045,12 @@ export const TRANSLATIONS = {
     email_placeholder: "you@example.com",
     password_label: "ПАРОЛЬ",
     login_forgot_password: "Забыли пароль?",
+    login_no_account: "Нет аккаунта?",
+    login_register_link: "Зарегистрироваться",
+    login_terminal_title: "Вход в терминал",
+    login_terminal_enter_id: "Введите ID компании",
+    login_terminal_enter_pin: "Введите пин-код сотрудника",
+    login_btn_continue: "Продолжить",
     // --- PASSWORD RESET KEYS ---
     password_reset_title: "Восстановление пароля",
     password_reset_description: "Введите ваш email адрес, и мы отправим вам код для восстановления пароля.",

@@ -904,7 +904,7 @@ export default function RegisterDirectorClient() {
               type="button"
               onClick={handleStep2SendCode}
               disabled={step2IsLoading || !step2Email.trim()}
-              className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
             >
               {step2IsLoading ? (
                 <>
@@ -971,7 +971,7 @@ export default function RegisterDirectorClient() {
                 type="button"
                 onClick={handleStep2VerifyCode}
                 disabled={step2IsLoading || step2Code.join('').length !== 6}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {step2IsLoading ? (
                   <>
@@ -1143,7 +1143,7 @@ export default function RegisterDirectorClient() {
     return (
       <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
         <div className="relative w-full max-w-[640px]">
-          <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
+          <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card backdrop-blur-2xl">
             <CardContent className="px-10 py-12">
               {renderStep3()}
             </CardContent>

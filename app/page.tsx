@@ -255,13 +255,8 @@ export default function Home() {
     >
       {/* HERO */}
       <section
-        className="relative flex items-center justify-center px-4 pt-24 md:pt-32 pb-16 sm:px-6 lg:px-8 overflow-hidden"
-        style={{ backgroundColor: "transparent" }}
+        className="relative flex items-center justify-center px-4 pt-24 md:pt-32 pb-16 sm:px-6 lg:px-8 overflow-hidden bg-background"
       >
-        {/* Фоновый брендовый слой */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent"></div>
-        </div>
 
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10">
           <motion.h1

@@ -275,7 +275,7 @@ export default function ForgotPasswordPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
         >
-          <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+          <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card backdrop-blur-2xl px-10 py-10">
           {/* Back Button */}
           <Link
             href="/login"
@@ -340,7 +340,7 @@ export default function ForgotPasswordPage() {
                   disabled={isSubmitting || !email}
                   whileHover={isSubmitting || !email ? undefined : { scale: 1.02 }}
                   whileTap={isSubmitting || !email ? undefined : { scale: 0.98 }}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? (
                     <>
@@ -409,7 +409,7 @@ export default function ForgotPasswordPage() {
                   disabled={isSubmitting || code.join('').length !== 6}
                   whileHover={isSubmitting || code.join('').length !== 6 ? undefined : { scale: 1.02 }}
                   whileTap={isSubmitting || code.join('').length !== 6 ? undefined : { scale: 0.98 }}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-4 py-2 text-sm font-medium text-white dark:text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:from-blue-500 hover:to-blue-400 dark:hover:from-blue-500 dark:hover:to-blue-400 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? (
                     <>
