@@ -228,6 +228,11 @@ export function TelegramVerificationStep({
     <div className="flex flex-col items-center gap-4 py-2">
       {telegramLink && (
         <>
+          <div className="w-full space-y-4 text-center">
+            <p className="text-sm text-zinc-400 leading-relaxed px-4">
+              {t<string>("register_telegram_instruction")}
+            </p>
+          </div>
           <div className="relative rounded-[24px] border border-border bg-card p-5 shadow-[var(--shadow-modal)] backdrop-blur-sm">
             <div className="absolute inset-0 rounded-[24px] bg-primary/5 opacity-50"></div>
             <button
