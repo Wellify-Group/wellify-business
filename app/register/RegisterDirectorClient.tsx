@@ -84,6 +84,7 @@ export default function RegisterDirectorClient() {
   // Шаг 3: состояние готовности данных
   const [step3DataReady, setStep3DataReady] = useState(false);
   const [step3Polling, setStep3Polling] = useState(false);
+  const [registrationCompleted, setRegistrationCompleted] = useState(false);
 
   // Показ/скрытие пароля
   const [showPassword, setShowPassword] = useState(false);
@@ -501,8 +502,9 @@ export default function RegisterDirectorClient() {
       setRegisteredUserPhone(phone);
     }
     
-    // После верификации Telegram сразу переходим в дашборд
+    // Показываем поздравительное сообщение
     setRegisterError(null);
+    setRegistrationCompleted(true);
     
     // Очищаем localStorage после успешной регистрации
     if (typeof window !== "undefined") {
@@ -510,8 +512,10 @@ export default function RegisterDirectorClient() {
       localStorage.removeItem("wellify_registration_email");
     }
 
-    // Переход в дашборд
-    console.log("[register] ✅ Telegram verified, redirecting to dashboard");
+    console.log("[register] ✅ Telegram verified, registration completed");
+  };
+
+  const handleGoToDashboard = () => {
     router.push("/dashboard/director");
   };
 
@@ -1005,6 +1009,40 @@ export default function RegisterDirectorClient() {
               Не удалось получить данные регистрации. Вернитесь на шаг 1 и попробуйте ещё раз.
             </span>
           </div>
+        </div>
+      );
+    }
+
+    // Показываем поздравительное сообщение после успешной регистрации
+    if (registrationCompleted) {
+      return (
+        <div className="flex flex-col items-center gap-6 py-8 text-center">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20 border-2 border-emerald-500/30"
+          >
+            <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+          </motion.div>
+          <div className="space-y-2">
+            <h3 className="text-2xl font-semibold text-zinc-50">
+              {t<string>("register_success_title")}
+            </h3>
+            <p className="max-w-md text-sm text-zinc-400 leading-relaxed">
+              {t<string>("register_success_message")}
+            </p>
+          </div>
+          <motion.button
+            type="button"
+            onClick={handleGoToDashboard}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--accent-primary,#2563eb)] px-8 text-base font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
+          >
+            {t<string>("register_btn_go_to_dashboard")}
+            <ArrowRight className="h-5 w-5" />
+          </motion.button>
         </div>
       );
     }
