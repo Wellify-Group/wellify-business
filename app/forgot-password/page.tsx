@@ -132,13 +132,17 @@ export default function ForgotPasswordPage() {
               // Переходим на страницу сброса пароля с email
               router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${codeString}`);
             } else {
-              setError(data.error || 'Неверный код. Попробуйте еще раз.');
+              // Локализуем ошибку
+              const errorMessage = data.error === 'Invalid or expired code' 
+                ? t<string>("register_error_code_invalid")
+                : (data.error || t<string>("register_error_code_invalid"));
+              setError(errorMessage);
               setCode(['', '', '', '', '', '']);
               document.getElementById('forgot-code-0')?.focus();
               setIsSubmitting(false);
             }
           } catch (error: any) {
-            setError('Ошибка при проверке кода. Попробуйте еще раз.');
+            setError(t<string>("register_error_code_verify_failed"));
             console.error('Verify code error:', error);
             setIsSubmitting(false);
           }
@@ -241,12 +245,16 @@ export default function ForgotPasswordPage() {
         // Переходим на страницу сброса пароля с email
         router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${codeString}`);
       } else {
-        setError(data.error || 'Неверный код. Попробуйте еще раз.');
+        // Локализуем ошибку
+        const errorMessage = data.error === 'Invalid or expired code' 
+          ? t<string>("register_error_code_invalid")
+          : (data.error || t<string>("register_error_code_invalid"));
+        setError(errorMessage);
         setCode(['', '', '', '', '', '']);
         document.getElementById('forgot-code-0')?.focus();
       }
     } catch (error: any) {
-      setError('Ошибка при проверке кода. Попробуйте еще раз.');
+      setError(t<string>("register_error_code_verify_failed"));
       console.error('Verify code error:', error);
     } finally {
       setIsSubmitting(false);
@@ -260,7 +268,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
+    <main className="min-h-screen pt-[112px] flex items-center justify-center bg-background px-4">
       <div className="relative w-full max-w-[640px]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { useLanguage } from "@/components/language-provider";
 
 export function ResetPasswordClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useLanguage();
   const [supabase] = useState(() => createBrowserSupabaseClient());
   
   // Получаем email и code из query параметров
@@ -52,12 +54,15 @@ export function ResetPasswordClient() {
           setIsValid(true);
         } else {
           setIsValid(false);
-          setError(data.error || 'Неверный или истекший код');
+          const errorMessage = data.error === 'Invalid or expired code' 
+            ? t<string>("register_error_code_invalid")
+            : (data.error || t<string>("register_error_code_invalid"));
+          setError(errorMessage);
         }
       } catch (error: any) {
         console.error('Verify code error:', error);
         setIsValid(false);
-        setError('Ошибка при проверке кода');
+        setError(t<string>("register_error_code_verify_failed"));
       } finally {
         setIsVerifying(false);
       }
@@ -88,10 +93,10 @@ export function ResetPasswordClient() {
             </div>
           </div>
           <h2 className="text-2xl font-semibold text-zinc-50 mb-2">
-            Недействительный код
+            {t<string>("register_error_code_invalid")}
           </h2>
           <p className="text-sm text-zinc-400 mb-4">
-            {error || 'Код для сброса пароля недействителен или устарел. Запросите новый код.'}
+            {error || t<string>("register_error_code_invalid")}
           </p>
           <Link href="/forgot-password">
             <button className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800/80 hover:border-zinc-600/70 transition-all">
