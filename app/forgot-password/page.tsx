@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
       }
     } catch (err: any) {
       console.error("Password reset error:", err);
-      setError("Произошла ошибка. Попробуйте позже.");
+      setError(t<string>("password_reset_error_failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -79,12 +79,18 @@ export default function ForgotPasswordPage() {
           document.getElementById('forgot-code-0')?.focus();
         }, 100);
       } else {
-        const errorMessage = data.error || "Произошла ошибка. Попробуйте позже.";
+        // Локализуем ошибку
+        let errorMessage = data.error || t<string>("password_reset_error_failed");
+        if (data.error === 'EMAIL_NOT_FOUND' || res.status === 404) {
+          errorMessage = t<string>("password_reset_error_email_not_found");
+        } else if (data.error === 'Invalid email format') {
+          errorMessage = t<string>("password_reset_error_invalid_email");
+        }
         setError(errorMessage);
       }
     } catch (err: any) {
       console.error("Resend code error:", err);
-      setError("Произошла ошибка. Попробуйте позже.");
+      setError(t<string>("password_reset_error_failed"));
     } finally {
       setIsResending(false);
     }

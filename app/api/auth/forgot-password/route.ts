@@ -80,11 +80,14 @@ export async function POST(request: NextRequest) {
 
     const user = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
     if (!user) {
-      // Не говорим, что пользователь не найден (безопасность)
-      return NextResponse.json({
-        success: true,
-        message: 'If an account with this email exists, a code has been sent.',
-      });
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'EMAIL_NOT_FOUND',
+          message: 'No account found with this email address.'
+        },
+        { status: 404 }
+      );
     }
 
     // Генерируем код

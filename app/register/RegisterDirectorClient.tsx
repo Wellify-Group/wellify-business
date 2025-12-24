@@ -705,7 +705,7 @@ export default function RegisterDirectorClient() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-1.5 md:col-span-1">
           <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Имя
+            {t<string>("register_field_first_name")}
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -722,7 +722,7 @@ export default function RegisterDirectorClient() {
 
         <div className="space-y-1.5 md:col-span-1">
           <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Отчество
+            {t<string>("register_field_middle_name")}
           </label>
           <div className="relative">
             <input
@@ -736,7 +736,7 @@ export default function RegisterDirectorClient() {
 
         <div className="space-y-1.5 md:col-span-1">
           <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Фамилия
+            {t<string>("register_field_last_name")}
           </label>
           <div className="relative">
             <input
@@ -752,7 +752,7 @@ export default function RegisterDirectorClient() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Дата рождения
+            {t<string>("register_field_birth_date")}
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -771,7 +771,7 @@ export default function RegisterDirectorClient() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Пароль
+            {t<string>("register_field_password")}
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -781,7 +781,7 @@ export default function RegisterDirectorClient() {
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               className="h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
-              placeholder="От 8 символов"
+              placeholder={t<string>("register_field_password_placeholder")}
               value={personal.password}
               onChange={handlePersonalChange("password")}
             />
@@ -802,14 +802,14 @@ export default function RegisterDirectorClient() {
 
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Подтверждение пароля
+            {t<string>("register_field_password_confirm")}
           </label>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               className="h-10 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
-              placeholder="Повторите пароль"
+              placeholder={t<string>("register_field_password_confirm_placeholder")}
               value={personal.passwordConfirm}
               onChange={handlePersonalChange("passwordConfirm")}
             />
@@ -865,7 +865,7 @@ export default function RegisterDirectorClient() {
         <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Рабочий e-mail
+                {t<string>("register_field_work_email")}
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
@@ -875,7 +875,7 @@ export default function RegisterDirectorClient() {
                   type="email"
                   autoComplete="email"
                   className="h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
-                  placeholder="you@business.com"
+                  placeholder={t<string>("register_field_work_email_placeholder")}
                   value={step2Email}
                   onChange={(e) => {
                     setStep2Email(e.target.value);
@@ -888,9 +888,6 @@ export default function RegisterDirectorClient() {
                   }}
                 />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                На этот адрес будет отправлен код подтверждения.
-              </p>
             </div>
 
             {step2Error && (

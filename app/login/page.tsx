@@ -428,10 +428,10 @@ export default function LoginPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
-                      className="flex flex-col gap-4"
+                      className="flex flex-col gap-3"
                     >
                       {terminalStep === 1 && (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           <div className="flex justify-center">
                             <div className="flex items-center gap-2">
                               {companyIdBlocks.map((value, index) => (
@@ -476,7 +476,7 @@ export default function LoginPage() {
                       )}
 
                       {terminalStep === 2 && (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           <div className="flex justify-center gap-3">
                             {pin.map((value, index) => (
                               <input
