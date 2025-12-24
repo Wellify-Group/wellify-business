@@ -1028,32 +1028,49 @@ export default function RegisterDirectorClient() {
     // Показываем поздравительное сообщение после успешной регистрации
     if (registrationCompleted) {
       return (
-        <div className="flex flex-col items-center gap-6 py-8 text-center">
+        <div className="flex flex-col items-center gap-8 py-12 px-6 text-center">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/20 border-2 border-emerald-500/30"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+            className="relative flex h-32 w-32 items-center justify-center"
           >
-            <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+            {/* Внешнее свечение */}
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-2xl animate-pulse" />
+            {/* Среднее кольцо */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 border-2 border-emerald-500/40" />
+            {/* Внутренний круг с иконкой */}
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/40 to-emerald-600/30 border-2 border-emerald-400/50 shadow-[0_0_40px_rgba(16,185,129,0.4)]">
+              <CheckCircle2 className="h-14 w-14 text-emerald-300 drop-shadow-lg" />
+            </div>
           </motion.div>
-          <div className="space-y-2">
-            <h3 className="text-2xl font-semibold text-zinc-50">
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="space-y-4 max-w-lg"
+          >
+            <h3 className="text-4xl font-bold text-zinc-50 tracking-tight">
               {t<string>("register_success_title")}
             </h3>
-            <p className="max-w-md text-sm text-zinc-400 leading-relaxed">
+            <p className="text-base text-zinc-300 leading-relaxed">
               {t<string>("register_success_message")}
             </p>
-          </div>
+          </motion.div>
+          
           <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
             type="button"
             onClick={handleGoToDashboard}
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.05, boxShadow: "0_20px_40px_rgba(37,99,235,0.6)" }}
             whileTap={{ scale: 0.98 }}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--accent-primary,#2563eb)] px-8 text-base font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
+            className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[var(--accent-primary,#2563eb)] to-blue-600 px-10 text-lg font-semibold text-white shadow-[0_15px_35px_rgba(37,99,235,0.5)] hover:shadow-[0_20px_45px_rgba(37,99,235,0.6)] transition-all duration-300"
           >
             {t<string>("register_btn_go_to_dashboard")}
-            <ArrowRight className="h-5 w-5" />
+            <ArrowRight className="h-6 w-6" />
           </motion.button>
         </div>
       );
@@ -1121,6 +1138,21 @@ export default function RegisterDirectorClient() {
   };
 
   // ---------- main render ----------
+
+  // Если регистрация завершена, показываем упрощенную версию без вкладок и футера
+  if (registrationCompleted) {
+    return (
+      <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
+        <div className="relative w-full max-w-[640px]">
+          <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl">
+            <CardContent className="px-10 py-12">
+              {renderStep3()}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
