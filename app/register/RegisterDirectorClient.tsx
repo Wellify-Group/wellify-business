@@ -497,6 +497,12 @@ export default function RegisterDirectorClient() {
   };
 
   const handleTelegramVerified = async (phone?: string) => {
+    // Предотвращаем повторный вызов
+    if (registrationCompleted) {
+      console.log("[register] Registration already completed, ignoring duplicate call");
+      return;
+    }
+
     // Сохраняем phone если передан
     if (phone) {
       setRegisteredUserPhone(phone);
@@ -512,7 +518,7 @@ export default function RegisterDirectorClient() {
       localStorage.removeItem("wellify_registration_email");
     }
 
-    console.log("[register] ✅ Telegram verified, registration completed");
+    console.log("[register] ✅ Telegram verified, registration completed - showing success message");
   };
 
   const handleGoToDashboard = () => {
