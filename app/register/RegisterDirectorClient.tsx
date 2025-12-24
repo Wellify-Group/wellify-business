@@ -840,6 +840,12 @@ export default function RegisterDirectorClient() {
       const prevInput = document.getElementById(`step2-code-${index - 1}`);
       prevInput?.focus();
     }
+    
+    // При нажатии Enter проверяем код, если все 6 цифр введены
+    if (e.key === 'Enter' && step2Code.join('').length === 6 && !step2IsLoading) {
+      e.preventDefault();
+      handleStep2VerifyCode();
+    }
   };
 
   const handleStep2CodePaste = (e: React.ClipboardEvent) => {

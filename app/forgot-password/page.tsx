@@ -153,6 +153,12 @@ export default function ForgotPasswordPage() {
       const prevInput = document.getElementById(`forgot-code-${index - 1}`);
       prevInput?.focus();
     }
+    
+    // При нажатии Enter проверяем код, если все 6 цифр введены
+    if (e.key === 'Enter' && code.join('').length === 6 && !isSubmitting) {
+      e.preventDefault();
+      handleVerifyCode();
+    }
   };
 
   const handleCodePaste = (e: React.ClipboardEvent) => {
