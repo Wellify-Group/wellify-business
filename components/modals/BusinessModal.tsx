@@ -67,7 +67,7 @@ export function BusinessModal() {
               <button
                 onClick={closeModal}
                 className="absolute right-4 top-4 h-7 w-7 rounded-full flex items-center justify-center bg-muted text-muted-foreground hover:bg-muted/80 transition z-10"
-                aria-label="Закрыть модальное окно"
+                aria-label={t("modal_close")}
                 tabIndex={0}
               >
                 <X className="h-3.5 w-3.5" />

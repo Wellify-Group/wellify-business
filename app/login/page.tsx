@@ -70,7 +70,7 @@ export default function LoginPage() {
     
     if (errorParam === "oauth") {
       const errorDescription = searchParams.get("error_description");
-      setError(errorDescription || "Ошибка при входе через Google. Попробуйте еще раз.");
+      setError(errorDescription || t("login_error_oauth"));
       setIsError(true);
       // Очищаем query параметры без редиректа
       const newUrl = new URL(window.location.href);
@@ -108,12 +108,12 @@ export default function LoginPage() {
         // Обработка ошибок
         if (signInError.message?.includes("Email not confirmed") || 
             signInError.message?.includes("email_not_confirmed")) {
-          setError("E-mail не подтверждён. Проверьте почту и перейдите по ссылке из письма.");
+          setError(t("login_error_email_not_confirmed"));
         } else if (signInError.message?.includes("Invalid login credentials") || 
             signInError.message?.includes("User not found")) {
-          setError("Неверный e-mail или пароль.");
+          setError(t("login_error_invalid_credentials"));
         } else {
-          setError(signInError.message || "Произошла ошибка при входе");
+          setError(signInError.message || t("login_error_generic"));
         }
         setIsError(true);
         setIsLoading(false);
@@ -121,7 +121,7 @@ export default function LoginPage() {
       }
 
       if (!signInData.user) {
-        setError("Не удалось войти. Попробуйте позже.");
+        setError(t("login_error_failed"));
         setIsError(true);
         setIsLoading(false);
         return;
@@ -157,7 +157,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError("Произошла ошибка при входе. Попробуйте позже.");
+      setError(t("login_error_failed"));
       setIsError(true);
     } finally {
       setIsLoading(false);
@@ -213,7 +213,7 @@ export default function LoginPage() {
     const fullId = getFullCompanyId();
     const digits = fullId.replace(/\D/g, "");
     if (digits.length !== MAX_BLOCKS * BLOCK_LENGTH) {
-      setError("Введите полный ID компании");
+      setError(t("login_error_company_id_incomplete"));
       setIsError(true);
       setTimeout(() => setIsError(false), 3000);
       return;
@@ -244,7 +244,7 @@ export default function LoginPage() {
   async function handleTerminalLogin() {
     const pinCode = pin.join("");
     if (pinCode.length !== 4) {
-      setError("Введите 4-значный пин-код");
+      setError(t("login_error_pin_incomplete"));
       setIsError(true);
       setTimeout(() => setIsError(false), 3000);
       return;
@@ -253,12 +253,12 @@ export default function LoginPage() {
     try {
       // Здесь должна быть логика входа для терминала
       // Пока оставляем как есть, так как это отдельная система
-      setError("Функция входа через терминал временно недоступна");
+      setError(t("login_error_terminal_unavailable"));
       setIsError(true);
       setTimeout(() => setIsError(false), 3000);
     } catch (error) {
       console.error("Terminal login error:", error);
-      setError("Ошибка входа");
+      setError(t("login_error_terminal_generic"));
       setIsError(true);
       setTimeout(() => setIsError(false), 3000);
     } finally {

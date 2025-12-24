@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { useLanguage } from '@/components/language-provider';
 
 interface EmailVerificationCodeProps {
   email: string;
@@ -12,6 +13,7 @@ interface EmailVerificationCodeProps {
 }
 
 export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerificationCodeProps) {
+  const { t } = useLanguage();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -57,7 +59,7 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
     const codeString = code.join('');
     
     if (codeString.length !== 6) {
-      setError('Введите полный код из 6 цифр');
+      setError(t('email_verification_code_incomplete'));
       return;
     }
 
@@ -84,12 +86,12 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
           onSuccess();
         }, 1500);
       } else {
-        setError(data.error || 'Неверный код. Попробуйте еще раз.');
+        setError(data.error || t('email_verification_code_invalid'));
         setCode(['', '', '', '', '', '']);
         document.getElementById('code-0')?.focus();
       }
     } catch (error: any) {
-      setError('Ошибка при проверке кода. Попробуйте еще раз.');
+      setError(t('email_verification_code_error'));
       console.error('Verify code error:', error);
     } finally {
       setIsLoading(false);
@@ -114,14 +116,14 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
       if (data.success) {
         setError(null);
         // Можно показать сообщение об успешной отправке
-        alert('Код отправлен на вашу почту');
+        alert(t('email_verification_code_sent'));
         setCode(['', '', '', '', '', '']);
         document.getElementById('code-0')?.focus();
       } else {
-        setError(data.error || 'Не удалось отправить код. Попробуйте еще раз.');
+        setError(data.error || t('email_verification_code_send_failed'));
       }
     } catch (error: any) {
-      setError('Ошибка при отправке кода. Попробуйте еще раз.');
+      setError(t('email_verification_code_send_error'));
       console.error('Resend code error:', error);
     } finally {
       setIsResending(false);
@@ -132,10 +134,10 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
     <Card className="w-full max-w-md border border-white/5 bg-[radial-gradient(circle_at_top,_rgba(62,132,255,0.18),_transparent_55%),_rgba(7,13,23,0.96)] shadow-[0_18px_70px_rgba(0,0,0,0.75)] backdrop-blur-xl">
       <CardHeader className="pb-4">
         <CardTitle className="text-center text-2xl font-semibold">
-          Подтверждение email
+          {t('email_verification_title')}
         </CardTitle>
         <CardDescription className="mt-2 text-center text-sm">
-          Мы отправили код подтверждения на <br />
+          {t('email_verification_description')} <br />
           <span className="font-medium text-foreground">{email}</span>
         </CardDescription>
       </CardHeader>
@@ -146,7 +148,7 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
               <CheckCircle2 className="h-8 w-8 text-emerald-500" />
             </div>
             <p className="text-center text-sm text-emerald-400">
-              Email успешно подтвержден!
+              {t('email_verification_success')}
             </p>
           </div>
         ) : (
@@ -186,10 +188,10 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Проверка...
+                    {t('email_verification_verifying')}
                   </>
                 ) : (
-                  'Подтвердить'
+                  t('email_verification_confirm')
                 )}
               </Button>
 
@@ -200,7 +202,7 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
                   disabled={isResending}
                   className="hover:text-foreground transition-colors disabled:opacity-50"
                 >
-                  {isResending ? 'Отправка...' : 'Отправить код повторно'}
+                  {isResending ? t('email_verification_resending') : t('email_verification_resend')}
                 </button>
                 {onCancel && (
                   <button
@@ -208,7 +210,7 @@ export function EmailVerificationCode({ email, onSuccess, onCancel }: EmailVerif
                     onClick={onCancel}
                     className="hover:text-foreground transition-colors"
                   >
-                    Отмена
+                    {t('email_verification_cancel')}
                   </button>
                 )}
               </div>

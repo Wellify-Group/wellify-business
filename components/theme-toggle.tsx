@@ -16,9 +16,11 @@
 import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useLanguage } from "@/components/language-provider";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { t } = useLanguage();
   const [mounted, setMounted] = React.useState(false);
 
   // Предотвращение проблем с гидратацией
@@ -47,8 +49,8 @@ export function ThemeToggle() {
   return (
     <button
       onClick={handleToggle}
-      className="relative h-8 w-8 flex items-center justify-center p-1.5 hover:opacity-70 transition-opacity text-zinc-500 dark:text-[#c7d2fe]"
-      aria-label={isDark ? "Переключить на светлую тему" : "Переключить на темную тему"}
+      className="relative h-8 w-8 flex items-center justify-center p-1.5 hover:opacity-70 transition-opacity text-muted-foreground"
+      aria-label={isDark ? t("theme_toggle_light") : t("theme_toggle_dark")}
     >
       <Sun className="absolute h-[17px] w-[17px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 stroke-[1.5]" />
       <Moon className="absolute h-[17px] w-[17px] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 stroke-[1.5]" />
