@@ -69,7 +69,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} antialiased`} style={{ backgroundColor: 'var(--color-background)' }}>
+      <body className={`${inter.className} antialiased bg-background`}>
         <LanguageProvider>
           {/* Initialize product brand colors */}
           <ProductBrandInit />

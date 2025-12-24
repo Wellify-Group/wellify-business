@@ -294,8 +294,15 @@
     -moz-osx-font-smoothing: grayscale;
   }
   
+  /* ТОТАЛЬНОЕ ПРАВИЛО: В темной теме ВСЕГДА фон #050B13 */
   .dark body {
-    background-color: var(--color-background, #050B13);
+    background-color: #050B13 !important;
+  }
+  
+  /* ТОТАЛЬНОЕ ПРАВИЛО: В темной теме все элементы с bg-background используют #050B13 */
+  .dark .bg-background,
+  .dark [class*="bg-background"] {
+    background-color: #050B13 !important;
   }
 }
 

@@ -17,8 +17,8 @@ export function MainWrapper({ children }: { children: React.ReactNode }) {
   // Auth страницы управляют своим layout самостоятельно
   return (
     <main 
-      className={`flex flex-col ${isDashboard || isAuthPage ? '' : 'pt-24'}`}
-      style={{ backgroundColor: isAuthPage ? 'transparent' : 'var(--color-background)' }}
+      className={`flex flex-col bg-background ${isDashboard || isAuthPage ? '' : 'pt-24'}`}
+      style={{ backgroundColor: isAuthPage ? 'transparent' : undefined }}
     >
       {children}
     </main>

@@ -14,9 +14,9 @@ export const colors = {
   // Dark Theme
   dark: {
     background: {
-      primary: '#070A10',
-      card: '#0A0F18',
-      secondary: '#0B111C',
+      primary: '#050B13', // ТОТАЛЬНОЕ ПРАВИЛО: ВСЕГДА #050B13
+      card: '#0B1320',
+      secondary: '#050B13', // ТОТАЛЬНОЕ ПРАВИЛО: ВСЕГДА #050B13
     },
     border: {
       default: '#2A2A2A',
