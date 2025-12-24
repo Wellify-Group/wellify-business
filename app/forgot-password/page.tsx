@@ -265,9 +265,9 @@ export default function ForgotPasswordPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="w-full max-w-md"
+        className="w-full max-w-[640px]"
       >
-        <div className="w-full rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10">
+        <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
           {/* Back Button */}
           <Link
             href="/login"
@@ -279,16 +279,16 @@ export default function ForgotPasswordPage() {
 
           {!codeSent ? (
             <>
-              <h1 className="mb-2 text-center text-3xl font-bold tracking-tight text-card-foreground">
+              <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-zinc-50">
                 Восстановление пароля
               </h1>
-              <p className="mb-6 text-center text-sm text-muted-foreground">
+              <p className="mb-6 text-center text-sm text-zinc-400">
                 Введите ваш email адрес, и мы отправим вам код для восстановления пароля.
               </p>
 
               <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-card-foreground">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
                     Email
                   </label>
                   <div className="relative">
@@ -307,7 +307,7 @@ export default function ForgotPasswordPage() {
                           handleSendCode();
                         }
                       }}
-                      className="h-12 w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-transparent pl-9 pr-4 text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent transition-all"
+                      className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
                       placeholder="you@example.com"
                     />
                   </div>
@@ -332,7 +332,7 @@ export default function ForgotPasswordPage() {
                   disabled={isSubmitting || !email}
                   whileHover={isSubmitting || !email ? undefined : { scale: 1.02 }}
                   whileTap={isSubmitting || !email ? undefined : { scale: 0.98 }}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[var(--accent-primary-hover,#1d4ed8)] disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_10px_30px_rgba(37,99,235,0.45)]"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? (
                     <>
@@ -342,6 +342,7 @@ export default function ForgotPasswordPage() {
                   ) : (
                     <>
                       Отправить код
+                      <ArrowRight className="h-4 w-4" />
                     </>
                   )}
                 </motion.button>
@@ -349,12 +350,12 @@ export default function ForgotPasswordPage() {
             </>
           ) : (
             <>
-              <h1 className="mb-2 text-center text-3xl font-bold tracking-tight text-card-foreground">
+              <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-zinc-50">
                 Восстановление пароля
               </h1>
-              <p className="mb-6 text-center text-sm text-muted-foreground">
+              <p className="mb-6 text-center text-sm text-zinc-400">
                 Мы отправили код подтверждения на <br />
-                <span className="font-medium text-foreground">{email}</span>
+                <span className="font-medium text-zinc-300">{email}</span>
               </p>
 
               <div className="space-y-4">
@@ -400,7 +401,7 @@ export default function ForgotPasswordPage() {
                   disabled={isSubmitting || code.join('').length !== 6}
                   whileHover={isSubmitting || code.join('').length !== 6 ? undefined : { scale: 1.02 }}
                   whileTap={isSubmitting || code.join('').length !== 6 ? undefined : { scale: 0.98 }}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[var(--accent-primary-hover,#1d4ed8)] disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_10px_30px_rgba(37,99,235,0.45)]"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? (
                     <>

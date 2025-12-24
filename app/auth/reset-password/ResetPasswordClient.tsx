@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
@@ -69,8 +69,8 @@ export function ResetPasswordClient() {
   // Показываем загрузку, пока проверяем код
   if (isVerifying) {
     return (
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10">
-        <div className="text-center text-sm text-muted-foreground">
+      <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+        <div className="text-center text-sm text-zinc-400">
           Проверка кода...
         </div>
       </div>
@@ -80,23 +80,23 @@ export function ResetPasswordClient() {
   // Если код недействителен
   if (!isValid || !email || !code) {
     return (
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10">
+      <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="rounded-full bg-red-100 dark:bg-red-900/30 p-4">
-              <AlertCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
+            <div className="rounded-full bg-rose-500/20 border-2 border-rose-500/30 p-4">
+              <AlertCircle className="h-12 w-12 text-rose-400" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">
+          <h2 className="text-2xl font-semibold text-zinc-50 mb-2">
             Недействительный код
           </h2>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-sm text-zinc-400 mb-4">
             {error || 'Код для сброса пароля недействителен или устарел. Запросите новый код.'}
           </p>
           <Link href="/forgot-password">
-            <Button variant="outline" className="w-full">
+            <button className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800/80 hover:border-zinc-600/70 transition-all">
               Запросить новый код
-            </Button>
+            </button>
           </Link>
         </div>
       </div>
@@ -153,37 +153,40 @@ export function ResetPasswordClient() {
 
   if (success) {
     return (
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10 text-center">
+      <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10 text-center">
         <div className="flex justify-center mb-4">
-          <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-4">
-            <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
+          <div className="rounded-full bg-emerald-500/20 border-2 border-emerald-500/30 p-4">
+            <CheckCircle2 className="h-12 w-12 text-emerald-400" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">
+        <h2 className="text-2xl font-semibold text-zinc-50 mb-2">
           Пароль успешно изменён!
         </h2>
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-sm text-zinc-400 mb-4">
           Вы будете перенаправлены на страницу входа...
         </p>
         <Link href="/auth/login">
-          <Button className="w-full">Перейти к входу</Button>
+          <button className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors">
+            Перейти к входу
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-[0_18px_45px_rgba(15,23,42,0.12)] px-8 py-10">
-      <h1 className="mb-2 text-center text-3xl font-bold tracking-tight text-card-foreground">
+    <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+      <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-zinc-50">
         Сброс пароля
       </h1>
-      <p className="mb-6 text-center text-sm text-muted-foreground">
+      <p className="mb-6 text-center text-sm text-zinc-400">
         Введите новый пароль для вашего аккаунта.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-card-foreground">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
             Новый пароль
           </label>
           <div className="relative">
@@ -196,7 +199,7 @@ export function ResetPasswordClient() {
               }}
               required
               minLength={8}
-              className="h-12 w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-transparent px-4 pr-10 text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent transition-all"
+              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-4 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
               placeholder="Минимум 8 символов"
             />
             <button
@@ -214,8 +217,8 @@ export function ResetPasswordClient() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium text-card-foreground">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
             Подтвердите пароль
           </label>
           <input
@@ -227,25 +230,35 @@ export function ResetPasswordClient() {
             }}
             required
             minLength={8}
-            className="h-12 w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-transparent px-4 text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent transition-all"
+            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-4 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
             placeholder="Повторите пароль"
           />
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-xs text-red-400 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+            <AlertCircle className="mt-0.5 h-4 w-4" />
             <span>{error}</span>
           </div>
         )}
 
-        <Button
+        <button
           type="submit"
           disabled={isLoading || !password || !passwordConfirm}
-          className="w-full"
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isLoading ? "Изменяем пароль..." : "Изменить пароль"}
-        </Button>
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Изменяем пароль...
+            </>
+          ) : (
+            <>
+              Изменить пароль
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
+        </button>
       </form>
 
       <div className="mt-4 text-center">

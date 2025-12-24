@@ -57,17 +57,16 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Ищем код в БД
+    // Ищем код в БД (для сброса пароля разрешаем проверку даже если код уже был проверен)
     const { data: verification, error: findError } = await supabaseAdmin
       .from('email_verifications')
       .select('*')
       .eq('email', email.toLowerCase())
       .eq('token', code)
-      .is('verified_at', null) // Еще не подтвержден
       .gt('expires_at', new Date().toISOString()) // Не истек
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (findError || !verification) {
       return NextResponse.json(
@@ -85,11 +84,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Отмечаем код как использованный
-    await supabaseAdmin
-      .from('email_verifications')
-      .update({ verified_at: new Date().toISOString() })
-      .eq('id', verification.id);
+    // Если код уже был проверен, проверяем что это было недавно (в течение 10 минут)
+    // Это позволяет использовать код для перехода на страницу сброса пароля
+    if (verification.verified_at) {
+      const verifiedAt = new Date(verification.verified_at);
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      
+      if (verifiedAt < tenMinutesAgo) {
+        return NextResponse.json(
+          { success: false, error: 'Code has already been used' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Отмечаем код как использованный только при первой проверке
+      await supabaseAdmin
+        .from('email_verifications')
+        .update({ verified_at: new Date().toISOString() })
+        .eq('id', verification.id);
+    }
 
     return NextResponse.json({
       success: true,
