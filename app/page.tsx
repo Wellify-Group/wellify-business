@@ -252,7 +252,10 @@ export default function Home() {
   return (
     <main className="relative min-h-screen bg-background">
       {/* HERO */}
-      <section className="relative flex items-center justify-center px-4 pt-24 md:pt-32 pb-16 sm:px-6 lg:px-8 overflow-hidden bg-background">
+      <section 
+        className="relative flex items-center justify-center px-4 pt-24 md:pt-32 pb-16 sm:px-6 lg:px-8 overflow-hidden bg-background"
+        style={{ backgroundColor: 'var(--color-background)' }}
+      >
 
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10">
           <motion.h1

@@ -41,7 +41,7 @@ export function Navbar() {
     >
       {/* Плавающая "пилюля" с glass effect */}
       <div
-        className="mx-auto w-full max-w-7xl border rounded-xl backdrop-blur-xl"
+        className="mx-auto w-full max-w-5xl border rounded-xl backdrop-blur-xl"
         style={{
           backgroundColor: isDark 
             ? "rgba(11, 19, 32, 0.7)" 
