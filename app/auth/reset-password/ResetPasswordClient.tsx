@@ -54,10 +54,8 @@ export function ResetPasswordClient() {
           setIsValid(true);
         } else {
           setIsValid(false);
-          const errorMessage = data.error === 'Invalid or expired code' 
-            ? t<string>("register_error_code_invalid")
-            : (data.error || t<string>("register_error_code_invalid"));
-          setError(errorMessage);
+          // Всегда используем локализованное сообщение
+          setError(t<string>("register_error_code_invalid"));
         }
       } catch (error: any) {
         console.error('Verify code error:', error);
@@ -137,7 +135,8 @@ export function ResetPasswordClient() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data.success) {
-        setError(data?.error || data?.message || t<string>("password_reset_error_failed"));
+        // Всегда используем локализованное сообщение
+        setError(t<string>("password_reset_error_failed"));
         setIsLoading(false);
         return;
       }
@@ -146,7 +145,8 @@ export function ResetPasswordClient() {
       setIsLoading(false);
     } catch (err: any) {
       console.error("[reset-password] Error", err);
-      setError(err?.message || t<string>("password_reset_error_internal"));
+      // Всегда используем локализованное сообщение
+      setError(t<string>("password_reset_error_internal"));
       setIsLoading(false);
     }
   };

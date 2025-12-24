@@ -48,8 +48,8 @@ export default function ForgotPasswordPage() {
           document.getElementById('forgot-code-0')?.focus();
         }, 100);
       } else {
-        const errorMessage = data.error || "Произошла ошибка. Попробуйте позже.";
-        setError(errorMessage);
+        // Всегда используем локализованное сообщение
+        setError(t<string>("password_reset_error_failed"));
       }
     } catch (err: any) {
       console.error("Password reset error:", err);
@@ -138,11 +138,8 @@ export default function ForgotPasswordPage() {
               // Переходим на страницу сброса пароля с email
               router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${codeString}`);
             } else {
-              // Локализуем ошибку
-              const errorMessage = data.error === 'Invalid or expired code' 
-                ? t<string>("register_error_code_invalid")
-                : (data.error || t<string>("register_error_code_invalid"));
-              setError(errorMessage);
+              // Всегда используем локализованное сообщение
+              setError(t<string>("register_error_code_invalid"));
               setCode(['', '', '', '', '', '']);
               document.getElementById('forgot-code-0')?.focus();
               setIsSubmitting(false);
@@ -205,7 +202,8 @@ export default function ForgotPasswordPage() {
                 // Переходим на страницу сброса пароля с email
                 router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${pastedData}`);
               } else {
-                setError(data.error || 'Неверный код. Попробуйте еще раз.');
+                // Всегда используем локализованное сообщение
+                setError(t<string>("register_error_code_invalid"));
                 setCode(['', '', '', '', '', '']);
                 document.getElementById('forgot-code-0')?.focus();
                 setIsSubmitting(false);
@@ -251,11 +249,8 @@ export default function ForgotPasswordPage() {
         // Переходим на страницу сброса пароля с email
         router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${codeString}`);
       } else {
-        // Локализуем ошибку
-        const errorMessage = data.error === 'Invalid or expired code' 
-          ? t<string>("register_error_code_invalid")
-          : (data.error || t<string>("register_error_code_invalid"));
-        setError(errorMessage);
+        // Всегда используем локализованное сообщение
+        setError(t<string>("register_error_code_invalid"));
         setCode(['', '', '', '', '', '']);
         document.getElementById('forgot-code-0')?.focus();
       }

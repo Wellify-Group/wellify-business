@@ -76,16 +76,14 @@ export function TelegramVerificationStep({
         console.log("[telegram] Response data:", responseData);
 
         if (!resp.ok) {
-          const errorMessage = responseData?.error || responseData?.details || `HTTP ${resp.status}: ${resp.statusText}`;
           console.error("[telegram] Error creating session:", {
             status: resp.status,
             statusText: resp.statusText,
-            error: errorMessage,
+            error: responseData?.error,
             fullResponse: responseData
           });
-          setError(
-            errorMessage || t<string>("register_error_internal")
-          );
+          // Всегда используем локализованное сообщение
+          setError(t<string>("register_error_internal"));
           return;
         }
 
@@ -96,7 +94,7 @@ export function TelegramVerificationStep({
 
         if (!json.sessionToken || !json.telegramLink) {
           console.error("[telegram] Invalid response format:", json);
-          setError("Неверный формат ответа от сервера. Попробуйте еще раз.");
+          setError(t<string>("register_error_internal"));
           return;
         }
 
@@ -115,8 +113,8 @@ export function TelegramVerificationStep({
           stack: e?.stack,
           name: e?.name
         });
-        const errorMessage = e?.message || "Неизвестная ошибка при создании сессии Telegram";
-        setError(errorMessage);
+        // Всегда используем локализованное сообщение
+        setError(t<string>("register_error_internal"));
       } finally {
         setLoading(false);
       }

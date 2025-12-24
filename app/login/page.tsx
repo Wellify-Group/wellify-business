@@ -69,8 +69,8 @@ export default function LoginPage() {
     const errorParam = searchParams.get("error");
     
     if (errorParam === "oauth") {
-      const errorDescription = searchParams.get("error_description");
-      setError(errorDescription || t("login_error_oauth"));
+      // Всегда используем локализованное сообщение
+      setError(t("login_error_oauth"));
       setIsError(true);
       // Очищаем query параметры без редиректа
       const newUrl = new URL(window.location.href);
@@ -113,7 +113,8 @@ export default function LoginPage() {
             signInError.message?.includes("User not found")) {
           setError(t("login_error_invalid_credentials"));
         } else {
-          setError(signInError.message || t("login_error_generic"));
+          // Всегда используем локализованное сообщение
+          setError(t("login_error_generic"));
         }
         setIsError(true);
         setIsLoading(false);

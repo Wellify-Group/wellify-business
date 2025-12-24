@@ -30,6 +30,7 @@ import { useLanguage } from "@/components/language-provider";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
 import { EmailVerificationCode } from "@/components/auth/email-verification-code";
+import { BirthDateInput } from "@/components/ui/birth-date-input";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -325,17 +326,19 @@ export default function RegisterDirectorClient() {
         const createUserData = await createUserResponse.json();
 
         if (!createUserData.success || !createUserData.user) {
-          const errorMessage = createUserData.error || t<string>("register_error_account_creation_failed");
+          const errorMessage = createUserData.error || '';
           
           // Проверка на существующий email
           if (errorMessage.toLowerCase().includes('already') || 
               errorMessage.toLowerCase().includes('exists') ||
-              errorMessage.toLowerCase().includes('registered')) {
+              errorMessage.toLowerCase().includes('registered') ||
+              errorMessage.toLowerCase().includes('user already registered')) {
             setStep2Error(t<string>("register_error_email_already_registered_with_recovery"));
             return;
           }
           
-          setStep2Error(errorMessage);
+          // Все остальные ошибки локализуем
+          setStep2Error(t<string>("register_error_account_creation_failed"));
           return;
         }
 
@@ -361,7 +364,8 @@ export default function RegisterDirectorClient() {
       const sendCodeData = await sendCodeResponse.json();
       
       if (!sendCodeData.success) {
-        setStep2Error(sendCodeData.error || t<string>("register_error_code_send_failed"));
+        // Всегда используем локализованное сообщение
+        setStep2Error(t<string>("register_error_code_send_failed"));
         return;
       }
 
@@ -407,7 +411,8 @@ export default function RegisterDirectorClient() {
       const sendCodeData = await sendCodeResponse.json();
       
       if (!sendCodeData.success) {
-        setStep2Error(sendCodeData.error || t<string>("register_error_code_send_failed"));
+        // Всегда используем локализованное сообщение
+        setStep2Error(t<string>("register_error_code_send_failed"));
         return;
       }
 
@@ -754,17 +759,10 @@ export default function RegisterDirectorClient() {
           <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {t<string>("register_field_birth_date")}
           </label>
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-              <Calendar className="h-4 w-4 text-muted-foreground/50" />
-            </div>
-            <input
-              type="date"
-              className="h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
-              value={personal.birthDate}
-              onChange={handlePersonalChange("birthDate")}
-            />
-          </div>
+          <BirthDateInput
+            value={personal.birthDate}
+            onChange={(value) => handlePersonalChange("birthDate")({ target: { value } } as ChangeEvent<HTMLInputElement>)}
+          />
         </div>
       </div>
 
