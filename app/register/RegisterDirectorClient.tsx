@@ -642,9 +642,9 @@ export default function RegisterDirectorClient() {
 
   const renderTabs = () => {
     const tabs: { id: Step; label: string }[] = [
-      { id: 1, label: "Основные данные" },
-      { id: 2, label: "Email" },
-      { id: 3, label: "Telegram" },
+      { id: 1, label: t<string>("register_tab_basic_data") },
+      { id: 2, label: t<string>("register_tab_email") },
+      { id: 3, label: t<string>("register_tab_telegram") },
     ];
 
     return (
@@ -894,7 +894,7 @@ export default function RegisterDirectorClient() {
             </div>
 
             {step2Error && (
-          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+          <div className="flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4" />
                 <span>{step2Error}</span>
           </div>
@@ -909,11 +909,11 @@ export default function RegisterDirectorClient() {
               {step2IsLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Отправка кода...
+                  {t<string>("register_btn_sending")}
                 </>
               ) : (
                 <>
-                  Отправить код
+                  {t<string>("password_reset_send_code")}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -944,7 +944,7 @@ export default function RegisterDirectorClient() {
                   onPaste={index === 0 ? handleStep2CodePaste : undefined}
                   className={`h-16 w-14 rounded-2xl border-2 text-center text-3xl font-bold text-foreground outline-none transition-all duration-200 disabled:opacity-50 ${
                     step2Error
-                      ? 'border-rose-500/80 bg-rose-950/40 shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
+                      ? 'border-destructive bg-destructive/10 shadow-[0_0_0_4px_rgba(var(--destructive),0.1)]'
                       : 'border-border bg-background shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:border-primary/60 focus:border-primary focus:shadow-[0_0_0_4px_rgba(var(--color-primary-rgb,59,130,246),0.15)] focus:ring-0'
                   }`}
                   disabled={step2IsLoading}
@@ -957,12 +957,12 @@ export default function RegisterDirectorClient() {
               <motion.div
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                className="flex items-center gap-3 rounded-xl border-2 border-rose-500/60 bg-gradient-to-r from-rose-950/90 to-rose-900/80 px-4 py-3.5 backdrop-blur-sm shadow-lg"
+                className="flex items-center gap-3 rounded-xl border-2 border-destructive bg-destructive/10 px-4 py-3.5 text-destructive"
               >
-                <div className="flex-shrink-0 rounded-full bg-rose-500/20 p-1.5">
-                  <AlertCircle className="h-5 w-5 text-rose-400" />
+                <div className="flex-shrink-0 rounded-full bg-destructive/20 p-1.5">
+                  <AlertCircle className="h-5 w-5" />
                 </div>
-                <span className="text-sm font-medium text-rose-100">{step2Error}</span>
+                <span className="text-sm font-medium">{step2Error}</span>
               </motion.div>
             )}
 
@@ -976,11 +976,11 @@ export default function RegisterDirectorClient() {
                 {step2IsLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Проверка...
+                    {t<string>("password_reset_verifying")}
                   </>
                 ) : (
                   <>
-                    Подтвердить
+                    {t<string>("password_reset_confirm")}
                     <CheckCircle2 className="h-4 w-4" />
                   </>
                 )}
@@ -993,14 +993,14 @@ export default function RegisterDirectorClient() {
                   disabled={step2IsResending}
                   className="text-[var(--accent-primary,#3b82f6)] hover:underline transition-colors disabled:opacity-50"
                 >
-                  {step2IsResending ? 'Отправка...' : 'Отправить код повторно'}
+                  {step2IsResending ? t<string>("password_reset_sending") : t<string>("password_reset_resend_code")}
                 </button>
                 <button
                   type="button"
                   onClick={handleStep2ChangeEmail}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Изменить email
+                  {t<string>("password_reset_change_email")}
                 </button>
               </div>
             </div>
@@ -1014,7 +1014,7 @@ export default function RegisterDirectorClient() {
     if (!registeredUserId || !registeredUserEmail) {
       return (
         <div className="space-y-4">
-          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+          <div className="flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4" />
             <span>
               Не удалось получить данные регистрации. Вернитесь на шаг 1 и попробуйте ещё раз.
@@ -1164,7 +1164,7 @@ export default function RegisterDirectorClient() {
 
           <CardContent className="px-10 pb-4 pt-1">
             {registerError && (
-              <div className="mb-4 flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+              <div className="mb-4 flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 <AlertCircle className="mt-0.5 h-4 w-4" />
                 <span>{registerError}</span>
               </div>
@@ -1185,7 +1185,7 @@ export default function RegisterDirectorClient() {
                   className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-all"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Назад
+                  {t<string>("register_btn_back")}
                 </button>
               )}
             </div>
@@ -1209,11 +1209,11 @@ export default function RegisterDirectorClient() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Создание аккаунта...
+                      {t<string>("register_btn_creating")}
                     </>
                   ) : (
                     <>
-                      Далее
+                      {t<string>("register_btn_next")}
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}

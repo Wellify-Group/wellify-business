@@ -428,10 +428,10 @@ export default function LoginPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
-                      className="flex flex-col gap-6"
+                      className="flex flex-col gap-4"
                     >
                       {terminalStep === 1 && (
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                           <div className="flex justify-center">
                             <div className="flex items-center gap-2">
                               {companyIdBlocks.map((value, index) => (
@@ -456,7 +456,7 @@ export default function LoginPage() {
                             <motion.div
                               initial={{ opacity: 0, y: -10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive"
+                              className="flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
                             >
                               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                               <span>{error}</span>
@@ -476,7 +476,7 @@ export default function LoginPage() {
                       )}
 
                       {terminalStep === 2 && (
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                           <div className="flex justify-center gap-3">
                             {pin.map((value, index) => (
                               <input
@@ -498,7 +498,7 @@ export default function LoginPage() {
                             <motion.div
                               initial={{ opacity: 0, y: -10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive"
+                              className="flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
                             >
                               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                               <span>{error}</span>
