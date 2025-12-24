@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "translate": "tsx scripts/auto-translate.ts",
-    "translate:watch": "tsx watch scripts/auto-translate.ts",
+    "translate:watch": "tsx watch scripts/auto-translate.ts"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.15.0",
