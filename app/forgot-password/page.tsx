@@ -268,7 +268,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="h-screen pt-[112px] flex items-center justify-center bg-background px-4">
+    <main className="fixed top-[112px] left-0 right-0 bottom-0 flex items-center justify-center bg-background px-4 overflow-hidden">
       <div className="relative w-full max-w-[640px]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
