@@ -148,14 +148,14 @@ export default function CompleteProfilePage() {
 
   if (isChecking) {
     return (
-      <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background, #050B13)' }}>
+      <main className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">Загрузка...</div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--color-background, #050B13)', paddingTop: '80px' }}>
+    <main className="min-h-screen flex flex-col bg-background" style={{ paddingTop: '80px' }}>
       <div className="flex-1 flex items-center justify-center px-4 py-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

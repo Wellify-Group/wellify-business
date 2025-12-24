@@ -307,20 +307,20 @@ export default function LoginPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
-                  {activeTab === "office" 
-                    ? (t("login_office_title") || "Вход в кабинет") 
-                    : (t("login_terminal_title") || "Вход в терминал")}
-                </CardTitle>
+              <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
+                {activeTab === "office" 
+                  ? (t("login_office_title") || "Вход в кабинет") 
+                  : (t("login_terminal_title") || "Вход в терминал")}
+              </CardTitle>
 
                 <CardDescription className="text-center text-sm leading-relaxed text-muted-foreground">
-                  {activeTab === "office"
-                    ? (t("login_office_desc") || "Для владельцев и менеджеров")
+                {activeTab === "office"
+                  ? (t("login_office_desc") || "Для владельцев и менеджеров")
                     : (terminalStep === 1 ? t("login_terminal_enter_id") : t("login_terminal_enter_pin"))}
-                </CardDescription>
+              </CardDescription>
               </div>
             </div>
-          </CardHeader>
+            </CardHeader>
 
           <CardContent className="px-8 pb-6 flex items-center justify-center">
               <div className="w-full">
@@ -435,21 +435,21 @@ export default function LoginPage() {
                       {terminalStep === 1 && (
                         <div className="flex flex-col items-center gap-3 w-full">
                           <div className="flex items-center justify-center gap-2">
-                            {companyIdBlocks.map((value, index) => (
-                              <input
-                                key={index}
-                                id={`company-id-block-${index}`}
-                                type="text"
-                                inputMode="numeric"
-                                autoComplete="off"
-                                maxLength={BLOCK_LENGTH}
-                                value={value}
-                                onChange={(e) => handleCompanyIdChange(index, e.target.value)}
-                                onKeyDown={(e) => handleCompanyIdKeyDown(index, e)}
-                                onPaste={(e) => handleCompanyIdPaste(index, e)}
+                              {companyIdBlocks.map((value, index) => (
+                                <input
+                                  key={index}
+                                  id={`company-id-block-${index}`}
+                                  type="text"
+                                  inputMode="numeric"
+                                  autoComplete="off"
+                                  maxLength={BLOCK_LENGTH}
+                                  value={value}
+                                  onChange={(e) => handleCompanyIdChange(index, e.target.value)}
+                                  onKeyDown={(e) => handleCompanyIdKeyDown(index, e)}
+                                  onPaste={(e) => handleCompanyIdPaste(index, e)}
                                 className="w-[70px] h-[56px] rounded-[20px] text-center text-[18px] font-mono tracking-widest focus:outline-none transition-all border-2 border-border dark:border-border/80 bg-white dark:bg-background/50 focus:border-primary focus:ring-0 text-foreground shadow-sm dark:shadow-none"
-                              />
-                            ))}
+                                />
+                              ))}
                           </div>
 
                           {error && (

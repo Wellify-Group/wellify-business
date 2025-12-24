@@ -31,17 +31,17 @@ export function Navbar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-30 pt-5 px-4 md:px-6"
+      className="fixed top-0 left-0 right-0 z-30 pt-5"
       style={{
         height: 'var(--navbar-height)',
-        paddingTop: "max(1.25rem, 1.25rem)",
-        paddingLeft: "max(1.5rem, 5vw)",
-        paddingRight: "max(1.5rem, 5vw)",
+        paddingTop: "1.25rem",
+        paddingLeft: "1.5rem",
+        paddingRight: "1.5rem",
       }}
     >
       {/* Плавающая "пилюля" с glass effect */}
       <div
-        className="mx-auto w-full max-w-[80%] border rounded-xl backdrop-blur-xl"
+        className="mx-auto w-full max-w-7xl border rounded-xl backdrop-blur-xl"
         style={{
           backgroundColor: isDark 
             ? "rgba(11, 19, 32, 0.7)" 
@@ -60,7 +60,7 @@ export function Navbar() {
           WebkitBackdropFilter: "blur(12px) saturate(180%)",
         }}
       >
-        <div className="flex h-[64px] items-center justify-between px-6 md:px-8">
+        <div className="flex h-[64px] items-center justify-between px-6">
           {/* Логотип слева */}
           <Link href="/" className="flex items-center">
             <Logo

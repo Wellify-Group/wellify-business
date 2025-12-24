@@ -108,7 +108,7 @@ export default function WelcomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0D0D0D', color: 'white' }}>
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Верх: бренд + переключатель языка */}
       <header className="flex items-center justify-between px-8 py-6">
         <div className="text-lg font-semibold tracking-tight">
