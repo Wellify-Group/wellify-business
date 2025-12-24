@@ -84,14 +84,81 @@ export class MailerService {
 
   /**
    * Send email verification code
+   * @param email - Email address to send code to
+   * @param code - 6-digit verification code
+   * @param language - Language code ('ru', 'uk', 'en'), defaults to 'uk'
    */
-  async sendVerificationCode(email: string, code: string): Promise<void> {
+  async sendVerificationCode(email: string, code: string, language: 'ru' | 'uk' | 'en' = 'uk'): Promise<void> {
+    // Определяем язык для HTML атрибута
+    const htmlLang = language === 'uk' ? 'uk' : language === 'ru' ? 'ru' : 'en';
+    
+    // Тексты для разных языков
+    const texts = {
+      ru: {
+        title: 'Код подтверждения email | WELLIFY business',
+        heading: 'Подтверждение email',
+        paragraph1: 'Вы начали регистрацию в системе управления сменами',
+        paragraph2: 'Введите код подтверждения ниже для завершения регистрации.',
+        codeLabel: 'Ваш код подтверждения:',
+        codeValid: 'Код действителен в течение 15 минут.',
+        footer: 'Если вы не регистрировались в WELLIFY business, просто проигнорируйте это письмо.',
+        subject: 'Код подтверждения email - WELLIFY Business',
+        textHeader: 'WELLIFY BUSINESS',
+        textHeading: 'Подтверждение email',
+        textBody: 'Вы начали регистрацию в системе управления сменами WELLIFY business.',
+        textCode: 'Ваш код подтверждения:',
+        textInstruction: 'Введите этот код на сайте для подтверждения вашей email адресы.',
+        textValid: 'Код действителен в течение 15 минут.',
+        textFooter: 'Если вы не регистрировались в WELLIFY business, просто проигнорируйте это письмо.',
+      },
+      uk: {
+        title: 'Код підтвердження email | WELLIFY business',
+        heading: 'Підтвердження email',
+        paragraph1: 'Ви розпочали реєстрацію в системі управління змінами',
+        paragraph2: 'Введіть код підтвердження нижче для завершення реєстрації.',
+        codeLabel: 'Ваш код підтвердження:',
+        codeValid: 'Код дійсний протягом 15 хвилин.',
+        footer: 'Якщо ви не реєструвалися в WELLIFY business, просто проігноруйте цей лист.',
+        subject: 'Код підтвердження email - WELLIFY Business',
+        textHeader: 'WELLIFY BUSINESS',
+        textHeading: 'Підтвердження email',
+        textBody: 'Ви розпочали реєстрацію в системі управління змінами WELLIFY business.',
+        textCode: 'Ваш код підтвердження:',
+        textInstruction: 'Введіть цей код на сайті для підтвердження вашої email адреси.',
+        textValid: 'Код дійсний протягом 15 хвилин.',
+        textFooter: 'Якщо ви не реєструвалися в WELLIFY business, просто проігноруйте цей лист.',
+      },
+      en: {
+        title: 'Email verification code | WELLIFY business',
+        heading: 'Email verification',
+        paragraph1: 'You have started registration in the shift management system',
+        paragraph2: 'Enter the verification code below to complete registration.',
+        codeLabel: 'Your verification code:',
+        codeValid: 'The code is valid for 15 minutes.',
+        footer: 'If you did not register with WELLIFY business, please ignore this email.',
+        subject: 'Email verification code - WELLIFY Business',
+        textHeader: 'WELLIFY BUSINESS',
+        textHeading: 'Email verification',
+        textBody: 'You have started registration in the shift management system WELLIFY business.',
+        textCode: 'Your verification code:',
+        textInstruction: 'Enter this code on the website to verify your email address.',
+        textValid: 'The code is valid for 15 minutes.',
+        textFooter: 'If you did not register with WELLIFY business, please ignore this email.',
+      },
+    };
+    
+    const t = texts[language];
+    
+    // URL логотипа (используем публичный URL)
+    const logoUrl = process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`
+      : 'https://business.wellifyglobal.com/logo.png';
     const html = `
 <!doctype html>
-<html lang="ru">
+<html lang="${htmlLang}">
   <head>
     <meta charset="UTF-8">
-    <title>Код подтверждения email | WELLIFY business</title>
+    <title>${t.title}</title>
 
     <!-- Дозволяємо світлу та темну тему -->
     <meta name="color-scheme" content="light dark">
@@ -132,6 +199,14 @@ export class MailerService {
         border-radius: 16px;
         border: 1px solid #E2E8F0;   /* light border */
         padding: 32px 24px 28px 24px;
+      }
+
+      /* Логотип */
+      .logo {
+        display: block;
+        max-width: 120px;
+        height: auto;
+        margin: 0 auto 24px auto;
       }
 
       /* Заголовок по центру */
@@ -252,28 +327,29 @@ export class MailerService {
         <tr>
           <td align="center" style="background-color:#F8FAFC;">
             <div class="inner" style="background-color:#FFFFFF;">
-              <h1 class="title">Підтвердження email</h1>
+              <img src="${logoUrl}" alt="WELLIFY Business" class="logo" />
+              <h1 class="title">${t.heading}</h1>
 
               <p class="paragraph">
-                Ви розпочали реєстрацію в системі управління змінами
+                ${t.paragraph1}
                 <span class="nowrap"><strong>WELLIFY business</strong>.</span>
               </p>
               <p class="paragraph">
-                Введіть код підтвердження нижче для завершення реєстрації.
+                ${t.paragraph2}
               </p>
 
               <div class="code-container">
-                <p class="code-label">Ваш код підтвердження:</p>
+                <p class="code-label">${t.codeLabel}</p>
                 <div class="code-box">${code}</div>
               </div>
 
               <p class="paragraph-small">
-                Код дійсний протягом 15 хвилин.
+                ${t.codeValid}
               </p>
 
               <div class="footer">
                 <p class="footer-note">
-                  Якщо ви не реєструвалися в <span class="nowrap">WELLIFY business</span>, просто проігноруйте цей лист.
+                  ${t.footer}
                 </p>
               </div>
             </div>
@@ -286,23 +362,23 @@ export class MailerService {
     `;
 
     const text = `
-WELLIFY BUSINESS
+${t.textHeader}
 
-Підтвердження email
+${t.textHeading}
 
-Ви розпочали реєстрацію в системі управління змінами WELLIFY business.
+${t.textBody}
 
-Ваш код підтвердження: ${code}
+${t.textCode} ${code}
 
-Введіть цей код на сайті для підтвердження вашої email адреси.
-Код дійсний протягом 15 хвилин.
+${t.textInstruction}
+${t.textValid}
 
-Якщо ви не реєструвалися в WELLIFY business, просто проігноруйте цей лист.
+${t.textFooter}
     `;
 
     await this.sendMail({
       to: email,
-      subject: 'Код підтвердження email - WELLIFY Business',
+      subject: t.subject,
       html,
       text,
     });
@@ -358,6 +434,14 @@ WELLIFY BUSINESS
         border-radius: 16px;
         border: 1px solid #E2E8F0;   /* light border */
         padding: 32px 24px 28px 24px;
+      }
+
+      /* Логотип */
+      .logo {
+        display: block;
+        max-width: 120px;
+        height: auto;
+        margin: 0 auto 24px auto;
       }
 
       /* Заголовок по центру */

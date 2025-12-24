@@ -45,7 +45,7 @@ interface PersonalForm {
 
 export default function RegisterDirectorClient() {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
 
   const [step, setStep] = useState<Step>(1);
   const [maxStepReached, setMaxStepReached] = useState<Step>(1);
@@ -138,22 +138,22 @@ export default function RegisterDirectorClient() {
     setEmailExistsError(false);
 
     if (!personal.firstName.trim() || !personal.lastName.trim()) {
-      setRegisterError("Укажите имя и фамилию директора.");
+      setRegisterError(t<string>("register_error_name_required"));
       return;
     }
 
     if (!personal.birthDate) {
-      setRegisterError("Укажите дату рождения директора.");
+      setRegisterError(t<string>("register_error_birth_date_required"));
       return;
     }
 
     if (!personal.password || personal.password.length < 8) {
-      setRegisterError("Пароль должен содержать не менее 8 символов.");
+      setRegisterError(t<string>("register_error_password_min"));
       return;
     }
 
     if (personal.password !== personal.passwordConfirm) {
-      setRegisterError("Пароль и подтверждение не совпадают.");
+      setRegisterError(t<string>("register_error_password_mismatch"));
       return;
     }
 
@@ -167,7 +167,7 @@ export default function RegisterDirectorClient() {
       setMaxStepReached(2);
     } catch (err) {
       console.error("[register] handleNextFromStep1 error", err);
-      setRegisterError("Внутренняя ошибка. Попробуйте позже.");
+      setRegisterError(t<string>("register_error_internal"));
     } finally {
       setIsSubmitting(false);
     }
@@ -203,9 +203,7 @@ export default function RegisterDirectorClient() {
 
         if (signInError) {
           console.warn("[register] signIn error", signInError);
-          setRegisterError(
-            "Не удалось восстановить сессию. Попробуйте войти вручную."
-          );
+          setRegisterError(t<string>("register_error_session_restore_failed"));
           return;
         }
 
@@ -213,7 +211,7 @@ export default function RegisterDirectorClient() {
       }
 
       if (!session) {
-        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+        setRegisterError(t<string>("register_error_session_expired"));
         return;
       }
 
@@ -224,23 +222,21 @@ export default function RegisterDirectorClient() {
       });
 
       if (res.status === 401) {
-        setRegisterError("Сессия истекла. Пожалуйста, войдите заново.");
+        setRegisterError(t<string>("register_error_session_expired"));
         return;
       }
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         console.error("[register] Load profile error:", res.status, errorData);
-        setRegisterError(
-          "Не удалось загрузить данные профиля. Попробуйте позже."
-        );
+        setRegisterError(t<string>("register_error_profile_load_failed"));
         return;
       }
 
       const data = await res.json();
 
       if (!data.success || !data.user) {
-        setRegisterError("Профиль не найден. Попробуйте войти заново.");
+        setRegisterError(t<string>("register_error_profile_not_found"));
         return;
       }
 
@@ -249,7 +245,7 @@ export default function RegisterDirectorClient() {
       // Проверяем два условия
       // Условие 1: phone должен быть заполнен
       if (!profile?.phone || profile.phone.trim() === "") {
-        setRegisterError("Номер телефона не подтвержден. Пожалуйста, завершите верификацию Telegram.");
+        setRegisterError(t<string>("register_error_phone_not_verified"));
         return;
       }
 
@@ -259,7 +255,7 @@ export default function RegisterDirectorClient() {
                                  profile?.telegram_verified === 1;
       
       if (!isTelegramVerified) {
-        setRegisterError("Telegram не подтвержден. Пожалуйста, завершите верификацию Telegram.");
+        setRegisterError(t<string>("register_error_telegram_not_verified"));
         return;
       }
 
@@ -275,9 +271,7 @@ export default function RegisterDirectorClient() {
       router.push("/dashboard/director");
     } catch (e) {
       console.error("finishRegistration error", e);
-      setRegisterError(
-        "Неизвестная ошибка при завершении регистрации. Попробуйте позже."
-      );
+      setRegisterError(t<string>("register_error_finish_registration_failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -286,13 +280,13 @@ export default function RegisterDirectorClient() {
   // Отправка кода на шаге 2
   const handleStep2SendCode = async () => {
     if (!step2Email.trim()) {
-      setStep2Error('Введите email адрес');
+      setStep2Error(t<string>("register_error_email_required"));
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(step2Email.trim())) {
-      setStep2Error('Введите корректный e-mail адрес');
+      setStep2Error(t<string>("register_error_email_invalid"));
       return;
     }
 
@@ -330,13 +324,13 @@ export default function RegisterDirectorClient() {
         const createUserData = await createUserResponse.json();
 
         if (!createUserData.success || !createUserData.user) {
-          const errorMessage = createUserData.error || 'Не удалось создать учетную запись. Попробуйте ещё раз.';
+          const errorMessage = createUserData.error || t<string>("register_error_account_creation_failed");
           
           // Проверка на существующий email
           if (errorMessage.toLowerCase().includes('already') || 
               errorMessage.toLowerCase().includes('exists') ||
               errorMessage.toLowerCase().includes('registered')) {
-            setStep2Error("Этот e-mail уже зарегистрирован. Войдите в аккаунт или восстановите пароль.");
+            setStep2Error(t<string>("register_error_email_already_registered_with_recovery"));
             return;
           }
           
@@ -366,7 +360,7 @@ export default function RegisterDirectorClient() {
       const sendCodeData = await sendCodeResponse.json();
       
       if (!sendCodeData.success) {
-        setStep2Error(sendCodeData.error || 'Не удалось отправить код. Попробуйте еще раз.');
+        setStep2Error(sendCodeData.error || t<string>("register_error_code_send_failed"));
         return;
       }
 
@@ -379,7 +373,7 @@ export default function RegisterDirectorClient() {
       }, 100);
     } catch (error) {
       console.error('Error sending verification code:', error);
-      setStep2Error('Ошибка при отправке кода. Попробуйте еще раз.');
+      setStep2Error(t<string>("register_error_code_send_failed"));
     } finally {
       setStep2IsLoading(false);
     }
@@ -412,7 +406,7 @@ export default function RegisterDirectorClient() {
       const sendCodeData = await sendCodeResponse.json();
       
       if (!sendCodeData.success) {
-        setStep2Error(sendCodeData.error || 'Не удалось отправить код. Попробуйте еще раз.');
+        setStep2Error(sendCodeData.error || t<string>("register_error_code_send_failed"));
         return;
       }
 
@@ -424,7 +418,7 @@ export default function RegisterDirectorClient() {
       }, 100);
     } catch (error) {
       console.error('Error resending verification code:', error);
-      setStep2Error('Ошибка при отправке кода. Попробуйте еще раз.');
+      setStep2Error(t<string>("register_error_code_send_failed"));
     } finally {
       setStep2IsResending(false);
     }
@@ -435,7 +429,7 @@ export default function RegisterDirectorClient() {
     const codeString = step2Code.join('');
     
     if (codeString.length !== 6) {
-      setStep2Error('Введите полный код из 6 цифр');
+      setStep2Error(t<string>("register_error_code_incomplete"));
       return;
     }
 
@@ -467,14 +461,14 @@ export default function RegisterDirectorClient() {
 
             if (signInError) {
               console.error('[register] Sign in after email verification error:', signInError);
-              setStep2Error('Не удалось восстановить сессию. Попробуйте войти вручную.');
+              setStep2Error(t<string>("register_error_session_restore_failed"));
               return;
             }
 
             console.log('[register] ✅ Session restored after email verification');
           } catch (error) {
             console.error('[register] Error restoring session:', error);
-            setStep2Error('Ошибка при восстановлении сессии. Попробуйте войти вручную.');
+            setStep2Error(t<string>("register_error_session_restore_failed"));
             return;
           }
         }
@@ -482,12 +476,12 @@ export default function RegisterDirectorClient() {
         setStep(3);
         setMaxStepReached(3);
       } else {
-        setStep2Error(data.error || 'Неверный код. Попробуйте еще раз.');
+        setStep2Error(data.error || t<string>("register_error_code_invalid"));
         setStep2Code(['', '', '', '', '', '']);
         document.getElementById('step2-code-0')?.focus();
       }
     } catch (error: any) {
-      setStep2Error('Ошибка при проверке кода. Попробуйте еще раз.');
+      setStep2Error(t<string>("register_error_code_verify_failed"));
       console.error('Verify code error:', error);
     } finally {
       setStep2IsLoading(false);

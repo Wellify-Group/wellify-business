@@ -166,9 +166,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Получаем язык пользователя из профиля или используем 'uk' по умолчанию
+    let userLanguage: 'ru' | 'uk' | 'en' = 'uk';
+    if (targetUserId) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('language')
+        .eq('id', targetUserId)
+        .maybeSingle();
+      
+      if (profile?.language) {
+        const lang = profile.language === 'ua' ? 'uk' : (profile.language as 'ru' | 'uk' | 'en');
+        if (['ru', 'uk', 'en'].includes(lang)) {
+          userLanguage = lang;
+        }
+      } else {
+        // Пробуем получить из user_metadata
+        const { data: user } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+        if (user?.user?.user_metadata?.locale) {
+          const locale = user.user.user_metadata.locale;
+          const lang = locale === 'ua' ? 'uk' : (locale === 'uk' ? 'uk' : (locale === 'en' ? 'en' : 'ru'));
+          if (['ru', 'uk', 'en'].includes(lang)) {
+            userLanguage = lang;
+          }
+        }
+      }
+    }
+
     // Отправляем код на email
     try {
-      await mailerService.sendVerificationCode(email, code);
+      await mailerService.sendVerificationCode(email, code, userLanguage);
       console.log('Verification code email sent successfully to:', email);
     } catch (emailError: any) {
       console.error('Error sending email via Resend:', {

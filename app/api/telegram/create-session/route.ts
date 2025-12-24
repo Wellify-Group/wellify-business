@@ -33,13 +33,22 @@ export async function POST(request: NextRequest) {
         console.log('[telegram/create-session] Request body length:', rawBody.length);
 
         // 2. Делаем прямой запрос к бэкенду Telegram-бота на Railway
-        // Используем /telegram/create-session согласно INTERNAL_RULES.md
-        const telegramUrl = `${TELEGRAM_API_URL}/telegram/create-session`;
+        // Пробуем разные возможные пути эндпоинта
+        const possibleEndpoints = [
+            '/telegram/create-session',  // Ожидаемый путь
+            '/api/telegram/create-session',  // Альтернатива с /api
+            '/create-session',  // Без префикса
+            '/session/create',  // Альтернативный формат
+        ];
+        
+        // Пробуем первый путь (основной)
+        let telegramUrl = `${TELEGRAM_API_URL}${possibleEndpoints[0]}`;
         console.log('[telegram/create-session] Full URL to fetch:', telegramUrl);
         console.log('[telegram/create-session] URL components:', {
             base: TELEGRAM_API_URL,
-            endpoint: '/telegram/create-session',
-            full: telegramUrl
+            endpoint: possibleEndpoints[0],
+            full: telegramUrl,
+            alternativeEndpoints: possibleEndpoints.slice(1)
         });
         
         console.log('[telegram/create-session] Starting fetch to Railway...');
