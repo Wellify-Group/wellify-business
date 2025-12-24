@@ -350,7 +350,6 @@ export default function LoginPage() {
                                 "h-11 w-full rounded-full border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]",
                                 isError && "border-destructive/80 text-destructive focus:border-destructive"
                               )}
-                              placeholder={t("email_placeholder") || "you@example.com"}
                             />
                           </label>
 
@@ -431,7 +430,7 @@ export default function LoginPage() {
                       className="flex flex-col gap-3"
                     >
                       {terminalStep === 1 && (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           <div className="flex justify-center">
                             <div className="flex items-center gap-2">
                               {companyIdBlocks.map((value, index) => (
@@ -463,7 +462,7 @@ export default function LoginPage() {
                             </motion.div>
                           )}
 
-                          <div className="mt-4 flex justify-end">
+                          <div className="flex justify-end">
                             <button
                               type="button"
                               onClick={handleContinueFromCompanyId}
@@ -476,7 +475,7 @@ export default function LoginPage() {
                       )}
 
                       {terminalStep === 2 && (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           <div className="flex justify-center gap-3">
                             {pin.map((value, index) => (
                               <input
@@ -505,7 +504,7 @@ export default function LoginPage() {
                             </motion.div>
                           )}
 
-                          <div className="mt-4 flex gap-3">
+                          <div className="flex gap-3">
                             <button
                               type="button"
                               onClick={() => setTerminalStep(1)}

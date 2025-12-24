@@ -322,7 +322,6 @@ export default function ForgotPasswordPage() {
                         }
                       }}
                       className="h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
-                      placeholder={t<string>("email_placeholder")}
                     />
                   </div>
                 </div>

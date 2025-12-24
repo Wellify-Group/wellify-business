@@ -9,7 +9,7 @@ export default function TermsPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#050B13]">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <Link
           href="/"
