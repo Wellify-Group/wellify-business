@@ -69,7 +69,7 @@ export function ResetPasswordClient() {
   // Показываем загрузку, пока проверяем код
   if (isVerifying) {
     return (
-      <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+      <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
         <div className="text-center text-sm text-zinc-400">
           Проверка кода...
         </div>
@@ -80,7 +80,7 @@ export function ResetPasswordClient() {
   // Если код недействителен
   if (!isValid || !email || !code) {
     return (
-      <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+      <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-rose-500/20 border-2 border-rose-500/30 p-4">
@@ -141,7 +141,7 @@ export function ResetPasswordClient() {
       
       // Через 2 секунды редиректим на страницу входа
       setTimeout(() => {
-        router.push("/auth/login");
+        router.push("/login");
       }, 2000);
       setIsLoading(false);
     } catch (err: any) {
@@ -153,7 +153,7 @@ export function ResetPasswordClient() {
 
   if (success) {
     return (
-      <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10 text-center">
+      <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10 text-center">
         <div className="flex justify-center mb-4">
           <div className="rounded-full bg-emerald-500/20 border-2 border-emerald-500/30 p-4">
             <CheckCircle2 className="h-12 w-12 text-emerald-400" />
@@ -165,7 +165,7 @@ export function ResetPasswordClient() {
         <p className="text-sm text-zinc-400 mb-4">
           Вы будете перенаправлены на страницу входа...
         </p>
-        <Link href="/auth/login">
+        <Link href="/login">
           <button className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors">
             Перейти к входу
             <ArrowRight className="h-4 w-4" />
@@ -176,7 +176,7 @@ export function ResetPasswordClient() {
   }
 
   return (
-    <div className="w-full max-w-[640px] rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+    <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
       <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-zinc-50">
         Сброс пароля
       </h1>
@@ -263,7 +263,7 @@ export function ResetPasswordClient() {
 
       <div className="mt-4 text-center">
         <Link
-          href="/auth/login"
+          href="/login"
           className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
         >
           Вернуться к входу
