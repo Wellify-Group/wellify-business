@@ -364,8 +364,16 @@ export default function RegisterDirectorClient() {
       const sendCodeData = await sendCodeResponse.json();
       
       if (!sendCodeData.success) {
-        // Всегда используем локализованное сообщение
-        setStep2Error(t<string>("register_error_code_send_failed"));
+        // Проверяем тип ошибки и показываем соответствующее сообщение
+        let errorMessage = t<string>("register_error_code_send_failed");
+        if (sendCodeData.errorCode === 'EMAIL_SERVICE_NOT_CONFIGURED') {
+          errorMessage = t<string>("register_error_code_send_failed");
+        } else if (sendCodeData.errorCode === 'EMAIL_SEND_FAILED') {
+          errorMessage = t<string>("register_error_code_send_failed");
+        } else if (sendCodeData.error) {
+          errorMessage = sendCodeData.error;
+        }
+        setStep2Error(errorMessage);
         return;
       }
 
@@ -411,8 +419,16 @@ export default function RegisterDirectorClient() {
       const sendCodeData = await sendCodeResponse.json();
       
       if (!sendCodeData.success) {
-        // Всегда используем локализованное сообщение
-        setStep2Error(t<string>("register_error_code_send_failed"));
+        // Проверяем тип ошибки и показываем соответствующее сообщение
+        let errorMessage = t<string>("register_error_code_send_failed");
+        if (sendCodeData.errorCode === 'EMAIL_SERVICE_NOT_CONFIGURED') {
+          errorMessage = t<string>("register_error_code_send_failed");
+        } else if (sendCodeData.errorCode === 'EMAIL_SEND_FAILED') {
+          errorMessage = t<string>("register_error_code_send_failed");
+        } else if (sendCodeData.error) {
+          errorMessage = sendCodeData.error;
+        }
+        setStep2Error(errorMessage);
         return;
       }
 

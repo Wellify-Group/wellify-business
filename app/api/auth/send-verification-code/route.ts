@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Email service is not configured. Please contact support.' 
+          error: 'Email service is not configured',
+          errorCode: 'EMAIL_SERVICE_NOT_CONFIGURED'
         },
         { status: 500 }
       );
@@ -209,7 +210,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Failed to send email. Please check your Resend API configuration.',
+          error: 'Failed to send email',
+          errorCode: 'EMAIL_SEND_FAILED',
           details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
         },
         { status: 500 }
