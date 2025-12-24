@@ -57,40 +57,9 @@ export default function LoginPage() {
   // для гарантии, что Next.js встроит значение в клиентский бандл
   const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 
-  // Check if user is already logged in
-  useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createBrowserSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        // Проверяем профиль пользователя
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, phone_verified, first_name, last_name")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        // Если профиль заполнен - редиректим в дашборд
-        if (profile && profile.first_name && profile.last_name) {
-          const role = profile.role || session.user.user_metadata?.role || "director";
-          if (role === "director") {
-            router.replace("/dashboard/director");
-          } else if (role === "manager") {
-            router.replace("/dashboard/manager");
-          } else {
-            router.replace("/dashboard/employee");
-          }
-        } else {
-          // Если профиль не заполнен - отправляем в дашборд
-          router.replace("/dashboard/director");
-        }
-        return;
-      }
-    };
-    
-    checkAuth();
-  }, [router]);
+  // Убрали автоматический редирект авторизованных пользователей
+  // Теперь пользователь может видеть страницу входа даже если уже авторизован
+  // Это позволяет выйти и войти под другим аккаунтом
 
   // Check for error query parameter
   useEffect(() => {
