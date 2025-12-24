@@ -476,7 +476,8 @@ export default function RegisterDirectorClient() {
         setStep(3);
         setMaxStepReached(3);
       } else {
-        setStep2Error(data.error || t<string>("register_error_code_invalid"));
+        // Всегда используем перевод, игнорируя текст ошибки от API
+        setStep2Error(t<string>("register_error_code_invalid"));
         setStep2Code(['', '', '', '', '', '']);
         document.getElementById('step2-code-0')?.focus();
       }

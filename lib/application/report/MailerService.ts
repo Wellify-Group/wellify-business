@@ -149,10 +149,6 @@ export class MailerService {
     
     const t = texts[language];
     
-    // URL логотипа (используем публичный URL)
-    const logoUrl = process.env.NEXT_PUBLIC_APP_URL 
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`
-      : 'https://business.wellifyglobal.com/logo.png';
     const html = `
 <!doctype html>
 <html lang="${htmlLang}">
@@ -199,14 +195,6 @@ export class MailerService {
         border-radius: 16px;
         border: 1px solid #E2E8F0;   /* light border */
         padding: 32px 24px 28px 24px;
-      }
-
-      /* Логотип */
-      .logo {
-        display: block;
-        max-width: 120px;
-        height: auto;
-        margin: 0 auto 24px auto;
       }
 
       /* Заголовок по центру */
@@ -327,7 +315,6 @@ export class MailerService {
         <tr>
           <td align="center" style="background-color:#F8FAFC;">
             <div class="inner" style="background-color:#FFFFFF;">
-              <img src="${logoUrl}" alt="WELLIFY Business" class="logo" />
               <h1 class="title">${t.heading}</h1>
 
               <p class="paragraph">
@@ -434,14 +421,6 @@ ${t.textFooter}
         border-radius: 16px;
         border: 1px solid #E2E8F0;   /* light border */
         padding: 32px 24px 28px 24px;
-      }
-
-      /* Логотип */
-      .logo {
-        display: block;
-        max-width: 120px;
-        height: auto;
-        margin: 0 auto 24px auto;
       }
 
       /* Заголовок по центру */
