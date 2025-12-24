@@ -366,7 +366,9 @@ export default function RegisterDirectorClient() {
       if (!sendCodeData.success) {
         // Проверяем тип ошибки и показываем соответствующее сообщение
         let errorMessage = t<string>("register_error_code_send_failed");
-        if (sendCodeData.errorCode === 'EMAIL_SERVICE_NOT_CONFIGURED') {
+        if (sendCodeData.errorCode === 'TABLE_NOT_FOUND') {
+          errorMessage = t<string>("register_error_table_not_found");
+        } else if (sendCodeData.errorCode === 'EMAIL_SERVICE_NOT_CONFIGURED') {
           errorMessage = t<string>("register_error_code_send_failed");
         } else if (sendCodeData.errorCode === 'EMAIL_SEND_FAILED') {
           errorMessage = t<string>("register_error_code_send_failed");
@@ -421,7 +423,9 @@ export default function RegisterDirectorClient() {
       if (!sendCodeData.success) {
         // Проверяем тип ошибки и показываем соответствующее сообщение
         let errorMessage = t<string>("register_error_code_send_failed");
-        if (sendCodeData.errorCode === 'EMAIL_SERVICE_NOT_CONFIGURED') {
+        if (sendCodeData.errorCode === 'TABLE_NOT_FOUND') {
+          errorMessage = t<string>("register_error_table_not_found");
+        } else if (sendCodeData.errorCode === 'EMAIL_SERVICE_NOT_CONFIGURED') {
           errorMessage = t<string>("register_error_code_send_failed");
         } else if (sendCodeData.errorCode === 'EMAIL_SEND_FAILED') {
           errorMessage = t<string>("register_error_code_send_failed");
