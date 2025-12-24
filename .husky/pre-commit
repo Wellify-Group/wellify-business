@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Автоматическая генерация переводов при изменении lib/translations.ts
+if git diff --cached --name-only | grep -q "lib/translations.ts"; then
+  echo "🔄 Обнаружены изменения в translations.ts, запускаю автогенерацию переводов..."
+  npm run translate
+  git add lib/translations.ts
+fi
+

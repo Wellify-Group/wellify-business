@@ -14,18 +14,17 @@ import { TRANSLATIONS, Language } from '../lib/translations';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Простая функция перевода (можно заменить на реальный API)
-// Для реального использования установите: npm install @vitalets/google-translate-api
+// Функция перевода через Google Translate API
 async function translateText(text: string, targetLang: 'en' | 'uk'): Promise<string> {
-  // TODO: Замените на реальный API
-  // Пример с @vitalets/google-translate-api:
-  // const translate = require('@vitalets/google-translate-api');
-  // const res = await translate(text, { to: targetLang === 'uk' ? 'uk' : 'en' });
-  // return res.text;
-  
-  // Временная заглушка
-  console.warn(`[TRANSLATE] "${text}" -> ${targetLang} (нужно подключить API)`);
-  return text;
+  try {
+    const translate = require('@vitalets/google-translate-api');
+    const res = await translate(text, { to: targetLang === 'uk' ? 'uk' : 'en' });
+    return res.text;
+  } catch (error: any) {
+    console.error(`[TRANSLATE ERROR] "${text}" -> ${targetLang}:`, error.message);
+    // Возвращаем оригинальный текст при ошибке
+    return text;
+  }
 }
 
 function getAllKeys(obj: any, prefix = ''): string[] {
@@ -62,7 +61,7 @@ async function main() {
   const sourceTranslations = TRANSLATIONS[sourceLang];
   const allKeys = getAllKeys(sourceTranslations);
   
-  console.log(`Найдено ${allKeys.length} ключей перевода`);
+  console.log(`📝 Найдено ${allKeys.length} ключей перевода`);
   
   const missing: Record<Language, string[]> = {
     en: [],
@@ -82,7 +81,7 @@ async function main() {
     }
   }
   
-  console.log(`\nНедостающие переводы:`);
+  console.log(`\n🔍 Недостающие переводы:`);
   console.log(`  EN: ${missing.en.length} ключей`);
   console.log(`  UA: ${missing.ua.length} ключей`);
   
@@ -95,31 +94,65 @@ async function main() {
   const translationsPath = path.join(__dirname, '../lib/translations.ts');
   let translationsContent = fs.readFileSync(translationsPath, 'utf-8');
   
+  const updates: Array<{ lang: Language; key: string; value: string; position: number }> = [];
+  
   for (const targetLang of targetLangs) {
     if (missing[targetLang].length === 0) continue;
     
-    console.log(`\nПеревожу на ${targetLang}...`);
+    console.log(`\n🌐 Перевожу на ${targetLang.toUpperCase()}...`);
     
-    for (const key of missing[targetLang]) {
+    for (let i = 0; i < missing[targetLang].length; i++) {
+      const key = missing[targetLang][i];
       const sourceValue = getNestedValue(sourceTranslations, key);
+      
+      console.log(`  [${i + 1}/${missing[targetLang].length}] ${key}...`);
       const translated = await translateText(sourceValue, targetLang === 'ua' ? 'uk' : 'en');
       
-      // Находим место вставки в файле
+      // Находим позицию для вставки - ищем последнюю строку перед закрывающей скобкой блока языка
       const langKey = targetLang === 'ua' ? 'ua' : targetLang;
-      const regex = new RegExp(`(\\s+${langKey}:\\s*\\{[^}]*)(})`, 's');
+      const langBlockRegex = new RegExp(`(\\s+${langKey}:\\s*\\{[\\s\\S]*?)(\\n\\s+\\},)`, 'm');
+      const match = translationsContent.match(langBlockRegex);
       
-      // Простая вставка (можно улучшить)
-      const indent = '    ';
-      const newLine = `${indent}${key}: "${translated.replace(/"/g, '\\"')}",\n`;
+      if (match) {
+        const beforeBlock = match[1];
+        const indent = '    ';
+        const escapedValue = translated.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        const newLine = `${indent}${key}: "${escapedValue}",\n`;
+        
+        // Вставляем перед закрывающей скобкой блока языка
+        const insertPosition = match.index! + beforeBlock.length;
+        updates.push({
+          lang: targetLang,
+          key,
+          value: newLine,
+          position: insertPosition,
+        });
+      } else {
+        console.warn(`  ⚠️  Не удалось найти блок ${langKey} для ключа ${key}`);
+      }
       
-      // TODO: Более точная вставка с учетом структуры
-      console.log(`  ✓ ${key}: "${translated}"`);
+      // Небольшая задержка, чтобы не перегружать API
+      if (i < missing[targetLang].length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
   }
   
-  console.log('\n⚠️  ВНИМАНИЕ: Этот скрипт требует подключения к API перевода.');
-  console.log('   Установите: npm install @vitalets/google-translate-api');
-  console.log('   И обновите функцию translateText()');
+  // Применяем все обновления (в обратном порядке, чтобы позиции не сдвигались)
+  updates.sort((a, b) => b.position - a.position);
+  
+  for (const update of updates) {
+    translationsContent = 
+      translationsContent.slice(0, update.position) + 
+      update.value + 
+      translationsContent.slice(update.position);
+  }
+  
+  // Сохраняем обновленный файл
+  fs.writeFileSync(translationsPath, translationsContent, 'utf-8');
+  
+  console.log(`\n✅ Переводы сохранены в ${translationsPath}`);
+  console.log(`   Обновлено: ${updates.length} ключей`);
 }
 
 if (require.main === module) {

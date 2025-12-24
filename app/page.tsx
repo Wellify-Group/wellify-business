@@ -252,10 +252,12 @@ export default function Home() {
   return (
     <main
       className="relative min-h-screen bg-background"
+      style={{ backgroundColor: 'var(--color-background)' }}
     >
       {/* HERO */}
       <section
         className="relative flex items-center justify-center px-4 pt-24 md:pt-32 pb-16 sm:px-6 lg:px-8 overflow-hidden bg-background"
+        style={{ backgroundColor: 'var(--color-background)' }}
       >
 
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 py-8 md:py-12 text-center relative z-10">
@@ -303,6 +305,7 @@ export default function Home() {
       {/* BUSINESS CATEGORIES */}
       <section
         className="relative px-4 pt-8 pb-10 sm:px-6 lg:px-8 bg-background"
+        style={{ backgroundColor: 'var(--color-background)' }}
       >
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-foreground">
@@ -365,6 +368,7 @@ export default function Home() {
       {/* CORE FEATURES */}
       <section
         className="relative px-4 py-[60px] sm:px-6 lg:px-8 bg-background"
+        style={{ backgroundColor: 'var(--color-background)' }}
       >
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-16 text-center text-3xl font-bold text-foreground">
@@ -437,6 +441,7 @@ export default function Home() {
       <section
         id="how-it-works"
         className="relative px-4 py-[60px] sm:px-6 lg:px-8 scroll-mt-32 bg-background"
+        style={{ backgroundColor: 'var(--color-background)' }}
       >
         <div className="mx-auto max-w-7xl">
           <h2 className="mb-16 text-center text-3xl font-bold text-foreground">

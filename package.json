@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "translate": "tsx scripts/auto-translate.ts",
+    "translate:watch": "tsx watch scripts/auto-translate.ts",
+    "postinstall": "npm run translate || true"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.86.0",
-    "@vitalets/google-translate-api": "^9.2.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "framer-motion": "^11.0.0",
@@ -36,11 +38,14 @@
     "@types/node": "^20.11.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@vitalets/google-translate-api": "^9.2.1",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.3",
+    "husky": "^9.1.7",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.3"
   }
 }
