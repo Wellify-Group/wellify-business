@@ -271,10 +271,10 @@ export default function LoginPage() {
     <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
       <div className="relative w-full max-w-xl">
         <Card className="relative z-10 w-full rounded-[28px] border border-[color:var(--color-border-strong)] dark:border-border bg-card dark:backdrop-blur-[14px]">
-          <CardHeader className="px-8 pt-5 pb-0">
-            <div className="flex flex-col gap-6">
+          <CardHeader className="px-8 pt-6 pb-4">
+            <div className="flex flex-col gap-4">
               {/* Tabs */}
-              <div className="mb-6 flex items-center justify-between rounded-full border border-border/50 bg-muted/30 backdrop-blur-sm px-1 py-1 text-[13px]">
+              <div className="flex items-center justify-between rounded-full border border-border/50 bg-muted/30 backdrop-blur-sm px-1 py-1 text-[13px]">
                 <button
                   onClick={() => handleTabChange("office")}
                   className={cn(
@@ -306,21 +306,23 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
-                {activeTab === "office" 
-                  ? (t("login_office_title") || "Вход в кабинет") 
-                  : (t("login_terminal_title") || "Вход в терминал")}
-              </CardTitle>
+              <div className="flex flex-col gap-1.5">
+                <CardTitle className="text-center text-[22px] font-semibold tracking-tight text-foreground">
+                  {activeTab === "office" 
+                    ? (t("login_office_title") || "Вход в кабинет") 
+                    : (t("login_terminal_title") || "Вход в терминал")}
+                </CardTitle>
 
-              <CardDescription className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
-                {activeTab === "office"
-                  ? (t("login_office_desc") || "Для владельцев и менеджеров")
-                  : (terminalStep === 1 ? t("login_terminal_enter_id") : t("login_terminal_enter_pin"))}
-              </CardDescription>
+                <CardDescription className="text-center text-sm leading-relaxed text-muted-foreground">
+                  {activeTab === "office"
+                    ? (t("login_office_desc") || "Для владельцев и менеджеров")
+                    : (terminalStep === 1 ? t("login_terminal_enter_id") : t("login_terminal_enter_pin"))}
+                </CardDescription>
+              </div>
             </div>
-            </CardHeader>
+          </CardHeader>
 
-            <CardContent className="px-8 py-0 flex items-center justify-center min-h-[300px]">
+          <CardContent className="px-8 pb-6 flex items-center justify-center">
               <div className="w-full">
                 <AnimatePresence mode="wait">
                   {activeTab === "office" ? (
@@ -428,42 +430,40 @@ export default function LoginPage() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
-                      className="flex flex-col gap-3"
+                      className="flex flex-col items-center gap-3 w-full"
                     >
                       {terminalStep === 1 && (
-                        <div className="space-y-4">
-                          <div className="flex justify-center">
-                            <div className="flex items-center gap-2">
-                              {companyIdBlocks.map((value, index) => (
-                                <input
-                                  key={index}
-                                  id={`company-id-block-${index}`}
-                                  type="text"
-                                  inputMode="numeric"
-                                  autoComplete="off"
-                                  maxLength={BLOCK_LENGTH}
-                                  value={value}
-                                  onChange={(e) => handleCompanyIdChange(index, e.target.value)}
-                                  onKeyDown={(e) => handleCompanyIdKeyDown(index, e)}
-                                  onPaste={(e) => handleCompanyIdPaste(index, e)}
-                                  className="w-[70px] h-[56px] rounded-[20px] text-center text-[18px] font-mono tracking-widest focus:outline-none transition-all border-2 border-border dark:border-border/80 bg-white dark:bg-background/50 focus:border-primary focus:ring-0 text-foreground shadow-sm dark:shadow-none"
-                                />
-                              ))}
-                            </div>
+                        <div className="flex flex-col items-center gap-3 w-full">
+                          <div className="flex items-center justify-center gap-2">
+                            {companyIdBlocks.map((value, index) => (
+                              <input
+                                key={index}
+                                id={`company-id-block-${index}`}
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                maxLength={BLOCK_LENGTH}
+                                value={value}
+                                onChange={(e) => handleCompanyIdChange(index, e.target.value)}
+                                onKeyDown={(e) => handleCompanyIdKeyDown(index, e)}
+                                onPaste={(e) => handleCompanyIdPaste(index, e)}
+                                className="w-[70px] h-[56px] rounded-[20px] text-center text-[18px] font-mono tracking-widest focus:outline-none transition-all border-2 border-border dark:border-border/80 bg-white dark:bg-background/50 focus:border-primary focus:ring-0 text-foreground shadow-sm dark:shadow-none"
+                              />
+                            ))}
                           </div>
 
                           {error && (
                             <motion.div
                               initial={{ opacity: 0, y: -10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                              className="w-full flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
                             >
                               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                               <span>{error}</span>
                             </motion.div>
                           )}
 
-                          <div className="flex justify-end">
+                          <div className="flex justify-center w-full">
                             <button
                               type="button"
                               onClick={handleContinueFromCompanyId}
@@ -476,7 +476,7 @@ export default function LoginPage() {
                       )}
 
                       {terminalStep === 2 && (
-                        <div className="space-y-4">
+                        <div className="flex flex-col items-center gap-3 w-full">
                           <div className="flex justify-center gap-3">
                             {pin.map((value, index) => (
                               <input
@@ -498,14 +498,14 @@ export default function LoginPage() {
                             <motion.div
                               initial={{ opacity: 0, y: -10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                              className="w-full flex items-start gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3 text-sm text-destructive"
                             >
                               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                               <span>{error}</span>
                             </motion.div>
                           )}
 
-                          <div className="flex gap-3">
+                          <div className="flex items-center justify-center gap-3 w-full">
                             <button
                               type="button"
                               onClick={() => setTerminalStep(1)}
@@ -517,7 +517,7 @@ export default function LoginPage() {
                               type="button"
                               onClick={handleTerminalLogin}
                               disabled={isLoading}
-                              className="flex-1 inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+                              className="inline-flex items-center justify-center h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 dark:from-blue-600 dark:to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(37,99,235,0.6)] dark:shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_40px_rgba(37,99,235,0.7)] dark:hover:shadow-[0_12px_40px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
                             >
                               {isLoading ? (t("logging_in") || "Вход...") : t("btn_login")}
                             </button>
