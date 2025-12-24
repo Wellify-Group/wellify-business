@@ -463,7 +463,7 @@ export default function LoginPage() {
                             </motion.div>
                           )}
 
-                          <div className="flex justify-center w-full mt-3">
+                          <div className="flex justify-center w-full mt-[22px]">
                             <button
                               type="button"
                               onClick={handleContinueFromCompanyId}
