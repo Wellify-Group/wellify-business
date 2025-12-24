@@ -138,11 +138,6 @@ export function ResetPasswordClient() {
       }
 
       setSuccess("Пароль успешно изменён. Теперь вы можете войти в систему.");
-      
-      // Через 2 секунды редиректим на страницу входа
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
       setIsLoading(false);
     } catch (err: any) {
       console.error("[reset-password] Error", err);
@@ -163,14 +158,15 @@ export function ResetPasswordClient() {
           Пароль успешно изменён!
         </h2>
         <p className="text-sm text-zinc-400 mb-4">
-          Вы будете перенаправлены на страницу входа...
+          Теперь вы можете войти в систему с новым паролем.
         </p>
-        <Link href="/login">
-          <button className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors">
-            Перейти к входу
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </Link>
+        <button
+          onClick={() => router.push("/login")}
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
+        >
+          Перейти к входу
+          <ArrowRight className="h-4 w-4" />
+        </button>
       </div>
     );
   }

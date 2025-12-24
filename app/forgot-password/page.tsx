@@ -6,6 +6,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, AlertCircle, Mail, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { Card } from "@/components/ui/card";
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage();
@@ -265,8 +266,8 @@ export default function ForgotPasswordPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10"
         >
+          <Card className="relative z-10 w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
           {/* Back Button */}
           <Link
             href="/login"
@@ -435,6 +436,7 @@ export default function ForgotPasswordPage() {
               </div>
             </>
           )}
+          </Card>
         </motion.div>
       </div>
     </main>
