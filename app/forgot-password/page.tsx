@@ -103,6 +103,49 @@ export default function ForgotPasswordPage() {
       const nextInput = document.getElementById(`forgot-code-${index + 1}`);
       nextInput?.focus();
     }
+
+    // Автоматическая проверка кода при заполнении всех 6 цифр
+    const codeString = newCode.join('');
+    if (codeString.length === 6 && !isSubmitting) {
+      // Небольшая задержка для лучшего UX
+      setTimeout(() => {
+        // Используем актуальное значение через замыкание
+        const verifyCode = async () => {
+          setIsSubmitting(true);
+          setError(null);
+
+          try {
+            const response = await fetch('/api/auth/verify-password-reset-code', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: email.trim().toLowerCase(),
+                code: codeString,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              // Переходим на страницу сброса пароля с email
+              router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${codeString}`);
+            } else {
+              setError(data.error || 'Неверный код. Попробуйте еще раз.');
+              setCode(['', '', '', '', '', '']);
+              document.getElementById('forgot-code-0')?.focus();
+              setIsSubmitting(false);
+            }
+          } catch (error: any) {
+            setError('Ошибка при проверке кода. Попробуйте еще раз.');
+            console.error('Verify code error:', error);
+            setIsSubmitting(false);
+          }
+        };
+        verifyCode();
+      }, 300);
+    }
   };
 
   const handleCodeKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -116,9 +159,50 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').trim();
     if (/^\d{6}$/.test(pastedData)) {
-      setCode(pastedData.split(''));
+      const codeArray = pastedData.split('');
+      setCode(codeArray);
       setError(null);
       document.getElementById('forgot-code-5')?.focus();
+      
+      // Автоматическая проверка кода при вставке
+      if (!isSubmitting) {
+        setTimeout(() => {
+          const verifyCode = async () => {
+            setIsSubmitting(true);
+            setError(null);
+
+            try {
+              const response = await fetch('/api/auth/verify-password-reset-code', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  email: email.trim().toLowerCase(),
+                  code: pastedData,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                // Переходим на страницу сброса пароля с email
+                router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${pastedData}`);
+              } else {
+                setError(data.error || 'Неверный код. Попробуйте еще раз.');
+                setCode(['', '', '', '', '', '']);
+                document.getElementById('forgot-code-0')?.focus();
+                setIsSubmitting(false);
+              }
+            } catch (error: any) {
+              setError('Ошибка при проверке кода. Попробуйте еще раз.');
+              console.error('Verify code error:', error);
+              setIsSubmitting(false);
+            }
+          };
+          verifyCode();
+        }, 300);
+      }
     }
   };
 
@@ -225,12 +309,14 @@ export default function ForgotPasswordPage() {
 
                 {error && (
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-xs text-red-400 text-center flex items-center justify-center gap-2"
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="flex items-center gap-3 rounded-xl border-2 border-rose-500/60 bg-gradient-to-r from-rose-950/90 to-rose-900/80 px-4 py-3.5 backdrop-blur-sm shadow-lg"
                   >
-                    <AlertCircle className="h-4 w-4" />
-                    {error}
+                    <div className="flex-shrink-0 rounded-full bg-rose-500/20 p-1.5">
+                      <AlertCircle className="h-5 w-5 text-rose-400" />
+                    </div>
+                    <span className="text-sm font-medium text-rose-100">{error}</span>
                   </motion.div>
                 )}
 
@@ -266,7 +352,7 @@ export default function ForgotPasswordPage() {
               </p>
 
               <div className="space-y-4">
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center gap-3">
                   {code.map((digit, index) => (
                     <input
                       key={index}
@@ -278,7 +364,11 @@ export default function ForgotPasswordPage() {
                       onChange={(e) => handleCodeChange(index, e.target.value)}
                       onKeyDown={(e) => handleCodeKeyDown(index, e)}
                       onPaste={index === 0 ? handleCodePaste : undefined}
-                      className="h-14 w-12 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-transparent text-center text-2xl font-bold text-foreground outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)] focus:ring-2 focus:ring-[var(--accent-primary,#3b82f6)] focus:ring-offset-2 disabled:opacity-50"
+                      className={`h-16 w-14 rounded-2xl border-2 text-center text-3xl font-bold text-foreground outline-none transition-all duration-200 disabled:opacity-50 ${
+                        error
+                          ? 'border-rose-500/80 bg-rose-950/40 shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
+                          : 'border-zinc-700/60 dark:border-zinc-700 bg-zinc-900/80 dark:bg-zinc-950/60 shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:border-zinc-600/80 focus:border-[var(--accent-primary,#3b82f6)] focus:bg-zinc-900 dark:focus:bg-zinc-950 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15)] focus:ring-0'
+                      }`}
                       disabled={isSubmitting}
                       autoFocus={index === 0}
                     />
@@ -287,12 +377,14 @@ export default function ForgotPasswordPage() {
 
                 {error && (
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-xs text-red-400 text-center flex items-center justify-center gap-2"
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="flex items-center gap-3 rounded-xl border-2 border-rose-500/60 bg-gradient-to-r from-rose-950/90 to-rose-900/80 px-4 py-3.5 backdrop-blur-sm shadow-lg"
                   >
-                    <AlertCircle className="h-4 w-4" />
-                    {error}
+                    <div className="flex-shrink-0 rounded-full bg-rose-500/20 p-1.5">
+                      <AlertCircle className="h-5 w-5 text-rose-400" />
+                    </div>
+                    <span className="text-sm font-medium text-rose-100">{error}</span>
                   </motion.div>
                 )}
 

@@ -228,7 +228,7 @@ export function TelegramVerificationStep({
     <div className="flex flex-col items-center gap-4 py-2">
       {telegramLink && (
         <>
-          <div className="w-full space-y-4 text-center">
+          <div className="w-full text-center -mt-2 mb-2">
             <p className="text-sm text-zinc-400 leading-relaxed px-4">
               {t<string>("register_telegram_instruction")}
             </p>
