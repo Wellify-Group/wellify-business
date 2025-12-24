@@ -75,8 +75,8 @@ export function ResetPasswordClient() {
   if (isVerifying) {
     return (
       <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
-        <div className="text-center text-sm text-zinc-400">
-          Проверка кода...
+        <div className="text-center text-sm text-muted-foreground">
+          {t<string>("password_reset_verifying")}
         </div>
       </div>
     );
@@ -88,19 +88,19 @@ export function ResetPasswordClient() {
       <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="rounded-full bg-rose-500/20 border-2 border-rose-500/30 p-4">
-              <AlertCircle className="h-12 w-12 text-rose-400" />
+            <div className="rounded-full bg-destructive/20 border-2 border-destructive/30 p-4">
+              <AlertCircle className="h-12 w-12 text-destructive" />
             </div>
           </div>
-          <h2 className="text-2xl font-semibold text-zinc-50 mb-2">
+          <h2 className="text-2xl font-semibold text-foreground mb-2">
             {t<string>("register_error_code_invalid")}
           </h2>
-          <p className="text-sm text-zinc-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {error || t<string>("register_error_code_invalid")}
           </p>
           <Link href="/forgot-password">
-            <button className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-700/70 bg-zinc-900/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800/80 hover:border-zinc-600/70 transition-all">
-              Запросить новый код
+            <button className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-all">
+              {t<string>("password_reset_resend_code")}
             </button>
           </Link>
         </div>
@@ -115,12 +115,12 @@ export function ResetPasswordClient() {
 
     // Валидация
     if (!password || password.length < 8) {
-      setError("Пароль должен содержать минимум 8 символов.");
+      setError(t<string>("password_reset_error_min_length"));
       return;
     }
 
     if (password !== passwordConfirm) {
-      setError("Пароли не совпадают.");
+      setError(t<string>("password_reset_error_mismatch"));
       return;
     }
 
@@ -137,16 +137,16 @@ export function ResetPasswordClient() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data.success) {
-        setError(data?.error || data?.message || "Не удалось сбросить пароль. Попробуйте ещё раз.");
+        setError(data?.error || data?.message || t<string>("password_reset_error_failed"));
         setIsLoading(false);
         return;
       }
 
-      setSuccess("Пароль успешно изменён. Теперь вы можете войти в систему.");
+      setSuccess(t<string>("password_reset_success_title"));
       setIsLoading(false);
     } catch (err: any) {
       console.error("[reset-password] Error", err);
-      setError(err?.message || "Ошибка при сбросе пароля.");
+      setError(err?.message || t<string>("password_reset_error_internal"));
       setIsLoading(false);
     }
   };
@@ -155,21 +155,21 @@ export function ResetPasswordClient() {
     return (
       <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10 text-center">
         <div className="flex justify-center mb-4">
-          <div className="rounded-full bg-emerald-500/20 border-2 border-emerald-500/30 p-4">
-            <CheckCircle2 className="h-12 w-12 text-emerald-400" />
+          <div className="rounded-full bg-emerald-500/20 dark:bg-emerald-500/20 border-2 border-emerald-500/30 dark:border-emerald-500/30 p-4">
+            <CheckCircle2 className="h-12 w-12 text-emerald-500 dark:text-emerald-400" />
           </div>
         </div>
-        <h2 className="text-2xl font-semibold text-zinc-50 mb-2">
-          Пароль успешно изменён!
+        <h2 className="text-2xl font-semibold text-foreground mb-2">
+          {t<string>("password_reset_success_title")}
         </h2>
-        <p className="text-sm text-zinc-400 mb-4">
-          Теперь вы можете войти в систему с новым паролем.
+        <p className="text-sm text-muted-foreground mb-4">
+          {t<string>("password_reset_success_message")}
         </p>
         <button
           onClick={() => router.push("/login")}
           className="w-full inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent-primary,#2563eb)] px-4 py-2 text-sm font-medium text-white shadow-[0_10px_30px_rgba(37,99,235,0.45)] hover:bg-[var(--accent-primary-hover,#1d4ed8)] transition-colors"
         >
-          Перейти к входу
+          {t<string>("password_reset_go_to_login")}
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
@@ -178,17 +178,17 @@ export function ResetPasswordClient() {
 
   return (
     <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
-      <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-zinc-50">
-        Сброс пароля
+      <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-foreground">
+        {t<string>("password_reset_new_password_title")}
       </h1>
-      <p className="mb-6 text-center text-sm text-zinc-400">
-        Введите новый пароль для вашего аккаунта.
+      <p className="mb-6 text-center text-sm text-muted-foreground">
+        {t<string>("password_reset_description")}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
-            Новый пароль
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {t<string>("password_reset_new_password_label")}
           </label>
           <div className="relative">
             <input
@@ -200,13 +200,13 @@ export function ResetPasswordClient() {
               }}
               required
               minLength={8}
-              className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-4 pr-10 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-              placeholder="Минимум 8 символов"
+              className="h-10 w-full rounded-2xl border border-border bg-background px-4 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+              placeholder={t<string>("register_field_password_placeholder")}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors"
               tabIndex={-1}
             >
               {showPassword ? (
@@ -219,8 +219,8 @@ export function ResetPasswordClient() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
-            Подтвердите пароль
+          <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {t<string>("password_reset_new_password_confirm_label")}
           </label>
           <input
             type={showPassword ? "text" : "password"}
@@ -231,13 +231,13 @@ export function ResetPasswordClient() {
             }}
             required
             minLength={8}
-            className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 px-4 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-            placeholder="Повторите пароль"
+            className="h-10 w-full rounded-2xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+            placeholder={t<string>("register_field_password_confirm_placeholder")}
           />
         </div>
 
         {error && (
-          <div className="flex items-start gap-2 rounded-2xl border border-rose-800/80 bg-rose-950/80 px-4 py-3 text-xs text-rose-50">
+          <div className="flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4" />
             <span>{error}</span>
           </div>
@@ -251,11 +251,11 @@ export function ResetPasswordClient() {
           {isLoading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Изменяем пароль...
+              {t<string>("password_reset_btn_changing")}
             </>
           ) : (
             <>
-              Изменить пароль
+              {t<string>("password_reset_btn_change")}
               <ArrowRight className="h-4 w-4" />
             </>
           )}
@@ -265,9 +265,9 @@ export function ResetPasswordClient() {
       <div className="mt-4 text-center">
         <Link
           href="/login"
-          className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          Вернуться к входу
+          {t<string>("password_reset_back_to_login")}
         </Link>
       </div>
     </div>

@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     // Валидация email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError("Пожалуйста, введите корректный email адрес");
+      setError(t<string>("password_reset_error_invalid_email"));
       return;
     }
 
@@ -279,29 +279,29 @@ export default function ForgotPasswordPage() {
           {/* Back Button */}
           <Link
             href="/login"
-            className="mb-4 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
+            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Назад к входу
+            {t<string>("password_reset_back_to_login")}
           </Link>
 
           {!codeSent ? (
             <>
-              <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-zinc-50">
-                Восстановление пароля
+              <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-foreground">
+                {t<string>("password_reset_title")}
               </h1>
-              <p className="mb-6 text-center text-sm text-zinc-400">
-                Введите ваш email адрес, и мы отправим вам код для восстановления пароля.
+              <p className="mb-6 text-center text-sm text-muted-foreground">
+                {t<string>("password_reset_description")}
               </p>
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                    Email
+                  <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    {t<string>("password_reset_email_label")}
                   </label>
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                      <Mail className="h-4 w-4 text-zinc-500" />
+                      <Mail className="h-4 w-4 text-muted-foreground/50" />
                     </div>
                     <input
                       type="email"
@@ -315,8 +315,8 @@ export default function ForgotPasswordPage() {
                           handleSendCode();
                         }
                       }}
-                      className="h-10 w-full rounded-2xl border border-zinc-800/80 bg-zinc-950/60 pl-9 pr-3 text-sm text-zinc-50 placeholder:text-zinc-500 outline-none transition-colors focus:border-[var(--accent-primary,#3b82f6)]"
-                      placeholder="you@example.com"
+                      className="h-10 w-full rounded-2xl border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]"
+                      placeholder={t<string>("email_placeholder")}
                     />
                   </div>
                 </div>
@@ -325,12 +325,12 @@ export default function ForgotPasswordPage() {
                   <motion.div
                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="flex items-center gap-3 rounded-xl border-2 border-rose-500/60 bg-gradient-to-r from-rose-950/90 to-rose-900/80 px-4 py-3.5 backdrop-blur-sm shadow-lg"
+                    className="flex items-center gap-3 rounded-xl border-2 border-destructive/30 bg-destructive/10 px-4 py-3.5 backdrop-blur-sm shadow-lg"
                   >
-                    <div className="flex-shrink-0 rounded-full bg-rose-500/20 p-1.5">
-                      <AlertCircle className="h-5 w-5 text-rose-400" />
+                    <div className="flex-shrink-0 rounded-full bg-destructive/20 p-1.5">
+                      <AlertCircle className="h-5 w-5 text-destructive" />
                     </div>
-                    <span className="text-sm font-medium text-rose-100">{error}</span>
+                    <span className="text-sm font-medium text-destructive">{error}</span>
                   </motion.div>
                 )}
 
@@ -345,11 +345,11 @@ export default function ForgotPasswordPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Отправка кода...
+                      {t<string>("password_reset_sending")}
                     </>
                   ) : (
                     <>
-                      Отправить код
+                      {t<string>("password_reset_send_code")}
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -358,12 +358,12 @@ export default function ForgotPasswordPage() {
             </>
           ) : (
             <>
-              <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-zinc-50">
-                Восстановление пароля
+              <h1 className="mb-2 text-center text-[22px] font-semibold tracking-tight text-foreground">
+                {t<string>("password_reset_title")}
               </h1>
-              <p className="mb-6 text-center text-sm text-zinc-400">
-                Мы отправили код подтверждения на <br />
-                <span className="font-medium text-zinc-300">{email}</span>
+              <p className="mb-6 text-center text-sm text-muted-foreground">
+                {t<string>("password_reset_code_sent")} <br />
+                <span className="font-medium text-foreground">{email}</span>
               </p>
 
               <div className="space-y-4">
@@ -379,10 +379,10 @@ export default function ForgotPasswordPage() {
                       onChange={(e) => handleCodeChange(index, e.target.value)}
                       onKeyDown={(e) => handleCodeKeyDown(index, e)}
                       onPaste={index === 0 ? handleCodePaste : undefined}
-                       className={`h-16 w-14 rounded-2xl border-2 text-center text-3xl font-bold text-zinc-50 outline-none transition-all duration-200 disabled:opacity-50 ${
+                       className={`h-16 w-14 rounded-2xl border-2 text-center text-3xl font-bold text-foreground outline-none transition-all duration-200 disabled:opacity-50 ${
                          error
-                           ? 'border-rose-500/80 bg-rose-950/40 shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
-                           : 'border-zinc-700/60 bg-zinc-900/80 shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:border-zinc-600/80 focus:border-[var(--accent-primary,#3b82f6)] focus:bg-zinc-900 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15)] focus:ring-0'
+                           ? 'border-destructive/80 bg-destructive/10 shadow-[0_0_0_4px_rgba(var(--color-destructive-rgb,239,68,68),0.1)]'
+                           : 'border-border bg-background shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:border-primary/60 focus:border-primary focus:shadow-[0_0_0_4px_rgba(var(--color-primary-rgb,59,130,246),0.15)] focus:ring-0'
                        }`}
                       disabled={isSubmitting}
                       autoFocus={index === 0}
@@ -394,12 +394,12 @@ export default function ForgotPasswordPage() {
                   <motion.div
                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="flex items-center gap-3 rounded-xl border-2 border-rose-500/60 bg-gradient-to-r from-rose-950/90 to-rose-900/80 px-4 py-3.5 backdrop-blur-sm shadow-lg"
+                    className="flex items-center gap-3 rounded-xl border-2 border-destructive/30 bg-destructive/10 px-4 py-3.5 backdrop-blur-sm shadow-lg"
                   >
-                    <div className="flex-shrink-0 rounded-full bg-rose-500/20 p-1.5">
-                      <AlertCircle className="h-5 w-5 text-rose-400" />
+                    <div className="flex-shrink-0 rounded-full bg-destructive/20 p-1.5">
+                      <AlertCircle className="h-5 w-5 text-destructive" />
                     </div>
-                    <span className="text-sm font-medium text-rose-100">{error}</span>
+                    <span className="text-sm font-medium text-destructive">{error}</span>
                   </motion.div>
                 )}
 
@@ -414,11 +414,11 @@ export default function ForgotPasswordPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Проверка...
+                      {t<string>("password_reset_verifying")}
                     </>
                   ) : (
                     <>
-                      Подтвердить
+                      {t<string>("password_reset_confirm")}
                       <CheckCircle2 className="h-4 w-4" />
                     </>
                   )}
@@ -431,14 +431,14 @@ export default function ForgotPasswordPage() {
                     disabled={isResending}
                     className="text-[var(--accent-primary,#3b82f6)] hover:underline transition-colors disabled:opacity-50"
                   >
-                    {isResending ? 'Отправка...' : 'Отправить код повторно'}
+                    {isResending ? t<string>("password_reset_sending") : t<string>("password_reset_resend_code")}
                   </button>
                    <button
                      type="button"
                      onClick={handleChangeEmail}
-                     className="text-zinc-400 hover:text-zinc-300 transition-colors"
+                     className="text-muted-foreground hover:text-foreground transition-colors"
                    >
-                     Изменить email
+                     {t<string>("password_reset_change_email")}
                    </button>
                 </div>
               </div>
