@@ -4,9 +4,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, AlertCircle, Mail, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertCircle, Mail, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import CenteredLayout from "@/components/CenteredLayout";
 
 export default function ForgotPasswordPage() {
   const { t } = useLanguage();
@@ -260,18 +259,18 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <CenteredLayout>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="w-full max-w-[640px]"
-      >
-        <div className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10">
+    <main className="min-h-screen pt-[112px] pb-12 flex items-center justify-center bg-background px-4">
+      <div className="relative w-full max-w-[640px]">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20 }}
+          className="w-full rounded-[32px] border border-border bg-card shadow-modal backdrop-blur-2xl px-10 py-10"
+        >
           {/* Back Button */}
           <Link
             href="/login"
-            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="mb-4 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Назад к входу
@@ -371,11 +370,11 @@ export default function ForgotPasswordPage() {
                       onChange={(e) => handleCodeChange(index, e.target.value)}
                       onKeyDown={(e) => handleCodeKeyDown(index, e)}
                       onPaste={index === 0 ? handleCodePaste : undefined}
-                      className={`h-16 w-14 rounded-2xl border-2 text-center text-3xl font-bold text-foreground outline-none transition-all duration-200 disabled:opacity-50 ${
-                        error
-                          ? 'border-rose-500/80 bg-rose-950/40 shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
-                          : 'border-zinc-700/60 dark:border-zinc-700 bg-zinc-900/80 dark:bg-zinc-950/60 shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:border-zinc-600/80 focus:border-[var(--accent-primary,#3b82f6)] focus:bg-zinc-900 dark:focus:bg-zinc-950 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15)] focus:ring-0'
-                      }`}
+                       className={`h-16 w-14 rounded-2xl border-2 text-center text-3xl font-bold text-zinc-50 outline-none transition-all duration-200 disabled:opacity-50 ${
+                         error
+                           ? 'border-rose-500/80 bg-rose-950/40 shadow-[0_0_0_4px_rgba(239,68,68,0.1)]'
+                           : 'border-zinc-700/60 bg-zinc-900/80 shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:border-zinc-600/80 focus:border-[var(--accent-primary,#3b82f6)] focus:bg-zinc-900 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.15)] focus:ring-0'
+                       }`}
                       disabled={isSubmitting}
                       autoFocus={index === 0}
                     />
@@ -425,20 +424,20 @@ export default function ForgotPasswordPage() {
                   >
                     {isResending ? 'Отправка...' : 'Отправить код повторно'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleChangeEmail}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Изменить email
-                  </button>
+                   <button
+                     type="button"
+                     onClick={handleChangeEmail}
+                     className="text-zinc-400 hover:text-zinc-300 transition-colors"
+                   >
+                     Изменить email
+                   </button>
                 </div>
               </div>
             </>
           )}
-        </div>
-      </motion.div>
-    </CenteredLayout>
+        </motion.div>
+      </div>
+    </main>
   );
 }
 

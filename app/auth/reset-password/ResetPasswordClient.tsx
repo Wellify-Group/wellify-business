@@ -205,7 +205,7 @@ export function ResetPasswordClient() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
               tabIndex={-1}
             >
               {showPassword ? (
@@ -264,7 +264,7 @@ export function ResetPasswordClient() {
       <div className="mt-4 text-center">
         <Link
           href="/auth/login"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
         >
           Вернуться к входу
         </Link>
