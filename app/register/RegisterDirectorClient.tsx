@@ -1206,7 +1206,7 @@ export default function RegisterDirectorClient() {
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center text-[11px]">
               <span className="text-muted-foreground">{t<string>("register_already_have_account")} </span>
               <Link
-                href="/auth/login"
+                href="/login"
                 className="ml-1 font-medium text-foreground underline-offset-4 hover:underline"
               >
                 {t<string>("register_login_link")}
