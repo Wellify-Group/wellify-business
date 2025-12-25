@@ -171,6 +171,14 @@ export async function POST(request: NextRequest) {
             );
         }
         
+        // Логируем успешный ответ для отладки
+        console.log('[telegram/create-session] ✅ Success response from Railway:', {
+            hasSessionToken: !!json.sessionToken,
+            hasTelegramLink: !!json.telegramLink,
+            sessionTokenPreview: json.sessionToken ? json.sessionToken.substring(0, 20) + '...' : 'missing',
+            telegramLinkPreview: json.telegramLink ? json.telegramLink.substring(0, 50) + '...' : 'missing'
+        });
+        
         // Передаем ответ обратно на фронт
         return NextResponse.json(json, { status: resp.status });
 
