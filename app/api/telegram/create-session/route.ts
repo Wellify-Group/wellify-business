@@ -10,15 +10,23 @@ const TELEGRAM_API_URL = process.env.TELEGRAM_API_URL;
 
 export async function POST(request: NextRequest) {
     console.log('[telegram/create-session] ========== START REQUEST ==========');
+    console.log('[telegram/create-session] VERCEL_ENV:', process.env.VERCEL_ENV || 'not set');
+    console.log('[telegram/create-session] VERCEL_URL:', process.env.VERCEL_URL || 'not set');
     console.log('[telegram/create-session] TELEGRAM_API_URL from env:', TELEGRAM_API_URL ? 'SET' : 'NOT SET');
     console.log('[telegram/create-session] TELEGRAM_API_URL value:', TELEGRAM_API_URL);
     
     if (!TELEGRAM_API_URL) {
         console.error('[telegram/create-session] ERROR: TELEGRAM_API_URL is not set in environment variables');
+        console.error('[telegram/create-session] Environment check:', {
+            VERCEL_ENV: process.env.VERCEL_ENV,
+            NODE_ENV: process.env.NODE_ENV,
+            availableEnvVars: Object.keys(process.env).filter(k => k.includes('TELEGRAM'))
+        });
         return NextResponse.json(
             { 
                 error: "Configuration Error: TELEGRAM_API_URL is not set",
-                details: "Проверьте переменные окружения на Vercel. TELEGRAM_API_URL должен быть установлен."
+                details: "Проверьте переменные окружения на Vercel. TELEGRAM_API_URL должен быть установлен.",
+                environment: process.env.VERCEL_ENV || 'unknown'
             },
             { status: 500 }
         );
