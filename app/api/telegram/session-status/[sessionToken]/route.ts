@@ -23,7 +23,7 @@ export async function GET(
     const { sessionToken } = params;
 
     try {
-        // Делаем прямой запрос к бэкенду Telegram-бота на Railway
+        // Делаем прямой запрос к бэкенду Telegram-бота на Render
         const resp = await fetch(`${TELEGRAM_API_URL}/telegram/session-status/${sessionToken}`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
@@ -31,7 +31,7 @@ export async function GET(
             cache: 'no-store',
         });
 
-        // Получаем ответ от Railway
+        // Получаем ответ от Render
         const json = await resp.json();
         
         // Передаем ответ обратно на фронт

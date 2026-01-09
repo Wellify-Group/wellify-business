@@ -10,8 +10,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Для обеспечения актуальности ключей
 
 export async function POST(request: NextRequest) {
-  // Определяем среду Vercel
-  const isProduction = process.env.VERCEL_ENV === 'production';
+  // Определяем среду Cloudflare
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // !!! ШАГ 1: АДАПТИВНЫЙ ВЫБОР КЛЮЧЕЙ STRIPE И PRICE IDs !!!
   const STRIPE_SECRET = isProduction
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   
   // !!! ШАГ 2: ПРОВЕРКА НАЛИЧИЯ КЛЮЧЕЙ В НАЧАЛЕ (для предотвращения 503/500) !!!
   if (!process.env.STRIPE_SECRET_KEY_MAIN && !process.env.STRIPE_SECRET_KEY_DEV) {
-      console.error("[Stripe] Missing config: Secret Keys are not set in Vercel.");
+      console.error("[Stripe] Missing config: Secret Keys are not set in Cloudflare.");
       return NextResponse.json(
           { error: "Stripe configuration is incomplete. (Missing Secret Key)" }, 
           { status: 503 }

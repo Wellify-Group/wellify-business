@@ -1,0 +1,42 @@
+services:
+  # PostgreSQL Database
+  - type: pg
+    name: wellify-business-db
+    plan: starter
+    region: oregon
+    databaseName: wellify_business
+    postgresMajorVersion: 15
+
+  # Backend Web Service
+  - type: web
+    name: wellify-business-backend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wellify-business-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        value: https://wellify-business.pages.dev
+      - key: CORS_ORIGINS
+        value: https://wellify-business.pages.dev,https://wellify-business.onrender.com
+      - key: LOG_LEVEL
+        value: info
+      - key: RESEND_API_KEY
+        sync: false
+        # Set this manually in Render Dashboard after deployment
+      - key: RESEND_FROM_EMAIL
+        value: Wellify Business <noreply@wellifyglobal.com>

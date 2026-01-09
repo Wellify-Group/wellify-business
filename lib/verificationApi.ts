@@ -1,10 +1,10 @@
 /**
- * Клиент для работы с Railway API для верификации email и телефона
+ * Клиент для работы с Render API для верификации email и телефона
  */
 
 import { createBrowserSupabaseClient } from './supabase/client';
 
-const RAILWAY_API_URL = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
+const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || process.env.RENDER_API_URL || '';
 
 interface VerificationResponse {
   success: boolean;
@@ -27,7 +27,7 @@ async function getAccessToken(): Promise<string> {
 }
 
 /**
- * Базовый метод для выполнения запросов к Railway API
+ * Базовый метод для выполнения запросов к Render API
  */
 async function makeRequest(
   endpoint: string,
@@ -36,7 +36,7 @@ async function makeRequest(
 ): Promise<VerificationResponse> {
   try {
     const token = await getAccessToken();
-    const url = `${RAILWAY_API_URL}${endpoint}`;
+    const url = `${RENDER_API_URL}${endpoint}`;
     
     const response = await fetch(url, {
       method,
@@ -61,7 +61,7 @@ async function makeRequest(
       message: data.message,
     };
   } catch (error) {
-    console.error('Railway API request error:', error);
+    console.error('Render API request error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Произошла ошибка при запросе к серверу',

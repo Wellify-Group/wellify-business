@@ -1,29 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { MailerService } from '@/lib/application/report/MailerService';
 
 export const runtime = 'nodejs';
 
-// Генерация 6-значного кода
-function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+// Backend API URL
+const API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
 
-// Админ-клиент Supabase
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+if (!API_URL) {
+  console.warn('RENDER_API_URL is not set. Email verification will fail.');
 }
 
 /**
@@ -53,186 +36,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
-    
-    // Проверяем наличие Resend API ключа
-    if (!process.env.RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not configured');
+    if (!API_URL) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Email service is not configured',
-          errorCode: 'EMAIL_SERVICE_NOT_CONFIGURED'
-        },
-        { status: 500 }
-      );
-    }
-    
-    const mailerService = new MailerService();
-
-    // Если userId не передан, ищем пользователя по email
-    let targetUserId = userId;
-    if (!targetUserId) {
-      const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers();
-      if (userError) {
-        console.error('Error fetching users:', userError);
-        return NextResponse.json(
-          { success: false, error: 'Failed to find user' },
-          { status: 500 }
-        );
-      }
-
-      const user = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      if (!user) {
-        return NextResponse.json(
-          { success: false, error: 'User not found' },
-          { status: 404 }
-        );
-      }
-      targetUserId = user.id;
-    }
-
-    // Удаляем старые коды для этого пользователя
-    await supabaseAdmin
-      .from('email_verifications')
-      .delete()
-      .eq('user_id', targetUserId)
-      .eq('email', email.toLowerCase());
-
-    // Генерируем код (после удаления старых, чтобы избежать конфликтов)
-    let code = generateVerificationCode();
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    // Сохраняем новый код в БД (код хранится в поле token)
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // Код действителен 15 минут
-
-    let insertData;
-    let insertError;
-    
-    // Пытаемся вставить код, если уникальность нарушена - генерируем новый
-    do {
-      const { data, error } = await supabaseAdmin
-        .from('email_verifications')
-        .insert({
-          user_id: targetUserId,
-          email: email.toLowerCase(),
-          token: code, // Используем поле token для хранения кода
-          expires_at: expiresAt.toISOString(),
-        })
-        .select();
-
-      insertData = data;
-      insertError = error;
-
-      // Если ошибка уникальности - генерируем новый код
-      if (insertError && insertError.code === '23505' && attempts < maxAttempts) {
-        code = generateVerificationCode();
-        attempts++;
-        console.log(`Code collision detected, generating new code (attempt ${attempts})`);
-      } else {
-        break;
-      }
-    } while (attempts < maxAttempts);
-
-    if (insertError) {
-      console.error('Error saving verification code:', {
-        error: insertError,
-        message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint,
-        code: insertError.code,
-        userId: targetUserId,
-        email: email.toLowerCase(),
-      });
-      
-      // Более детальное сообщение об ошибке
-      let errorMessage = 'Failed to save verification code';
-      let errorCode = 'DATABASE_ERROR';
-      
-      if (insertError.code === '42P01') {
-        errorMessage = 'Database table email_verifications does not exist. Please run migration in Supabase SQL Editor.';
-        errorCode = 'TABLE_NOT_FOUND';
-      } else if (insertError.code === '23505') {
-        errorMessage = 'Verification code already exists. Please try again.';
-        errorCode = 'DUPLICATE_CODE';
-      } else if (insertError.message) {
-        // Если сообщение содержит информацию о таблице - показываем понятное сообщение
-        if (insertError.message.includes('email_verifications') || insertError.message.includes('schema cache')) {
-          errorMessage = 'Database table email_verifications does not exist. Please run migration in Supabase SQL Editor.';
-          errorCode = 'TABLE_NOT_FOUND';
-        } else {
-          errorMessage = `Database error: ${insertError.message}`;
-        }
-      }
-      
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: errorMessage,
-          errorCode: errorCode,
-          details: process.env.NODE_ENV === 'development' ? insertError : undefined
+          error: 'Backend API is not configured',
+          errorCode: 'API_NOT_CONFIGURED'
         },
         { status: 500 }
       );
     }
 
-    // Получаем язык пользователя из профиля или используем 'uk' по умолчанию
+    // Определяем язык пользователя (по умолчанию uk)
     let userLanguage: 'ru' | 'uk' | 'en' = 'uk';
-    if (targetUserId) {
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('language')
-        .eq('id', targetUserId)
-        .maybeSingle();
-      
-      if (profile?.language) {
-        const lang = profile.language === 'ua' ? 'uk' : (profile.language as 'ru' | 'uk' | 'en');
-        if (['ru', 'uk', 'en'].includes(lang)) {
-          userLanguage = lang;
-        }
-      } else {
-        // Пробуем получить из user_metadata
-        const { data: user } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
-        if (user?.user?.user_metadata?.locale) {
-          const locale = user.user.user_metadata.locale;
-          const lang = locale === 'ua' ? 'uk' : (locale === 'uk' ? 'uk' : (locale === 'en' ? 'en' : 'ru'));
-          if (['ru', 'uk', 'en'].includes(lang)) {
-            userLanguage = lang;
-          }
-        }
-      }
-    }
+    // TODO: Получить язык из профиля пользователя через backend API
 
-    // Отправляем код на email
+    // Отправляем запрос в backend
     try {
-      await mailerService.sendVerificationCode(email, code, userLanguage);
-      console.log('Verification code email sent successfully to:', email);
-    } catch (emailError: any) {
-      console.error('Error sending email via Resend:', {
-        error: emailError,
-        message: emailError.message,
-        email: email,
+      const response = await fetch(`${API_URL}/api/email-verification/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, userId, language: userLanguage }),
       });
-      
-      // Если код уже сохранен в БД, но email не отправился - это не критично
-      // Пользователь может запросить новый код
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: data.error || 'Failed to send verification code',
+            errorCode: data.errorCode || 'EMAIL_SEND_FAILED',
+          },
+          { status: response.status }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Verification code sent to email',
+      });
+    } catch (fetchError: any) {
+      console.error('Backend API error:', fetchError);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Failed to send email',
-          errorCode: 'EMAIL_SEND_FAILED',
-          details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
+        {
+          success: false,
+          error: 'Failed to connect to backend server',
+          errorCode: 'API_CONNECTION_ERROR',
         },
         { status: 500 }
       );
     }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Verification code sent to email',
-    });
   } catch (error: any) {
     console.error('Send verification code error:', error);
     return NextResponse.json(
@@ -241,4 +95,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

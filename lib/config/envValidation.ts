@@ -98,7 +98,7 @@ export function validateServerEnv(): EnvValidationResult {
 }
 
 /**
- * Валидация переменных для Telegram бота (Railway)
+ * Валидация переменных для Telegram бота (Render)
  */
 export function validateTelegramBotEnv(): EnvValidationResult {
   const errors: string[] = [];

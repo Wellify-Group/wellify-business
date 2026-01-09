@@ -1,30 +1,18 @@
 // app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { mapProfileFromDb, isProfileComplete } from '@/lib/types/profile';
 
 export const runtime = 'nodejs';
 
-// Функция для создания админ-клиента Supabase
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Backend API URL
+const API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+if (!API_URL) {
+  console.warn('RENDER_API_URL is not set. Login will fail.');
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabaseAdmin = getSupabaseAdmin();
     const body = await request.json();
 
     // Для отладки - можно оставить
@@ -47,125 +35,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // === Проверяем, существует ли пользователь с таким email ===
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const userExists = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email
-    );
-
-    if (!userExists) {
+    if (!API_URL) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Пользователь с таким email не зарегистрирован.',
-          errorCode: 'USER_NOT_FOUND'
-        },
-        { status: 404 }
-      );
-    }
-
-    // === ЛОГИН В SUPABASE ===
-    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    // Обработка ошибок аутентификации
-    if (error || !data.user) {
-      console.error('supabase signIn error:', error);
-      
-      // Проверяем, что это ошибка неверного пароля
-      if (error?.message?.toLowerCase().includes('invalid login credentials') ||
-          error?.message?.toLowerCase().includes('invalid credentials')) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Неверный пароль.',
-            errorCode: 'INVALID_PASSWORD'
-          },
-          { status: 401 }
-        );
-      }
-
-      // Email не подтвержден
-      if (error?.message?.toLowerCase().includes('email not confirmed')) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Email не подтвержден. Проверьте вашу почту.',
-            errorCode: 'EMAIL_NOT_CONFIRMED'
-          },
-          { status: 403 }
-        );
-      }
-
-      // Другие ошибки аутентификации
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Произошла ошибка при входе. Попробуйте позже.',
-          errorCode: 'LOGIN_UNKNOWN_ERROR'
-        },
+        { success: false, error: 'Backend API is not configured', errorCode: 'API_NOT_CONFIGURED' },
         { status: 500 }
       );
     }
 
-    // === ПОДТЯГИВАЕМ ПРОФИЛЬ ИЗ ТАБЛИЦЫ profiles ===
-    const { data: profileRaw, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
+    // === ЛОГИН ЧЕРЕЗ BACKEND API ===
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Проверяем наличие профиля
-    if (profileError || !profileRaw) {
-      console.error('Load profile error:', profileError);
-      // Bug 4 Fix: Admin клиент не имеет сессий, поэтому signOut() не работает
-      // Вместо этого просто возвращаем ошибку - сессия будет недействительной на клиенте
-      // Клиент должен обработать эту ошибку и очистить локальную сессию
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Обработка ошибок от backend
+        if (response.status === 401) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: data.error || 'Неверный пароль.',
+              errorCode: 'INVALID_PASSWORD'
+            },
+            { status: 401 }
+          );
+        }
+
+        if (response.status === 404) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: data.error || 'Пользователь с таким email не зарегистрирован.',
+              errorCode: 'USER_NOT_FOUND'
+            },
+            { status: 404 }
+          );
+        }
+
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: data.error || 'Произошла ошибка при входе.',
+            errorCode: 'LOGIN_ERROR'
+          },
+          { status: response.status }
+        );
+      }
+
+      // Успешный логин - получаем профиль
+      const user = data.user;
+      
+      // TODO: Получить профиль из backend API
+      // Пока возвращаем базовую информацию
+      const userPayload = {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name || null,
+        shortName: user.full_name?.split(' ')[0] || null,
+        role: 'director', // TODO: получить из профиля
+      };
+
+      return NextResponse.json(
+        {
+          success: true,
+          user: userPayload,
+          token: data.token, // Передаём токен клиенту
+        },
+        { status: 200 }
+      );
+    } catch (fetchError: any) {
+      console.error('Backend API error:', fetchError);
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Профиль пользователя не найден. Обратитесь в поддержку.',
-          errorCode: 'PROFILE_NOT_FOUND'
+          error: 'Не удалось подключиться к серверу. Попробуйте позже.',
+          errorCode: 'API_CONNECTION_ERROR'
         },
-        { status: 403 }
+        { status: 500 }
       );
     }
-
-    // Преобразуем профиль в типизированный формат
-    const profile = mapProfileFromDb(profileRaw);
-
-    // Проверяем, что профиль полный (есть роль и бизнес_id)
-    if (!isProfileComplete(profile)) {
-      console.error('Incomplete profile: missing role or businessId');
-      // Не выходим из сессии, но перенаправляем на завершение профиля
-      // Это обрабатывается на клиенте
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Профиль неполный. Требуется завершение регистрации.',
-          errorCode: 'PROFILE_INCOMPLETE'
-        },
-        { status: 403 }
-      );
-    }
-
-    const userPayload = {
-      id: data.user.id,
-      email: data.user.email,
-      fullName: profile.fullName ?? null,
-      shortName: profile.shortName ?? null,
-      role: profile.role ?? 'директор',
-    };
-
-    return NextResponse.json(
-      {
-        success: true,
-        user: userPayload,
-      },
-      { status: 200 }
-    );
   } catch (err) {
     console.error('Login handler error:', err);
     return NextResponse.json(

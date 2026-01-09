@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-// Админ-клиент Supabase
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Backend API URL
+const API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+if (!API_URL) {
+  console.warn('RENDER_API_URL is not set. Email verification will fail.');
 }
 
 /**
@@ -55,62 +44,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
-
-    // Ищем код в БД
-    const { data: verification, error: findError } = await supabaseAdmin
-      .from('email_verifications')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .eq('token', code) // Код хранится в поле token
-      .is('verified_at', null) // Еще не подтвержден
-      .gt('expires_at', new Date().toISOString()) // Не истек
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (findError || !verification) {
+    if (!API_URL) {
       return NextResponse.json(
-        { success: false, error: 'Invalid or expired code' },
-        { status: 400 }
-      );
-    }
-
-    // Проверяем, что код не истек
-    const expiresAt = new Date(verification.expires_at);
-    if (expiresAt < new Date()) {
-      return NextResponse.json(
-        { success: false, error: 'Code has expired' },
-        { status: 400 }
-      );
-    }
-
-    // Подтверждаем email пользователя
-    const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
-      verification.user_id,
-      {
-        email_confirm: true,
-      }
-    );
-
-    if (confirmError) {
-      console.error('Error confirming email:', confirmError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to confirm email' },
+        { 
+          success: false, 
+          error: 'Backend API is not configured',
+          errorCode: 'API_NOT_CONFIGURED'
+        },
         { status: 500 }
       );
     }
 
-    // Отмечаем код как использованный (используем verified_at, так как used_at может не существовать)
-    await supabaseAdmin
-      .from('email_verifications')
-      .update({ verified_at: new Date().toISOString() })
-      .eq('id', verification.id);
+    // Отправляем запрос в backend
+    try {
+      const response = await fetch(`${API_URL}/api/email-verification/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Email confirmed successfully',
-    });
+      const data = await response.json();
+
+      if (!response.ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: data.error || 'Invalid or expired code',
+            errorCode: data.errorCode || 'VERIFICATION_FAILED',
+          },
+          { status: response.status }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Email confirmed successfully',
+      });
+    } catch (fetchError: any) {
+      console.error('Backend API error:', fetchError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to connect to backend server',
+          errorCode: 'API_CONNECTION_ERROR',
+        },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
     console.error('Verify email code error:', error);
     return NextResponse.json(
@@ -119,4 +99,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

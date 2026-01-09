@@ -1,5 +1,36 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+
+// Backend API URL
+const API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+
+/**
+ * Проверка JWT токена через backend API
+ */
+async function verifyToken(token: string): Promise<{ valid: boolean; user?: any }> {
+  if (!API_URL || !token) {
+    return { valid: false };
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/user`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return { valid: false };
+    }
+
+    const data = await response.json();
+    return { valid: true, user: data.user };
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return { valid: false };
+  }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -21,15 +52,16 @@ export async function middleware(request: NextRequest) {
     '/auth/callback', 
     '/auth/login',
     '/auth/register',
-    '/auth/confirm', // Bug 3 Fix: Страница подтверждения email через code
-    '/auth/email-confirmed', // Bug 3 Fix: Страница подтверждения email через token_hash
+    '/auth/confirm',
+    '/auth/email-confirmed',
     '/forgot-password', 
     '/welcome', 
     '/about', 
     '/contacts', 
     '/support', 
     '/privacy', 
-    '/terms'
+    '/terms',
+    '/dev' // Режим разработки
   ];
   
   // Если это публичный маршрут - пропускаем проверку
@@ -42,70 +74,55 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  // 🔧 РЕЖИМ РАЗРАБОТКИ: Пропускаем проверку авторизации
+  // Используй ?dev=true в URL или установи NEXT_PUBLIC_DEV_MODE=true
+  const isDevMode = process.env.NEXT_PUBLIC_DEV_MODE === 'true' || 
+                    process.env.NODE_ENV === 'development' ||
+                    request.nextUrl.searchParams.get('dev') === 'true';
+
+  if (isDevMode) {
+    console.log('[Middleware] Dev mode: Skipping authentication for', pathname);
+    // Устанавливаем мок-куки для совместимости
+    const response = NextResponse.next();
+    response.cookies.set('auth_token', 'dev-token', { 
+      path: '/',
+      httpOnly: false, // Чтобы можно было читать в клиенте
+      sameSite: 'lax'
+    });
+    return response;
+  }
+
+  // Получаем токен из cookies
+  const token = request.cookies.get('auth_token')?.value;
+
+  if (!token) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
 
   try {
-    // Используем единый env модуль вместо прямого чтения process.env
-    const { getSupabasePublicEnv } = await import('@/lib/supabase/env');
-    const { url: supabaseUrl, anonKey: supabaseAnonKey } = getSupabasePublicEnv();
+    // Проверяем токен через backend API
+    const { valid, user } = await verifyToken(token);
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Missing Supabase environment variables in middleware')
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    })
-
-    // Проверяем сессию
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
-
-    // Если нет сессии - перенаправляем на login
-    if (sessionError || !session) {
+    if (!valid || !user) {
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
     }
 
-    // Проверяем email_confirmed_at
-    const emailConfirmed = session.user.email_confirmed_at !== null;
+    // Проверяем email_verified
+    const emailConfirmed = user.email_verified === true;
 
-    // Проверяем профиль пользователя
-    const { data: profileRaw, error: profileError } = await supabase
-      .from('profiles')
-      .select('role, phone_verified')
-      .eq('id', session.user.id)
-      .maybeSingle()
-
-    // Если профиль не найден - перенаправляем на логин
-    if (profileError || !profileRaw) {
+    if (!emailConfirmed) {
       return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
-    const role = profileRaw.role || session.user.user_metadata?.role
-
-    // Проверяем доступ к директорским маршрутам
+    // Проверяем роль для директорских маршрутов
     if (pathname.startsWith('/dashboard/director')) {
+      const role = user.role || 'director';
       if (role !== 'director') {
-        // Если роль не director, редиректим в соответствующий дашборд или на логин
+        // Если роль не director, редиректим в соответствующий дашборд
         if (role === 'manager') {
           return NextResponse.redirect(new URL('/dashboard/manager', request.url))
         } else if (role === 'employee') {
@@ -114,21 +131,10 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL('/auth/login', request.url))
         }
       }
-      // Для директора проверяем только email_confirmed_at
-      if (!emailConfirmed) {
-        return NextResponse.redirect(new URL('/auth/login', request.url))
-      }
-      // Всё ок - разрешаем доступ директору
-      return response
-    }
-
-    // Для других маршрутов dashboard проверяем только email_confirmed_at
-    if (!emailConfirmed) {
-      return NextResponse.redirect(new URL('/auth/login', request.url))
     }
 
     // Всё ок - разрешаем доступ
-    return response
+    return NextResponse.next()
   } catch (error) {
     console.error('Middleware error:', error)
     // В случае ошибки перенаправляем на login
@@ -148,4 +154,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
-

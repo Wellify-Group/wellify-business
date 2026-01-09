@@ -7,7 +7,7 @@ if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHAS
   console.log('[next.config.js] NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:', process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ? 'SET' : 'MISSING');
   console.log('[next.config.js] NEXT_PUBLIC_TELEGRAM_API_URL:', process.env.NEXT_PUBLIC_TELEGRAM_API_URL ? 'SET' : 'MISSING');
   console.log('[next.config.js] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL ? 'SET' : 'MISSING');
-  console.log('[next.config.js] VERCEL_ENV:', process.env.VERCEL_ENV || 'not set');
+  console.log('[next.config.js] NODE_ENV:', process.env.NODE_ENV || 'not set');
 }
 
 /** @type {import('next').NextConfig} */

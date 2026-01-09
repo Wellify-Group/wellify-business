@@ -6,7 +6,7 @@ import 'server-only';
 import { validateServerEnv, assertEnvValid } from './envValidation';
 import { getSupabaseAdminEnv } from '@/lib/supabase/env';
 
-// Валидация при импорте (только в runtime; НЕ во время next build на Vercel).
+// Валидация при импорте (только в runtime; НЕ во время next build на Cloudflare).
 // Next выставляет NEXT_PHASE=phase-production-build во время сборки.
 const isNextBuildPhase =
   process.env.NEXT_PHASE === 'phase-production-build' ||

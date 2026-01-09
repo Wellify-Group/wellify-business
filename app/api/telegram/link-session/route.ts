@@ -21,24 +21,24 @@ export async function POST(request: NextRequest) {
         // 1. Читаем тело как сырой текст, чтобы избежать проблем с request.json()
         const rawBody = await request.text();
 
-        // 2. Делаем прямой запрос к бэкенду Telegram-бота на Railway
+        // 2. Делаем прямой запрос к бэкенду Telegram-бота на Render
         const resp = await fetch(`${TELEGRAM_API_URL}/telegram/link-session`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                // НЕ ПЕРЕСЫЛАЕМ 'Origin' и прочее, чтобы избежать CORS на Railway
+                // НЕ ПЕРЕСЫЛАЕМ 'Origin' и прочее, чтобы избежать CORS на Render
             },
             body: rawBody, // Отправляем сырое тело, как получили
         });
 
-        // Получаем ответ от Railway
+        // Получаем ответ от Render
         // При ошибке 502/500 тело может быть невалидным JSON, поэтому используем try/catch
         let json;
         try {
             json = await resp.json();
         } catch (e) {
-            // Если Railway вернул не-JSON (например, HTML-страницу ошибки 502)
-            console.error("Railway responded with non-JSON body (likely a crash or 502 HTML):", await resp.text());
+            // Если Render вернул не-JSON (например, HTML-страницу ошибки 502)
+            console.error("Render responded with non-JSON body (likely a crash or 502 HTML):", await resp.text());
             
             // Если код 502, выбрасываем ошибку с нашим текстом, но сохраняем код
             if (resp.status === 502) {
@@ -59,9 +59,9 @@ export async function POST(request: NextRequest) {
 
     } catch (e) {
         console.error("API Proxy Error:", e);
-        // Эта ошибка возникает, если Next.js не смог достучаться до Railway
+        // Эта ошибка возникает, если Next.js не смог достучаться до Render
         return NextResponse.json(
-            { error: "Internal Proxy Error: Failed to connect to Railway" },
+            { error: "Internal Proxy Error: Failed to connect to Render" },
             { status: 500 }
         );
     }

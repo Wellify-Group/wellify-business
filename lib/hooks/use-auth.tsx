@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { signIn, signUp, signOut, getSession, getUser, type User, type Session } from "@/lib/api/auth";
+import { tokenStorage } from "@/lib/api/client";
 
 interface AuthContextValue {
   user: User | null;
@@ -19,81 +19,78 @@ export function useAuth(): AuthContextValue {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then((result: any) => {
-      const session: Session | null = result?.data?.session ?? null;
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Получаем начальную сессию
+    const loadSession = async () => {
+      try {
+        const currentSession = await getSession();
+        setSession(currentSession);
+        setUser(currentSession?.user || null);
+      } catch (error) {
+        console.error('Error loading session:', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event: any, session: Session | null) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    loadSession();
 
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+    // Проверяем сессию периодически (каждые 5 минут)
+    const interval = setInterval(() => {
+      loadSession();
+    }, 5 * 60 * 1000);
 
-  const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    return () => clearInterval(interval);
+  }, []);
 
-    if (error) throw error;
-    if (data.user) {
+  const handleSignIn = async (email: string, password: string) => {
+    try {
+      const result = await signIn(email, password);
+      setSession(result.session);
+      setUser(result.user);
       router.push("/dashboard");
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
     }
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) throw error;
-    return data;
+  const handleSignUp = async (email: string, password: string) => {
+    try {
+      const result = await signUp(email, password);
+      setSession(result.session);
+      setUser(result.user);
+      return {
+        user: result.user,
+        session: result.session,
+      };
+    } catch (error) {
+      console.error('Sign up error:', error);
+      throw error;
+    }
   };
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    router.push("/login");
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setSession(null);
+      setUser(null);
+      router.push("/login");
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
   };
 
   return {
     user,
     session,
     loading,
-    signIn,
-    signUp,
-    signOut,
+    signIn: handleSignIn,
+    signUp: handleSignUp,
+    signOut: handleSignOut,
   };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,6 +1,6 @@
 // app/api/telegram/webhook/route.ts
-// Webhook endpoint для Telegram бота на Railway
-// Этот endpoint проксирует запросы к отдельному Telegram bot сервису на Railway
+// Webhook endpoint для Telegram бота на Render
+// Этот endpoint проксирует запросы к отдельному Telegram bot сервису на Render
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -8,9 +8,9 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/telegram/webhook
- * Проксирует webhook запросы от Telegram к боту на Railway
+ * Проксирует webhook запросы от Telegram к боту на Render
  * 
- * ВАЖНО: Реальный Telegram bot должен работать на Railway как отдельный сервис
+ * ВАЖНО: Реальный Telegram bot должен работать на Render как отдельный сервис
  * Этот endpoint используется только для проксирования, если бот не может принимать прямые webhook
  */
 export async function POST(request: NextRequest) {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Читаем тело запроса
     const rawBody = await request.text();
     
-    // Проксируем запрос к Railway боту
+    // Проксируем запрос к Render боту
     const response = await fetch(`${telegramApiUrl}/telegram/webhook`, {
       method: 'POST',
       headers: {
@@ -58,7 +58,7 @@ export async function GET() {
   return NextResponse.json({ 
     ok: true,
     service: 'telegram-webhook-proxy',
-    note: 'This endpoint proxies requests to Railway Telegram bot service'
+    note: 'This endpoint proxies requests to Render Telegram bot service'
   });
 }
 
