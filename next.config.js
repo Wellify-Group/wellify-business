@@ -2,8 +2,7 @@
 if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHASE === 'phase-production-export') {
   console.log('[next.config.js] Build phase detected');
   console.log('[next.config.js] NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL ? 'SET' : 'MISSING');
-  console.log('[next.config.js] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'MISSING');
-  console.log('[next.config.js] NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'MISSING');
+  console.log('[next.config.js] NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL ? 'SET' : 'MISSING');
   console.log('[next.config.js] NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:', process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ? 'SET' : 'MISSING');
   console.log('[next.config.js] NEXT_PUBLIC_TELEGRAM_API_URL:', process.env.NEXT_PUBLIC_TELEGRAM_API_URL ? 'SET' : 'MISSING');
   console.log('[next.config.js] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL ? 'SET' : 'MISSING');
@@ -31,8 +30,7 @@ const nextConfig = {
   // Это гарантирует, что переменные будут доступны в браузере
   env: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME,
     NEXT_PUBLIC_TELEGRAM_API_URL: process.env.NEXT_PUBLIC_TELEGRAM_API_URL,
     NEXT_PUBLIC_TELEGRAM_API_URL_MAIN: process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN,
@@ -48,8 +46,7 @@ const nextConfig = {
       config.plugins.push(
         new webpack.DefinePlugin({
           'process.env.NEXT_PUBLIC_APP_URL': JSON.stringify(process.env.NEXT_PUBLIC_APP_URL || ''),
-          'process.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL || ''),
-          'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''),
+          'process.env.NEXT_PUBLIC_API_URL': JSON.stringify(process.env.NEXT_PUBLIC_API_URL || ''),
           'process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME': JSON.stringify(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || ''),
           'process.env.NEXT_PUBLIC_TELEGRAM_API_URL': JSON.stringify(process.env.NEXT_PUBLIC_TELEGRAM_API_URL || ''),
           'process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN': JSON.stringify(process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN || ''),

@@ -116,18 +116,24 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("wellify_locale", lang);
       
-      // Сохраняем язык в БД
+      // Сохраняем язык в БД через backend API
       try {
-        const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
-        const supabase = createBrowserSupabaseClient();
-        const { data: { session } } = await supabase.auth.getSession();
+        const { api, getAuthToken } = await import("@/lib/api/client");
+        const token = getAuthToken();
         
-        if (session?.user) {
-          // Сохраняем язык в БД (lang уже в формате "ua", "ru" или "en")
-          await supabase
-            .from("profiles")
-            .update({ language: lang })
-            .eq("id", session.user.id);
+        if (token) {
+          // Получаем текущий профиль через API
+          const response = await fetch('/api/auth/load-profile', {
+            credentials: 'include',
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+              // Обновляем язык в профиле через API
+              await api.updateProfile(data.user.id, { language: lang });
+            }
+          }
         }
       } catch (error) {
         console.warn("[LanguageProvider] Failed to save language to DB:", error);

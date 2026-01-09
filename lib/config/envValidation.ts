@@ -19,12 +19,8 @@ export function validateClientEnv(): EnvValidationResult {
   const warnings: string[] = [];
 
   // Обязательные клиентские переменные
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    errors.push('NEXT_PUBLIC_SUPABASE_URL is required');
-  }
-
-  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    errors.push('NEXT_PUBLIC_SUPABASE_ANON_KEY is required');
+  if (!process.env.NEXT_PUBLIC_API_URL) {
+    errors.push('NEXT_PUBLIC_API_URL is required');
   }
 
   if (!process.env.NEXT_PUBLIC_APP_URL) {
@@ -51,14 +47,9 @@ export function validateServerEnv(): EnvValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Критичные серверные переменные
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    errors.push('SUPABASE_SERVICE_ROLE_KEY is required for server operations');
-  }
-
   // Проверка, что серверные ключи не попали в клиент
-  if (process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY) {
-    errors.push('SUPABASE_SERVICE_ROLE_KEY must NOT have NEXT_PUBLIC_ prefix (security risk!)');
+  if (process.env.NEXT_PUBLIC_JWT_SECRET) {
+    errors.push('JWT_SECRET must NOT have NEXT_PUBLIC_ prefix (security risk!)');
   }
 
   if (process.env.NEXT_PUBLIC_RESEND_API_KEY) {
@@ -112,8 +103,8 @@ export function validateTelegramBotEnv(): EnvValidationResult {
     errors.push('WEBHOOK_URL is required in production for Telegram bot webhook mode');
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    errors.push('SUPABASE_SERVICE_ROLE_KEY is required for Telegram bot');
+  if (!process.env.NEXT_PUBLIC_API_URL && !process.env.RENDER_API_URL) {
+    warnings.push('NEXT_PUBLIC_API_URL or RENDER_API_URL should be set for backend API connection');
   }
 
   if (!process.env.APP_BASE_URL && !process.env.NEXT_PUBLIC_APP_URL) {

@@ -2,9 +2,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin"; // Для Admin Client
 import { serverConfig } from "@/lib/config/serverConfig.server";
-import { createServerSupabaseClient } from "@/lib/supabase/server"; // Для аутентификации пользователя
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic'; // Для обеспечения актуальности ключей
@@ -42,12 +42,26 @@ export async function POST(request: NextRequest) {
   });
   
   try {
-    // Получаем пользователя, используя обычный серверный клиент (пользовательский токен)
-    const supabase = await createServerSupabaseClient(); 
-    
-    const {
-      data: { user },
-    } = await supabase.auth.getUser(); 
+    // Получаем токен из заголовков или cookies
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
+                  request.cookies.get('auth_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Получаем пользователя через backend API
+    const userResponse = await fetch(`${API_URL}/api/auth/user`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!userResponse.ok) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user } = await userResponse.json();
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -64,35 +78,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid plan type or missing price ID." }, { status: 400 });
     }
 
-    // Инициализация Admin Client для операций с БД (для доступа к user_subscriptions)
-    const supabaseAdmin = createAdminSupabaseClient(); // Используем настроенный Admin Client
-
     // Get or create Stripe customer
     let customerId: string;
 
-    // Check if user already has a customer ID
-    const { data: subscription } = await supabaseAdmin // Используем Admin Client
-      .from("user_subscriptions")
-      .select("stripe_customer_id")
-      .eq("user_id", user.id)
-      .single();
+    // Check if user already has a customer ID через backend API
+    const subscriptionResponse = await fetch(`${API_URL}/api/subscriptions`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
 
-    if (subscription?.stripe_customer_id) {
-      customerId = subscription.stripe_customer_id;
-    } else {
+    if (subscriptionResponse.ok) {
+      const { subscription } = await subscriptionResponse.json();
+      if (subscription?.stripe_customer_id) {
+        customerId = subscription.stripe_customer_id;
+      }
+    }
+
+    if (!customerId) {
       // Create new Stripe customer
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: {
-          supabase_user_id: user.id,
+          user_id: user.id,
         },
       });
       customerId = customer.id;
 
-      // Save customer ID to database
-      await supabaseAdmin.from("user_subscriptions").upsert({ // Используем Admin Client
-        user_id: user.id,
-        stripe_customer_id: customerId,
+      // Save customer ID to database через backend API
+      await fetch(`${API_URL}/api/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stripe_customer_id: customerId,
+        }),
       });
     }
 
@@ -111,6 +133,7 @@ export async function POST(request: NextRequest) {
       cancel_url: `${serverConfig.appBaseUrl}/dashboard?canceled=true`,
       metadata: {
         user_id: user.id,
+        email: user.email,
       },
     });
 

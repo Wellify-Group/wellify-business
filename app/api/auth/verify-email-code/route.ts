@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
 
-// Backend API URL
-const API_URL = process.env.RENDER_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+export const runtime = 'nodejs';
 
 if (!API_URL) {
   console.warn('RENDER_API_URL is not set. Email verification will fail.');

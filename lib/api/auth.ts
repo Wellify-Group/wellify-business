@@ -32,7 +32,9 @@ export async function signUp(
   const response = await api.signUp(email, password, full_name, phone);
   
   // Сохраняем токен
-  tokenStorage.set(response.token);
+  if (response.token) {
+    tokenStorage.set(response.token);
+  }
 
   return {
     user: response.user,
@@ -53,7 +55,9 @@ export async function signIn(
   const response = await api.signIn(email, password);
   
   // Сохраняем токен
-  tokenStorage.set(response.token);
+  if (response.token) {
+    tokenStorage.set(response.token);
+  }
 
   return {
     user: response.user,
@@ -84,7 +88,7 @@ export async function getSession(): Promise<Session | null> {
   if (!token) return null;
 
   try {
-    const response = await api.getUser(token);
+    const response = await api.getUser();
     return {
       user: response.user,
       token,

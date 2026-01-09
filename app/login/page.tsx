@@ -6,7 +6,9 @@ import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
 import { Building2, Store, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
+import { signIn } from "@/lib/api/auth";
+import { tokenStorage } from "@/lib/api/client";
 import {
   Card,
   CardHeader,
@@ -96,69 +98,60 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      const supabase = createBrowserSupabaseClient();
+      // Вход через новый API
+      const { user, session } = await signIn(email, password);
 
-      // Вход через Supabase
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        // Обработка ошибок
-        if (signInError.message?.includes("Email not confirmed") || 
-            signInError.message?.includes("email_not_confirmed")) {
-          setError(t("login_error_email_not_confirmed"));
-        } else if (signInError.message?.includes("Invalid login credentials") || 
-            signInError.message?.includes("User not found")) {
-          setError(t("login_error_invalid_credentials"));
-        } else {
-          // Всегда используем локализованное сообщение
-          setError(t("login_error_generic"));
-        }
-        setIsError(true);
-        setIsLoading(false);
-        return;
-      }
-
-      if (!signInData.user) {
+      if (!user) {
         setError(t("login_error_failed"));
         setIsError(true);
         setIsLoading(false);
         return;
       }
 
-      // Проверяем профиль и верификацию телефона
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("phone_verified, role")
-        .eq("id", signInData.user.id)
-        .maybeSingle();
+      // Сохраняем токен
+      if (session?.token) {
+        tokenStorage.set(session.token);
+      }
 
-      // Если профиль не найден - редирект в дашборд директора
-      if (profileError || !profile) {
+      // Получаем профиль для проверки верификации телефона
+      try {
+        const profile = await api.getProfile();
+        
+        // Если телефон не подтверждён - редирект на шаг 3 регистрации
+        if (profile?.phone_verified !== true) {
+          router.replace("/register?step=3");
+          return;
+        }
+
+        // Всё ок - редирект в дашборд в зависимости от роли
+        const role = profile.role || user.role || "director";
+        if (role === "director") {
+          router.replace("/dashboard/director");
+        } else if (role === "manager") {
+          router.replace("/dashboard/manager");
+        } else {
+          router.replace("/dashboard/employee");
+        }
+      } catch (profileError) {
+        // Если профиль не найден или ошибка - всё равно редирект в дашборд директора
         router.replace("/dashboard/director");
-        return;
       }
-
-      // Если телефон не подтверждён - редирект на шаг 3 регистрации
-      if (profile.phone_verified !== true) {
-        router.replace("/register?step=3");
-        return;
-      }
-
-      // Всё ок - редирект в дашборд в зависимости от роли
-      const role = profile.role || signInData.user.user_metadata?.role || "director";
-      if (role === "director") {
-        router.replace("/dashboard/director");
-      } else if (role === "manager") {
-        router.replace("/dashboard/manager");
-      } else {
-        router.replace("/dashboard/employee");
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error:", err);
-      setError(t("login_error_failed"));
+      
+      // Обработка ошибок
+      const errorMessage = err?.message || '';
+      if (errorMessage.includes("Email not confirmed") || 
+          errorMessage.includes("email_not_confirmed")) {
+        setError(t("login_error_email_not_confirmed"));
+      } else if (errorMessage.includes("Invalid") || 
+          errorMessage.includes("credentials") ||
+          errorMessage.includes("not found") ||
+          errorMessage.includes("401")) {
+        setError(t("login_error_invalid_credentials"));
+      } else {
+        setError(t("login_error_generic"));
+      }
       setIsError(true);
     } finally {
       setIsLoading(false);

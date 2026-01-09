@@ -1,29 +1,35 @@
 // app/api/auth/load-profile/route.ts
+// Проксирует запрос на backend API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
  * GET /api/auth/load-profile
- * Загружает данные профиля пользователя из Supabase profiles таблицы
+ * Загружает данные профиля пользователя из backend
  * Используется для синхронизации данных после регистрации/входа
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const supabaseAdmin = createAdminSupabaseClient();
+    if (!API_URL) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Backend API URL is not configured',
+        },
+        { status: 500 }
+      );
+    }
 
-    // Получаем текущего пользователя из сессии
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    // Получаем токен из заголовков или cookies
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
+                  request.cookies.get('auth_token')?.value;
 
-    if (userError || !user) {
+    if (!token) {
       return NextResponse.json(
         {
           success: false,
@@ -33,55 +39,77 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = user.id;
+    // Получаем профиль через backend API
+    const profileResponse = await fetch(`${API_URL}/api/profiles/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-    // Загружаем профиль из Supabase через admin клиент (обходит RLS)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (profileError) {
-      console.error('[load-profile] Error fetching profile', {
-        error: profileError,
-        userId,
-      });
+    if (profileResponse.status === 401) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Profile not found',
-          details: profileError.message,
+          error: 'User not authenticated',
         },
-        { status: 404 }
+        { status: 401 }
       );
+    }
+
+    if (!profileResponse.ok) {
+      const errorData = await profileResponse.json().catch(() => ({}));
+      return NextResponse.json(
+        {
+          success: false,
+          error: errorData.error || 'Profile not found',
+        },
+        { status: profileResponse.status }
+      );
+    }
+
+    const { profile } = await profileResponse.json();
+
+    // Также получаем бизнес пользователя
+    let business = null;
+    try {
+      const businessResponse = await fetch(`${API_URL}/api/businesses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (businessResponse.ok) {
+        const { businesses } = await businessResponse.json();
+        business = businesses?.[0] || null;
+      }
+    } catch (e) {
+      console.warn('[load-profile] Failed to fetch business', e);
     }
 
     // Формируем данные пользователя для фронтенда
     const userData = {
-      id: userId,
-      name: profile.first_name || user.email?.split('@')[0] || 'User',
+      id: profile.id,
+      name: profile.full_name?.split(' ')[0] || profile.email?.split('@')[0] || 'User',
       fullName: profile.full_name || null,
-      email: profile.email || user.email || null,
+      email: profile.email || null,
       phone: profile.phone || null,
-      dob: profile.birth_date || null,
+      dob: null, // birth_date будет добавлен позже если нужно
       role: (profile.role || 'director') as 'director' | 'manager' | 'employee',
-      businessId: profile.business_id || userId,
-      companyCode: (profile as any)['код_компании'] || profile.company_code || null,
+      businessId: business?.id || profile.id,
+      companyCode: business?.companyCode || null,
       // Дополнительные поля из профиля
-      firstName: profile.first_name || null,
-      lastName: profile.last_name || null,
-      middleName: profile.middle_name || null,
+      firstName: profile.full_name?.split(' ')[0] || null,
+      lastName: profile.full_name?.split(' ').slice(1).join(' ') || null,
+      middleName: null,
       // Поля для проверки верификации Telegram
-      telegram_verified: profile.telegram_verified || false,
+      telegram_verified: false, // Будет добавлено позже
       phone_verified: profile.phone_verified || false,
     };
 
     console.log('[load-profile] Profile loaded successfully', {
-      userId,
+      userId: profile.id,
       hasFullName: !!userData.fullName,
       hasPhone: !!userData.phone,
-      hasDob: !!userData.dob,
     });
 
     return NextResponse.json({

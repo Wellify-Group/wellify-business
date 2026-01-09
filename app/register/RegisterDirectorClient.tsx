@@ -27,7 +27,8 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { signIn, getSession } from "@/lib/api/auth";
+import { tokenStorage } from "@/lib/api/client";
 import { TelegramVerificationStep } from "./TelegramVerificationStep";
 import { EmailVerificationCode } from "@/components/auth/email-verification-code";
 import { BirthDateInput } from "@/components/ui/birth-date-input";
@@ -89,8 +90,6 @@ export default function RegisterDirectorClient() {
 
   // Показ/скрытие пароля
   const [showPassword, setShowPassword] = useState(false);
-
-  const [supabase] = useState(() => createBrowserSupabaseClient());
 
   const localeForAPI =
     language === "ua" ? "uk" : (language as "ru" | "uk" | "en" | string);
@@ -194,22 +193,18 @@ export default function RegisterDirectorClient() {
       setRegisterError(null);
 
       // Проверяем наличие сессии пользователя
-      let session = (await supabase.auth.getSession()).data.session;
+      let session = await getSession();
       
-      // Если нет сессии, восстанавливаем через signInWithPassword
+      // Если нет сессии, восстанавливаем через signIn
       if (!session && registeredUserEmail && personal.password) {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: registeredUserEmail,
-          password: personal.password,
-        });
-
-        if (signInError) {
+        try {
+          const signInResult = await signIn(registeredUserEmail, personal.password);
+          session = signInResult.session || null;
+        } catch (signInError: any) {
           console.warn("[register] signIn error", signInError);
           setRegisterError(t<string>("register_error_session_restore_failed"));
           return;
         }
-
-        session = signInData?.session || null;
       }
 
       if (!session) {
@@ -478,26 +473,18 @@ export default function RegisterDirectorClient() {
 
       if (data.success) {
         // Email подтвержден, восстанавливаем сессию и переходим на шаг 3 (Telegram)
-    if (registeredUserEmail && personal.password) {
-      try {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: registeredUserEmail,
-          password: personal.password,
-        });
-
-        if (signInError) {
-          console.error('[register] Sign in after email verification error:', signInError);
-              setStep2Error(t<string>("register_error_session_restore_failed"));
-          return;
-        }
-
-        console.log('[register] ✅ Session restored after email verification');
-      } catch (error) {
-        console.error('[register] Error restoring session:', error);
+        if (registeredUserEmail && personal.password) {
+          try {
+            const signInResult = await signIn(registeredUserEmail, personal.password);
+            if (signInResult.session) {
+              console.log('[register] ✅ Session restored after email verification');
+            }
+          } catch (error: any) {
+            console.error('[register] Error restoring session:', error);
             setStep2Error(t<string>("register_error_session_restore_failed"));
-        return;
-      }
-    }
+            return;
+          }
+        }
     
         setStep(3);
         setMaxStepReached(3);
@@ -572,10 +559,10 @@ export default function RegisterDirectorClient() {
       }
 
       try {
-        // Проверяем сессию через supabase.auth.getSession()
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        // Проверяем сессию через новый API
+        const sessionData = await getSession();
         
-        if (sessionError || !sessionData?.session) {
+        if (!sessionData) {
           console.log("[register] Step 4: No session yet, waiting...");
           return;
         }
@@ -661,7 +648,7 @@ export default function RegisterDirectorClient() {
         timeoutId = null;
       }
     };
-  }, [step, supabase, step3Polling]);
+  }, [step, step3Polling]);
 
   // ---------- render helpers ----------
 

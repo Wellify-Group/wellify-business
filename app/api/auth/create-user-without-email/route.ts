@@ -1,33 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
 
 export const runtime = 'nodejs';
 
-// Админ-клиент Supabase
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
 /**
  * POST /api/auth/create-user-without-email
- * Создает пользователя через admin API без отправки письма подтверждения
+ * Проксирует запрос на backend для создания пользователя без отправки письма
  * 
  * Body: { email, password, first_name, last_name, middle_name, full_name, birth_date, locale }
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!API_URL) {
+      return NextResponse.json(
+        { success: false, error: 'Backend API is not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const {
       email,
@@ -47,61 +38,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
-
-    // Проверяем, существует ли пользователь
-    const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (listError) {
-      console.error('Error listing users:', listError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to check existing users' },
-        { status: 500 }
-      );
-    }
-
-    const existingUser = existingUsers.users.find(
-      u => u.email?.toLowerCase() === email.toLowerCase()
-    );
-
-    if (existingUser) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'User already registered',
-          user: existingUser 
-        },
-        { status: 400 }
-      );
-    }
-
-    // Создаем пользователя через admin API (без отправки письма)
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.toLowerCase(),
-      password: password,
-      email_confirm: false, // Email не подтвержден, подтвердим через наш код
-      user_metadata: {
-        first_name: first_name || null,
-        last_name: last_name || null,
-        middle_name: middle_name || null,
-        full_name: full_name || null,
-        birth_date: birth_date || null,
-        locale: locale || 'ru',
+    // Проксируем на backend
+    const response = await fetch(`${API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        password,
+        first_name,
+        last_name,
+        middle_name,
+        full_name,
+        birth_date,
+        locale: locale || 'ru',
+        skip_email_verification: true, // Не отправляем письмо сразу
+      }),
     });
 
-    if (createError) {
-      console.error('Error creating user:', createError);
-      
+    const data = await response.json();
+
+    if (!response.ok) {
       // Проверка на существующий email
-      const msg = createError.message?.toLowerCase() || '';
-      if (
-        msg.includes('already') ||
-        msg.includes('exists') ||
-        msg.includes('registered') ||
-        msg.includes('user already registered') ||
-        msg.includes('email already exists')
-      ) {
+      if (response.status === 400 && data.error?.toLowerCase().includes('already')) {
         return NextResponse.json(
           { 
             success: false, 
@@ -113,21 +73,14 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { success: false, error: createError.message || 'Failed to create user' },
-        { status: 500 }
-      );
-    }
-
-    if (!newUser.user) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to create user' },
-        { status: 500 }
+        { success: false, error: data.error || 'Failed to create user' },
+        { status: response.status }
       );
     }
 
     return NextResponse.json({
       success: true,
-      user: newUser.user,
+      user: data.user,
     });
   } catch (error: any) {
     console.error('Create user without email error:', error);

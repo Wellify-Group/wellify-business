@@ -1,33 +1,27 @@
 // app/api/auth/resend-confirmation/route.ts
+// Проксирует запрос на backend для повторной отправки кода верификации
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
 
 export const runtime = "nodejs";
 
-// Админ-клиент Supabase (service role)
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error("Missing Supabase environment variables");
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
 export async function POST(request: NextRequest) {
-  const supabaseAdmin = getSupabaseAdmin();
-
   try {
+    if (!API_URL) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Backend API is not configured",
+          errorCode: "API_NOT_CONFIGURED",
+        },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
-    const { email } = body ?? {};
+    const { email, userId, language = 'uk' } = body ?? {};
 
     if (!email || typeof email !== "string") {
       return NextResponse.json(
@@ -42,89 +36,53 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = String(email).toLowerCase().trim();
 
-    // Проверяем, существует ли пользователь
-    const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-
-    if (listError) {
-      console.error("[resend-confirmation] listUsers error:", listError);
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to check user",
-          errorCode: "USER_CHECK_ERROR",
-        },
-        { status: 500 }
-      );
-    }
-
-    const user = usersData?.users?.find(
-      (u) => u.email && u.email.toLowerCase() === normalizedEmail
-    );
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "User not found",
-          errorCode: "USER_NOT_FOUND",
-        },
-        { status: 404 }
-      );
-    }
-
-    // Проверяем, не подтвержден ли уже email
-    if (user.email_confirmed_at) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Email already confirmed",
-          errorCode: "EMAIL_ALREADY_CONFIRMED",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Получаем базовый URL для redirect
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (request.headers.get("origin") || "http://localhost:3000");
-
-    const redirectTo = `${baseUrl}/auth/callback`;
-
-    // Используем generateLink с типом "magiclink" для повторной отправки confirmation email
-    // Magiclink не требует пароль и может быть использован для подтверждения email
-    const { data: linkData, error: linkError } =
-      await supabaseAdmin.auth.admin.generateLink({
-        type: "magiclink",
+    // Проксируем на backend для повторной отправки кода верификации
+    const response = await fetch(`${API_URL}/api/email-verification/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         email: normalizedEmail,
-        options: {
-          redirectTo,
-        },
-      });
+        userId,
+        language,
+      }),
+    });
 
-    if (linkError) {
-      console.error("[resend-confirmation] generateLink error:", linkError);
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "User not found",
+            errorCode: "USER_NOT_FOUND",
+          },
+          { status: 404 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to resend confirmation email",
+          error: data.error || "Failed to resend confirmation code",
           errorCode: "RESEND_ERROR",
-          details: linkError.message,
         },
-        { status: 500 }
+        { status: response.status }
       );
     }
 
-    console.log("[resend-confirmation] Confirmation email resent successfully for:", normalizedEmail);
+    console.log("[resend-confirmation] Verification code resent successfully for:", normalizedEmail);
 
     return NextResponse.json(
       {
         success: true,
-        message: "Confirmation email sent",
+        message: "Verification code sent",
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("[resend-confirmation] Unexpected error:", error);
     return NextResponse.json(
       {

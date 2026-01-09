@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { useAuth } from "./use-auth";
 
 interface SubscriptionStatus {
@@ -19,7 +19,6 @@ export function useSubscriptionStatus(): SubscriptionStatus {
     currentPeriodEnd: null,
     loading: true,
   });
-  const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
     if (!user) {
@@ -34,15 +33,17 @@ export function useSubscriptionStatus(): SubscriptionStatus {
 
     async function fetchSubscription() {
       try {
-        const { data, error } = await supabase
-          .from("user_subscriptions")
-          .select("status, current_period_end")
-          .eq("user_id", user!.id)
-          .single();
+        const response = await api.getSubscription();
+        const data = response.subscription;
 
-        if (error && error.code !== "PGRST116") {
-          // PGRST116 = no rows returned, which is fine
-          console.error("Subscription fetch error:", error);
+        if (!data) {
+          setSubscription({
+            isActive: false,
+            status: null,
+            currentPeriodEnd: null,
+            loading: false,
+          });
+          return;
         }
 
         const isActive =
@@ -70,27 +71,13 @@ export function useSubscriptionStatus(): SubscriptionStatus {
 
     fetchSubscription();
 
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel("subscription-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_subscriptions",
-          filter: `user_id=eq.${user!.id}`,
-        },
-        () => {
-          fetchSubscription();
-        }
-      )
-      .subscribe();
+    // Polling для обновлений (замена real-time subscriptions)
+    const intervalId = setInterval(fetchSubscription, 30000); // Проверяем каждые 30 секунд
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(intervalId);
     };
-  }, [user, supabase]);
+  }, [user]);
 
   return subscription;
 }

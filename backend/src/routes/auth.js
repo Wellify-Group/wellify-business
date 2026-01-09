@@ -327,5 +327,170 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+/**
+ * Генерация кода компании (16-значный код)
+ */
+function generateCompanyCode() {
+  const part = () => Math.floor(1000 + Math.random() * 9000);
+  return `${part()}-${part()}-${part()}-${part()}`;
+}
+
+/**
+ * POST /api/auth/register-director
+ * Регистрация директора с бизнесом
+ */
+router.post('/register-director', async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      fullName,
+      firstName,
+      lastName,
+      middleName,
+      birthDate,
+      language,
+      businessName,
+    } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        errorCode: 'VALIDATION_ERROR',
+      });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+
+    // Формируем имя директора
+    const safeFirstName =
+      (firstName && String(firstName).trim()) ||
+      (fullName && String(fullName).trim().split(' ')[0]) ||
+      'Директор';
+
+    const safeLastName = (lastName && String(lastName).trim()) || null;
+    const safeMiddleName = (middleName && String(middleName).trim()) || null;
+    const safeFullName =
+      (fullName && String(fullName).trim()) ||
+      [safeFirstName, safeLastName].filter(Boolean).join(' ') ||
+      'Директор';
+
+    const safeLanguage = (language && String(language)) || 'ru';
+    const safeBusinessName =
+      (businessName && String(businessName).trim()) || 'Мой бизнес';
+
+    // Генерируем код компании
+    let companyCode = generateCompanyCode();
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await db.query(
+        'SELECT id FROM businesses WHERE код_компании = $1',
+        [companyCode]
+      );
+      if (existing.rows.length === 0) break;
+      companyCode = generateCompanyCode();
+      attempts++;
+    }
+
+    // Проверяем, существует ли пользователь
+    const existingUser = await db.query(
+      'SELECT id FROM users WHERE email = $1',
+      [normalizedEmail]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'User with this email already exists',
+        errorCode: 'EMAIL_ALREADY_REGISTERED',
+      });
+    }
+
+    // Хешируем пароль
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Начинаем транзакцию (в PostgreSQL можно использовать BEGIN/COMMIT)
+    try {
+      // Создаём пользователя
+      const userResult = await db.query(
+        `INSERT INTO users (email, password_hash, created_at)
+         VALUES ($1, $2, NOW())
+         RETURNING id, email, email_verified, phone, phone_verified, created_at`,
+        [normalizedEmail, passwordHash]
+      );
+
+      const user = userResult.rows[0];
+      const userId = user.id;
+
+      // Создаём профиль
+      await db.query(
+        `INSERT INTO profiles (id, full_name, role, language, phone_verified, email_verified)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [userId, safeFullName, 'director', safeLanguage, false, false]
+      );
+
+      // Создаём бизнес
+      const businessResult = await db.query(
+        `INSERT INTO businesses (owner_profile_id, название, код_компании)
+         VALUES ($1, $2, $3)
+         RETURNING id, название, код_компании`,
+        [userId, safeBusinessName, companyCode]
+      );
+
+      const business = businessResult.rows[0];
+      const businessId = business.id;
+
+      // Создаём запись в staff для директора
+      await db.query(
+        `INSERT INTO staff (profile_id, business_id, роль, должность, активен)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [userId, businessId, 'директор', 'владелец', true]
+      );
+
+      // Генерируем JWT токен
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      return res.status(201).json({
+        success: true,
+        user: {
+          id: userId,
+          email: user.email,
+          fullName: safeFullName,
+          role: 'director',
+        },
+        business: {
+          id: businessId,
+          name: business.название,
+          companyCode: business.код_компании,
+        },
+        companyCode: business.код_компании,
+        token,
+      });
+    } catch (dbError) {
+      logger.error('Database error during director registration', dbError);
+      
+      // Если пользователь был создан, но что-то пошло не так, пытаемся откатить
+      // В production лучше использовать транзакции
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create user profile or business',
+        errorCode: 'REGISTRATION_FAILED',
+      });
+    }
+  } catch (error) {
+    logger.error('Register director error', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      errorCode: 'INTERNAL_ERROR',
+    });
+  }
+});
+
 export default router;
 

@@ -13,12 +13,17 @@ import { logger } from './utils/logger.js';
 import { db } from './db/connection.js';
 
 // Routes
+import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import profileRoutes from './routes/profiles.js';
 import emailRoutes from './routes/email.js';
 import emailVerificationRoutes from './routes/email-verification.js';
 import smsRoutes from './routes/sms.js';
+import businessesRoutes from './routes/businesses.js';
+import subscriptionsRoutes from './routes/subscriptions.js';
+import locationsRoutes from './routes/locations.js';
+import stripeRoutes from './routes/stripe.js';
 
 dotenv.config();
 
@@ -33,10 +38,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// Health check routes (должны быть первыми)
+app.use('/api/health', healthRoutes);
+
+// Legacy health endpoint (для обратной совместимости)
 app.get('/health', async (req, res) => {
   try {
-    // Проверяем подключение к БД
     await db.query('SELECT 1');
     res.json({ 
       status: 'ok', 
@@ -60,6 +67,10 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/email-verification', emailVerificationRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/businesses', businessesRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/locations', locationsRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 // 404 handler
 app.use((req, res) => {

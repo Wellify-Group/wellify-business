@@ -13,11 +13,8 @@ if (typeof window !== 'undefined') {
   if (!process.env.NEXT_PUBLIC_APP_URL) {
     missing.push('NEXT_PUBLIC_APP_URL');
   }
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    missing.push('NEXT_PUBLIC_SUPABASE_URL');
-  }
-  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  if (!process.env.NEXT_PUBLIC_API_URL) {
+    missing.push('NEXT_PUBLIC_API_URL');
   }
   
   if (missing.length > 0) {
@@ -32,8 +29,7 @@ if (typeof window !== 'undefined') {
 export function getAppConfig() {
   return {
     appUrl: process.env.NEXT_PUBLIC_APP_URL || '',
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || '',
     telegramBotUsername: process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '',
     // Optional: can be separated by environment in Cloudflare via *_MAIN / *_DEV
     telegramApiUrl:
