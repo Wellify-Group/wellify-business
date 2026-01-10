@@ -115,18 +115,18 @@ export default function LoginPage() {
 
       // Получаем профиль для проверки верификации телефона
       try {
-        const profile = await api.getProfile();
+        const profileData = await api.getProfile();
+        const profile = profileData.profile;
         
         // Если телефон не подтверждён - редирект на шаг 3 регистрации
-        // TODO: Fix type after migration
-        if ((profile as any)?.phone_verified !== true) {
+        if (profile && (profile.phone_verified !== true)) {
           router.replace("/register?step=3");
           return;
         }
 
         // Всё ок - редирект в дашборд в зависимости от роли
-        // TODO: Fix type after migration
-        const role = (profile as any)?.role || (user as any)?.role || "director";
+        // Роль уже есть в user из login ответа, но проверяем профиль если нужно
+        const role = profile?.role || user.role || "director";
         if (role === "director") {
           router.replace("/dashboard/director");
         } else if (role === "manager") {

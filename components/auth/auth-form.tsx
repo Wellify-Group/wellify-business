@@ -37,7 +37,7 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
         }
         
         if (result.user) {
-          const role = result.user.role || 'director';
+          const role = (result.user as any).role || 'director';
           if (role === 'director') {
             router.push('/dashboard/director');
           } else if (role === 'manager') {

@@ -60,16 +60,17 @@ export function mapProfileFromDb(raw: ProfileRaw | Record<string, any>): Profile
   return {
     id: rawRecord.id,
     email: rawRecord.email ?? null,
-    fullName: rawRecord['ФИО'] ?? rawRecord.фио ?? null,
-    shortName: rawRecord.имя ?? null,
-    role: rawRecord.роль ?? null,
-    businessId: rawRecord.бизнес_id ?? rawRecord.business_id ?? null,
-    companyCode: rawRecord.код_компании ?? null,
-    jobTitle: rawRecord.должность ?? null,
-    active: rawRecord.активен ?? null,
-    avatarUrl: rawRecord.аватар_url ?? rawRecord.avatar_url ?? null,
-    phone: rawRecord.телефон ?? null,
-    country: rawRecord.страна ?? null,
+    // Backend uses English field names, but also support Russian for legacy data
+    fullName: rawRecord.full_name ?? rawRecord['ФИО'] ?? rawRecord.фио ?? null,
+    shortName: rawRecord.name ?? rawRecord.имя ?? null,
+    role: rawRecord.role ?? rawRecord.роль ?? null,
+    businessId: rawRecord.business_id ?? rawRecord.бизнес_id ?? null,
+    companyCode: rawRecord.company_code ?? rawRecord.код_компании ?? null,
+    jobTitle: rawRecord.job_title ?? rawRecord.должность ?? null,
+    active: rawRecord.active ?? rawRecord.активен ?? null,
+    avatarUrl: rawRecord.avatar_url ?? rawRecord.аватар_url ?? null,
+    phone: rawRecord.phone ?? rawRecord.телефон ?? null,
+    country: rawRecord.country ?? rawRecord.страна ?? null,
     emailVerified: rawRecord.email_verified ?? false,
     phoneVerified: rawRecord.phone_verified ?? false,
     createdAt: rawRecord.created_at ?? null,
@@ -83,18 +84,19 @@ export function mapProfileFromDb(raw: ProfileRaw | Record<string, any>): Profile
 export function mapProfileToDb(profile: Partial<Profile>): Record<string, any> {
   const dbProfile: Record<string, any> = {};
   
+  // Backend uses English field names
   if (profile.id !== undefined) dbProfile.id = profile.id;
   if (profile.email !== undefined) dbProfile.email = profile.email;
-  if (profile.fullName !== undefined) dbProfile['ФИО'] = profile.fullName;
-  if (profile.shortName !== undefined) dbProfile.имя = profile.shortName;
-  if (profile.role !== undefined) dbProfile.роль = profile.role;
-  if (profile.businessId !== undefined) dbProfile.бизнес_id = profile.businessId;
-  if (profile.companyCode !== undefined) dbProfile.код_компании = profile.companyCode;
-  if (profile.jobTitle !== undefined) dbProfile.должность = profile.jobTitle;
-  if (profile.active !== undefined) dbProfile.активен = profile.active;
-  if (profile.avatarUrl !== undefined) dbProfile.аватар_url = profile.avatarUrl;
-  if (profile.phone !== undefined) dbProfile.телефон = profile.phone;
-  if (profile.country !== undefined) dbProfile.страна = profile.country;
+  if (profile.fullName !== undefined) dbProfile.full_name = profile.fullName;
+  if (profile.shortName !== undefined) dbProfile.name = profile.shortName; // Backend may not have this field
+  if (profile.role !== undefined) dbProfile.role = profile.role;
+  if (profile.businessId !== undefined) dbProfile.business_id = profile.businessId;
+  if (profile.companyCode !== undefined) dbProfile.company_code = profile.companyCode; // Backend may not have this field
+  if (profile.jobTitle !== undefined) dbProfile.job_title = profile.jobTitle; // Backend may not have this field
+  if (profile.active !== undefined) dbProfile.active = profile.active; // Backend may not have this field
+  if (profile.avatarUrl !== undefined) dbProfile.avatar_url = profile.avatarUrl;
+  if (profile.phone !== undefined) dbProfile.phone = profile.phone;
+  if (profile.country !== undefined) dbProfile.country = profile.country; // Backend may not have this field
   if (profile.emailVerified !== undefined) dbProfile.email_verified = profile.emailVerified;
   if (profile.phoneVerified !== undefined) dbProfile.phone_verified = profile.phoneVerified;
   

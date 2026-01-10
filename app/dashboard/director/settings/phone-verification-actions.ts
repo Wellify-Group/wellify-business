@@ -124,8 +124,20 @@ export async function verifyPhoneCode(
     const data = await res.json()
 
     if (res.ok && data.success) {
-      // TODO: Update profile via backend API after code verification
-      // Use api.updateProfile from @/lib/api/client to update phone_verified
+      // Update profile via backend API after code verification
+      try {
+        // Import api client dynamically to avoid circular dependencies
+        const { api } = await import('@/lib/api/client');
+        
+        // Update profile with verified phone
+        await api.updateProfile(null, {
+          phone: phone.trim(),
+          phone_verified: true,
+        });
+      } catch (updateError) {
+        console.error('[phone-verification-actions] Failed to update profile:', updateError);
+        // Don't fail the verification if profile update fails - code is already verified
+      }
 
       return {
         success: true

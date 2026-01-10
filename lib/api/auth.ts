@@ -12,6 +12,9 @@ export interface User {
   phone?: string;
   phone_verified: boolean;
   created_at?: string;
+  full_name?: string;
+  role?: string;
+  language?: string;
 }
 
 export interface Session {

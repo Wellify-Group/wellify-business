@@ -86,17 +86,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Успешный логин - получаем профиль
+      // Успешный логин - backend уже возвращает роль из профиля
       const user = data.user;
       
-      // TODO: Получить профиль из backend API
-      // Пока возвращаем базовую информацию
+      // Backend возвращает user с полями: id, email, email_verified, phone, phone_verified, full_name, role, language
       const userPayload = {
         id: user.id,
         email: user.email,
+        email_verified: user.email_verified,
+        phone: user.phone,
+        phone_verified: user.phone_verified,
         fullName: user.full_name || null,
         shortName: user.full_name?.split(' ')[0] || null,
-        role: 'director', // TODO: получить из профиля
+        role: user.role || 'director', // Роль из профиля
+        language: user.language || 'uk',
       };
 
       return NextResponse.json(

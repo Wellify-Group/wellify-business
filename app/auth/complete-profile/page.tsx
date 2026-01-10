@@ -95,11 +95,13 @@ export default function CompleteProfilePage() {
 
       const shortName = fullName.trim().split(' ')[0] || fullName.trim();
 
-      // Update profile with name using typed mapping
-      const updateData = mapProfileToDb({
-        fullName: fullName.trim(),
-        shortName: shortName,
-      });
+      // Update profile with name - backend expects English field names
+      // Backend expects: full_name (not 'ФИО'), role, language, etc.
+      const updateData = {
+        full_name: fullName.trim(),
+        // Also update name separately if backend supports it
+        // name: shortName, // Only if backend has this field
+      };
 
       // Update profile via API
       const updateResult = await api.updateProfile(null, updateData);
