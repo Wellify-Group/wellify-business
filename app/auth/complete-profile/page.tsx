@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { AlertCircle } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/button";
 import { mapProfileFromDb, mapProfileToDb, isProfileComplete, type Profile } from "@/lib/types/profile";
@@ -17,49 +17,54 @@ export default function CompleteProfilePage() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated
+    // Check if user is authenticated and load profile
     async function checkAuth() {
-      const supabase = createBrowserSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
-      // Check if profile already has required fields
-      const { data: profileRaw, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profileError || !profileRaw) {
-        console.error('Error loading profile:', profileError);
-        setIsChecking(false);
-        return;
-      }
-
-      const profile = mapProfileFromDb(profileRaw);
-
-      // Если профиль полный - перенаправляем на dashboard
-      if (isProfileComplete(profile)) {
-        let dashboardPath = "/dashboard/director";
-        if (profile.role === "менеджер") {
-          dashboardPath = "/dashboard/manager";
-        } else if (profile.role === "сотрудник") {
-          dashboardPath = "/dashboard/employee";
+      try {
+        // Check if user is authenticated
+        const userData = await api.getUser();
+        
+        if (!userData.user) {
+          router.push("/login");
+          return;
         }
-        router.push(dashboardPath);
-        return;
-      }
 
-      // Если есть имя, заполняем его в поле
-      if (profile.fullName) {
-        setFullName(profile.fullName);
-      }
+        // Load profile
+        const profileData = await api.getProfile();
+        const profile = profileData.profile;
 
-      setIsChecking(false);
+        if (!profile) {
+          console.error('Error loading profile: profile not found');
+          setIsChecking(false);
+          return;
+        }
+
+        // Map profile from backend format to frontend format
+        const mappedProfile = mapProfileFromDb(profile);
+
+        // Если профиль полный - перенаправляем на dashboard
+        if (isProfileComplete(mappedProfile)) {
+          let dashboardPath = "/dashboard/director";
+          const role = (mappedProfile as any).role;
+          if (role === "менеджер" || role === "manager") {
+            dashboardPath = "/dashboard/manager";
+          } else if (role === "сотрудник" || role === "employee") {
+            dashboardPath = "/dashboard/employee";
+          }
+          router.push(dashboardPath);
+          return;
+        }
+
+        // Если есть имя, заполняем его в поле
+        if (mappedProfile.fullName) {
+          setFullName(mappedProfile.fullName);
+        }
+
+        setIsChecking(false);
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        // If error, redirect to login
+        router.push("/login");
+      }
     }
 
     checkAuth();
@@ -80,10 +85,10 @@ export default function CompleteProfilePage() {
     setIsError(false);
 
     try {
-      const supabase = createBrowserSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
+      // Check if user is authenticated
+      const userData = await api.getUser();
+      
+      if (!userData.user) {
         router.push("/login");
         return;
       }
@@ -96,47 +101,43 @@ export default function CompleteProfilePage() {
         shortName: shortName,
       });
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', session.user.id);
+      // Update profile via API
+      const updateResult = await api.updateProfile(null, updateData);
 
-      if (updateError) {
-        console.error('Error updating profile:', updateError);
-        setError("Ошибка при сохранении имени. Попробуйте еще раз.");
-        setIsError(true);
-        setIsLoading(false);
-        setTimeout(() => setIsError(false), 3000);
-        return;
+      if (!updateResult.profile) {
+        throw new Error('Failed to update profile');
       }
 
-      // Проверяем, нужно ли перенаправлять на dashboard или остаться на странице
-      // Если у пользователя уже есть role и businessId, перенаправляем
-      const { data: profileRaw } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+      // Reload profile to check if it's complete
+      const profileData = await api.getProfile();
+      const profile = profileData.profile;
 
-      if (profileRaw) {
-        const profile = mapProfileFromDb(profileRaw);
-        if (isProfileComplete(profile)) {
+      if (profile) {
+        const mappedProfile = mapProfileFromDb(profile);
+        
+        // Если профиль полный - перенаправляем на dashboard
+        if (isProfileComplete(mappedProfile)) {
           let dashboardPath = "/dashboard/director";
-          if (profile.role === "менеджер") {
+          const role = (mappedProfile as any).role;
+          if (role === "менеджер" || role === "manager") {
             dashboardPath = "/dashboard/manager";
-          } else if (profile.role === "сотрудник") {
+          } else if (role === "сотрудник" || role === "employee") {
             dashboardPath = "/dashboard/employee";
           }
           router.push(dashboardPath);
+          setIsLoading(false);
           return;
         }
       }
 
-      // Если профиль все еще неполный, остаемся на странице
-      setError("Профиль сохранен, но требуется дополнительная информация. Обратитесь к администратору.");
-      setIsError(true);
+      // Если профиль все еще неполный, показываем успех
+      setError("");
+      setIsError(false);
       setIsLoading(false);
-      setTimeout(() => setIsError(false), 5000);
+      // Show success message temporarily
+      setTimeout(() => {
+        router.push("/dashboard/director");
+      }, 1000);
     } catch (err) {
       console.error("Profile completion error:", err);
       setError("Произошла ошибка. Попробуйте еще раз.");

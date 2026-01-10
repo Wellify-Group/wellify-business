@@ -10,21 +10,21 @@ function generateVerificationCode(): string {
 }
 
 // Админ-клиент Supabase
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
+// function getSupabaseAdmin() {
+//   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+//   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+//
+//   if (!supabaseUrl || !supabaseServiceRoleKey) {
+//     throw new Error('Missing Supabase environment variables');
+//   }
+//
+//   return createClient(supabaseUrl, supabaseServiceRoleKey, {
+//     auth: {
+//       autoRefreshToken: false,
+//       persistSession: false,
+//     },
+//   });
+// }
 
 /**
  * POST /api/auth/forgot-password
@@ -33,6 +33,70 @@ function getSupabaseAdmin() {
  * Body: { email: string }
  */
 export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { email } = body;
+
+    if (!email) {
+      return NextResponse.json(
+        { success: false, error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+
+    // Валидация email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
+    const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
+
+    if (!BACKEND_URL) {
+      return NextResponse.json(
+        { success: false, error: 'Backend URL is not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Use email-verification endpoint to send code for password reset
+    // Backend will send code via email
+    const response = await fetch(`${BACKEND_URL}/api/email-verification/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        email,
+        language: 'uk' // or get from request
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { success: false, error: data.error || 'Failed to send reset code' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'If an account with this email exists, a code has been sent.',
+    });
+  } catch (error: any) {
+    console.error('Send password reset code error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+  
+  /* OLD CODE - TEMPORARILY DISABLED FOR MIGRATION
   try {
     const body = await request.json();
     const { email } = body;
@@ -194,4 +258,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  */
 }

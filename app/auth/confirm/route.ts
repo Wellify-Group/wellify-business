@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+// import { createServerSupabaseClient } from "@/lib/supabase/server";
+// import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
+  // TODO: Replace with new API client
   const url = new URL(request.url);
+  return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+  
+  /* TEMPORARILY DISABLED FOR MIGRATION
   const code = url.searchParams.get("code");
   const token = url.searchParams.get("token");
   const tokenHash = url.searchParams.get("token_hash");
@@ -132,5 +136,6 @@ export async function GET(request: Request) {
   // Если нет ни code, ни token - это невалидный запрос
   console.log("[auth/confirm] No code or token provided, redirecting to invalid_or_expired");
   return NextResponse.redirect(new URL("/auth/email-confirmed?status=invalid_or_expired", url));
+  */
 }
 

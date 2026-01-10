@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useToastStore } from '@/components/ui/toast';
-import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+// Supabase removed - using new backend API
 
 export type Role = 'director' | 'manager' | 'employee';
 
@@ -834,8 +834,9 @@ export const useStore = create<AppState>()(
         
         // Sign out from Supabase
         try {
-          const supabase = createBrowserSupabaseClient();
-          await supabase.auth.signOut();
+          // Supabase removed - using new backend API
+          // Sign out handled by API client
+          localStorage.removeItem('auth_token');
         } catch (error) {
           console.error('Error signing out from Supabase:', error);
         }

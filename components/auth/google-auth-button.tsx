@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+// Google auth temporarily disabled - using new backend API
+// import { api } from "@/lib/api/client";
 
 interface GoogleAuthButtonProps {
   children?: React.ReactNode;
@@ -15,7 +16,9 @@ export function GoogleAuthButton({
   disabled 
 }: GoogleAuthButtonProps) {
   const handleClick = useCallback(async () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    // TODO: Replace with new API client
+    console.warn('Google OAuth temporarily disabled for migration');
+    /* const origin = typeof window !== "undefined" ? window.location.origin : "";
 
     const supabase = createBrowserSupabaseClient();
 
@@ -28,7 +31,7 @@ export function GoogleAuthButton({
 
     if (error) {
       console.error("Google OAuth error:", error);
-    }
+    } */
   }, []);
 
   return (

@@ -2,17 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+// Social auth temporarily disabled - using new backend API
+// import { api } from "@/lib/api/client";
 import { AlertCircle } from "lucide-react";
 
 export function SocialAuthButtons() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
+  // const supabase = createBrowserSupabaseClient();
 
   const handleGoogleSignIn = async () => {
-    setError("");
+    // TODO: Replace with new API client
+    setError("Google OAuth temporarily disabled for migration");
+    setLoading(false);
+    /* setError("");
     setLoading(true);
 
     try {
@@ -27,7 +31,7 @@ export function SocialAuthButtons() {
     } catch (err: any) {
       setError(err.message || "Ошибка при входе через Google");
       setLoading(false);
-    }
+    } */
   };
 
   // Google Auth Button - скрыто

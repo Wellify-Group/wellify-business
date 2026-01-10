@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
@@ -19,7 +19,6 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,49 +27,17 @@ export function AuthForm({ mode, onModeChange }: AuthFormProps) {
 
     try {
       if (mode === "signup") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-
-        if (signUpError) throw signUpError;
-
-        if (data.user) {
-          // Check if email confirmation is required
-          if (data.user.email_confirmed_at) {
-            router.push("/dashboard");
-          } else {
-            setError("Проверьте вашу почту для подтверждения регистрации");
-          }
-        }
+        // Registration handled by RegisterDirectorClient
+        setError("Используйте форму регистрации директора");
+        return;
       } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (signInError) {
-          // Улучшенная обработка ошибок
-          if (signInError.message?.toLowerCase().includes('email not confirmed') || 
-              signInError.message?.toLowerCase().includes('email_not_confirmed')) {
-            throw new Error('Email не подтвержден. Проверьте вашу почту и перейдите по ссылке для подтверждения.');
-          }
-          throw signInError;
+        const result = await api.signIn(email, password);
+        if ((result as any).error) {
+          throw new Error((result as any).error);
         }
-
-        if (data.user) {
-          // Проверяем роль и редиректим
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', data.user.id)
-            .maybeSingle();
-
-          const role = profile?.role || data.user.user_metadata?.role;
-
+        
+        if (result.user) {
+          const role = result.user.role || 'director';
           if (role === 'director') {
             router.push('/dashboard/director');
           } else if (role === 'manager') {

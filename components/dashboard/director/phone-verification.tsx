@@ -5,7 +5,7 @@ import { sendPhoneVerificationCode, verifyPhoneCode } from '@/app/dashboard/dire
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle, CheckCircle2, Phone } from 'lucide-react'
-import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { api } from '@/lib/api/client'
 
 export function PhoneVerification() {
   const [phone, setPhone] = useState('')
@@ -21,30 +21,30 @@ export function PhoneVerification() {
   useEffect(() => {
     const loadPhoneStatus = async () => {
       try {
-        const supabase = createBrowserSupabaseClient()
-        const { data: { session } } = await supabase.auth.getSession()
+        // Check if user is authenticated
+        const userData = await api.getUser();
         
-        if (!session?.user) return
+        if (!userData.user) {
+          return;
+        }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('phone, phone_verified')
-          .eq('id', session.user.id)
-          .maybeSingle()
+        // Load profile to get phone status
+        const profileData = await api.getProfile();
+        const profile = profileData.profile;
 
         if (profile) {
-          setPhoneVerified(profile.phone_verified === true)
-          setCurrentPhone(profile.phone || null)
+          setPhoneVerified(profile.phone_verified === true);
+          setCurrentPhone(profile.phone || null);
           if (profile.phone) {
-            setPhone(profile.phone)
+            setPhone(profile.phone);
           }
         }
       } catch (err) {
-        console.error('Error loading phone status:', err)
+        console.error('Error loading phone status:', err);
       }
     }
 
-    loadPhoneStatus()
+    loadPhoneStatus();
   }, [])
 
   const handleSendCode = async (e: React.FormEvent) => {

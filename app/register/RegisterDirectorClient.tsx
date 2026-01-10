@@ -473,18 +473,18 @@ export default function RegisterDirectorClient() {
 
       if (data.success) {
         // Email подтвержден, восстанавливаем сессию и переходим на шаг 3 (Telegram)
-        if (registeredUserEmail && personal.password) {
-          try {
+    if (registeredUserEmail && personal.password) {
+      try {
             const signInResult = await signIn(registeredUserEmail, personal.password);
             if (signInResult.session) {
-              console.log('[register] ✅ Session restored after email verification');
+        console.log('[register] ✅ Session restored after email verification');
             }
           } catch (error: any) {
-            console.error('[register] Error restoring session:', error);
+        console.error('[register] Error restoring session:', error);
             setStep2Error(t<string>("register_error_session_restore_failed"));
-            return;
-          }
-        }
+        return;
+      }
+    }
     
         setStep(3);
         setMaxStepReached(3);

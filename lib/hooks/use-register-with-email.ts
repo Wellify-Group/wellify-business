@@ -6,7 +6,7 @@ import { FormEvent, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 
 
 
@@ -14,7 +14,7 @@ export function useRegisterWithEmail() {
 
   const router = useRouter();
 
-  const supabase = createBrowserSupabaseClient();
+  // const supabase = createBrowserSupabaseClient();
 
 
 
@@ -54,7 +54,10 @@ export function useRegisterWithEmail() {
 
 
 
-    const { error } = await supabase.auth.signUp({
+    // TODO: Replace with new API client
+    const result = await api.signUp(email, password);
+    const error = (result as any).error;
+    /* const { error } = await supabase.auth.signUp({
 
       email,
 
@@ -68,7 +71,7 @@ export function useRegisterWithEmail() {
 
       },
 
-    });
+    }); */
 
 
 

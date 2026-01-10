@@ -159,7 +159,7 @@ export async function getAndMarkUnreadMessages(
   }
 
   // Mark messages as read
-  const messageIds = messages.map((m) => m.id);
+  const messageIds = messages.map((m: any) => m.id);
   const { error: updateError } = await supabase
     .from("support_messages")
     .update({ is_read: true })

@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create Stripe customer
-    let customerId: string;
+    let customerId: string | undefined;
 
     // Check if user already has a customer ID через backend API
     const subscriptionResponse = await fetch(`${API_URL}/api/subscriptions`, {

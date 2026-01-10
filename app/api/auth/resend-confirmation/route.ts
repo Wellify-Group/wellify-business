@@ -53,15 +53,15 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       if (response.status === 404) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "User not found",
-            errorCode: "USER_NOT_FOUND",
-          },
-          { status: 404 }
-        );
-      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: "User not found",
+          errorCode: "USER_NOT_FOUND",
+        },
+        { status: 404 }
+      );
+    }
 
       return NextResponse.json(
         {

@@ -1,91 +1,56 @@
-// app/api/auth/check-email-exists/route.ts
+/**
+ * GET /api/auth/check-email-exists
+ * Proxy route to backend API for checking if email exists
+ */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-/**
- * Проверяет, существует ли email в базе данных (auth.users)
- * Используется перед регистрацией, чтобы предложить пользователю войти вместо регистрации
- * 
- * Возвращает:
- * - exists: true - если email уже зарегистрирован
- * - exists: false - если email свободен для регистрации
- */
-export async function POST(request: NextRequest) {
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
+
+export async function GET(req: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { searchParams } = new URL(req.url);
+    const email = searchParams.get('email');
 
-    if (!email || typeof email !== "string") {
+    if (!email) {
       return NextResponse.json(
-        { 
-          success: false, 
-          exists: false, 
-          message: "Email is required" 
-        },
+        { error: 'Email parameter is required' },
         { status: 400 }
       );
     }
 
-    const supabaseAdmin = createAdminSupabaseClient();
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Проверяем все email в auth.users через admin API
-    // Проходимся по всем пользователям и анализируем их email
-    const { data: usersList, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-
-    if (listError) {
-      console.error('[check-email-exists] Error listing users', listError);
+    if (!BACKEND_URL) {
       return NextResponse.json(
-        {
-          success: false,
-          exists: false,
-          message: "Failed to check email existence",
-        },
+        { error: 'Backend URL is not configured' },
         { status: 500 }
       );
     }
 
-    // Ищем пользователя с таким email (регистронезависимый поиск)
-    const existingUser = usersList?.users?.find(
-      (u) => u.email && u.email.toLowerCase().trim() === normalizedEmail
-    );
+    // Call backend API
+    const response = await fetch(`${BACKEND_URL}/api/auth/check-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
 
-    if (existingUser) {
-      console.log('[check-email-exists] Email already exists', {
-        email: normalizedEmail,
-        userId: existingUser.id,
-      });
-      
-      return NextResponse.json({
-        success: true,
-        exists: true,
-        message: "Email already registered",
-      });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(data, { status: response.status });
     }
 
-    // Email не найден - можно регистрироваться
-    console.log('[check-email-exists] Email is available', {
-      email: normalizedEmail,
-    });
-
-    return NextResponse.json({
-      success: true,
-      exists: false,
-      message: "Email is available",
-    });
-  } catch (err: any) {
-    console.error('[check-email-exists] unexpected error', err);
+    // Return exists status
+    return NextResponse.json({ exists: data.exists || false });
+  } catch (error: any) {
+    console.error('Check email exists error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        exists: false,
-        message: err?.message ?? 'Internal server error',
-      },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
 }
-

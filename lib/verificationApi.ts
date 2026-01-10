@@ -2,7 +2,7 @@
  * Клиент для работы с Render API для верификации email и телефона
  */
 
-import { createBrowserSupabaseClient } from './supabase/client';
+// import { createBrowserSupabaseClient } from './supabase/client';
 
 const RENDER_API_URL = process.env.NEXT_PUBLIC_RENDER_API_URL || process.env.RENDER_API_URL || '';
 
@@ -16,14 +16,16 @@ interface VerificationResponse {
  * Получает access_token из текущей Supabase сессии
  */
 async function getAccessToken(): Promise<string> {
-  const supabase = createBrowserSupabaseClient();
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  if (error || !session?.access_token) {
-    throw new Error('Не удалось получить токен доступа. Пожалуйста, войдите в систему.');
-  }
-  
-  return session.access_token;
+  // TODO: Replace with new API client
+  throw new Error('Temporarily disabled for migration');
+  // const supabase = createBrowserSupabaseClient();
+  // const { data: { session }, error } = await supabase.auth.getSession();
+  // 
+  // if (error || !session?.access_token) {
+  //   throw new Error('Не удалось получить токен доступа. Пожалуйста, войдите в систему.');
+  // }
+  // 
+  // return session.access_token;
 }
 
 /**

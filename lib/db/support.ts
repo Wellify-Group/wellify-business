@@ -15,7 +15,9 @@ export interface SupportMessage {
  * Returns messages ordered by creation time ascending
  */
 export async function getSupportMessages(cid: string): Promise<SupportMessage[]> {
-  const supabase = createAdminSupabaseClient();
+  // TODO: Replace with new API client
+  throw new Error('Temporarily disabled for migration');
+  /* const supabase = createAdminSupabaseClient();
   
   const { data, error } = await supabase
     .from("support_messages")
@@ -34,14 +36,16 @@ export async function getSupportMessages(cid: string): Promise<SupportMessage[]>
     author: (row.sender === "client" ? "user" : "support") as SupportAuthor,
     text: row.text ?? "",
     createdAt: row.created_at,
-  }));
+  })); */
 }
 
 /**
  * Adds a new support message to the database
  */
 export async function addSupportMessage(msg: SupportMessage): Promise<void> {
-  const supabase = createAdminSupabaseClient();
+  // TODO: Replace with new API client
+  throw new Error('Temporarily disabled for migration');
+  /* const supabase = createAdminSupabaseClient();
   
   // Convert author: "user" -> sender: "client", author: "support" -> sender: "support"
   const sender = msg.author === "user" ? "client" : "support";
@@ -57,6 +61,6 @@ export async function addSupportMessage(msg: SupportMessage): Promise<void> {
   if (error) {
     console.error("[addSupportMessage] error", error);
     throw error;
-  }
+  } */
 }
 

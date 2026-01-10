@@ -71,22 +71,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       // Затем пытаемся загрузить из БД (если пользователь авторизован)
       const loadLanguageFromDB = async () => {
         try {
-          const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
-          const supabase = createBrowserSupabaseClient();
-          const { data: { session } } = await supabase.auth.getSession();
+          // Используем новый backend API
+          const response = await fetch('/api/auth/load-profile', {
+            credentials: 'include',
+          });
           
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("language")
-              .eq("id", session.user.id)
-              .maybeSingle();
-            
-            if (profile?.language) {
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user?.language) {
               // Проверяем, что язык из БД валиден
-              if (isValidLanguage(profile.language)) {
-                setLanguageState(profile.language);
-                window.localStorage.setItem("wellify_locale", profile.language);
+              if (isValidLanguage(data.user.language)) {
+                setLanguageState(data.user.language);
+                window.localStorage.setItem("wellify_locale", data.user.language);
                 return;
               }
             }

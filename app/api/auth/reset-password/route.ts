@@ -72,6 +72,116 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
+
+    if (!BACKEND_URL) {
+      return NextResponse.json(
+        { success: false, error: "Backend URL is not configured" },
+        { status: 500 }
+      );
+    }
+
+    // First verify the code
+    const verifyResponse = await fetch(`${BACKEND_URL}/api/email-verification/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, code }),
+    });
+
+    if (!verifyResponse.ok) {
+      const verifyData = await verifyResponse.json();
+      return NextResponse.json(
+        { success: false, error: verifyData.error || "Invalid or expired code" },
+        { status: verifyResponse.status }
+      );
+    }
+
+    // Code is verified, now get user and update password
+    // We need to get userId from the verification response or query it
+    // For now, we'll need to add a reset-password-by-code endpoint to backend
+    // Or we can call check-email to get user info, then update password
+    
+    // Check user exists
+    const checkResponse = await fetch(`${BACKEND_URL}/api/auth/check-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!checkResponse.ok) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // TODO: Backend needs a reset-password-by-code endpoint
+    // For now, we'll need to add this endpoint to backend
+    // OR use forgot-password to get token, then reset-password with token
+    // But that's not ideal with code flow
+    
+    // Temporary: Use a workaround - we verified the code, now we need to reset password
+    // Backend should have: POST /api/auth/reset-password-by-code
+    // For now, return error saying we need to implement this in backend
+    
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Password reset by code not yet implemented in backend. Please use token-based reset.",
+      },
+      { status: 501 }
+    );
+  } catch (error: any) {
+    console.error("[reset-password] Unexpected error", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: error?.message || "Internal server error",
+      },
+      { status: 500 }
+    );
+  }
+  
+  /* OLD CODE - TEMPORARILY DISABLED FOR MIGRATION
+  try {
+    const body = await request.json();
+    const { email, password, code } = body;
+
+    if (!email || !password || !code) {
+      return NextResponse.json(
+        { success: false, error: "Email, password and code are required" },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json(
+        { success: false, error: "Пароль должен содержать минимум 8 символов" },
+        { status: 400 }
+      );
+    }
+
+    // Валидация email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid email format" },
+        { status: 400 }
+      );
+    }
+
+    // Валидация кода (6 цифр)
+    if (!/^\d{6}$/.test(code)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid code format. Code must be 6 digits" },
+        { status: 400 }
+      );
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -170,5 +280,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  */
 }
 

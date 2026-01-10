@@ -5,14 +5,14 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { api } from "@/lib/api/client";
 import { useLanguage } from "@/components/language-provider";
 
 export function ResetPasswordClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { t } = useLanguage();
-  const [supabase] = useState(() => createBrowserSupabaseClient());
+  // const [supabase] = useState(() => createBrowserSupabaseClient());
   
   // Получаем email и code из query параметров
   const email = searchParams.get("email");

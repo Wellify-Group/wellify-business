@@ -27,9 +27,9 @@ async function apiRequest<T>(
   const url = `${API_URL}${endpoint}`;
   
   const token = getToken();
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
 
   if (token) {
@@ -256,7 +256,7 @@ export const api = {
    * Отправить код верификации телефона
    */
   async sendPhoneVerificationCode(phone: string, action: string = 'signup') {
-    return apiRequest<{ success: boolean }>('/api/sms/send-code', {
+    return apiRequest<{ success: boolean }>('/api/auth/phone/send-code', {
       method: 'POST',
       body: JSON.stringify({ phone, action }),
     });
@@ -266,7 +266,7 @@ export const api = {
    * Верифицировать код телефона
    */
   async verifyPhoneCode(phone: string, code: string) {
-    return apiRequest<{ success: boolean }>('/api/sms/verify-code', {
+    return apiRequest<{ success: boolean }>('/api/auth/phone/verify-code', {
       method: 'POST',
       body: JSON.stringify({ phone, code }),
     });

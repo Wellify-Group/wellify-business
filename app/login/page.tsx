@@ -118,13 +118,15 @@ export default function LoginPage() {
         const profile = await api.getProfile();
         
         // Если телефон не подтверждён - редирект на шаг 3 регистрации
-        if (profile?.phone_verified !== true) {
+        // TODO: Fix type after migration
+        if ((profile as any)?.phone_verified !== true) {
           router.replace("/register?step=3");
           return;
         }
 
         // Всё ок - редирект в дашборд в зависимости от роли
-        const role = profile.role || user.role || "director";
+        // TODO: Fix type after migration
+        const role = (profile as any)?.role || (user as any)?.role || "director";
         if (role === "director") {
           router.replace("/dashboard/director");
         } else if (role === "manager") {
