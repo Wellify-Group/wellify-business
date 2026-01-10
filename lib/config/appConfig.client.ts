@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') {
   
   if (missing.length > 0) {
     console.error('❌ Отсутствуют обязательные переменные окружения:', missing.join(', '));
-    console.error('Убедитесь, что переменные установлены в Cloudflare и deployment пересобран.');
+    console.error('Убедитесь, что переменные установлены в Vercel Dashboard и deployment пересобран.');
   }
 }
 
@@ -31,7 +31,7 @@ export function getAppConfig() {
     appUrl: process.env.NEXT_PUBLIC_APP_URL || '',
     apiUrl: process.env.NEXT_PUBLIC_API_URL || '',
     telegramBotUsername: process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '',
-    // Optional: can be separated by environment in Cloudflare via *_MAIN / *_DEV
+    // Optional: can be separated by environment in Vercel via *_MAIN / *_DEV
     telegramApiUrl:
       process.env.NEXT_PUBLIC_TELEGRAM_API_URL_MAIN ||
       process.env.NEXT_PUBLIC_TELEGRAM_API_URL_DEV ||

@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { MailerService } from '@/lib/application/report/MailerService';
 
 export const runtime = 'nodejs';
 

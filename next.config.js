@@ -21,13 +21,8 @@ const nextConfig = {
     // Упрощаем CSP для SVG, чтобы не блокировать статику
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  // Убеждаемся, что public директория правильно обслуживается
-  publicRuntimeConfig: {
-    logoPath: '/logo.svg',
-  },
-  // !!! КРИТИЧНОЕ ИСПРАВЛЕНИЕ: ЭКСПОРТ ПУБЛИЧНЫХ ПЕРЕМЕННЫХ !!!
-  // Явно указываем NEXT_PUBLIC_* переменные для встраивания в клиентский bundle
-  // Это гарантирует, что переменные будут доступны в браузере
+  // Экспорт публичных переменных окружения для Vercel
+  // NEXT_PUBLIC_* переменные автоматически встраиваются в клиентский bundle
   env: {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
