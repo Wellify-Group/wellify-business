@@ -31,15 +31,22 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+      if (!API_URL) {
+        setError('API URL не настроен');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const res = await fetch(`${API_URL}/api/email-verification/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, language: 'uk' }),
       });
 
       const data = await res.json();
 
-      if (res.ok && data.success) {
+      if (res.ok) {
         setCodeSent(true);
         setCode(['', '', '', '', '', '']);
         setError(null);
@@ -64,15 +71,22 @@ export default function ForgotPasswordPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+      if (!API_URL) {
+        setError('API URL не настроен');
+        setIsResending(false);
+        return;
+      }
+      
+      const res = await fetch(`${API_URL}/api/email-verification/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, language: 'uk' }),
       });
 
       const data = await res.json();
 
-      if (res.ok && data.success) {
+      if (res.ok) {
         setCode(['', '', '', '', '', '']);
         setError(null);
         setTimeout(() => {
@@ -232,7 +246,14 @@ export default function ForgotPasswordPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/verify-password-reset-code', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+      if (!API_URL) {
+        setError('API URL не настроен');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/api/email-verification/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

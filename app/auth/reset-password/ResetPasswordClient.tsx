@@ -37,7 +37,15 @@ export function ResetPasswordClient() {
       }
 
       try {
-        const response = await fetch('/api/auth/verify-password-reset-code', {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+        if (!API_URL) {
+          setIsValid(false);
+          setError('API URL не настроен');
+          setIsVerifying(false);
+          return;
+        }
+        
+        const response = await fetch(`${API_URL}/api/email-verification/verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -125,8 +133,23 @@ export function ResetPasswordClient() {
     setIsLoading(true);
 
     try {
-      // Используем API endpoint для сброса пароля
-      const res = await fetch("/api/auth/reset-password", {
+      // Сначала нужно получить токен из verified code, затем сбросить пароль
+      // Пока используем упрощенный вариант - нужно будет обновить backend для поддержки code-based reset
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+      if (!API_URL) {
+        setError('API URL не настроен');
+        setIsLoading(false);
+        return;
+      }
+      
+      // TODO: Backend должен иметь endpoint для reset-password по коду
+      // Временно возвращаем ошибку
+      setError('Сброс пароля по коду еще не реализован в backend. Используйте токен из email.');
+      setIsLoading(false);
+      return;
+      
+      /* Временный код - раскомментировать когда backend будет готов
+      const res = await fetch(`${API_URL}/api/auth/reset-password-by-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email, password, code }),
