@@ -110,115 +110,12 @@ CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_i
 CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
 ```
 
-#### Затем выполните `schema-additional.sql`:
+#### Затем выполните `schema-additional.sql` (если нужно):
 
-```sql
--- Дополнительные таблицы для Wellify Business
+**ВАЖНО:** В файле `schema.sql` уже включены все таблицы (businesses, staff, locations, shifts, support_sessions, support_messages). 
+Файл `schema-additional.sql` может содержать дополнительные поля или обновления. Выполните его только если `schema.sql` не содержит все нужные таблицы.
 
--- Таблица бизнесов
-CREATE TABLE IF NOT EXISTS businesses (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  owner_profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  название TEXT NOT NULL,
-  код_компании TEXT UNIQUE NOT NULL,
-  тип_бизнеса TEXT,
-  адрес TEXT,
-  телефон TEXT,
-  email TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Таблица сотрудников (staff)
-CREATE TABLE IF NOT EXISTS staff (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
-  должность TEXT,
-  статус TEXT DEFAULT 'active' CHECK (статус IN ('active', 'inactive', 'suspended')),
-  hired_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Таблица подписок пользователей
-CREATE TABLE IF NOT EXISTS user_subscriptions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  stripe_customer_id TEXT UNIQUE,
-  stripe_subscription_id TEXT UNIQUE,
-  status TEXT NOT NULL CHECK (status IN ('active', 'canceled', 'past_due', 'unpaid', 'trialing')),
-  plan TEXT,
-  current_period_start TIMESTAMPTZ,
-  current_period_end TIMESTAMPTZ,
-  cancel_at_period_end BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Таблица локаций
-CREATE TABLE IF NOT EXISTS locations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
-  название TEXT NOT NULL,
-  адрес TEXT,
-  город TEXT,
-  страна TEXT,
-  телефон TEXT,
-  email TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Таблица смен (shifts)
-CREATE TABLE IF NOT EXISTS shifts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
-  location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
-  staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
-  дата_начала TIMESTAMPTZ NOT NULL,
-  дата_окончания TIMESTAMPTZ,
-  статус TEXT DEFAULT 'scheduled' CHECK (статус IN ('scheduled', 'in_progress', 'completed', 'cancelled')),
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Таблица сессий поддержки
-CREATE TABLE IF NOT EXISTS support_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  cid TEXT UNIQUE NOT NULL,
-  topic_id INTEGER,
-  user_name TEXT,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  email TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Таблица сообщений поддержки
-CREATE TABLE IF NOT EXISTS support_messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  cid TEXT NOT NULL,
-  author TEXT NOT NULL CHECK (author IN ('user', 'support')),
-  text TEXT NOT NULL,
-  is_read BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-
--- Индексы для дополнительных таблиц
-CREATE INDEX IF NOT EXISTS idx_businesses_owner_profile_id ON businesses(owner_profile_id);
-CREATE INDEX IF NOT EXISTS idx_businesses_код_компании ON businesses(код_компании);
-CREATE INDEX IF NOT EXISTS idx_staff_profile_id ON staff(profile_id);
-CREATE INDEX IF NOT EXISTS idx_staff_business_id ON staff(business_id);
-CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_subscriptions_stripe_customer_id ON user_subscriptions(stripe_customer_id);
-CREATE INDEX IF NOT EXISTS idx_user_subscriptions_stripe_subscription_id ON user_subscriptions(stripe_subscription_id);
-CREATE INDEX IF NOT EXISTS idx_locations_business_id ON locations(business_id);
-CREATE INDEX IF NOT EXISTS idx_shifts_business_id ON shifts(business_id);
-CREATE INDEX IF NOT EXISTS idx_shifts_location_id ON shifts(location_id);
-CREATE INDEX IF NOT EXISTS idx_shifts_staff_id ON shifts(staff_id);
-CREATE INDEX IF NOT EXISTS idx_support_sessions_cid ON support_sessions(cid);
-CREATE INDEX IF NOT EXISTS idx_support_messages_cid ON support_messages(cid);
-```
+Проверьте сначала, что выполнение `schema.sql` прошло успешно, затем при необходимости выполните `schema-additional.sql`.
 
 ### Вариант B: Через psql CLI
 
