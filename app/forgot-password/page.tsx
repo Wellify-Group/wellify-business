@@ -149,8 +149,11 @@ export default function ForgotPasswordPage() {
             const data = await response.json();
 
             if (data.success) {
-              // Переходим на страницу сброса пароля с email
-              router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${codeString}`);
+              // TODO: Страница сброса пароля временно удалена
+              setCodeSent(false);
+              setError('Код верифицирован. Функция сброса пароля будет добавлена позже.');
+              setIsSubmitting(false);
+              return;
             } else {
               // Всегда используем локализованное сообщение
               setError(t<string>("register_error_code_invalid"));
@@ -213,8 +216,11 @@ export default function ForgotPasswordPage() {
               const data = await response.json();
 
               if (data.success) {
-                // Переходим на страницу сброса пароля с email
-                router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${pastedData}`);
+                // TODO: Страница сброса пароля временно удалена
+                setCodeSent(false);
+                setError('Код верифицирован. Функция сброса пароля будет добавлена позже.');
+                setIsSubmitting(false);
+                return;
               } else {
                 // Всегда используем локализованное сообщение
                 setError(t<string>("register_error_code_invalid"));
@@ -267,8 +273,11 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Переходим на страницу сброса пароля с email
-        router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${codeString}`);
+        // TODO: Сброс пароля временно недоступен
+        // Переход на страницу сброса пароля удален, будет добавлен позже
+        setCodeSent(false);
+        setError('Код верифицирован. Функция сброса пароля будет добавлена в ближайшее время.');
+        return;
       } else {
         // Всегда используем локализованное сообщение
         setError(t<string>("register_error_code_invalid"));
