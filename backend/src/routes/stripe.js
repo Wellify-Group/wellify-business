@@ -24,7 +24,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 router.post('/webhook-handler', express.json(), async (req, res) => {
   try {
     // Next.js route уже проверил подпись и передал событие
-    const event = req.body as Stripe.Event;
+    const event = req.body;
 
     if (!event || !event.type) {
       return res.status(400).json({ error: 'Invalid event data' });
