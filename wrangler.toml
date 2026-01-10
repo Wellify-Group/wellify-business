@@ -1,0 +1,6 @@
+name = "wellify-business"
+compatibility_date = "2024-01-01"
+
+# Cloudflare Pages configuration
+# Note: For Pages deploy, use .cfignore file instead of exclude patterns here
+# The .cfignore file will automatically exclude specified patterns during deployment
