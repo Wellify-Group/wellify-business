@@ -1,6 +1,7 @@
 'use server'
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+// TODO: This file is deprecated - use api.sendPhoneVerificationCode and api.verifyPhoneCode from @/lib/api/client instead
+// import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { serverConfig } from '@/lib/config/serverConfig.server'
 
 export interface SendPhoneVerificationCodeResult {
@@ -21,17 +22,16 @@ export async function sendPhoneVerificationCode(
   formData: FormData
 ): Promise<SendPhoneVerificationCodeResult> {
   try {
-    const supabase = await createServerSupabaseClient()
-    
-    // Проверяем сессию
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return {
-        success: false,
-        error: 'Необходима авторизация'
-      }
-    }
+    // TODO: Migrate to new backend API - check auth via JWT token
+    // For now, skip session check and rely on API route authentication
+    // const supabase = await createServerSupabaseClient()
+    // const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    // if (sessionError || !session) {
+    //   return {
+    //     success: false,
+    //     error: 'Необходима авторизация'
+    //   }
+    // }
 
     const phone = formData.get('phone') as string
 
@@ -82,17 +82,16 @@ export async function verifyPhoneCode(
   formData: FormData
 ): Promise<VerifyPhoneCodeResult> {
   try {
-    const supabase = await createServerSupabaseClient()
-    
-    // Проверяем сессию
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return {
-        success: false,
-        error: 'Необходима авторизация'
-      }
-    }
+    // TODO: Migrate to new backend API - check auth via JWT token
+    // For now, skip session check and rely on API route authentication
+    // const supabase = await createServerSupabaseClient()
+    // const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    // if (sessionError || !session) {
+    //   return {
+    //     success: false,
+    //     error: 'Необходима авторизация'
+    //   }
+    // }
 
     const phone = formData.get('phone') as string
     const code = formData.get('code') as string
@@ -125,31 +124,8 @@ export async function verifyPhoneCode(
     const data = await res.json()
 
     if (res.ok && data.success) {
-      // Код верный - обновляем профиль
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          phone: phone.trim(),
-          phone_verified: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', session.user.id)
-
-      if (updateError) {
-        console.error('[phone-verification-actions] Error updating profile:', updateError)
-        // Не возвращаем ошибку, так как телефон уже подтверждён через Twilio
-      }
-
-      // Опционально: обновляем телефон в user_metadata
-      try {
-        await supabase.auth.updateUser({
-          data: {
-            phone: phone.trim(),
-          },
-        })
-      } catch (metadataError) {
-        console.warn('[phone-verification-actions] Failed to update user metadata:', metadataError)
-      }
+      // TODO: Update profile via backend API after code verification
+      // Use api.updateProfile from @/lib/api/client to update phone_verified
 
       return {
         success: true

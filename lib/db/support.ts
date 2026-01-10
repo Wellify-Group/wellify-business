@@ -1,4 +1,5 @@
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+// TODO: This file needs to be migrated to use backend API
+// import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type SupportAuthor = "user" | "support";
 

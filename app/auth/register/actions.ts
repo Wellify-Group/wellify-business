@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+// TODO: This file is deprecated - use api.registerDirector from @/lib/api/client instead
+// import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { serverConfig } from '@/lib/config/serverConfig.server'
 
 const registerSchema = z.object({
@@ -46,55 +47,8 @@ export async function registerDirector(formData: FormData) {
     const { firstName, lastName, middleName, birthDate, email, password, phone } =
       parsed.data
 
-    const supabase = await createServerSupabaseClient()
-
-    const { serverConfig } = await import('@/lib/config/serverConfig.server');
-    const redirectBase = serverConfig.appBaseUrl;
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${redirectBase}/auth/confirm`,
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          middle_name: middleName,
-          birth_date: birthDate,
-          phone,
-          role: 'director'
-        }
-      }
-    })
-
-    if (error) {
-      console.error('Supabase signUp error:', error)
-      return {
-        success: false as const,
-        error:
-          error.message ||
-          'Не удалось отправить письмо. Попробуйте ещё раз или позже.'
-      }
-    }
-
-    // Возвращаем userId для polling на клиенте
-    const userId = data.user?.id;
-
-    if (!userId) {
-      console.error('registerDirector: signUp succeeded but no user.id returned')
-      return {
-        success: false as const,
-        error: 'Не удалось создать пользователя. Попробуйте ещё раз.'
-      }
-    }
-
-    // Сам факт вызова auth.signUp с включённым шаблоном Confirm sign up
-    // в Supabase запускает отправку письма.
-    return {
-      success: true as const,
-      userId,
-      message: `Письмо с подтверждением отправлено на ${email}. Перейдите по ссылке в письме.`
-    }
+    // TODO: Migrate to new backend API
+    throw new Error('This server action is deprecated. Use api.registerDirector from @/lib/api/client instead.')
   } catch (err) {
     console.error('registerDirector unexpected error:', err)
     return {
@@ -111,9 +65,11 @@ export async function createDirectorProfile(payload: {
   birthDate: string
   email: string
 }) {
+  // TODO: Migrate to new backend API
+  throw new Error('This server action is deprecated. Use api.updateProfile from @/lib/api/client instead.');
+  
+  /* OLD CODE - REMOVED - all code commented out
   const supabase = await createServerSupabaseClient()
-
-  // Получаем текущего пользователя
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
   if (userError || !user) {
@@ -162,12 +118,15 @@ export async function createDirectorProfile(payload: {
   return {
     success: true as const,
   }
+  */ // END OLD CODE
 }
 
 export async function updateDirectorPhone(phone: string) {
+  // TODO: Migrate to new backend API
+  throw new Error('This server action is deprecated. Use api.updateProfile from @/lib/api/client instead.');
+  
+  /* OLD CODE - REMOVED
   const supabase = await createServerSupabaseClient()
-
-  // Получаем текущего пользователя
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
   if (userError || !user) {
@@ -195,4 +154,5 @@ export async function updateDirectorPhone(phone: string) {
   }
 
   return { success: true as const }
+  */ // END OLD CODE
 }

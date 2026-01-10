@@ -1,7 +1,8 @@
 // lib/db-support.ts
 // Database functions for support system using Supabase
 
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+// TODO: This file needs to be migrated to use backend API
+// import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export type SupportSession = {
   id: string;
@@ -31,8 +32,13 @@ export async function getOrCreateSession(params: {
   user_id?: string | null;
   email?: string | null;
 }): Promise<SupportSession> {
-  const supabase = createAdminSupabaseClient();
+  // TODO: Migrate to backend API
+  throw new Error('This function is deprecated and needs to be migrated to use backend API');
+  // const supabase = createAdminSupabaseClient();
 
+  /* OLD CODE - REMOVED
+  const supabase = createAdminSupabaseClient();
+  
   // Try to find existing session
   const { data: existing, error: findError } = await supabase
     .from("support_sessions")
@@ -62,6 +68,7 @@ export async function getOrCreateSession(params: {
   }
 
   return newSession as SupportSession;
+  */ // END OLD CODE
 }
 
 /**
@@ -71,8 +78,11 @@ export async function updateSessionTopicId(
   cid: string,
   topicId: number
 ): Promise<void> {
+  // TODO: Migrate to backend API
+  throw new Error('This function is deprecated and needs to be migrated to use backend API');
+  
+  /* OLD CODE - REMOVED
   const supabase = createAdminSupabaseClient();
-
   const { error } = await supabase
     .from("support_sessions")
     .update({ topic_id: topicId })
@@ -81,6 +91,7 @@ export async function updateSessionTopicId(
   if (error) {
     throw new Error(`Failed to update session topic_id: ${error.message}`);
   }
+  */ // END OLD CODE
 }
 
 /**
@@ -89,8 +100,11 @@ export async function updateSessionTopicId(
 export async function getSessionByTopicId(
   topicId: number
 ): Promise<SupportSession | null> {
+  // TODO: Migrate to backend API
+  throw new Error('This function is deprecated and needs to be migrated to use backend API');
+  
+  /* OLD CODE - REMOVED
   const supabase = createAdminSupabaseClient();
-
   const { data, error } = await supabase
     .from("support_sessions")
     .select("*")
@@ -102,6 +116,7 @@ export async function getSessionByTopicId(
   }
 
   return data as SupportSession;
+  */ // END OLD CODE
 }
 
 /**
@@ -112,8 +127,11 @@ export async function saveSupportMessage(params: {
   author: "user" | "support";
   text: string;
 }): Promise<SupportMessage> {
+  // TODO: Migrate to backend API
+  throw new Error('This function is deprecated and needs to be migrated to use backend API');
+  
+  /* OLD CODE - REMOVED
   const supabase = createAdminSupabaseClient();
-
   const { data, error } = await supabase
     .from("support_messages")
     .insert({
@@ -130,6 +148,7 @@ export async function saveSupportMessage(params: {
   }
 
   return data as SupportMessage;
+  */ // END OLD CODE
 }
 
 /**
@@ -139,6 +158,10 @@ export async function saveSupportMessage(params: {
 export async function getAndMarkUnreadMessages(
   cid: string
 ): Promise<SupportMessage[]> {
+  // TODO: Migrate to backend API
+  throw new Error('This function is deprecated and needs to be migrated to use backend API');
+  
+  /* OLD CODE - REMOVED
   const supabase = createAdminSupabaseClient();
 
   // Get unread support messages
@@ -171,5 +194,6 @@ export async function getAndMarkUnreadMessages(
   }
 
   return messages as SupportMessage[];
+  */ // END OLD CODE
 }
 
