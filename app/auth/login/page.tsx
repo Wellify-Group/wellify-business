@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { login } from './actions'
+import { api } from '@/lib/api/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle } from 'lucide-react'
@@ -19,15 +19,44 @@ export default function LoginPage() {
     setError(null)
     setIsLoading(true)
 
-    const formData = new FormData(e.currentTarget)
-    const result = await login(formData)
+    try {
+      const formData = new FormData(e.currentTarget)
+      const email = formData.get('email') as string
+      const password = formData.get('password') as string
 
-    setIsLoading(false)
+      if (!email || !password) {
+        setError('Заполните email и пароль')
+        setIsLoading(false)
+        return
+      }
 
-    if (!result.success) {
-      setError(result.error || 'Произошла ошибка при входе')
+      const result = await api.signIn(email, password)
+
+      if (!result.user) {
+        setError('Неверный email или пароль')
+        setIsLoading(false)
+        return
+      }
+
+      // Save token if provided
+      if (result.token) {
+        const { tokenStorage } = await import('@/lib/api/client')
+        tokenStorage.set(result.token)
+      }
+
+      // Redirect to dashboard based on role
+      const role = (result.user as any).role || 'director'
+      if (role === 'director') {
+        router.push('/dashboard/director')
+      } else if (role === 'manager') {
+        router.push('/dashboard/manager')
+      } else {
+        router.push('/dashboard/employee')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Произошла ошибка при входе')
+      setIsLoading(false)
     }
-    // Если успешно, redirect произойдет в server action
   }
 
   return (
