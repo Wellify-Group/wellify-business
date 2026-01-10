@@ -24,9 +24,17 @@
 4. **Откройте вкладку "Query" или "SQL Editor":**
    - Если вкладки нет, используйте "Shell" или подключитесь через внешний клиент
 
-5. **Выполните SQL скрипты по порядку:**
+5. **Выполните SQL скрипт:**
 
-#### Сначала выполните `schema.sql`:
+**САМЫЙ ПРОСТОЙ СПОСОБ:** Скопируйте весь файл `database-setup.sql` из корня проекта и выполните его.
+
+**ИЛИ выполните SQL по частям:**
+
+#### Скопируйте и выполните содержимое `database-setup.sql`:
+
+Этот файл содержит полный SQL скрипт для создания всех таблиц.
+
+**ИЛИ выполните SQL вручную:**
 
 ```sql
 -- PostgreSQL Schema для Wellify Business
@@ -108,14 +116,9 @@ CREATE INDEX IF NOT EXISTS idx_email_verifications_email ON email_verifications(
 CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);
 CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
+
+-- ПРОДОЛЖЕНИЕ SQL (все таблицы включены в database-setup.sql)...
 ```
-
-#### Затем выполните `schema-additional.sql` (если нужно):
-
-**ВАЖНО:** В файле `schema.sql` уже включены все таблицы (businesses, staff, locations, shifts, support_sessions, support_messages). 
-Файл `schema-additional.sql` может содержать дополнительные поля или обновления. Выполните его только если `schema.sql` не содержит все нужные таблицы.
-
-Проверьте сначала, что выполнение `schema.sql` прошло успешно, затем при необходимости выполните `schema-additional.sql`.
 
 ### Вариант B: Через psql CLI
 
