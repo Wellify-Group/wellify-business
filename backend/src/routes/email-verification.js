@@ -63,8 +63,29 @@ router.post('/send', async (req, res) => {
       await emailApi.sendVerification(email, code, language);
       logger.info('Verification code email sent', { email });
     } catch (emailError) {
-      logger.error('Failed to send verification email', emailError);
-      // Не блокируем ответ, код уже сохранён
+      logger.error('Failed to send verification email', {
+        error: emailError.message || emailError,
+        email,
+        code, // Логируем код для отладки (только в development)
+        stack: emailError.stack,
+      });
+      
+      // В development возвращаем код в ответе для отладки
+      if (process.env.NODE_ENV === 'development') {
+        return res.json({ 
+          success: true, 
+          message: 'Verification code saved (email sending failed)',
+          code: code, // Только для development!
+          error: emailError.message || 'Email sending failed'
+        });
+      }
+      
+      // В production не раскрываем детали ошибки
+      return res.json({ 
+        success: true, 
+        message: 'Verification code saved (email may not have been sent)',
+        warning: 'Email service may be unavailable'
+      });
     }
 
     res.json({ success: true, message: 'Verification code sent' });

@@ -13,6 +13,14 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
+// Логируем статус инициализации Resend
+if (!resend) {
+  logger.warn('⚠️  Resend API key not configured. Email sending will fail.');
+  logger.warn('   Set RESEND_API_KEY environment variable to enable email sending.');
+} else {
+  logger.info('✅ Resend API initialized');
+}
+
 // Экспортируем API для использования в других роутах
 export const api = {
   async sendVerification(email, code, language = 'uk') {
