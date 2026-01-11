@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проксируем на backend
-    const response = await fetch(`${API_URL}/api/auth/register`, {
+    // Проксируем на backend register-director endpoint
+    const response = await fetch(`${API_URL}/api/auth/register-director`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -47,21 +47,21 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         email: email.toLowerCase(),
         password,
-        first_name,
-        last_name,
-        middle_name,
-        full_name,
-        birth_date,
-        locale: locale || 'ru',
-        skip_email_verification: true, // Не отправляем письмо сразу
+        firstName: first_name,
+        lastName: last_name,
+        middleName: middle_name,
+        fullName: full_name,
+        birthDate: birth_date,
+        language: locale || 'ru',
       }),
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok || !data.success) {
       // Проверка на существующий email
-      if (response.status === 400 && data.error?.toLowerCase().includes('already')) {
+      if (response.status === 409 || data.errorCode === 'EMAIL_ALREADY_REGISTERED' || 
+          (response.status === 400 && data.error?.toLowerCase().includes('already'))) {
         return NextResponse.json(
           { 
             success: false, 
@@ -73,14 +73,16 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { success: false, error: data.error || 'Failed to create user' },
+        { success: false, error: data.error || 'Failed to create user', errorCode: data.errorCode },
         { status: response.status }
       );
     }
 
+    // Backend register-director возвращает { success: true, user: {...}, business: {...}, token }
     return NextResponse.json({
       success: true,
       user: data.user,
+      token: data.token, // Токен тоже возвращаем на случай если нужен
     });
   } catch (error: any) {
     console.error('Create user without email error:', error);
