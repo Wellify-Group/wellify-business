@@ -41,22 +41,13 @@ export async function POST(request: NextRequest) {
         console.log('[telegram/create-session] Request body length:', rawBody.length);
 
         // 2. Делаем прямой запрос к бэкенду Telegram-бота на Render
-        // Пробуем разные возможные пути эндпоинта
-        const possibleEndpoints = [
-            '/telegram/create-session',  // Ожидаемый путь
-            '/api/telegram/create-session',  // Альтернатива с /api
-            '/create-session',  // Без префикса
-            '/session/create',  // Альтернативный формат
-        ];
-        
-        // Пробуем первый путь (основной)
-        let telegramUrl = `${TELEGRAM_API_URL}${possibleEndpoints[0]}`;
+        // Используем /api/telegram/create-session (с префиксом /api, так как route зарегистрирован как app.use('/api/telegram', ...))
+        const telegramUrl = `${TELEGRAM_API_URL}/api/telegram/create-session`;
         console.log('[telegram/create-session] Full URL to fetch:', telegramUrl);
         console.log('[telegram/create-session] URL components:', {
             base: TELEGRAM_API_URL,
-            endpoint: possibleEndpoints[0],
-            full: telegramUrl,
-            alternativeEndpoints: possibleEndpoints.slice(1)
+            endpoint: '/api/telegram/create-session',
+            full: telegramUrl
         });
         
         console.log('[telegram/create-session] Starting fetch to Render...');

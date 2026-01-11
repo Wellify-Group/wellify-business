@@ -24,6 +24,7 @@ import businessesRoutes from './routes/businesses.js';
 import subscriptionsRoutes from './routes/subscriptions.js';
 import locationsRoutes from './routes/locations.js';
 import stripeRoutes from './routes/stripe.js';
+import telegramRoutes from './routes/telegram.js';
 
 dotenv.config();
 
@@ -119,6 +120,7 @@ app.use('/api/businesses', businessesRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/locations', locationsRoutes);
 app.use('/api/stripe', stripeRoutes);
+app.use('/api/telegram', telegramRoutes);
 
 // 404 handler
 app.use((req, res) => {
