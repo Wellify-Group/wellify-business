@@ -9,6 +9,7 @@ import {
   ReactNode,
 } from "react";
 import { DEFAULT_LANGUAGE, Language, TRANSLATIONS } from "@/lib/translations";
+import { getAuthToken } from "@/lib/api/client";
 
 interface LanguageContextValue {
   language: Language;
@@ -70,6 +71,16 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       
       // Затем пытаемся загрузить из БД (если пользователь авторизован)
       const loadLanguageFromDB = async () => {
+        // Проверяем наличие токена перед запросом
+        const token = getAuthToken();
+        if (!token) {
+          // Пользователь не авторизован - используем localStorage
+          if (isValidLanguage(stored)) {
+            setLanguageState(stored);
+          }
+          return;
+        }
+
         try {
           // Используем новый backend API
           const response = await fetch('/api/auth/load-profile', {
@@ -86,8 +97,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
                 return;
               }
             }
+          } else if (response.status === 401) {
+            // Пользователь не авторизован - это нормально, используем localStorage
+            if (isValidLanguage(stored)) {
+              setLanguageState(stored);
+            }
+            return;
           }
         } catch (error) {
+          // Только логируем реальные ошибки сети, не 401
           console.warn("[LanguageProvider] Failed to load language from DB:", error);
         }
         

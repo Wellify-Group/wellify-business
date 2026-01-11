@@ -2,7 +2,7 @@
 
 ## Для Cursor AI
 
-**Задача:** Сохранить существующий фронтенд (UI/UX), заменить всю инфраструктуру на Cloudflare + Render + PostgreSQL
+**Задача:** Сохранить существующий фронтенд (UI/UX), заменить всю инфраструктуру на Vercel + Render + PostgreSQL
 
 ---
 
@@ -18,7 +18,7 @@ wellify-business/
 │   ├── public/                     # Все ассеты как сейчас
 │   ├── styles/                     # Все стили как сейчас
 │   ├── .env.local                  # ИЗМЕНИТЬ (новые переменные)
-│   ├── next.config.js              # ИЗМЕНИТЬ (убрать Vercel)
+│   ├── next.config.js              # ИЗМЕНИТЬ (настроить для Vercel)
 │   └── package.json                # ИЗМЕНИТЬ (убрать Supabase)
 │
 ├── 📁 backend/                     # СОЗДАТЬ ЗАНОВО
@@ -50,8 +50,6 @@ wellify-business/
 │   ├── COMPLETE_DEPLOYMENT_GUIDE_FULL.md
 │   └── MIGRATION_GUIDE_CURSOR.md  # Этот файл
 │
-└── 📁 cloudflare/                  # СОЗДАТЬ (если будем использовать Workers)
-    └── wrangler.toml
 ```
 
 ---
@@ -418,28 +416,33 @@ npm uninstall @supabase/supabase-js @supabase/auth-helpers-nextjs
 
 ---
 
-### ШАГ 6: DEPLOY FRONTEND НА CLOUDFLARE (15 минут)
+### ШАГ 6: DEPLOY FRONTEND НА VERCEL (15 минут)
 
 **6.1. Следуй PART 2 из COMPLETE_DEPLOYMENT_GUIDE_FULL.md**
 
 ```bash
-# Установить Wrangler
-npm install -g wrangler
+# Установить Vercel CLI
+npm install -g vercel
 
 # Логин
-npx wrangler login
-
-# Build
-cd frontend
-npm run build
+vercel login
 
 # Deploy
-npx wrangler pages deploy .next --project-name=wellify-business
+cd frontend
+vercel --prod
 ```
 
 **6.2. Получи URL фронтенда**
 
-Например: `https://wellify-business.pages.dev`
+Например: `https://wellify-business.vercel.app`
+
+**6.3. Добавь Environment Variables в Vercel Dashboard**
+
+1. Перейди в Vercel Dashboard → Settings → Environment Variables
+2. Добавь:
+   - `NEXT_PUBLIC_API_URL=https://wellify-business-backend.onrender.com`
+   - `NEXT_PUBLIC_APP_URL=https://wellify-business.vercel.app`
+3. Пересобери проект: Deployments → ⋮ → Redeploy
 
 ---
 
@@ -480,7 +483,7 @@ curl -X POST https://wellify-business-backend.onrender.com/api/auth/login \
 ```
 
 **8.3. Тест фронтенда**
-- Открой `https://wellify-business.pages.dev`
+- Открой `https://wellify-business.vercel.app`
 - Попробуй зарегистрироваться
 - Попробуй войти
 - Проверь все страницы
@@ -533,7 +536,7 @@ curl -X POST https://wellify-business-backend.onrender.com/api/auth/login \
 - [ ] Обновлены переменные окружения
 - [ ] Удалены Supabase зависимости
 - [ ] Frontend собран без ошибок
-- [ ] Frontend задеплоен на Cloudflare Pages
+- [ ] Frontend задеплоен на Vercel
 - [ ] Фронт открывается в браузере
 
 **Интеграции:**
@@ -588,7 +591,7 @@ curl -X POST https://wellify-business-backend.onrender.com/api/auth/login \
 - Создание backend: 30 мин
 - Deploy backend: 20 мин
 - Обновление frontend: 15 мин
-- Deploy frontend: 15 мин
+- Deploy frontend: 10 мин
 - Подключение интеграций: 30 мин
 - Тестирование: 20 мин
 
@@ -600,13 +603,13 @@ curl -X POST https://wellify-business-backend.onrender.com/api/auth/login \
 
 После миграции у тебя должно быть:
 
-- ✅ Frontend на Cloudflare Pages с тем же UI
+- ✅ Frontend на Vercel с тем же UI
 - ✅ Backend на Render.com с PostgreSQL
 - ✅ Все API методы работают
 - ✅ Email через Resend
 - ✅ Платежи через Stripe
 - ✅ Telegram bot
-- ✅ Никаких следов Supabase или Vercel
+- ✅ Никаких следов Supabase или Cloudflare Pages
 
 **Поздравляю! Миграция завершена! 🎉**
 

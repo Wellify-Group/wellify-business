@@ -1,7 +1,7 @@
 # PART 1
 ## Overview, Prerequisites, and Service Accounts Setup
 
-Version: 4.0 (Full Service Integration)
+Version: 5.0 (Updated for Vercel + Render + PostgreSQL)
 Target: AI assistants (Cursor, Claude, etc.)
 Last Updated: 2025-01-09
 
@@ -10,7 +10,7 @@ Last Updated: 2025-01-09
 ## TABLE OF CONTENTS
 
 - PART 1: Overview, Prerequisites, Service Accounts (this file)
-- PART 2: GitHub and Cloudflare Setup
+- PART 2: GitHub Repository and Vercel Frontend Setup
 - PART 3: Render.com Backend Deployment
 - PART 4: Email (Resend) and Payments (Stripe) Integration
 - PART 5: Telegram Bot and SMS (Twilio) Integration
@@ -27,7 +27,7 @@ This guide provides AI assistant with complete instructions to:
 
 1. Create and configure ALL required service accounts
 2. Set up code repository on GitHub
-3. Deploy frontend to Cloudflare Pages with CDN
+3. Deploy frontend to Vercel with CDN
 4. Deploy backend to Render.com with PostgreSQL
 5. Configure email sending via Resend
 6. Set up payment processing via Stripe
@@ -41,9 +41,9 @@ This guide provides AI assistant with complete instructions to:
 
 User only needs to:
 
-1. Confirm browser authorizations (6 times total):
+1. Confirm browser authorizations (5 times total):
    - GitHub CLI
-   - Cloudflare (Wrangler)
+   - Vercel CLI
    - Render CLI
    - Resend dashboard
    - Stripe dashboard
@@ -70,9 +70,9 @@ AI automated time: 30-45 minutes
 
 After completion, user receives:
 
-- Frontend URL: `https://PROJECT_NAME.pages.dev`
+- Frontend URL: `https://PROJECT_NAME.vercel.app`
 - Backend URL: `https://PROJECT_NAME-backend.onrender.com`
-- Admin panel: `https://PROJECT_NAME.pages.dev/admin`
+- Admin panel: `https://PROJECT_NAME.vercel.app/admin`
 - All integrations working
 - Test domain ready
 - All code on GitHub
@@ -144,27 +144,61 @@ git config --global user.email "your-email@example.com"
 
 ---
 
-### 2. Cloudflare Account
+### 2. Vercel Account
 
-**Purpose:** Frontend hosting, CDN, edge functions, database, storage
+**Purpose:** Frontend hosting, CDN, edge functions
 
 **Required for:** 
-- Cloudflare Pages (frontend hosting)
-- Cloudflare Workers (edge functions)
-- Cloudflare D1 (SQLite database)
-- Cloudflare R2 (file storage)
-- Cloudflare KV (cache)
+- Vercel (frontend hosting for Next.js)
+- Automatic deployments from GitHub
+- Edge network and CDN
+- Serverless functions
+
+**Signup:** https://vercel.com/signup
+
+**Free tier includes:**
+- Unlimited deployments
+- 100GB bandwidth/month
+- Serverless functions (100GB-hours/month)
+- Automatic SSL
+- Custom domains
+
+**AI asks user:**
+"Do you have a Vercel account? (yes/no)"
+
+**If no:**
+1. Direct user to https://vercel.com/signup
+2. User can sign up with:
+   - GitHub (recommended)
+   - GitLab
+   - Bitbucket
+   - Email
+3. User verifies email if using email signup
+
+**AI verification after signup:**
+User should be able to access https://vercel.com/dashboard
+
+---
+
+### 2a. Cloudflare Account (Optional - for R2 Storage)
+
+**Purpose:** File storage (R2)
+
+**Required for:** 
+- Cloudflare R2 (S3-compatible file storage)
 
 **Signup:** https://dash.cloudflare.com/sign-up
 
 **Free tier includes:**
-- Unlimited Pages deployments
-- 100,000 Workers requests/day
-- 5 GB D1 storage
 - 10 GB R2 storage/month
-- 100,000 KV reads/day
+- Unlimited operations
+
+**Note:** Cloudflare account is only needed if using R2 for file storage. If not using R2, skip this step.
 
 **AI asks user:**
+"Will you use Cloudflare R2 for file storage? (yes/no)"
+
+**If yes, AI asks:**
 "Do you have a Cloudflare account? (yes/no)"
 
 **If no:**
@@ -425,23 +459,42 @@ GITHUB_REPO_URL=https://github.com/username/project-name
 
 ---
 
-### Cloudflare Credentials
+### Vercel Credentials
 
-**Collected automatically** when user runs `npx wrangler login`
+**Collected automatically** when user runs `vercel login`
 
-**AI must also collect:**
-- Account ID (from dashboard or CLI)
-- D1 Database ID (after creation)
-- R2 Bucket name
-- KV Namespace ID (after creation)
+**AI stores:**
+- Project name (from first deploy)
+- Deployment URL (from first deploy)
+
+**Format:**
+```
+VERCEL_PROJECT_NAME=project-name
+VERCEL_URL=https://project-name.vercel.app
+```
+
+**Note:** Vercel credentials are managed automatically via CLI. No manual API keys needed.
+
+---
+
+### Cloudflare Credentials (Optional - only if using R2)
+
+**Only needed if using Cloudflare R2 for file storage**
+
+**AI must collect:**
+- Account ID (from dashboard)
+- R2 Bucket name (after creation)
+- R2 API Token (for programmatic access)
 
 **Format:**
 ```
 CLOUDFLARE_ACCOUNT_ID=abc123...
-D1_DATABASE_ID=def456...
 R2_BUCKET_NAME=project-name-files
-KV_NAMESPACE_ID=ghi789...
+CLOUDFLARE_R2_ACCESS_KEY_ID=...
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=...
 ```
+
+**Note:** If not using R2, skip this section entirely.
 
 ---
 
@@ -637,7 +690,7 @@ I've verified all prerequisites are met:
 
 The deployment will:
 1. Push code to GitHub
-2. Deploy frontend to Cloudflare Pages
+2. Deploy frontend to Vercel
 3. Deploy backend to Render.com
 4. Configure PostgreSQL database
 5. Set up email via Resend
@@ -680,9 +733,9 @@ If deployment fails or user needs to stop:
 ---
 
 # PART 2
-## GitHub Repository and Cloudflare Platform Setup
+## GitHub Repository and Vercel Frontend Setup
 
-Version: 4.0
+Version: 5.0 (Updated for Vercel)
 Prerequisites: PART 1 completed
 
 ---
@@ -949,71 +1002,59 @@ Please verify you can access this URL in your browser.
 
 ---
 
-## CLOUDFLARE WRANGLER SETUP
+## VERCEL CLI SETUP
 
-### Step 2.7: Install Wrangler
+### Step 2.7: Install Vercel CLI
 
-**AI checks if Wrangler installed:**
+**AI checks if Vercel CLI installed:**
 ```bash
-npx wrangler --version
+vercel --version
 ```
 
 **If not installed globally:**
 ```bash
-npm install -g wrangler
-```
-
-**Or use project-local:**
-```bash
-npm install --save-dev wrangler
+npm install -g vercel
 ```
 
 **AI verification:**
 ```bash
-npx wrangler --version
-# Should show version >= 3.0.0
+vercel --version
+# Should show version >= 30.0.0
 ```
 
 ---
 
-### Step 2.8: Wrangler Authentication
+### Step 2.8: Vercel Authentication
 
 **AI executes:**
 ```bash
-npx wrangler login
+vercel login
 ```
 
 **User action:** 
 1. Browser opens automatically
-2. Click "Allow" to authorize Wrangler
+2. Click "Continue" to authorize Vercel
 3. Browser shows "Success! You may now close this page"
 4. Return to terminal
 
 **AI verification:**
 ```bash
-npx wrangler whoami
+vercel whoami
 ```
 
 **Expected output:**
 ```
-You are logged in with an OAuth Token
-
-┌─────────────────────────────────┬──────────────────────────────────┐
-│ Account Name                    │ Account ID                       │
-├─────────────────────────────────┼──────────────────────────────────┤
-│ user@example.com's Account      │ abc123def456...                  │
-└─────────────────────────────────┴──────────────────────────────────┘
+Your username: username@example.com
 ```
 
 **AI stores:**
 ```
-CLOUDFLARE_ACCOUNT_ID=abc123def456...
-CLOUDFLARE_EMAIL=user@example.com
+VERCEL_USERNAME=username@example.com
 ```
 
 ---
 
-## CLOUDFLARE D1 DATABASE SETUP
+## VERCEL FRONTEND DEPLOYMENT
 
 ### Step 2.9: Create D1 Database
 
@@ -1641,7 +1682,7 @@ npx wrangler pages deploy .next --project-name=PROJECT_NAME --branch=main
 
 **AI stores:**
 ```
-FRONTEND_URL=https://PROJECT_NAME.pages.dev
+FRONTEND_URL=https://PROJECT_NAME.vercel.app
 DEPLOYMENT_ID=abc123
 ```
 
@@ -1651,7 +1692,7 @@ DEPLOYMENT_ID=abc123
 
 **AI executes:**
 ```bash
-curl -I https://PROJECT_NAME.pages.dev
+curl -I https://PROJECT_NAME.vercel.app
 ```
 
 **Expected output:**
@@ -1663,7 +1704,7 @@ content-type: text/html
 
 **AI also checks:**
 ```bash
-curl -s https://PROJECT_NAME.pages.dev | grep -q "<html"
+curl -s https://PROJECT_NAME.vercel.app | grep -q "<html"
 # Should return 0 (success)
 ```
 
@@ -1709,7 +1750,7 @@ Cloudflare Setup Complete!
 D1 Database: PROJECT_NAME-db (abc123...)
 R2 Bucket: PROJECT_NAME-files
 KV Namespace: CACHE (abc123...)
-Frontend URL: https://PROJECT_NAME.pages.dev
+Frontend URL: https://PROJECT_NAME.vercel.app
 
 Secrets configured:
 - JWT_SECRET
@@ -1876,10 +1917,10 @@ services:
       
       # Frontend URL for CORS
       - key: CORS_ORIGINS
-        value: https://PROJECT_NAME.pages.dev
+        value: https://PROJECT_NAME.vercel.app
       
       - key: FRONTEND_URL
-        value: https://PROJECT_NAME.pages.dev
+        value: https://PROJECT_NAME.vercel.app
       
       # Database SSL (required for Render PostgreSQL)
       - key: DB_SSL
@@ -2352,8 +2393,8 @@ RESEND_API_KEY=***
 STRIPE_SECRET_KEY=***
 TELEGRAM_BOT_TOKEN=***
 DATABASE_URL=postgresql://...
-CORS_ORIGINS=https://PROJECT_NAME.pages.dev
-FRONTEND_URL=https://PROJECT_NAME.pages.dev
+CORS_ORIGINS=https://PROJECT_NAME.vercel.app
+FRONTEND_URL=https://PROJECT_NAME.vercel.app
 NODE_ENV=production
 PORT=10000
 ```
@@ -2606,7 +2647,7 @@ npx wrangler pages deploy .next --project-name=PROJECT_NAME
 
 **AI executes:**
 ```bash
-curl -s https://PROJECT_NAME.pages.dev | grep -o 'https://PROJECT_NAME-backend.onrender.com'
+curl -s https://PROJECT_NAME.vercel.app | grep -o 'https://PROJECT_NAME-backend.onrender.com'
 # Should find the backend URL in frontend code
 ```
 
@@ -3768,7 +3809,7 @@ test -f backend/src/routes/telegram.js && echo "Telegram routes exist"
 **Bot responds with:** 
 ```
 To link your account, please click this link:
-https://PROJECT_NAME.pages.dev/telegram/link?token=abc123...
+https://PROJECT_NAME.vercel.app/telegram/link?token=abc123...
 
 Or reply with your email address.
 ```
@@ -4356,7 +4397,7 @@ curl https://PROJECT_NAME-backend.onrender.com/api/health/ready
 
 **Frontend health:**
 ```bash
-curl -I https://PROJECT_NAME.pages.dev
+curl -I https://PROJECT_NAME.vercel.app
 ```
 
 **Expected:**
@@ -4370,7 +4411,7 @@ content-type: text/html
 ```bash
 #!/bin/bash
 BACKEND_URL="https://PROJECT_NAME-backend.onrender.com"
-FRONTEND_URL="https://PROJECT_NAME.pages.dev"
+FRONTEND_URL="https://PROJECT_NAME.vercel.app"
 
 echo "Checking backend health..."
 BACKEND_STATUS=$(curl -s $BACKEND_URL/api/health/live | grep -o '"status":"ok"')
@@ -4786,7 +4827,7 @@ wait
 **AI tests all frontend pages:**
 
 ```bash
-FRONTEND_URL="https://PROJECT_NAME.pages.dev"
+FRONTEND_URL="https://PROJECT_NAME.vercel.app"
 
 echo "Testing frontend routes..."
 
@@ -4846,7 +4887,7 @@ curl -s $FRONTEND_URL | grep -o "pk_test_[a-zA-Z0-9]*"
 ```
 Please test the following in your browser:
 
-Homepage (https://PROJECT_NAME.pages.dev):
+Homepage (https://PROJECT_NAME.vercel.app):
 - [ ] Page loads successfully
 - [ ] No console errors
 - [ ] Links work
@@ -5003,7 +5044,7 @@ This takes 2-5 minutes.
 
 **AI updates backend CORS:**
 ```bash
-render env set CORS_ORIGINS="https://app.yourdomain.com,https://PROJECT_NAME.pages.dev" --service PROJECT_NAME-backend
+render env set CORS_ORIGINS="https://app.yourdomain.com,https://PROJECT_NAME.vercel.app" --service PROJECT_NAME-backend
 render env set FRONTEND_URL="https://app.yourdomain.com" --service PROJECT_NAME-backend
 ```
 
@@ -5207,9 +5248,9 @@ Status: Production Ready ✅
 
 ## URLs
 
-- **Frontend**: https://PROJECT_NAME.pages.dev
+- **Frontend**: https://PROJECT_NAME.vercel.app
 - **Backend**: https://PROJECT_NAME-backend.onrender.com
-- **Admin Panel**: https://PROJECT_NAME.pages.dev/admin
+- **Admin Panel**: https://PROJECT_NAME.vercel.app/admin
 - **Telegram Bot**: @project_support_bot
 
 ## Custom Domains (if configured)
@@ -5218,11 +5259,14 @@ Status: Production Ready ✅
 
 ## Services
 
-### Cloudflare
+### Vercel
 - Account: user@example.com
-- D1 Database: PROJECT_NAME-db
-- R2 Bucket: PROJECT_NAME-files
-- KV Namespace: CACHE
+- Project: PROJECT_NAME
+- Frontend URL: https://PROJECT_NAME.vercel.app
+
+### Cloudflare (Optional - if using R2)
+- Account: user@example.com
+- R2 Bucket: PROJECT_NAME-files (if configured)
 
 ### Render.com
 - Account: user@example.com
@@ -5421,7 +5465,7 @@ render env list --service PROJECT_NAME-backend | grep DATABASE_URL
 ### Issue 2: Frontend Not Loading
 
 **Symptoms:**
-- `https://PROJECT_NAME.pages.dev` shows error
+- `https://PROJECT_NAME.vercel.app` shows error
 - White screen
 - 404 errors
 
@@ -5813,7 +5857,7 @@ LIMIT 10
 # save as: monitor.sh
 
 BACKEND_URL="https://PROJECT_NAME-backend.onrender.com"
-FRONTEND_URL="https://PROJECT_NAME.pages.dev"
+FRONTEND_URL="https://PROJECT_NAME.vercel.app"
 
 echo "=== Health Check $(date) ==="
 

@@ -2,7 +2,7 @@
 
 **The Ultimate AI-Driven Full-Stack Deployment System**
 
-Version 4.0 | January 2025 | 6,342+ Lines of Comprehensive Instructions
+Version 5.0 | January 2025 | Updated for Vercel + Render + PostgreSQL
 
 ---
 
@@ -17,7 +17,7 @@ This deployment guide contains **everything** needed to deploy a complete full-s
 ├── 📄 MASTER_INDEX.md                          # Start here - Overview
 ├── 📄 COMPLETE_DEPLOYMENT_GUIDE_FULL.md        # All 7 parts in one file (6342 lines)
 ├── 📄 DEPLOYMENT_GUIDE_PART_1.md               # Prerequisites & Setup
-├── 📄 DEPLOYMENT_GUIDE_PART_2.md               # GitHub & Cloudflare
+├── 📄 DEPLOYMENT_GUIDE_PART_2.md               # GitHub & Vercel
 ├── 📄 DEPLOYMENT_GUIDE_PART_3.md               # Render Backend
 ├── 📄 DEPLOYMENT_GUIDE_PART_4.md               # Email & Payments
 ├── 📄 DEPLOYMENT_GUIDE_PART_5.md               # Telegram & SMS
@@ -50,11 +50,8 @@ This deployment guide contains **everything** needed to deploy a complete full-s
 
 ### Infrastructure
 - ✅ GitHub repository with complete source code
-- ✅ Cloudflare Pages (frontend hosting)
-- ✅ Cloudflare Workers (edge functions)
-- ✅ Cloudflare D1 (SQLite database)
-- ✅ Cloudflare R2 (file storage)
-- ✅ Cloudflare KV (caching)
+- ✅ Vercel (frontend hosting for Next.js)
+- ✅ Cloudflare R2 (file storage - optional)
 - ✅ Render.com Web Service (backend API)
 - ✅ Render PostgreSQL (production database)
 
@@ -91,7 +88,8 @@ This deployment guide contains **everything** needed to deploy a complete full-s
 
 ### For User's Accounts
 - GitHub account
-- Cloudflare account
+- Vercel account
+- Cloudflare account (optional - only if using R2)
 - Render.com account
 - Resend account
 - Stripe account
@@ -140,7 +138,7 @@ but this defeats the purpose of automation and takes 3-4 hours.
 | Part | Topic | Time | User Actions |
 |------|-------|------|--------------|
 | 1 | Prerequisites | 10 min | Create accounts |
-| 2 | GitHub & Cloudflare | 15 min | 2 browser auth |
+| 2 | GitHub & Vercel | 15 min | 1 browser auth |
 | 3 | Render Backend | 20 min | 1 browser auth |
 | 4 | Email & Payments | 15 min | Paste 3 API keys |
 | 5 | Telegram & SMS | 10 min | Paste 2 API keys |
@@ -160,9 +158,9 @@ but this defeats the purpose of automation and takes 3-4 hours.
 
 ### Part 2: Foundation
 - Creates code repository
-- Sets up edge infrastructure
-- Deploys frontend
-- Configures databases and storage
+- Sets up Vercel account
+- Deploys frontend to Vercel
+- Configures optional R2 storage (if needed)
 
 ### Part 3: Backend
 - Deploys API server
@@ -200,7 +198,7 @@ but this defeats the purpose of automation and takes 3-4 hours.
 
 Deployment is successful when:
 
-- [ ] Frontend accessible at `https://PROJECT_NAME.pages.dev`
+- [ ] Frontend accessible at `https://PROJECT_NAME.vercel.app`
 - [ ] Backend responding at `https://PROJECT_NAME-backend.onrender.com`
 - [ ] Health checks passing
 - [ ] Database contains 10 tables
@@ -311,16 +309,18 @@ If deployment fails at any step:
 ## 💰 Cost Summary
 
 ### Free Tier (Good for MVP and Testing)
-- Cloudflare: $0/month
+- Vercel: $0/month
 - Render: $0/month (with sleep)
 - Resend: $0/month (3000 emails)
 - Stripe: $0/month (test mode)
 - Telegram: $0/month
 - Twilio: $0/month (trial)
+- Cloudflare R2: $0/month (optional - 10GB free)
 
 **Total: $0/month** ✅
 
 ### Production Tier (Recommended)
+- Vercel: $0/month (Hobby plan)
 - Render Starter: $7/month (no sleep)
 - Render PostgreSQL: $7/month
 - Resend Pro: $20/month (if needed)
@@ -393,7 +393,8 @@ Each deployed service will have its own README:
 
 ### Official Support
 - Render: support@render.com
-- Cloudflare: community.cloudflare.com
+- Vercel: vercel.com/support
+- Cloudflare: community.cloudflare.com (if using R2)
 - Resend: support@resend.com
 - Stripe: support.stripe.com
 - Twilio: support.twilio.com
@@ -501,4 +502,4 @@ You may not:
 ---
 
 *Created with ❤️ for the developer community*  
-*Version 4.0 - January 2025*
+*Version 5.0 - January 2025 - Updated for Vercel + Render + PostgreSQL*
