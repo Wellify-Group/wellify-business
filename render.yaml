@@ -13,9 +13,12 @@ services:
     runtime: node
     plan: starter
     region: oregon
+    branch: main
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
@@ -32,7 +35,7 @@ services:
       - key: FRONTEND_URL
         value: https://wellify-business.pages.dev
       - key: CORS_ORIGINS
-        value: https://wellify-business.pages.dev,https://wellify-business.onrender.com
+        value: https://business.wellifyglobal.com,https://wellify-business.vercel.app,https://wellify-business.pages.dev
       - key: LOG_LEVEL
         value: info
       - key: RESEND_API_KEY
