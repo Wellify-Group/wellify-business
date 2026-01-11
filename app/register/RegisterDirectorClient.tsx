@@ -411,6 +411,7 @@ export default function RegisterDirectorClient() {
         body: JSON.stringify({
           email: step2Email.trim().toLowerCase(),
           userId: registeredUserId,
+          language: localeForAPI, // Передаем язык из интерфейса
         }),
       });
 
