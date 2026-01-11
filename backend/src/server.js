@@ -31,8 +31,33 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+// Поддержка нескольких origins для CORS
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : [
+      process.env.FRONTEND_URL || 'https://wellify-business.pages.dev',
+      'https://business.wellifyglobal.com',
+      'https://wellify-business.vercel.app',
+    ];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://wellify-business.pages.dev',
+  origin: (origin, callback) => {
+    // Разрешаем запросы без origin (например, Postman, mobile apps)
+    if (!origin) return callback(null, true);
+    
+    // Проверяем если origin в списке разрешенных
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // В development разрешаем любые origins
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Иначе отклоняем
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(express.json());

@@ -18,7 +18,7 @@ if (!API_URL) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, userId } = body;
+    const { email, userId, language } = body;
 
     if (!email) {
       return NextResponse.json(
@@ -47,9 +47,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Определяем язык пользователя (по умолчанию uk)
-    let userLanguage: 'ru' | 'uk' | 'en' = 'uk';
-    // TODO: Получить язык из профиля пользователя через backend API
+    // Определяем язык пользователя из запроса или используем по умолчанию
+    // Конвертируем 'ua' -> 'uk' для backend
+    let userLanguage: 'ru' | 'uk' | 'en' = (language === 'ua' ? 'uk' : language) || 'ru';
+    if (!['ru', 'uk', 'en'].includes(userLanguage)) {
+      userLanguage = 'ru'; // По умолчанию русский
+    }
 
     // Отправляем запрос в backend
     try {
