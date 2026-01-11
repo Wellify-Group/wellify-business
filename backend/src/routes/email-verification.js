@@ -22,8 +22,12 @@ router.post('/send', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
+    // Нормализуем email (делаем это в начале, до использования)
+    const normalizedEmail = email.toString().trim().toLowerCase();
+
     // Генерируем 6-значный код
     const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const normalizedCode = code.toString().trim();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
 
     // Находим пользователя, если userId не передан
@@ -38,9 +42,6 @@ router.post('/send', async (req, res) => {
       }
     }
 
-    // Нормализуем email
-    const normalizedEmail = email.toString().trim().toLowerCase();
-
     // Удаляем старые коды для этого пользователя/email
     if (targetUserId) {
       await db.query(
@@ -53,10 +54,6 @@ router.post('/send', async (req, res) => {
         [normalizedEmail]
       );
     }
-
-    // Нормализуем email и код (trim для удаления пробелов)
-    const normalizedEmail = email.toString().trim().toLowerCase();
-    const normalizedCode = code.toString().trim();
 
     // Сохраняем новый код
     await db.query(
