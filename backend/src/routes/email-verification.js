@@ -31,36 +31,43 @@ router.post('/send', async (req, res) => {
     if (!targetUserId) {
       const userResult = await db.query(
         'SELECT id FROM users WHERE email = $1',
-        [email.toLowerCase()]
+        [normalizedEmail]
       );
       if (userResult.rows.length > 0) {
         targetUserId = userResult.rows[0].id;
       }
     }
 
+    // Нормализуем email
+    const normalizedEmail = email.toString().trim().toLowerCase();
+
     // Удаляем старые коды для этого пользователя/email
     if (targetUserId) {
       await db.query(
         'DELETE FROM email_verifications WHERE user_id = $1 AND email = $2',
-        [targetUserId, email.toLowerCase()]
+        [targetUserId, normalizedEmail]
       );
     } else {
       await db.query(
         'DELETE FROM email_verifications WHERE email = $1',
-        [email.toLowerCase()]
+        [normalizedEmail]
       );
     }
+
+    // Нормализуем email и код (trim для удаления пробелов)
+    const normalizedEmail = email.toString().trim().toLowerCase();
+    const normalizedCode = code.toString().trim();
 
     // Сохраняем новый код
     await db.query(
       `INSERT INTO email_verifications (user_id, email, token, expires_at)
        VALUES ($1, $2, $3, $4)`,
-      [targetUserId || null, email.toLowerCase(), code, expiresAt]
+      [targetUserId || null, normalizedEmail, normalizedCode, expiresAt]
     );
 
     // Отправляем email через Resend
     try {
-      await emailApi.sendVerification(email, code, language);
+      await emailApi.sendVerification(normalizedEmail, normalizedCode, language);
       logger.info('Verification code email sent', { email });
     } catch (emailError) {
       logger.error('Failed to send verification email', {
@@ -107,14 +114,44 @@ router.post('/verify', async (req, res) => {
       return res.status(400).json({ error: 'Email and code are required' });
     }
 
+    // Нормализуем email и код (trim для удаления пробелов)
+    const normalizedEmail = email.toString().trim().toLowerCase();
+    const normalizedCode = code.toString().trim();
+
+    logger.info('Verifying email code', {
+      email: normalizedEmail,
+      codeLength: normalizedCode.length,
+      codePrefix: normalizedCode.substring(0, 2) + '****',
+      userId
+    });
+
     // Находим запись верификации
     const verificationResult = await db.query(
       `SELECT * FROM email_verifications
        WHERE email = $1 AND token = $2 AND verified_at IS NULL AND expires_at > NOW()`,
-      [email.toLowerCase(), code]
+      [normalizedEmail, normalizedCode]
     );
 
     if (verificationResult.rows.length === 0) {
+      // Для отладки проверим, есть ли код вообще (может быть уже использован или истек)
+      const debugResult = await db.query(
+        `SELECT id, email, token, verified_at IS NOT NULL as is_verified, expires_at > NOW() as is_valid, expires_at
+         FROM email_verifications
+         WHERE email = $1 AND token = $2`,
+        [normalizedEmail, normalizedCode]
+      );
+
+      logger.warn('Email verification failed', {
+        email: normalizedEmail,
+        codeLength: normalizedCode.length,
+        foundRecords: debugResult.rows.length,
+        records: debugResult.rows.map(r => ({
+          isVerified: r.is_verified,
+          isValid: r.is_valid,
+          expiresAt: r.expires_at
+        }))
+      });
+
       return res.status(400).json({ error: 'Invalid or expired code' });
     }
 
@@ -125,7 +162,7 @@ router.post('/verify', async (req, res) => {
     if (!targetUserId) {
       const userResult = await db.query(
         'SELECT id FROM users WHERE email = $1',
-        [email.toLowerCase()]
+        [normalizedEmail]
       );
       if (userResult.rows.length > 0) {
         targetUserId = userResult.rows[0].id;
