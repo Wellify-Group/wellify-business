@@ -114,9 +114,20 @@ router.post('/verify', async (req, res) => {
       return res.status(400).json({ error: 'Email and code are required' });
     }
 
-    // Нормализуем email и код (trim для удаления пробелов)
+    // Нормализуем email и код (trim для удаления пробелов, убираем все не-цифры из кода)
     const normalizedEmail = email.toString().trim().toLowerCase();
-    const normalizedCode = code.toString().trim();
+    // Убираем все пробелы и не-цифры из кода, оставляем только цифры
+    const normalizedCode = code.toString().trim().replace(/\D/g, '');
+
+    // Валидация кода (должен быть 6 цифр)
+    if (!normalizedCode || normalizedCode.length !== 6) {
+      logger.warn('Invalid code format', {
+        email: normalizedEmail,
+        codeLength: normalizedCode.length,
+        code: normalizedCode.substring(0, 2) + '****'
+      });
+      return res.status(400).json({ error: 'Code must be 6 digits' });
+    }
 
     logger.info('Verifying email code', {
       email: normalizedEmail,
@@ -135,17 +146,36 @@ router.post('/verify', async (req, res) => {
     if (verificationResult.rows.length === 0) {
       // Для отладки проверим, есть ли код вообще (может быть уже использован или истек)
       const debugResult = await db.query(
-        `SELECT id, email, token, verified_at IS NOT NULL as is_verified, expires_at > NOW() as is_valid, expires_at
+        `SELECT id, email, token, verified_at IS NOT NULL as is_verified, expires_at > NOW() as is_valid, expires_at, created_at
          FROM email_verifications
          WHERE email = $1 AND token = $2`,
         [normalizedEmail, normalizedCode]
       );
 
+      // Также проверим, есть ли коды для этого email вообще
+      const allCodesResult = await db.query(
+        `SELECT token, verified_at IS NOT NULL as is_verified, expires_at > NOW() as is_valid, expires_at, created_at
+         FROM email_verifications
+         WHERE email = $1
+         ORDER BY created_at DESC
+         LIMIT 5`,
+        [normalizedEmail]
+      );
+
       logger.warn('Email verification failed', {
         email: normalizedEmail,
         codeLength: normalizedCode.length,
-        foundRecords: debugResult.rows.length,
-        records: debugResult.rows.map(r => ({
+        codePrefix: normalizedCode.substring(0, 2) + '****',
+        foundExactMatch: debugResult.rows.length,
+        exactMatchRecords: debugResult.rows.map(r => ({
+          isVerified: r.is_verified,
+          isValid: r.is_valid,
+          expiresAt: r.expires_at,
+          createdAt: r.created_at
+        })),
+        recentCodesForEmail: allCodesResult.rows.length,
+        recentCodes: allCodesResult.rows.map(r => ({
+          tokenPrefix: r.token.substring(0, 2) + '****',
           isVerified: r.is_verified,
           isValid: r.is_valid,
           expiresAt: r.expires_at

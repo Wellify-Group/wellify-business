@@ -32,33 +32,56 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 // Поддержка нескольких origins для CORS
+const defaultOrigins = [
+  'https://business.wellifyglobal.com',
+  'https://wellify-business.vercel.app',
+  'https://wellify-business.pages.dev', // Старый домен для обратной совместимости
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
+
 const allowedOrigins = process.env.CORS_ORIGINS 
-  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  ? [
+      ...process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()),
+      ...defaultOrigins
+    ]
   : [
-      process.env.FRONTEND_URL || 'https://wellify-business.pages.dev',
-      'https://business.wellifyglobal.com',
-      'https://wellify-business.vercel.app',
-    ];
+      process.env.FRONTEND_URL,
+      ...defaultOrigins
+    ].filter(Boolean);
+
+// Логируем разрешенные origins при старте
+logger.info('CORS allowed origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
     // Разрешаем запросы без origin (например, Postman, mobile apps)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      logger.debug('CORS: Request without origin, allowing');
+      return callback(null, true);
+    }
     
     // Проверяем если origin в списке разрешенных
     if (allowedOrigins.includes(origin)) {
+      logger.debug(`CORS: Origin ${origin} is allowed`);
       return callback(null, true);
     }
     
     // В development разрешаем любые origins
     if (process.env.NODE_ENV === 'development') {
+      logger.debug(`CORS: Development mode, allowing ${origin}`);
       return callback(null, true);
     }
     
+    // Логируем отклоненный origin
+    logger.warn(`CORS: Origin ${origin} is not allowed. Allowed origins: ${allowedOrigins.join(', ')}`);
+    
     // Иначе отклоняем
-    callback(new Error('Not allowed by CORS'));
+    callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
