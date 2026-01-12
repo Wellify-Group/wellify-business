@@ -57,10 +57,12 @@ export const api = {
       to: email,
       subject: text.subject,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>${text.subject}</h2>
-          <p style="font-size: 36px; font-weight: 900; color: #050B13; letter-spacing: 4px; text-align: center; margin: 20px 0;">${code}</p>
-          <p style="color: #666; font-size: 14px; text-align: center;">${validMessage}</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="text-align: center; color: #050B13; margin-bottom: 30px;">${text.subject}</h2>
+          <div style="text-align: center; margin: 40px 0;">
+            <p style="font-size: 48px; font-weight: 900; color: #050B13; letter-spacing: 6px; margin: 0; padding: 20px; background-color: #f5f5f5; border-radius: 8px; display: inline-block;">${code}</p>
+          </div>
+          <p style="color: #666; font-size: 14px; text-align: center; margin-top: 20px;">${validMessage}</p>
         </div>
       `,
     });
@@ -121,10 +123,12 @@ router.post('/send-verification', async (req, res) => {
       to: email,
       subject: text.subject,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>${text.subject}</h2>
-          <p style="font-size: 36px; font-weight: 900; color: #050B13; letter-spacing: 4px; text-align: center; margin: 20px 0;">${code}</p>
-          <p style="color: #666; font-size: 14px; text-align: center;">${validMessage}</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="text-align: center; color: #050B13; margin-bottom: 30px;">${text.subject}</h2>
+          <div style="text-align: center; margin: 40px 0;">
+            <p style="font-size: 48px; font-weight: 900; color: #050B13; letter-spacing: 6px; margin: 0; padding: 20px; background-color: #f5f5f5; border-radius: 8px; display: inline-block;">${code}</p>
+          </div>
+          <p style="color: #666; font-size: 14px; text-align: center; margin-top: 20px;">${validMessage}</p>
         </div>
       `,
     });
