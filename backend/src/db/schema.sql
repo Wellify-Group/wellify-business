@@ -70,19 +70,20 @@ BEGIN
 
   INSERT INTO profiles (
     id,
-    email,
     first_name,
     last_name,
     middle_name,
     full_name,
     birth_date,
     email_verified,
+    phone_verified,
+    role,
+    language,
     created_at,
     updated_at
   )
   VALUES (
     NEW.id,
-    NEW.email,
     NEW.raw_user_meta_data->>'first_name',
     NEW.raw_user_meta_data->>'last_name',
     NEW.raw_user_meta_data->>'middle_name',
@@ -94,6 +95,9 @@ BEGIN
       ELSE NULL
     END,
     (NEW.email_confirmed_at IS NOT NULL),
+    (NEW.phone_confirmed_at IS NOT NULL),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'director'),
+    COALESCE(NEW.raw_user_meta_data->>'language', 'ru'),
     NOW(),
     NOW()
   );
