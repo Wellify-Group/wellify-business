@@ -379,18 +379,37 @@ router.post('/register-director', async (req, res) => {
 
     const normalizedEmail = String(email).toLowerCase().trim();
 
-    // Формируем имя директора
+    // Формируем имя директора из переданных данных
     const safeFirstName =
       (firstName && String(firstName).trim()) ||
       (fullName && String(fullName).trim().split(' ')[0]) ||
-      'Директор';
+      null;
 
     const safeLastName = (lastName && String(lastName).trim()) || null;
     const safeMiddleName = (middleName && String(middleName).trim()) || null;
-    const safeFullName =
-      (fullName && String(fullName).trim()) ||
-      [safeFirstName, safeLastName].filter(Boolean).join(' ') ||
-      'Директор';
+    
+    // Генерируем fullName из компонентов, если не передан
+    let safeFullName = null;
+    if (fullName && String(fullName).trim()) {
+      safeFullName = String(fullName).trim();
+    } else {
+      // Собираем из компонентов: lastName firstName middleName
+      const nameParts = [safeLastName, safeFirstName, safeMiddleName].filter(Boolean);
+      safeFullName = nameParts.length > 0 ? nameParts.join(' ') : null;
+    }
+    
+    // Обрабатываем birthDate (может быть строкой в формате YYYY-MM-DD или null)
+    let safeBirthDate = null;
+    if (birthDate) {
+      const dateStr = String(birthDate).trim();
+      if (dateStr && dateStr !== 'null' && dateStr !== 'undefined') {
+        // Проверяем формат даты
+        const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+          safeBirthDate = dateStr; // PostgreSQL примет строку в формате DATE
+        }
+      }
+    }
 
     const safeLanguage = (language && String(language)) || 'ru';
     const safeBusinessName =
@@ -465,17 +484,58 @@ router.post('/register-director', async (req, res) => {
       // Создаём профиль только если его нет
       if (existingProfile.rows.length === 0) {
         await client.query(
-          `INSERT INTO profiles (id, full_name, role, language, phone_verified, email_verified)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [userId, safeFullName, 'director', safeLanguage, false, false]
+          `INSERT INTO profiles (
+            id, 
+            first_name, 
+            last_name, 
+            middle_name, 
+            full_name, 
+            birth_date,
+            role, 
+            language, 
+            phone_verified, 
+            email_verified,
+            created_at,
+            updated_at
+          )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+          [
+            userId, 
+            safeFirstName, 
+            safeLastName, 
+            safeMiddleName, 
+            safeFullName, 
+            safeBirthDate,
+            'director', 
+            safeLanguage, 
+            false, 
+            false
+          ]
         );
       } else {
         // Профиль уже существует (создан триггером), обновляем его данными
         await client.query(
           `UPDATE profiles 
-           SET full_name = $1, role = $2, language = $3, updated_at = NOW()
-           WHERE id = $4`,
-          [safeFullName, 'director', safeLanguage, userId]
+           SET 
+             first_name = $1,
+             last_name = $2,
+             middle_name = $3,
+             full_name = $4,
+             birth_date = $5,
+             role = $6, 
+             language = $7, 
+             updated_at = NOW()
+           WHERE id = $8`,
+          [
+            safeFirstName,
+            safeLastName,
+            safeMiddleName,
+            safeFullName,
+            safeBirthDate,
+            'director', 
+            safeLanguage, 
+            userId
+          ]
         );
       }
 
