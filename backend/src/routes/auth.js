@@ -48,28 +48,12 @@ router.post('/signup', async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Проверяем, существует ли профиль (триггер handle_new_user мог его создать)
-    const existingProfile = await db.query(
-      'SELECT id FROM profiles WHERE id = $1',
-      [user.id]
+    // Создаём профиль ВРУЧНУЮ (БЕЗ ТРИГГЕРОВ!)
+    await db.query(
+      `INSERT INTO profiles (id, full_name, role, language, phone, phone_verified, email_verified, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+      [user.id, full_name || null, 'director', 'uk', phone || null, false, false]
     );
-
-    // Создаём профиль только если его нет
-    if (existingProfile.rows.length === 0) {
-      await db.query(
-        `INSERT INTO profiles (id, full_name, role, language, phone, phone_verified, email_verified)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [user.id, full_name || null, 'director', 'uk', phone || null, false, false]
-      );
-    } else {
-      // Профиль уже существует (создан триггером), обновляем его данными
-      await db.query(
-        `UPDATE profiles 
-         SET full_name = $1, role = $2, language = $3, phone = $4, updated_at = NOW()
-         WHERE id = $5`,
-        [full_name || null, 'director', 'uk', phone || null, user.id]
-      );
-    }
 
     // Генерируем JWT токен
     const token = jwt.sign(
@@ -475,69 +459,36 @@ router.post('/register-director', async (req, res) => {
       const user = userResult.rows[0];
       const userId = user.id;
 
-      // Проверяем, существует ли профиль (триггер handle_new_user мог его создать)
-      const existingProfile = await client.query(
-        'SELECT id FROM profiles WHERE id = $1',
-        [userId]
+      // Создаём профиль ВРУЧНУЮ (БЕЗ ТРИГГЕРОВ!)
+      await client.query(
+        `INSERT INTO profiles (
+          id, 
+          first_name, 
+          last_name, 
+          middle_name, 
+          full_name, 
+          birth_date,
+          role, 
+          language, 
+          phone_verified, 
+          email_verified,
+          created_at,
+          updated_at
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+        [
+          userId, 
+          safeFirstName, 
+          safeLastName, 
+          safeMiddleName, 
+          safeFullName, 
+          safeBirthDate,
+          'director', 
+          safeLanguage, 
+          false, 
+          false
+        ]
       );
-
-      // Создаём профиль только если его нет
-      if (existingProfile.rows.length === 0) {
-        await client.query(
-          `INSERT INTO profiles (
-            id, 
-            first_name, 
-            last_name, 
-            middle_name, 
-            full_name, 
-            birth_date,
-            role, 
-            language, 
-            phone_verified, 
-            email_verified,
-            created_at,
-            updated_at
-          )
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
-          [
-            userId, 
-            safeFirstName, 
-            safeLastName, 
-            safeMiddleName, 
-            safeFullName, 
-            safeBirthDate,
-            'director', 
-            safeLanguage, 
-            false, 
-            false
-          ]
-        );
-      } else {
-        // Профиль уже существует (создан триггером), обновляем его данными
-        await client.query(
-          `UPDATE profiles 
-           SET 
-             first_name = $1,
-             last_name = $2,
-             middle_name = $3,
-             full_name = $4,
-             birth_date = $5,
-             role = $6, 
-             language = $7, 
-             updated_at = NOW()
-           WHERE id = $8`,
-          [
-            safeFirstName,
-            safeLastName,
-            safeMiddleName,
-            safeFullName,
-            safeBirthDate,
-            'director', 
-            safeLanguage, 
-            userId
-          ]
-        );
-      }
 
       // Создаём бизнес
       const businessResult = await client.query(
@@ -609,6 +560,154 @@ router.post('/register-director', async (req, res) => {
     }
   } catch (error) {
     logger.error('Register director error', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      errorCode: 'INTERNAL_ERROR',
+    });
+  }
+});
+
+/**
+ * POST /api/auth/create-user-without-email
+ * Создание пользователя без email-подтверждения (всё вручную, без триггеров)
+ */
+router.post('/create-user-without-email', async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      first_name,
+      last_name,
+      middle_name,
+      full_name,
+      birth_date,
+    } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required',
+        errorCode: 'VALIDATION_ERROR',
+      });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+
+    // Обрабатываем birthDate
+    let safeBirthDate = null;
+    if (birth_date) {
+      const dateStr = String(birth_date).trim();
+      if (dateStr && dateStr !== 'null' && dateStr !== 'undefined') {
+        const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+          safeBirthDate = dateStr;
+        }
+      }
+    }
+
+    // Формируем имя
+    const safeFirstName = (first_name && String(first_name).trim()) || null;
+    const safeLastName = (last_name && String(last_name).trim()) || null;
+    const safeMiddleName = (middle_name && String(middle_name).trim()) || null;
+    
+    // Генерируем fullName из компонентов, если не передан
+    let safeFullName = null;
+    if (full_name && String(full_name).trim()) {
+      safeFullName = String(full_name).trim();
+    } else {
+      const nameParts = [safeLastName, safeFirstName, safeMiddleName].filter(Boolean);
+      safeFullName = nameParts.length > 0 ? nameParts.join(' ') : null;
+    }
+
+    // Проверяем, существует ли пользователь
+    const existingUser = await db.query(
+      'SELECT id FROM users WHERE email = $1',
+      [normalizedEmail]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'User with this email already exists',
+        errorCode: 'EMAIL_ALREADY_REGISTERED',
+      });
+    }
+
+    // Хэшируем пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Начинаем транзакцию
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Создаём user
+      const userResult = await client.query(
+        `INSERT INTO users (email, password_hash, created_at, updated_at) 
+         VALUES ($1, $2, NOW(), NOW()) 
+         RETURNING id, email, created_at`,
+        [normalizedEmail, hashedPassword]
+      );
+
+      const user = userResult.rows[0];
+      const userId = user.id;
+
+      // Создаём profile ВРУЧНУЮ (БЕЗ ТРИГГЕРОВ!)
+      await client.query(
+        `INSERT INTO profiles (
+          id, first_name, last_name, middle_name, full_name,
+          birth_date, role, email_verified, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
+        [
+          userId, safeFirstName, safeLastName, safeMiddleName, safeFullName,
+          safeBirthDate, 'director', false
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      // Генерируем JWT токен
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      return res.status(201).json({
+        success: true,
+        user: {
+          id: userId,
+          email: user.email,
+          fullName: safeFullName,
+          role: 'director',
+        },
+        token,
+      });
+    } catch (dbError) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction', rollbackError);
+      }
+      logger.error('Database error during user creation', {
+        error: dbError.message,
+        stack: dbError.stack,
+        code: dbError.code,
+        detail: dbError.detail,
+      });
+      
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create user profile',
+        errorCode: 'REGISTRATION_FAILED',
+        details: process.env.NODE_ENV === 'development' ? dbError.message : undefined,
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    logger.error('Create user without email error', error);
     return res.status(500).json({
       success: false,
       error: 'Internal server error',
