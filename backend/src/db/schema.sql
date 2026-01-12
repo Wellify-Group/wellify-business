@@ -22,8 +22,6 @@ CREATE TABLE IF NOT EXISTS users (
   email_confirmed_at TIMESTAMPTZ,
   phone TEXT,
   phone_confirmed_at TIMESTAMPTZ,
-  raw_user_meta_data JSONB DEFAULT '{}'::jsonb,
-  raw_app_meta_data JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_sign_in_at TIMESTAMPTZ
