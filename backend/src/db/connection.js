@@ -38,10 +38,65 @@ db.on('error', (err) => {
   process.exit(-1);
 });
 
-// Тестовое подключение при старте
+// Тестовое подключение при старте и исправление триггера
 db.query('SELECT NOW()')
-  .then(() => {
+  .then(async () => {
     logger.info('PostgreSQL database connected successfully');
+    
+    // Исправляем триггер handle_new_user, если он использует несуществующую колонку email
+    try {
+      await db.query(`
+        CREATE OR REPLACE FUNCTION handle_new_user()
+        RETURNS TRIGGER
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM profiles WHERE id = NEW.id) THEN
+            RETURN NEW;
+          END IF;
+
+          INSERT INTO profiles (
+            id,
+            first_name,
+            last_name,
+            middle_name,
+            full_name,
+            birth_date,
+            email_verified,
+            phone_verified,
+            role,
+            language,
+            created_at,
+            updated_at
+          )
+          VALUES (
+            NEW.id,
+            NEW.raw_user_meta_data->>'first_name',
+            NEW.raw_user_meta_data->>'last_name',
+            NEW.raw_user_meta_data->>'middle_name',
+            NEW.raw_user_meta_data->>'full_name',
+            CASE
+              WHEN NEW.raw_user_meta_data->>'birth_date' IS NOT NULL
+                   AND NEW.raw_user_meta_data->>'birth_date' != ''
+              THEN (NEW.raw_user_meta_data->>'birth_date')::DATE
+              ELSE NULL
+            END,
+            (NEW.email_confirmed_at IS NOT NULL),
+            (NEW.phone_confirmed_at IS NOT NULL),
+            COALESCE(NEW.raw_user_meta_data->>'role', 'director'),
+            COALESCE(NEW.raw_user_meta_data->>'language', 'ru'),
+            NOW(),
+            NOW()
+          );
+
+          RETURN NEW;
+        END;
+        $$;
+      `);
+      logger.info('Trigger handle_new_user updated successfully');
+    } catch (triggerError) {
+      logger.warn('Failed to update trigger handle_new_user (may not exist yet):', triggerError.message);
+    }
   })
   .catch((err) => {
     logger.error('PostgreSQL database connection failed', err);
