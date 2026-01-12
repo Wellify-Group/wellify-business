@@ -96,7 +96,6 @@ export default function RegisterDirectorClient() {
 
   // Функция для сброса регистрации
   const resetRegistration = () => {
-    console.log("[register] Resetting registration");
     setRegisteredUserId(null);
     setRegisteredUserEmail(null);
     setRegisteredUserPhone(null);
@@ -118,8 +117,6 @@ export default function RegisterDirectorClient() {
     
     localStorage.removeItem("wellify_registration_userId");
     localStorage.removeItem("wellify_registration_email");
-    
-    console.log("[register] Page loaded - registration state reset");
   }, []);
 
   // ---------- helpers ----------
