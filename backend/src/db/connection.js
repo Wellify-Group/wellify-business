@@ -44,7 +44,8 @@ db.on('error', (err) => {
     await db.query('SELECT NOW()');
     logger.info('PostgreSQL database connected successfully');
     
-    // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем триггер handle_new_user (убираем колонку email)
+    // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем триггер handle_new_user (убираем raw_user_meta_data)
+    // Триггер создает только минимальный профиль, все данные заполняются вручную в коде регистрации
     logger.info('🔧 [CRITICAL] Updating handle_new_user trigger...');
     try {
       await db.query(`
@@ -53,17 +54,14 @@ db.on('error', (err) => {
         LANGUAGE plpgsql
         AS $$
         BEGIN
+          -- Проверяем, существует ли профиль (чтобы избежать дубликатов)
           IF EXISTS (SELECT 1 FROM profiles WHERE id = NEW.id) THEN
             RETURN NEW;
           END IF;
 
+          -- Создаем минимальный профиль (данные будут заполнены вручную в коде регистрации)
           INSERT INTO profiles (
             id,
-            first_name,
-            last_name,
-            middle_name,
-            full_name,
-            birth_date,
             email_verified,
             phone_verified,
             role,
@@ -73,20 +71,10 @@ db.on('error', (err) => {
           )
           VALUES (
             NEW.id,
-            NEW.raw_user_meta_data->>'first_name',
-            NEW.raw_user_meta_data->>'last_name',
-            NEW.raw_user_meta_data->>'middle_name',
-            NEW.raw_user_meta_data->>'full_name',
-            CASE
-              WHEN NEW.raw_user_meta_data->>'birth_date' IS NOT NULL
-                   AND NEW.raw_user_meta_data->>'birth_date' != ''
-              THEN (NEW.raw_user_meta_data->>'birth_date')::DATE
-              ELSE NULL
-            END,
             (NEW.email_confirmed_at IS NOT NULL),
             (NEW.phone_confirmed_at IS NOT NULL),
-            COALESCE(NEW.raw_user_meta_data->>'role', 'director'),
-            COALESCE(NEW.raw_user_meta_data->>'language', 'ru'),
+            'director',
+            'ru',
             NOW(),
             NOW()
           );
@@ -95,7 +83,7 @@ db.on('error', (err) => {
         END;
         $$;
       `);
-      logger.info('✅ [SUCCESS] Trigger handle_new_user updated successfully');
+      logger.info('✅ [SUCCESS] Trigger handle_new_user updated successfully (removed raw_user_meta_data)');
     } catch (triggerError) {
       logger.error('❌ [CRITICAL ERROR] Failed to update trigger handle_new_user:', {
         message: triggerError.message,

@@ -68,13 +68,10 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- Создаем минимальный профиль (данные будут заполнены вручную в коде регистрации)
+  -- ВАЖНО: raw_user_meta_data больше не используется, все данные сохраняются напрямую в profiles
   INSERT INTO profiles (
     id,
-    first_name,
-    last_name,
-    middle_name,
-    full_name,
-    birth_date,
     email_verified,
     phone_verified,
     role,
@@ -84,20 +81,10 @@ BEGIN
   )
   VALUES (
     NEW.id,
-    NEW.raw_user_meta_data->>'first_name',
-    NEW.raw_user_meta_data->>'last_name',
-    NEW.raw_user_meta_data->>'middle_name',
-    NEW.raw_user_meta_data->>'full_name',
-    CASE
-      WHEN NEW.raw_user_meta_data->>'birth_date' IS NOT NULL
-           AND NEW.raw_user_meta_data->>'birth_date' != ''
-      THEN (NEW.raw_user_meta_data->>'birth_date')::DATE
-      ELSE NULL
-    END,
     (NEW.email_confirmed_at IS NOT NULL),
     (NEW.phone_confirmed_at IS NOT NULL),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'director'),
-    COALESCE(NEW.raw_user_meta_data->>'language', 'ru'),
+    'director',
+    'ru',
     NOW(),
     NOW()
   );
