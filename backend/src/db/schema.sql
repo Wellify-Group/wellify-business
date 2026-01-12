@@ -482,12 +482,13 @@ BEGIN
     WHERE id = NEW.id;
   END IF;
 
-  IF NEW.email IS DISTINCT FROM OLD.email THEN
-    UPDATE profiles
-    SET email = NEW.email,
-        updated_at = NOW()
-    WHERE id = NEW.id;
-  END IF;
+  -- УБРАНО: обновление email в profiles (колонки не существует)
+  -- IF NEW.email IS DISTINCT FROM OLD.email THEN
+  --   UPDATE profiles
+  --   SET email = NEW.email,
+  --       updated_at = NOW()
+  --   WHERE id = NEW.id;
+  -- END IF;
 
   RETURN NEW;
 END;

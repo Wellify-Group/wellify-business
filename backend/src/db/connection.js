@@ -43,8 +43,9 @@ db.query('SELECT NOW()')
   .then(async () => {
     logger.info('PostgreSQL database connected successfully');
     
-    // Исправляем триггер handle_new_user, если он использует несуществующую колонку email
+    // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем триггер handle_new_user (убираем колонку email)
     try {
+      logger.info('Updating handle_new_user trigger...');
       await db.query(`
         CREATE OR REPLACE FUNCTION handle_new_user()
         RETURNS TRIGGER
@@ -93,9 +94,51 @@ db.query('SELECT NOW()')
         END;
         $$;
       `);
-      logger.info('Trigger handle_new_user updated successfully');
+      logger.info('✅ Trigger handle_new_user updated successfully');
     } catch (triggerError) {
-      logger.warn('Failed to update trigger handle_new_user (may not exist yet):', triggerError.message);
+      logger.error('❌ CRITICAL: Failed to update trigger handle_new_user:', {
+        message: triggerError.message,
+        stack: triggerError.stack,
+        code: triggerError.code
+      });
+      // НЕ выходим из процесса, но логируем критическую ошибку
+    }
+    
+    // Также исправляем handle_user_update (убираем обновление email)
+    try {
+      logger.info('Updating handle_user_update trigger...');
+      await db.query(`
+        CREATE OR REPLACE FUNCTION handle_user_update()
+        RETURNS TRIGGER
+        LANGUAGE plpgsql
+        AS $$
+        BEGIN
+          IF NEW.email_confirmed_at IS NOT NULL AND (OLD.email_confirmed_at IS NULL) THEN
+            UPDATE profiles
+            SET email_verified = TRUE,
+                updated_at = NOW()
+            WHERE id = NEW.id;
+          END IF;
+
+          -- УБРАНО: обновление email в profiles (колонки не существует)
+          -- IF NEW.email IS DISTINCT FROM OLD.email THEN
+          --   UPDATE profiles
+          --   SET email = NEW.email,
+          --       updated_at = NOW()
+          --   WHERE id = NEW.id;
+          -- END IF;
+
+          RETURN NEW;
+        END;
+        $$;
+      `);
+      logger.info('✅ Trigger handle_user_update updated successfully');
+    } catch (triggerError) {
+      logger.error('❌ CRITICAL: Failed to update trigger handle_user_update:', {
+        message: triggerError.message,
+        stack: triggerError.stack,
+        code: triggerError.code
+      });
     }
   })
   .catch((err) => {
