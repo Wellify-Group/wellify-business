@@ -38,14 +38,15 @@ db.on('error', (err) => {
   process.exit(-1);
 });
 
-// Тестовое подключение при старте и исправление триггера
-db.query('SELECT NOW()')
-  .then(async () => {
+// Тестовое подключение при старте
+(async () => {
+  try {
+    await db.query('SELECT NOW()');
     logger.info('PostgreSQL database connected successfully');
     
     // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем триггер handle_new_user (убираем колонку email)
+    logger.info('🔧 [CRITICAL] Updating handle_new_user trigger...');
     try {
-      logger.info('Updating handle_new_user trigger...');
       await db.query(`
         CREATE OR REPLACE FUNCTION handle_new_user()
         RETURNS TRIGGER
@@ -94,19 +95,20 @@ db.query('SELECT NOW()')
         END;
         $$;
       `);
-      logger.info('✅ Trigger handle_new_user updated successfully');
+      logger.info('✅ [SUCCESS] Trigger handle_new_user updated successfully');
     } catch (triggerError) {
-      logger.error('❌ CRITICAL: Failed to update trigger handle_new_user:', {
+      logger.error('❌ [CRITICAL ERROR] Failed to update trigger handle_new_user:', {
         message: triggerError.message,
         stack: triggerError.stack,
-        code: triggerError.code
+        code: triggerError.code,
+        detail: triggerError.detail
       });
       // НЕ выходим из процесса, но логируем критическую ошибку
     }
     
     // Также исправляем handle_user_update (убираем обновление email)
+    logger.info('🔧 [CRITICAL] Updating handle_user_update trigger...');
     try {
-      logger.info('Updating handle_user_update trigger...');
       await db.query(`
         CREATE OR REPLACE FUNCTION handle_user_update()
         RETURNS TRIGGER
@@ -132,18 +134,19 @@ db.query('SELECT NOW()')
         END;
         $$;
       `);
-      logger.info('✅ Trigger handle_user_update updated successfully');
+      logger.info('✅ [SUCCESS] Trigger handle_user_update updated successfully');
     } catch (triggerError) {
-      logger.error('❌ CRITICAL: Failed to update trigger handle_user_update:', {
+      logger.error('❌ [CRITICAL ERROR] Failed to update trigger handle_user_update:', {
         message: triggerError.message,
         stack: triggerError.stack,
-        code: triggerError.code
+        code: triggerError.code,
+        detail: triggerError.detail
       });
     }
-  })
-  .catch((err) => {
+  } catch (err) {
     logger.error('PostgreSQL database connection failed', err);
     process.exit(1);
-  });
+  }
+})();
 
 export { db };
