@@ -25,6 +25,7 @@ import subscriptionsRoutes from './routes/subscriptions.js';
 import locationsRoutes from './routes/locations.js';
 import stripeRoutes from './routes/stripe.js';
 import telegramRoutes from './routes/telegram.js';
+import { bot } from './services/telegram-bot.js';
 
 dotenv.config();
 
@@ -121,6 +122,28 @@ app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/locations', locationsRoutes);
 app.use('/api/stripe', stripeRoutes);
 app.use('/api/telegram', telegramRoutes);
+
+// Telegram Bot Webhook (если бот инициализирован)
+if (bot && process.env.TELEGRAM_BOT_TOKEN) {
+  const WEBHOOK_PATH = `/webhook/${process.env.TELEGRAM_BOT_TOKEN}`;
+  app.use(bot.webhookCallback(WEBHOOK_PATH));
+  
+  // Настройка webhook при старте (если указан WEBHOOK_BASE_URL)
+  if (process.env.WEBHOOK_BASE_URL) {
+    const WEBHOOK_URL = `${process.env.WEBHOOK_BASE_URL}${WEBHOOK_PATH}`;
+    bot.telegram.setWebhook(WEBHOOK_URL)
+      .then(() => {
+        logger.info(`Telegram webhook set to: ${WEBHOOK_URL}`);
+      })
+      .catch((err) => {
+        logger.error('Failed to set Telegram webhook:', err);
+      });
+  } else {
+    logger.warn('WEBHOOK_BASE_URL not set, Telegram webhook not configured');
+  }
+  
+  logger.info('Telegram bot integrated (webhook mode)');
+}
 
 // 404 handler
 app.use((req, res) => {

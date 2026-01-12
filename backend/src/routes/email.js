@@ -44,6 +44,13 @@ export const api = {
     };
 
     const text = texts[language] || texts.uk;
+    
+    const validText = {
+      ru: 'Этот код действителен в течение 15 минут.',
+      uk: 'Цей код дійсний протягом 15 хвилин.',
+      en: 'This code is valid for 15 minutes.',
+    };
+    const validMessage = validText[language] || validText.uk;
 
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'Wellify Business <noreply@wellifyglobal.com>',
@@ -52,9 +59,8 @@ export const api = {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>${text.subject}</h2>
-          <p>${text.message}</p>
-          <p style="font-size: 24px; font-weight: bold; color: #050B13;">${code}</p>
-          <p style="color: #666; font-size: 12px;">Этот код действителен в течение 15 минут.</p>
+          <p style="font-size: 36px; font-weight: 900; color: #050B13; letter-spacing: 4px; text-align: center; margin: 20px 0;">${code}</p>
+          <p style="color: #666; font-size: 14px; text-align: center;">${validMessage}</p>
         </div>
       `,
     });
@@ -101,6 +107,13 @@ router.post('/send-verification', async (req, res) => {
     };
 
     const text = texts[language] || texts.uk;
+    
+    const validText = {
+      ru: 'Этот код действителен в течение 15 минут.',
+      uk: 'Цей код дійсний протягом 15 хвилин.',
+      en: 'This code is valid for 15 minutes.',
+    };
+    const validMessage = validText[language] || validText.uk;
 
     // Отправляем email
     const { data, error } = await resend.emails.send({
@@ -110,9 +123,8 @@ router.post('/send-verification', async (req, res) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>${text.subject}</h2>
-          <p>${text.message}</p>
-          <p style="font-size: 24px; font-weight: bold; color: #050B13;">${code}</p>
-          <p style="color: #666; font-size: 12px;">Этот код действителен в течение 15 минут.</p>
+          <p style="font-size: 36px; font-weight: 900; color: #050B13; letter-spacing: 4px; text-align: center; margin: 20px 0;">${code}</p>
+          <p style="color: #666; font-size: 14px; text-align: center;">${validMessage}</p>
         </div>
       `,
     });
