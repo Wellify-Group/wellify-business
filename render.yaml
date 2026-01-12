@@ -43,3 +43,15 @@ services:
         # Set this manually in Render Dashboard after deployment
       - key: RESEND_FROM_EMAIL
         value: Wellify Business <noreply@wellifyglobal.com>
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+        # Set this manually in Render Dashboard after deployment
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+        # Set this manually in Render Dashboard after deployment (e.g., @WellifyBusinessBot)
+      - key: SUPPORT_MANAGERS_CHAT_ID
+        sync: false
+        # Set this manually in Render Dashboard after deployment
+      - key: WEBHOOK_BASE_URL
+        sync: false
+        # Set this manually in Render Dashboard after deployment (e.g., https://wellify-business-backend.onrender.com)
