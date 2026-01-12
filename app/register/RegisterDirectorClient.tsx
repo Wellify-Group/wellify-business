@@ -213,20 +213,27 @@ export default function RegisterDirectorClient() {
       }
 
       // Загружаем профиль из БД через /api/auth/load-profile
+      // ВАЖНО: На странице регистрации пользователь может быть еще не авторизован
       const res = await fetch('/api/auth/load-profile', {
         credentials: 'include',
         cache: 'no-store',
       });
 
+      // 401 - это нормально для неавторизованных пользователей на странице регистрации
       if (res.status === 401) {
-        setRegisterError(t<string>("register_error_session_expired"));
+        console.log("[register] User not authenticated yet (this is normal during registration)");
+        // Не устанавливаем ошибку, просто продолжаем регистрацию
         return;
       }
 
+      // Другие ошибки (404, 500 и т.д.) - это реальные проблемы
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         console.error("[register] Load profile error:", res.status, errorData);
-        setRegisterError(t<string>("register_error_profile_load_failed"));
+        // Только для критических ошибок показываем ошибку
+        if (res.status !== 404) {
+          setRegisterError(t<string>("register_error_profile_load_failed"));
+        }
         return;
       }
 

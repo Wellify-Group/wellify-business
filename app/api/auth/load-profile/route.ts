@@ -16,6 +16,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   try {
     if (!API_URL) {
+      console.error('[load-profile] API_URL is not configured');
       return NextResponse.json(
         {
           success: false,
@@ -26,10 +27,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем токен из заголовков или cookies
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') ||
                   request.cookies.get('auth_token')?.value;
 
+    console.log('[load-profile] Request received', {
+      hasAuthHeader: !!authHeader,
+      hasToken: !!token,
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
+    });
+
     if (!token) {
+      // Это нормально для неавторизованных пользователей (например, на странице регистрации)
+      console.log('[load-profile] No token provided, returning 401 (this is normal for unauthenticated users)');
       return NextResponse.json(
         {
           success: false,
