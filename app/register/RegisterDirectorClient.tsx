@@ -300,10 +300,11 @@ export default function RegisterDirectorClient() {
     try {
       // Если пользователь еще не создан, создаем его
       if (!registeredUserId) {
+        // Генерируем fullName в формате: lastName firstName middleName
         const fullName = [
+          personal.lastName.trim(),
           personal.firstName.trim(),
           personal.middleName.trim(),
-          personal.lastName.trim(),
         ]
           .filter(Boolean)
           .join(" ");
