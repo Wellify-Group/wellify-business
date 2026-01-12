@@ -440,12 +440,28 @@ router.post('/register-director', async (req, res) => {
       const user = userResult.rows[0];
       const userId = user.id;
 
-      // Создаём профиль
-      await client.query(
-        `INSERT INTO profiles (id, full_name, role, language, phone_verified, email_verified)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, safeFullName, 'director', safeLanguage, false, false]
+      // Проверяем, существует ли профиль (триггер handle_new_user мог его создать)
+      const existingProfile = await client.query(
+        'SELECT id FROM profiles WHERE id = $1',
+        [userId]
       );
+
+      // Создаём профиль только если его нет
+      if (existingProfile.rows.length === 0) {
+        await client.query(
+          `INSERT INTO profiles (id, full_name, role, language, phone_verified, email_verified)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [userId, safeFullName, 'director', safeLanguage, false, false]
+        );
+      } else {
+        // Профиль уже существует (создан триггером), обновляем его данными
+        await client.query(
+          `UPDATE profiles 
+           SET full_name = $1, role = $2, language = $3, updated_at = NOW()
+           WHERE id = $4`,
+          [safeFullName, 'director', safeLanguage, userId]
+        );
+      }
 
       // Создаём бизнес
       const businessResult = await client.query(
