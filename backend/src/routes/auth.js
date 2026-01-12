@@ -48,12 +48,28 @@ router.post('/signup', async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Создаём профиль
-    await db.query(
-      `INSERT INTO profiles (id, full_name, role, language, phone, phone_verified, email_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [user.id, full_name || null, 'director', 'uk', phone || null, false, false]
+    // Проверяем, существует ли профиль (триггер handle_new_user мог его создать)
+    const existingProfile = await db.query(
+      'SELECT id FROM profiles WHERE id = $1',
+      [user.id]
     );
+
+    // Создаём профиль только если его нет
+    if (existingProfile.rows.length === 0) {
+      await db.query(
+        `INSERT INTO profiles (id, full_name, role, language, phone, phone_verified, email_verified)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [user.id, full_name || null, 'director', 'uk', phone || null, false, false]
+      );
+    } else {
+      // Профиль уже существует (создан триггером), обновляем его данными
+      await db.query(
+        `UPDATE profiles 
+         SET full_name = $1, role = $2, language = $3, phone = $4, updated_at = NOW()
+         WHERE id = $5`,
+        [full_name || null, 'director', 'uk', phone || null, user.id]
+      );
+    }
 
     // Генерируем JWT токен
     const token = jwt.sign(
