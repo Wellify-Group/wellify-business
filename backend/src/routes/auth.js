@@ -410,10 +410,13 @@ router.post('/register-director', async (req, res) => {
     // Хешируем пароль
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Начинаем транзакцию (в PostgreSQL можно использовать BEGIN/COMMIT)
+    // Начинаем транзакцию PostgreSQL
+    const client = await db.connect();
     try {
+      await client.query('BEGIN');
+
       // Создаём пользователя
-      const userResult = await db.query(
+      const userResult = await client.query(
         `INSERT INTO users (email, password_hash, created_at)
          VALUES ($1, $2, NOW())
          RETURNING id, email, email_verified, phone, phone_verified, created_at`,
@@ -424,14 +427,14 @@ router.post('/register-director', async (req, res) => {
       const userId = user.id;
 
       // Создаём профиль
-      await db.query(
+      await client.query(
         `INSERT INTO profiles (id, full_name, role, language, phone_verified, email_verified)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [userId, safeFullName, 'director', safeLanguage, false, false]
       );
 
       // Создаём бизнес
-      const businessResult = await db.query(
+      const businessResult = await client.query(
         `INSERT INTO businesses (owner_profile_id, название, код_компании)
          VALUES ($1, $2, $3)
          RETURNING id, название, код_компании`,
@@ -442,11 +445,14 @@ router.post('/register-director', async (req, res) => {
       const businessId = business.id;
 
       // Создаём запись в staff для директора
-      await db.query(
+      await client.query(
         `INSERT INTO staff (profile_id, business_id, роль, должность, активен)
          VALUES ($1, $2, $3, $4, $5)`,
         [userId, businessId, 'директор', 'владелец', true]
       );
+
+      // Коммитим транзакцию
+      await client.query('COMMIT');
 
       // Генерируем JWT токен
       const token = jwt.sign(
@@ -472,15 +478,19 @@ router.post('/register-director', async (req, res) => {
         token,
       });
     } catch (dbError) {
+      // Откатываем транзакцию при ошибке
+      await client.query('ROLLBACK');
       logger.error('Database error during director registration', dbError);
       
-      // Если пользователь был создан, но что-то пошло не так, пытаемся откатить
-      // В production лучше использовать транзакции
       return res.status(500).json({
         success: false,
         error: 'Failed to create user profile or business',
         errorCode: 'REGISTRATION_FAILED',
+        details: process.env.NODE_ENV === 'development' ? dbError.message : undefined,
       });
+    } finally {
+      // Освобождаем клиента обратно в pool
+      client.release();
     }
   } catch (error) {
     logger.error('Register director error', error);
