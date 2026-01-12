@@ -410,10 +410,24 @@ router.post('/register-director', async (req, res) => {
     // Хешируем пароль
     const passwordHash = await bcrypt.hash(password, 10);
 
+    // Генерируем код компании (внутри транзакции, чтобы избежать race condition)
     // Начинаем транзакцию PostgreSQL
     const client = await db.connect();
     try {
       await client.query('BEGIN');
+
+      // Генерируем уникальный код компании
+      let companyCode = generateCompanyCode();
+      let attempts = 0;
+      while (attempts < 10) {
+        const existing = await client.query(
+          'SELECT id FROM businesses WHERE код_компании = $1',
+          [companyCode]
+        );
+        if (existing.rows.length === 0) break;
+        companyCode = generateCompanyCode();
+        attempts++;
+      }
 
       // Создаём пользователя
       const userResult = await client.query(
@@ -479,8 +493,17 @@ router.post('/register-director', async (req, res) => {
       });
     } catch (dbError) {
       // Откатываем транзакцию при ошибке
-      await client.query('ROLLBACK');
-      logger.error('Database error during director registration', dbError);
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction', rollbackError);
+      }
+      logger.error('Database error during director registration', {
+        error: dbError.message,
+        stack: dbError.stack,
+        code: dbError.code,
+        detail: dbError.detail,
+      });
       
       return res.status(500).json({
         success: false,
