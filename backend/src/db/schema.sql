@@ -30,9 +30,9 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Таблица профилей (1:1 с users)
+-- ВАЖНО: email НЕ хранится в profiles, только в users!
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  email TEXT,
   first_name TEXT,
   last_name TEXT,
   middle_name TEXT,
