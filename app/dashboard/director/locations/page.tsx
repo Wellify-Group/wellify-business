@@ -306,6 +306,12 @@ function LocationsContent() {
           : null
       });
 
+      // Refresh locations list from server
+      const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
+      if (effectiveBusinessId) {
+        await fetchLocations(effectiveBusinessId);
+      }
+
       // Auto-confirm any pending rows before adding
       const confirmedEmployees = newEmployees.map(emp => {
         if (!emp.isConfirmed && emp.name.trim() && emp.pin.trim()) {
@@ -801,6 +807,12 @@ function LocationsContent() {
                           managerId: wizardData.managerId,
                         });
                         
+                        // Refresh locations list from server
+                        const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
+                        if (effectiveBusinessId) {
+                          await fetchLocations(effectiveBusinessId);
+                        }
+                        
                         // Reset wizard
                         setIsAdding(false);
                         setWizardStep(1);
@@ -833,6 +845,12 @@ function LocationsContent() {
                           dailyPlan: undefined,
                           managerId: wizardData.managerId,
                         });
+                        
+                        // Refresh locations list from server
+                        const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
+                        if (effectiveBusinessId) {
+                          await fetchLocations(effectiveBusinessId);
+                        }
                         
                         setIsAdding(false);
                         setWizardStep(1);

@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
     const { name, address, businessId, status, accessCode, dailyPlan, branding, contact, schedule, settings, managerId } = body;
 
     // Validation
-    if (!name || !address || !businessId) {
+    if (!name || !businessId) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: name, address, businessId' },
+        { success: false, error: 'Missing required fields: name, businessId' },
         { status: 400 }
       );
     }
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     const newLocation: Location = {
       id: locationId,
       name: name.trim(),
-      address: address.trim(),
+      address: (address || '').trim(),
       businessId: businessId,
       status: status || 'active',
       accessCode: accessCode || generate16DigitCode(),
