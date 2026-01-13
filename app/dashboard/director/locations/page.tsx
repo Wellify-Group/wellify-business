@@ -57,7 +57,7 @@ function LocationsContent() {
     name: "",
     businessType: "",
     currency: currency || "₴",
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
     managerId: null as string | null,
   });
   
@@ -88,8 +88,12 @@ function LocationsContent() {
     }
   }, [searchParams]);
 
-  // Calculate today's date range
+  // Calculate today's date range - only on client to prevent hydration mismatch
   const today = useMemo(() => {
+    if (typeof window === 'undefined') {
+      // Return a safe default for SSR
+      return { start: 0, end: 0 };
+    }
     const now = new Date();
     const startOfDay = new Date(now.setHours(0, 0, 0, 0)).getTime();
     const endOfDay = new Date(now.setHours(23, 59, 59, 999)).getTime();
@@ -231,10 +235,12 @@ function LocationsContent() {
   };
 
   const generatePin = () => {
+    if (typeof window === 'undefined') return '0000';
     return Math.floor(1000 + Math.random() * 9000).toString();
   };
 
   const handleAddEmployee = () => {
+    if (typeof window === 'undefined') return;
     setNewEmployees([...newEmployees, {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       name: "",
@@ -245,6 +251,7 @@ function LocationsContent() {
   };
 
   const handleAddManager = () => {
+    if (typeof window === 'undefined') return;
     setNewManager({
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       name: "",
@@ -574,7 +581,7 @@ function LocationsContent() {
                     name: "",
                     businessType: "",
                     currency: currency || "₴",
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    timezone: typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
                     managerId: null,
                   });
                   setSelectedIndustry("");
@@ -841,7 +848,7 @@ function LocationsContent() {
                           name: "",
                           businessType: "",
                           currency: currency || "₴",
-                          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                          timezone: typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
                           managerId: null,
                         });
                         setSelectedIndustry("");
@@ -881,7 +888,7 @@ function LocationsContent() {
                           name: "",
                           businessType: "",
                           currency: currency || "₴",
-                          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                          timezone: typeof window !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
                           managerId: null,
                         });
                         setSelectedIndustry("");

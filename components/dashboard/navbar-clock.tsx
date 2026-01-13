@@ -5,13 +5,26 @@ import { useLanguage } from "@/components/language-provider";
 
 export const NavbarClock = () => {
   const { language } = useLanguage();
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    setNow(new Date());
     // Обновляем раз в минуту, секунды не нужны
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
+
+  if (!mounted || !now) {
+    return (
+      <div className="flex items-center gap-2 text-sm">
+        <span className="tabular-nums font-medium text-foreground">--:--</span>
+        <span className="text-muted-foreground/60">---</span>
+        <span className="hidden lg:inline text-muted-foreground/60 text-xs">---</span>
+      </div>
+    );
+  }
 
   const localeMap: Record<string, string> = {
     ru: "ru-RU",
@@ -41,9 +54,9 @@ export const NavbarClock = () => {
 
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="tabular-nums font-medium text-foreground">{time}</span>
-      <span className="text-muted-foreground/60">{weekday}</span>
-      <span className="hidden lg:inline text-muted-foreground/60 text-xs">{formattedDate}</span>
+      <span className="tabular-nums font-medium text-foreground" suppressHydrationWarning>{time}</span>
+      <span className="text-muted-foreground/60" suppressHydrationWarning>{weekday}</span>
+      <span className="hidden lg:inline text-muted-foreground/60 text-xs" suppressHydrationWarning>{formattedDate}</span>
     </div>
   );
 };
