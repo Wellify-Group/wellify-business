@@ -5,7 +5,33 @@
 ------------------------------------------------------------
 
 ------------------------------------------------------------
--- 0. Расширения для UUID
+-- 0. УДАЛЕНИЕ ВСЕХ СТАРЫХ ТРИГГЕРОВ И ФУНКЦИЙ
+-- КРИТИЧНО: Удаляем все триггеры, которые могут вызывать ошибки
+------------------------------------------------------------
+
+-- Удаляем все триггеры на таблице users
+DROP TRIGGER IF EXISTS on_user_created ON users CASCADE;
+DROP TRIGGER IF EXISTS on_user_updated ON users CASCADE;
+DROP TRIGGER IF EXISTS update_users_updated_at ON users CASCADE;
+
+-- Удаляем все триггеры на таблице profiles
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles CASCADE;
+
+-- Удаляем все триггеры на других таблицах
+DROP TRIGGER IF EXISTS update_businesses_updated_at ON businesses CASCADE;
+DROP TRIGGER IF EXISTS update_locations_updated_at ON locations CASCADE;
+DROP TRIGGER IF EXISTS update_staff_updated_at ON staff CASCADE;
+DROP TRIGGER IF EXISTS update_shifts_updated_at ON shifts CASCADE;
+DROP TRIGGER IF EXISTS update_user_subscriptions_updated_at ON user_subscriptions CASCADE;
+DROP TRIGGER IF EXISTS update_support_sessions_updated_at ON support_sessions CASCADE;
+
+-- Удаляем все функции триггеров
+DROP FUNCTION IF EXISTS handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS handle_user_update() CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+
+------------------------------------------------------------
+-- 0.1. Расширения для UUID
 ------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
