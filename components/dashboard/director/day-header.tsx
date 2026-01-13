@@ -38,9 +38,9 @@ export function DayHeader() {
             className="appearance-none bg-card border border-border rounded-lg px-3 py-1.5 pr-8 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">Вся сеть</option>
-            {locations.map(loc => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
-            ))}
+            {Array.isArray(locations) ? locations.map(loc => (
+              loc && loc.id ? <option key={loc.id} value={loc.id}>{loc.name || '—'}</option> : null
+            )).filter(Boolean) : null}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         </div>
