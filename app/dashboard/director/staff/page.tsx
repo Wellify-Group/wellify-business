@@ -2,591 +2,293 @@
 
 import { useLanguage } from "@/components/language-provider";
 import useStore, { User } from "@/lib/store";
-import { UserPlus, Trophy, AlertTriangle, Users, MapPin, Briefcase, Dice1, ChevronDown, Eye, Edit2 } from "lucide-react";
-import { useState } from "react";
+import { UserPlus, AlertTriangle, Users, MapPin, Briefcase, Dice1, ChevronDown, X, Plus, Check, Filter, Search, Eye, Lock, Mail } from "lucide-react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { StaffPassportModal } from "@/components/dashboard/staff-passport-modal";
+import { useRouter } from "next/navigation";
 
 export default function StaffPage() {
   const { t } = useLanguage();
-  const { employees, locations, currency, addEmployee, deleteUser, openMessageComposer, updateProfile, currentUser } = useStore();
+  const router = useRouter();
+  const { employees, locations, currency, shifts, addEmployee, deleteUser, openMessageComposer, updateProfile, currentUser } = useStore();
+  
+  // Filters
+  const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [problemsFilter, setProblemsFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Wizard state
   const [isAdding, setIsAdding] = useState(false);
-  const [modalRole, setModalRole] = useState<'manager' | 'employee' | null>(null);
-  const [selectedPassport, setSelectedPassport] = useState<User | null>(null);
-  const [newStaff, setNewStaff] = useState({ 
-    name: "", 
-    fullName: "",
+  const [wizardStep, setWizardStep] = useState(1);
+  const [wizardData, setWizardData] = useState({
+    role: "" as "employee" | "manager" | "",
+    name: "",
+    authType: "" as "pin" | "email" | "",
     pin: "",
-    phone: "",
     email: "",
     password: "",
-    dob: "",
-    address: "",
-    jobTitle: "",
-    assignedPointId: ""
+    assignedPointId: "",
   });
 
+  const [selectedPassport, setSelectedPassport] = useState<User | null>(null);
+
+  // Calculate staff metrics
+  const staffWithMetrics = useMemo(() => {
+    return employees.map(employee => {
+      // Get employee shifts
+      const employeeShifts = shifts.filter(s => s.employeeId === employee.id);
+      
+      // Get last shift
+      const lastShift = employeeShifts
+        .sort((a, b) => b.date - a.date)[0] || null;
+      
+      // Count problematic shifts
+      const problematicShiftsCount = employeeShifts.filter(s => s.status === 'issue').length;
+      
+      // Get assigned location
+      const assignedLocation = locations.find(loc => loc.id === employee.assignedPointId);
+      
+      return {
+        ...employee,
+        lastShift,
+        problematicShiftsCount,
+        assignedLocation,
+      };
+    });
+  }, [employees, shifts, locations]);
+
+  // Filter staff
+  const filteredStaff = useMemo(() => {
+    return staffWithMetrics.filter(staff => {
+      // Location filter
+      if (locationFilter !== "all" && staff.assignedPointId !== locationFilter) {
+        return false;
+      }
+      
+      // Role filter
+      if (roleFilter !== "all" && staff.role !== roleFilter) {
+        return false;
+      }
+      
+      // Problems filter
+      if (problemsFilter === "problems" && staff.problematicShiftsCount === 0) {
+        return false;
+      }
+      
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const nameMatch = (staff.name || "").toLowerCase().includes(query);
+        const fullNameMatch = (staff.fullName || "").toLowerCase().includes(query);
+        const emailMatch = (staff.email || "").toLowerCase().includes(query);
+        return nameMatch || fullNameMatch || emailMatch;
+      }
+      
+      return true;
+    });
+  }, [staffWithMetrics, locationFilter, roleFilter, problemsFilter, searchQuery]);
+
+  // Generate PIN
   const generatePin = () => {
     const pin = Math.floor(1000 + Math.random() * 9000).toString();
-    setNewStaff({ ...newStaff, pin });
+    setWizardData({ ...wizardData, pin });
   };
 
+  // Generate Password
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
     for (let i = 0; i < 12; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setNewStaff({ ...newStaff, password });
+    setWizardData({ ...wizardData, password });
   };
 
-  const handleOpenModal = (role: 'manager' | 'employee') => {
-    setModalRole(role);
-    setIsAdding(true);
-    setNewStaff({ 
-      name: "", 
-      fullName: "",
-      pin: role === 'employee' ? Math.floor(1000 + Math.random() * 9000).toString() : "", 
-      phone: "", 
-      email: "", 
+  // Handle wizard completion
+  const handleWizardComplete = async () => {
+    if (!wizardData.role || !wizardData.name) return;
+
+    if (wizardData.role === 'manager') {
+      if (!wizardData.email || !wizardData.password) return;
+      await addEmployee({
+        name: wizardData.name.split(' ')[0] || wizardData.name,
+        fullName: wizardData.name,
+        email: wizardData.email,
+        password: wizardData.password,
+        role: "manager",
+        status: "active",
+        assignedPointId: wizardData.assignedPointId || undefined,
+      });
+    } else {
+      if (!wizardData.pin) return;
+      await addEmployee({
+        name: wizardData.name.split(' ')[0] || wizardData.name,
+        fullName: wizardData.name,
+        pin: wizardData.pin,
+        role: "employee",
+        status: "active",
+        assignedPointId: wizardData.assignedPointId || undefined,
+      });
+    }
+
+    // Reset wizard
+    setIsAdding(false);
+    setWizardStep(1);
+    setWizardData({
+      role: "",
+      name: "",
+      authType: "",
+      pin: "",
+      email: "",
       password: "",
-      dob: "",
-      address: "",
-      jobTitle: "",
-      assignedPointId: ""
+      assignedPointId: "",
     });
   };
 
-  const handleAdd = async () => {
-    if (!modalRole) return;
-
-    // Check if we're editing an existing employee
-    if (editingId) {
-      // Find the employee being edited
-      const employeeToEdit = employees.find(emp => emp.id === editingId);
-      if (!employeeToEdit) {
-        console.error('Employee to edit not found');
-        return;
-      }
-
-      // Prepare updates object
-      const updates: any = {
-        fullName: newStaff.fullName,
-        name: newStaff.fullName.split(' ')[0] || newStaff.fullName,
-        phone: newStaff.phone || undefined,
-        dob: newStaff.dob || undefined,
-        address: newStaff.address || undefined,
-        jobTitle: newStaff.jobTitle || undefined,
-        assignedPointId: newStaff.assignedPointId || undefined,
-      };
-
-      // Add role-specific fields
-      if (modalRole === 'employee') {
-        if (!newStaff.fullName || !newStaff.pin) {
-          return;
-        }
-        updates.pin = newStaff.pin;
-        if (newStaff.email) {
-          updates.email = newStaff.email;
-        }
-      } else if (modalRole === 'manager') {
-        if (!newStaff.fullName || !newStaff.email) {
-          return;
-        }
-        updates.email = newStaff.email;
-        // Only update password if provided (not required for editing)
-        if (newStaff.password && newStaff.password.trim()) {
-          updates.password = newStaff.password;
-        }
-      }
-
-      // Call API to update user
-      try {
-        const response = await fetch('/api/user/update', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            role: employeeToEdit.role,
-            userId: employeeToEdit.id,
-            updates: updates,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          console.error('Failed to update employee:', data.error);
-          return;
-        }
-
-        // Update local state manually
-        const updatedEmployee = data.user;
-        // Update employees and users arrays in store
-        const { employees: currentEmployees, users: currentUsers } = useStore.getState();
-        useStore.setState({
-          employees: currentEmployees.map(emp => 
-            emp.id === updatedEmployee.id ? updatedEmployee : emp
-          ),
-          users: currentUsers.map(user => 
-            user.id === updatedEmployee.id ? updatedEmployee : user
-          )
-        });
-      } catch (error) {
-        console.error('Update employee error:', error);
-        return;
-      }
-    } else {
-      // Creating new employee
-      if (modalRole === 'manager') {
-        // Manager validation: fullName, email, password required
-        if (!newStaff.fullName || !newStaff.email || !newStaff.password) {
-          return;
-        }
-        await addEmployee({
-          name: newStaff.fullName.split(' ')[0] || newStaff.fullName,
-          fullName: newStaff.fullName,
-          email: newStaff.email,
-          password: newStaff.password,
-          phone: newStaff.phone || undefined,
-          dob: newStaff.dob || undefined,
-          address: newStaff.address || undefined,
-          jobTitle: newStaff.jobTitle || undefined,
-          role: "manager",
-          status: "active",
-          assignedPointId: newStaff.assignedPointId || undefined,
-        });
-      } else {
-        // Employee validation: fullName, pin required
-        if (!newStaff.fullName || !newStaff.pin) {
-          return;
-        }
-        await addEmployee({
-          name: newStaff.fullName.split(' ')[0] || newStaff.fullName,
-          fullName: newStaff.fullName,
-          pin: newStaff.pin,
-          phone: newStaff.phone || undefined,
-          email: newStaff.email || undefined,
-          dob: newStaff.dob || undefined,
-          address: newStaff.address || undefined,
-          jobTitle: newStaff.jobTitle || undefined,
-          role: "employee",
-          status: "active",
-          assignedPointId: newStaff.assignedPointId || undefined,
-        });
-      }
-    }
-    
-    setNewStaff({ name: "", fullName: "", pin: "", phone: "", email: "", password: "", dob: "", address: "", jobTitle: "", assignedPointId: "" });
-    setIsAdding(false);
-    setModalRole(null);
-    setEditingId(null);
-  };
-
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const sortedEmployees = [...employees]
-    .filter(emp => emp.role === 'employee')
-    .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-  return (
-    <div className="space-y-6">
-      {/* Subtitle and Add Buttons */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Управление сотрудниками
-        </p>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleOpenModal('manager')}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium",
-              modalRole === 'manager'
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border border-border bg-background text-zinc-500 hover:text-foreground hover:bg-muted"
-            )}
-          >
-            <Briefcase className="h-4 w-4" />
-            {t("dashboard.btn_add_manager")}
-          </button>
-          <button
-            onClick={() => handleOpenModal('employee')}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium",
-              modalRole === 'employee'
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border border-border bg-background text-zinc-500 hover:text-foreground hover:bg-muted"
-            )}
-          >
-            <UserPlus className="h-4 w-4" />
-            {t("dashboard.btn_add_employee")}
-          </button>
-        </div>
-      </div>
-
-      {/* Add Staff Form */}
-      {isAdding && modalRole && (
-        <div className="bg-card p-6 border border-border rounded-xl shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-6">
-            {editingId 
-              ? (modalRole === 'manager' ? t("dashboard.team_edit_manager") || "Редактировать менеджера" : t("dashboard.team_edit_member") || "Редактировать сотрудника")
-              : (modalRole === 'manager' ? t("dashboard.team_add_manager") : t("dashboard.team_add_member"))
-            }
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name - Required, Single field */}
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">
-                {t("reg_name_placeholder") || "Полное имя"} <span className="text-destructive">*</span>
-              </label>
-              <input
-                type="text"
-                value={newStaff.fullName}
-                onChange={(e) => {
-                  const fullName = e.target.value;
-                  setNewStaff({ ...newStaff, fullName, name: fullName.split(' ')[0] || fullName });
-                }}
-                placeholder={t("reg_name_placeholder") || "Полное имя"}
-                required
-                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
+  // Empty state
+  if (employees.length === 0 && !isAdding) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col items-center justify-center min-h-[600px] px-4">
+          <div className="text-center max-w-md w-full space-y-6">
+            {/* Header */}
+            <div className="space-y-3">
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
+                Персонал
+              </h1>
+              <p className="text-base text-muted-foreground">
+                Контроль сотрудников по всей сети
+              </p>
             </div>
-            
-            {/* Manager-specific fields */}
-            {modalRole === 'manager' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Email <span className="text-destructive">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={newStaff.email}
-                    onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                    placeholder={t("dashboard.lbl_email_required") || "Email (обязательно)"}
-                    required
-                    className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    {editingId ? (t("dashboard.lbl_password_optional") || "Пароль (необязательно)") : (t("dashboard.lbl_password") || "Пароль")} {!editingId && <span className="text-destructive">*</span>}
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      value={newStaff.password}
-                      onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                      placeholder={editingId ? (t("dashboard.lbl_password_optional") || "Оставить пустым, чтобы не менять") : (t("dashboard.lbl_password") || "Пароль")}
-                      required={!editingId}
-                      className="flex-1 h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={generatePassword}
-                      className="h-10 px-3 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors border border-border"
-                      title="Сгенерировать пароль"
-                    >
-                      <Dice1 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-            
-            {/* Employee-specific fields */}
-            {modalRole === 'employee' && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  PIN <span className="text-destructive">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newStaff.pin}
-                    onChange={(e) => setNewStaff({ ...newStaff, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })}
-                    placeholder={t("dashboard.employee_pin") || "PIN"}
-                    maxLength={4}
-                    required
-                    className="flex-1 h-10 px-4 bg-background border border-border rounded-lg text-center text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={generatePin}
-                    className="h-10 px-3 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors border border-border"
-                    title="Сгенерировать PIN"
-                  >
-                    <Dice1 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
 
-            {/* Location Assignment - For both Manager and Employee */}
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">
-                {t("dashboard.pass_assign_location") || "Назначить на локацию"} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={newStaff.assignedPointId}
-                  onChange={(e) => setNewStaff({ ...newStaff, assignedPointId: e.target.value })}
-                  className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-10"
-                >
-                  <option value="">{t("dashboard.lbl_not_assigned") || "Не назначен"}</option>
-                  {locations.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              </div>
-            </div>
-            
-            {/* Optional Details */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                {t("dashboard.staff_phone")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
-              </label>
-              <input
-                type="tel"
-                value={newStaff.phone}
-                onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
-                placeholder={t("dashboard.staff_phone")}
-                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                {t("dashboard.staff_dob")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
-              </label>
-              <input
-                type="date"
-                value={newStaff.dob}
-                onChange={(e) => setNewStaff({ ...newStaff, dob: e.target.value })}
-                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-foreground mb-2">
-                {t("dashboard.staff_address")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
-              </label>
-              <input
-                type="text"
-                value={newStaff.address}
-                onChange={(e) => setNewStaff({ ...newStaff, address: e.target.value })}
-                placeholder={t("dashboard.staff_address")}
-                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
-            </div>
-            {modalRole === 'employee' && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  {t("dashboard.staff_email")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
-                </label>
-                <input
-                  type="email"
-                  value={newStaff.email}
-                  onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                  placeholder={t("dashboard.staff_email")}
-                  className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                />
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                {t("dashboard.staff_job_title")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
-              </label>
-              <input
-                type="text"
-                value={newStaff.jobTitle}
-                onChange={(e) => setNewStaff({ ...newStaff, jobTitle: e.target.value })}
-                placeholder={t("dashboard.staff_job_title")}
-                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-              />
-            </div>
-            
-            <div className="sm:col-span-2 flex gap-3">
+            {/* Message */}
+            <p className="text-sm text-muted-foreground">
+              В системе пока нет сотрудников
+            </p>
+
+            {/* Primary CTA */}
+            <div className="mt-8">
               <button
-                onClick={handleAdd}
-                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                onClick={() => setIsAdding(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
               >
-                {editingId ? (t("dashboard.save") || "Сохранить") : t("dashboard.add")}
-              </button>
-              <button
-                onClick={() => {
-                  setIsAdding(false);
-                  setModalRole(null);
-                  setEditingId(null);
-                  setNewStaff({ name: "", fullName: "", pin: "", phone: "", email: "", password: "", dob: "", address: "", jobTitle: "", assignedPointId: "" });
-                }}
-                className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors font-medium"
-              >
-                {t("dashboard.btn_cancel")}
+                Добавить первого сотрудника
+                <Plus className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Helper text */}
+            <p className="text-sm text-muted-foreground mt-6">
+              Назначьте сотрудников на точки, чтобы начать работу со сменами
+            </p>
           </div>
         </div>
-      )}
 
-      {/* Staff List - Premium Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {sortedEmployees.map((employee, index) => {
-          const assignedLocation = locations.find(loc => loc.id === employee.assignedPointId);
-          const isSelected = selectedPassport?.id === employee.id;
-          const hasIssues = (employee.rating || 0) < 70;
-          const totalShifts = 127; // Mock - TODO: calculate from shifts
-          const totalRevenue = (employee as any).totalRevenue || 1250000; // Mock
-          const lateness = (employee as any).lateness || 2; // Mock
-          const rating = employee.rating || 0;
-          
-          // Get initials for avatar
-          const initials = employee.name
-            .split(' ')
-            .map(n => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
+        {/* Add Staff Wizard (if opened) */}
+        {isAdding && <AddStaffWizard />}
+      </div>
+    );
+  }
 
-          // Role badge text
-          const roleText = employee.role === 'manager' 
-            ? (t("dashboard.role_manager") || "Менеджер")
-            : (t("dashboard.role_staff") || "Сотрудник");
-          const locationText = assignedLocation 
-            ? assignedLocation.name 
-            : (t("dashboard.lbl_not_assigned") || "Не закреплён");
+  return (
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Персонал</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Контроль сотрудников по всей сети
+            </p>
+          </div>
+          <button
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Добавить сотрудника
+          </button>
+        </div>
 
-          return (
-            <div
-              key={employee.id}
-              onClick={() => setSelectedPassport(employee)}
-              className={`group relative bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-200/50 dark:border-white/5 rounded-2xl p-4 sm:p-5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-indigo-500/50 dark:hover:border-indigo-500/30 hover:bg-white dark:hover:bg-zinc-900 ${
-                isSelected ? 'ring-2 ring-indigo-500/50 dark:ring-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-950/20' : ''
-              } ${hasIssues ? 'border-rose-500/30 dark:border-rose-500/20' : ''}`}
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Location Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
-              {/* Warning Icon for Problematic Employees */}
-              {hasIssues && (
-                <div className="absolute top-3 right-3 z-10">
-                  <AlertTriangle className="h-4 w-4 text-rose-500" />
-                </div>
-              )}
+              <option value="all">По точке: Все</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
 
-              {/* Top Section: Avatar + Name + Role */}
-              <div className="flex items-start gap-3 mb-4">
-                {/* Avatar */}
-                {employee.avatar ? (
-                  <img
-                    src={employee.avatar}
-                    alt={employee.name}
-                    className="w-12 h-12 rounded-full object-cover flex-shrink-0 border-2 border-zinc-200 dark:border-zinc-700"
-                  />
-                ) : (
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0 border-2 ${
-                    employee.role === 'manager'
-                      ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-500/30'
-                      : 'bg-zinc-500/20 text-zinc-600 dark:text-zinc-400 border-zinc-500/30'
-                  }`}>
-                    {initials}
-                  </div>
-                )}
-                
-                {/* Name + Role */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white mb-0.5 truncate">
-                    {employee.name}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
-                    {roleText} · {locationText}
-                  </p>
-                </div>
-              </div>
+          {/* Role Filter */}
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">По роли: Все</option>
+            <option value="employee">Сотрудник</option>
+            <option value="manager">Менеджер</option>
+          </select>
 
-              {/* Key Metrics - Badges */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300">
-                  {t("dashboard.metric_shifts") || "Смен"}: {totalShifts}
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-                  {t("dashboard.metric_revenue") || "Выручка"}: {totalRevenue.toLocaleString("ru-RU")} {currency}
-                </span>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  lateness > 0
-                    ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'
-                    : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                }`}>
-                  {t("dashboard.metric_lateness") || "Опоздания"}: {lateness}
-                </span>
-              </div>
+          {/* Problems Filter */}
+          <select
+            value={problemsFilter}
+            onChange={(e) => setProblemsFilter(e.target.value)}
+            className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">По проблемам: Все</option>
+            <option value="problems">С проблемами</option>
+          </select>
 
-              {/* Status Bar + Rating */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-1">
-                  <div className={`h-1 flex-1 rounded-full ${
-                    rating >= 90 ? 'bg-emerald-500' :
-                    rating >= 70 ? 'bg-blue-500' :
-                    'bg-rose-500'
-                  }`} />
-                  <span className="ml-2 text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                    {t("dashboard.rating") || "Рейтинг"}: {rating}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom: Status Badge + Actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-zinc-200 dark:border-white/5">
-                {/* Status Badge */}
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                  employee.status === 'active'
-                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                    : employee.status === 'inactive'
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                    : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'
-                }`}>
-                  {employee.status === 'active' 
-                    ? (t("dashboard.status_active") || "Активен")
-                    : employee.status === 'inactive'
-                    ? (t("dashboard.status_inactive") || "На паузе")
-                    : (t("dashboard.status_fired") || "Уволен")}
-                </span>
-
-                {/* Action Icons */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedPassport(employee);
-                    }}
-                    className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                    title={t("dashboard.view_profile") || "Открыть профиль"}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedPassport(employee);
-                      // Edit will be handled in modal
-                    }}
-                    className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                    title={t("dashboard.edit") || "Редактировать"}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск по имени или email..."
+              className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+        </div>
       </div>
 
-      {sortedEmployees.length === 0 && !isAdding && (
+      {/* Add Staff Wizard */}
+      {isAdding && <AddStaffWizard />}
+
+      {/* Staff Cards */}
+      {filteredStaff.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredStaff.map((staff) => (
+            <StaffCard
+              key={staff.id}
+              staff={staff}
+              currency={currency}
+              onClick={() => setSelectedPassport(staff)}
+            />
+          ))}
+        </div>
+      ) : (
         <div className="text-center py-12 bg-card border border-border rounded-xl">
           <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Нет добавленных сотрудников</p>
+          <p className="text-muted-foreground">
+            {searchQuery || locationFilter !== "all" || roleFilter !== "all" || problemsFilter !== "all"
+              ? "Нет сотрудников, соответствующих фильтрам"
+              : "Нет добавленных сотрудников"}
+          </p>
         </div>
       )}
 
@@ -600,5 +302,462 @@ export default function StaffPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+
+  // Add Staff Wizard Component
+  function AddStaffWizard() {
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="bg-card border border-border rounded-xl p-6 sm:p-8"
+        >
+          {/* Wizard Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground mb-1">
+                {wizardStep === 1 && "Тип сотрудника"}
+                {wizardStep === 2 && "Основная информация"}
+                {wizardStep === 3 && "Назначение"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Шаг {wizardStep} из 3
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setIsAdding(false);
+                setWizardStep(1);
+                setWizardData({
+                  role: "",
+                  name: "",
+                  authType: "",
+                  pin: "",
+                  email: "",
+                  password: "",
+                  assignedPointId: "",
+                });
+              }}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center flex-1">
+                  <div
+                    className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
+                      wizardStep >= step
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {wizardStep > step ? <Check className="h-4 w-4" /> : step}
+                  </div>
+                  {step < 3 && (
+                    <div
+                      className={cn(
+                        "flex-1 h-0.5 mx-2 transition-colors",
+                        wizardStep > step ? "bg-primary" : "bg-border"
+                      )}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Wizard Steps */}
+          <div className="space-y-6">
+            {/* STEP 1: Staff Type */}
+            {wizardStep === 1 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setWizardData({ ...wizardData, role: "employee" })}
+                    className={cn(
+                      "p-6 rounded-xl border-2 transition-all text-left",
+                      wizardData.role === "employee"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={cn(
+                        "p-2 rounded-lg",
+                        wizardData.role === "employee" ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <Users className={cn(
+                          "h-5 w-5",
+                          wizardData.role === "employee" ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <span className="font-semibold text-foreground">Сотрудник</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Вход по PIN-коду
+                    </p>
+                  </button>
+
+                  <button
+                    onClick={() => setWizardData({ ...wizardData, role: "manager" })}
+                    className={cn(
+                      "p-6 rounded-xl border-2 transition-all text-left",
+                      wizardData.role === "manager"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={cn(
+                        "p-2 rounded-lg",
+                        wizardData.role === "manager" ? "bg-primary/10" : "bg-muted"
+                      )}>
+                        <Briefcase className={cn(
+                          "h-5 w-5",
+                          wizardData.role === "manager" ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <span className="font-semibold text-foreground">Менеджер</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Вход по email и паролю
+                    </p>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (wizardData.role) {
+                      setWizardStep(2);
+                      // Set auth type based on role
+                      if (wizardData.role === "employee") {
+                        setWizardData({ ...wizardData, authType: "pin" });
+                      } else {
+                        setWizardData({ ...wizardData, authType: "email" });
+                      }
+                    }
+                  }}
+                  disabled={!wizardData.role}
+                  className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Продолжить
+                </button>
+              </motion.div>
+            )}
+
+            {/* STEP 2: Basic Info */}
+            {wizardStep === 2 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Имя <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={wizardData.name}
+                    onChange={(e) => setWizardData({ ...wizardData, name: e.target.value })}
+                    placeholder="Полное имя"
+                    className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
+                    required
+                  />
+                </div>
+
+                {wizardData.role === "employee" && (
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      PIN <span className="text-destructive">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={wizardData.pin}
+                        onChange={(e) => setWizardData({ ...wizardData, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+                        placeholder="4 цифры"
+                        maxLength={4}
+                        className="flex-1 h-12 px-4 bg-background border border-border rounded-xl text-center text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all font-mono"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={generatePin}
+                        className="h-12 px-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-colors border border-border"
+                        title="Сгенерировать PIN"
+                      >
+                        <Dice1 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {wizardData.role === "manager" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Email <span className="text-destructive">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={wizardData.email}
+                        onChange={(e) => setWizardData({ ...wizardData, email: e.target.value })}
+                        placeholder="email@example.com"
+                        className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Пароль <span className="text-destructive">*</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={wizardData.password}
+                          onChange={(e) => setWizardData({ ...wizardData, password: e.target.value })}
+                          placeholder="Минимум 6 символов"
+                          className="flex-1 h-12 px-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all font-mono"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={generatePassword}
+                          className="h-12 px-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-colors border border-border"
+                          title="Сгенерировать пароль"
+                        >
+                          <Dice1 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setWizardStep(1)}
+                    className="flex-1 px-6 py-3 bg-muted text-foreground rounded-xl hover:bg-muted/80 transition-colors font-medium"
+                  >
+                    Назад
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (wizardData.name && (wizardData.role === "employee" ? wizardData.pin : wizardData.email && wizardData.password)) {
+                        setWizardStep(3);
+                      }
+                    }}
+                    disabled={!wizardData.name || (wizardData.role === "employee" ? !wizardData.pin : !wizardData.email || !wizardData.password)}
+                    className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Продолжить
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STEP 3: Assignment */}
+            {wizardStep === 3 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Назначить на точку
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={wizardData.assignedPointId}
+                      onChange={(e) => setWizardData({ ...wizardData, assignedPointId: e.target.value })}
+                      className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all appearance-none pr-10"
+                    >
+                      <option value="">Пропустить (можно добавить позже)</option>
+                      {locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Назначение можно изменить позже
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setWizardStep(2)}
+                    className="flex-1 px-6 py-3 bg-muted text-foreground rounded-xl hover:bg-muted/80 transition-colors font-medium"
+                  >
+                    Назад
+                  </button>
+                  <button
+                    onClick={handleWizardComplete}
+                    className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium"
+                  >
+                    Готово
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+}
+
+// Staff Card Component
+function StaffCard({ staff, currency, onClick }: { staff: any, currency: string, onClick: () => void }) {
+  const hasProblems = staff.problematicShiftsCount > 0;
+  const lastShiftDate = staff.lastShift 
+    ? new Date(staff.lastShift.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+    : null;
+  const lastShiftStatus = staff.lastShift?.status === 'issue' ? 'Проблемы' : 'OK';
+
+  // Get initials for avatar
+  const initials = (staff.name || "")
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      onClick={onClick}
+      className={cn(
+        "bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all cursor-pointer hover:border-primary/30",
+        hasProblems && "border-red-500/50 bg-red-500/5"
+      )}
+    >
+      {/* Header: Name and Role Badge */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Avatar */}
+          {staff.avatar ? (
+            <img
+              src={staff.avatar}
+              alt={staff.name}
+              className="w-12 h-12 rounded-full object-cover flex-shrink-0 border-2 border-border"
+            />
+          ) : (
+            <div className={cn(
+              "w-12 h-12 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0 border-2",
+              staff.role === 'manager'
+                ? 'bg-primary/20 text-primary border-primary/30'
+                : 'bg-muted text-muted-foreground border-border'
+            )}>
+              {initials}
+            </div>
+          )}
+          
+          {/* Name and Role */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold text-foreground truncate">
+              {staff.name || staff.fullName || "Без имени"}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={cn(
+                "px-2 py-0.5 rounded-md text-xs font-medium",
+                staff.role === 'manager'
+                  ? "bg-primary/10 text-primary border border-primary/20"
+                  : "bg-muted text-muted-foreground border border-border"
+              )}>
+                {staff.role === 'manager' ? 'Менеджер' : 'Сотрудник'}
+              </span>
+              <span className={cn(
+                "px-2 py-0.5 rounded-md text-xs font-medium",
+                staff.status === 'active'
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                  : "bg-muted text-muted-foreground border border-border"
+              )}>
+                {staff.status === 'active' ? 'Активен' : 'Заблокирован'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Assignment */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 text-sm">
+          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="text-muted-foreground">Назначенная точка:</span>
+          <span className="text-foreground font-medium truncate">
+            {staff.assignedLocation ? staff.assignedLocation.name : "Не назначен"}
+          </span>
+        </div>
+      </div>
+
+      {/* Operational Signals */}
+      <div className="space-y-2 mb-4">
+        {/* Last Shift */}
+        {lastShiftDate && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Последняя смена:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-foreground">{lastShiftDate}</span>
+              <span className={cn(
+                "px-2 py-0.5 rounded-md text-xs font-medium",
+                lastShiftStatus === 'Проблемы'
+                  ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+              )}>
+                {lastShiftStatus}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Problematic Shifts Count */}
+        {hasProblems && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Проблемные смены:</span>
+            <span className="text-red-600 dark:text-red-400 font-semibold">
+              {staff.problematicShiftsCount}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Secondary Info */}
+      <div className="pt-3 border-t border-border">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {staff.role === 'employee' && staff.pin && (
+            <>
+              <Lock className="h-3.5 w-3.5" />
+              <span>PIN: {staff.pin}</span>
+            </>
+          )}
+          {staff.role === 'manager' && staff.email && (
+            <>
+              <Mail className="h-3.5 w-3.5" />
+              <span className="truncate">{staff.email}</span>
+            </>
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 }
