@@ -49,8 +49,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* HEADER: Fixed Height */}
         <DashboardHeader />
 
-        {/* PAGES: No page scroll - children handle their own scrolling */}
-        <div className="app-content flex-1 overflow-hidden pt-4 px-6 pb-6 relative">
+        {/* PAGES: Scrollable content area */}
+        <div className="app-content flex-1 overflow-y-auto pt-4 px-6 pb-6 relative">
           {children}
         </div>
       </main>
