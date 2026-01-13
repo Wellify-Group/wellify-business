@@ -307,7 +307,7 @@ export default function ForgotPasswordPage() {
           sessionStorage.setItem('password_reset_token', data.token);
           sessionStorage.setItem('password_reset_email', email.trim().toLowerCase());
           // Переходим на страницу сброса пароля
-          router.push('/reset-password');
+          router.push('/auth/reset-password');
         } else {
           setError('Токен не получен. Попробуйте еще раз.');
         }
