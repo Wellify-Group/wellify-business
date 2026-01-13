@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/components/language-provider";
 import { useRouter } from "next/navigation";
-import { Building2, Store, AlertCircle } from "lucide-react";
+import { Building2, Store, AlertCircle, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api/client";
 import { signIn } from "@/lib/api/auth";
@@ -51,6 +51,7 @@ export default function LoginPage() {
   // Office Login State
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -369,21 +370,35 @@ export default function LoginPage() {
                                 {t("login_forgot_password") || "Забыли пароль?"}
                               </Link>
                             </div>
-                            <input
-                              type="password"
-                              value={password}
-                              onChange={(e) => {
-                                setPassword(e.target.value);
-                                setIsError(false);
-                                setError("");
-                              }}
-                              required
-                              className={cn(
-                                "h-11 w-full rounded-full border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]",
-                                isError && "border-destructive/80 text-destructive focus:border-destructive"
-                              )}
-                              placeholder="••••••••"
-                            />
+                            <div className="relative">
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => {
+                                  setPassword(e.target.value);
+                                  setIsError(false);
+                                  setError("");
+                                }}
+                                required
+                                className={cn(
+                                  "h-11 w-full rounded-full border border-border bg-background px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-all duration-200 focus:border-primary/60 focus:shadow-[0_0_0_3px_rgba(var(--color-primary-rgb,59,130,246),0.1)]",
+                                  isError && "border-destructive/80 text-destructive focus:border-destructive"
+                                )}
+                                placeholder="••••••••"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-3 flex items-center text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                tabIndex={-1}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
                           </label>
                         </div>
 
