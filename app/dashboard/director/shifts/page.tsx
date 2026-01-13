@@ -13,6 +13,8 @@ export default function ShiftsPage() {
 
   // Фильтруем смены по выбранной локации
   const filteredShifts = useMemo(() => {
+    if (!shifts || shifts.length === 0) return [];
+    
     let filtered = [...shifts];
     
     if (selectedLocationId !== "all") {
@@ -21,21 +23,6 @@ export default function ShiftsPage() {
     
     return filtered.sort((a, b) => b.date - a.date);
   }, [shifts, selectedLocationId]);
-
-  // Группируем смены по локациям для общего обзора
-  const shiftsByLocation = useMemo(() => {
-    const grouped: Record<string, typeof shifts> = {};
-    
-    shifts.forEach(shift => {
-      const locationId = shift.locationId || "unknown";
-      if (!grouped[locationId]) {
-        grouped[locationId] = [];
-      }
-      grouped[locationId].push(shift);
-    });
-    
-    return grouped;
-  }, [shifts]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -140,21 +127,21 @@ export default function ShiftsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      {shift.status === 'issue' ? (
+                          {shift.status === 'issue' ? (
                         <AlertTriangle className="h-5 w-5 text-rose-500" />
                       ) : (
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                       )}
                       <div className="flex-1">
                         <h3 className="text-base font-semibold text-foreground">
-                          {employee?.name || shift.employeeName}
+                          {employee?.name || shift.employeeName || "Неизвестный сотрудник"}
                         </h3>
-                        <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {formatDate(shift.date)}
                           </p>
-                          {shift.locationId && selectedLocationId === "all" && (
+                          {shift.locationId && selectedLocationId === "all" && locations.length > 0 && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
                               {locations.find(l => l.id === shift.locationId)?.name || "Неизвестная локация"}

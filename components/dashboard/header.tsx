@@ -95,7 +95,7 @@ export function DashboardHeader() {
     }
     // Берем первую букву имени
     return userName.trim()[0]?.toUpperCase() || "Д";
-  }, [userName, currentUser]);
+  }, [userName, currentUser?.email]);
 
   // Флаг темы (для тумблера)
   const isDark = useMemo(
