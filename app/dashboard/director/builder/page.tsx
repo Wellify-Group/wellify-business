@@ -561,7 +561,7 @@ function CanvasPreview({
                 />
                 
                 {/* Block */}
-                <motion.div
+                <div
                   draggable
                   onDragStart={(e) => onCanvasDragStart(e, block.id)}
                   onClick={() => onBlockSelect(block.id)}
@@ -615,7 +615,7 @@ function CanvasPreview({
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
             );
           })
