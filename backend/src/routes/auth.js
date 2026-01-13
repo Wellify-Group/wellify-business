@@ -349,6 +349,9 @@ router.post('/register-director', async (req, res) => {
       lastName,
       middleName,
       birthDate,
+      phone,
+      telegramId,
+      telegramUsername,
       language,
       businessName,
     } = req.body;
@@ -398,6 +401,13 @@ router.post('/register-director', async (req, res) => {
     const safeLanguage = (language && String(language)) || 'ru';
     const safeBusinessName =
       (businessName && String(businessName).trim()) || 'Мой бизнес';
+    
+    // Обрабатываем phone
+    const safePhone = (phone && String(phone).trim()) || null;
+    
+    // Обрабатываем Telegram данные
+    const safeTelegramId = (telegramId && String(telegramId).trim()) || null;
+    const safeTelegramUsername = (telegramUsername && String(telegramUsername).trim()) || null;
 
     // Генерируем код компании
     let companyCode = generateCompanyCode();
@@ -450,10 +460,10 @@ router.post('/register-director', async (req, res) => {
 
       // Создаём пользователя
       const userResult = await client.query(
-        `INSERT INTO users (email, password_hash, created_at)
-         VALUES ($1, $2, NOW())
+        `INSERT INTO users (email, password_hash, phone, created_at)
+         VALUES ($1, $2, $3, NOW())
          RETURNING id, email, email_verified, phone, phone_verified, created_at`,
-        [normalizedEmail, passwordHash]
+        [normalizedEmail, passwordHash, safePhone]
       );
 
       const user = userResult.rows[0];
@@ -468,6 +478,9 @@ router.post('/register-director', async (req, res) => {
           middle_name, 
           full_name, 
           birth_date,
+          phone,
+          telegram_id,
+          telegram_username,
           role, 
           language, 
           phone_verified, 
@@ -475,18 +488,21 @@ router.post('/register-director', async (req, res) => {
           created_at,
           updated_at
         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())`,
         [
-          userId, 
-          safeFirstName, 
-          safeLastName, 
-          safeMiddleName, 
-          safeFullName, 
-          safeBirthDate,
-          'director', 
-          safeLanguage, 
-          false, 
-          false
+          userId,           // $1
+          safeFirstName,     // $2
+          safeLastName,      // $3
+          safeMiddleName,    // $4
+          safeFullName,      // $5
+          safeBirthDate,     // $6
+          safePhone,         // $7
+          safeTelegramId,    // $8
+          safeTelegramUsername, // $9
+          'director',        // $10
+          safeLanguage,      // $11
+          false,             // $12 (phone_verified)
+          false              // $13 (email_verified)
         ]
       );
 
