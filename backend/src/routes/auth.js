@@ -90,11 +90,15 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Находим пользователя
+    // Находим пользователя с businessId
     const userResult = await db.query(
       `SELECT u.id, u.email, u.password_hash, u.email_verified, u.phone, u.phone_verified,
               p.id as profile_id, p.first_name, p.last_name, p.middle_name, p.full_name, 
-              p.role, p.language, p.telegram_id, p.telegram_username
+              p.role, p.language, p.telegram_id, p.telegram_username,
+              COALESCE(
+                (SELECT b.id FROM businesses b WHERE b.owner_profile_id = p.id LIMIT 1),
+                (SELECT s.business_id FROM staff s WHERE s.profile_id = p.id AND s.активен = true LIMIT 1)
+              ) as business_id
        FROM users u
        LEFT JOIN profiles p ON u.id = p.id
        WHERE u.email = $1`,
@@ -165,6 +169,7 @@ router.post('/login', async (req, res) => {
         language: user.language || 'ru',
         telegram_id: user.telegram_id,
         telegram_username: user.telegram_username,
+        businessId: user.business_id || null,
       },
       token,
     });
@@ -189,13 +194,17 @@ router.get('/user', async (req, res) => {
     // Верифицируем токен
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Получаем пользователя
+    // Получаем пользователя с businessId
     const userResult = await db.query(
       `SELECT u.id, u.email, u.email_verified, u.phone, u.phone_verified, u.created_at,
               p.id as profile_id, p.first_name, p.last_name, p.middle_name, p.full_name, 
               p.birth_date, p.avatar_url, p.role, p.language, 
               p.telegram_id, p.telegram_username, p.telegram_first_name, p.telegram_last_name,
-              p.phone_verified as profile_phone_verified, p.email_verified as profile_email_verified
+              p.phone_verified as profile_phone_verified, p.email_verified as profile_email_verified,
+              COALESCE(
+                (SELECT b.id FROM businesses b WHERE b.owner_profile_id = p.id LIMIT 1),
+                (SELECT s.business_id FROM staff s WHERE s.profile_id = p.id AND s.активен = true LIMIT 1)
+              ) as business_id
        FROM users u
        LEFT JOIN profiles p ON u.id = p.id
        WHERE u.id = $1`,
@@ -250,6 +259,7 @@ router.get('/user', async (req, res) => {
         telegram_last_name: user.telegram_last_name,
         avatar_url: user.avatar_url,
         created_at: user.created_at,
+        businessId: user.business_id || null,
       }
     });
   } catch (error) {

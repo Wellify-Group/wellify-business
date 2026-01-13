@@ -60,7 +60,8 @@ function LocationsContent() {
       (locations.length > 0 ? locations[0].businessId : null);
 
     if (!effectiveBusinessId) {
-      console.warn('[Locations] Нет businessId для загрузки локаций');
+      // Для новых пользователей без бизнеса это нормально - просто не загружаем локации
+      // Предупреждение убрано, так как это не ошибка
       return;
     }
 
