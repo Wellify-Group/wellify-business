@@ -67,7 +67,7 @@ function LocationsContent() {
     let effectiveBusinessId =
       currentUser?.businessId ||
       savedCompanyId ||
-      (locations.length > 0 ? locations[0].businessId : null);
+      (Array.isArray(locations) && locations.length > 0 && locations[0]?.businessId ? locations[0].businessId : null);
 
     if (!effectiveBusinessId) {
       // Для новых пользователей без бизнеса это нормально - просто не загружаем локации
@@ -76,10 +76,10 @@ function LocationsContent() {
     }
 
     fetchLocations(effectiveBusinessId);
-  }, [currentUser?.businessId, savedCompanyId, fetchLocations]);
+  }, [currentUser?.businessId, savedCompanyId, fetchLocations, locations]);
 
   // Show industry selection only for first location
-  const isFirstLocation = locations.length === 0;
+  const isFirstLocation = !Array.isArray(locations) || locations.length === 0;
 
   // Auto-open modal if action=new in URL
   useEffect(() => {
@@ -98,65 +98,78 @@ function LocationsContent() {
 
   // Get today's shifts
   const todayShifts = useMemo(() => {
-    return shifts.filter(s => s.date >= today.start && s.date <= today.end);
+    if (!Array.isArray(shifts)) return [];
+    return shifts.filter(s => s && s.date >= today.start && s.date <= today.end);
   }, [shifts, today]);
 
   // Calculate revenue and status for each location
   const locationsWithData = useMemo(() => {
+    if (!Array.isArray(locations)) return [];
     return locations.map(location => {
+      if (!location || !location.id) return null;
+      
       // Get shifts for this location
-      const locShifts = todayShifts.filter(s => s.locationId === location.id);
-      const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
-      const locPlanPercent = location.dailyPlan && location.dailyPlan > 0 
+      const locShifts = Array.isArray(todayShifts) 
+        ? todayShifts.filter(s => s && s.locationId === location.id)
+        : [];
+      const locRevenue = locShifts.reduce((acc, s) => {
+        const cash = typeof s.revenueCash === 'number' ? s.revenueCash : 0;
+        const card = typeof s.revenueCard === 'number' ? s.revenueCard : 0;
+        return acc + cash + card;
+      }, 0);
+      const locPlanPercent = location.dailyPlan && typeof location.dailyPlan === 'number' && location.dailyPlan > 0 
         ? Math.round((locRevenue / location.dailyPlan) * 100) 
         : 0;
       
       // Check for active shift (no clockOut means shift is active)
-      const hasActiveShift = locShifts.some(s => !s.clockOut);
+      const hasActiveShift = locShifts.some(s => s && !s.clockOut);
       
       // Count problematic shifts (status === 'issue')
-      const problematicShiftsCount = locShifts.filter(s => s.status === 'issue').length;
+      const problematicShiftsCount = locShifts.filter(s => s && s.status === 'issue').length;
       
       // Determine if location has problems
       const hasProblems = problematicShiftsCount > 0 || location.status === 'error' || location.status === 'red';
       
       // Get manager dynamically from employees list
-      const currentManager = location.managerId 
-        ? employees.find(e => e.id === location.managerId)
+      const currentManager = location.managerId && Array.isArray(employees)
+        ? employees.find(e => e && e.id === location.managerId)
         : null;
 
       return {
         ...location,
-        revenue: locRevenue,
-        planPercent: locPlanPercent,
-        manager: currentManager,
-        hasActiveShift,
-        problematicShiftsCount,
-        hasProblems
+        revenue: typeof locRevenue === 'number' ? locRevenue : 0,
+        planPercent: typeof locPlanPercent === 'number' ? locPlanPercent : 0,
+        manager: currentManager || null,
+        hasActiveShift: Boolean(hasActiveShift),
+        problematicShiftsCount: typeof problematicShiftsCount === 'number' ? problematicShiftsCount : 0,
+        hasProblems: Boolean(hasProblems)
       };
-    });
+    }).filter(Boolean);
   }, [locations, todayShifts, employees]);
 
   // Filter locations based on status and search
   const filteredLocations = useMemo(() => {
-    let filtered = locationsWithData.filter(loc => loc.status !== 'archived');
+    if (!Array.isArray(locationsWithData)) return [];
+    let filtered = locationsWithData.filter(loc => loc && loc.status !== 'archived');
     
     // Status filter
     if (statusFilter === "active") {
-      filtered = filtered.filter(loc => loc.status === 'active' || loc.status === 'green');
+      filtered = filtered.filter(loc => loc && (loc.status === 'active' || loc.status === 'green'));
     } else if (statusFilter === "paused") {
-      filtered = filtered.filter(loc => loc.status === 'paused');
+      filtered = filtered.filter(loc => loc && loc.status === 'paused');
     } else if (statusFilter === "problems") {
-      filtered = filtered.filter(loc => loc.hasProblems);
+      filtered = filtered.filter(loc => loc && loc.hasProblems);
     }
     
     // Search filter
-    if (searchQuery.trim()) {
+    if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(loc => 
-        loc.name.toLowerCase().includes(query) ||
-        loc.address?.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(loc => {
+        if (!loc) return false;
+        const name = typeof loc.name === 'string' ? loc.name.toLowerCase() : '';
+        const address = typeof loc.address === 'string' ? loc.address.toLowerCase() : '';
+        return name.includes(query) || address.includes(query);
+      });
     }
     
     return filtered;
@@ -429,7 +442,7 @@ function LocationsContent() {
   };
 
   // Empty state
-  if (locations.length === 0 && !isAdding) {
+  if ((!Array.isArray(locations) || locations.length === 0) && !isAdding) {
     return (
       <div className="space-y-6 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col items-center justify-center min-h-[600px] px-4">
@@ -520,7 +533,7 @@ function LocationsContent() {
           </div>
 
           {/* Add Location Button (only when locations exist) */}
-          {locations.length > 0 && (
+          {Array.isArray(locations) && locations.length > 0 && (
             <button
               onClick={() => setIsAdding(true)}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
@@ -711,11 +724,13 @@ function LocationsContent() {
                       className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
                     >
                       <option value="">Пропустить (можно добавить позже)</option>
-                      {employees
-                        .filter(emp => emp.role === 'manager')
-                        .map(emp => (
-                          <option key={emp.id} value={emp.id}>{emp.name}</option>
-                        ))}
+                      {Array.isArray(employees)
+                        ? employees
+                            .filter(emp => emp && emp.role === 'manager')
+                            .map(emp => (
+                              <option key={emp.id} value={emp.id}>{emp.name || '—'}</option>
+                            ))
+                        : null}
                     </select>
                   </div>
 
@@ -771,7 +786,9 @@ function LocationsContent() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Менеджер</span>
                         <span className="text-sm font-medium text-foreground">
-                          {employees.find(e => e.id === wizardData.managerId)?.name || "—"}
+                          {Array.isArray(employees) && wizardData.managerId
+                            ? (employees.find(e => e && e.id === wizardData.managerId)?.name || "—")
+                            : "—"}
                         </span>
                       </div>
                     )}
@@ -928,7 +945,7 @@ function LocationsContent() {
                       style={{ scrollBehavior: 'smooth' }}
                     >
                       <div className="flex gap-3">
-                        {INDUSTRIES_ARRAY.map((ind) => (
+                        {Array.isArray(INDUSTRIES_ARRAY) ? INDUSTRIES_ARRAY.map((ind) => (
                           <div
                             key={ind.slug}
                             onClick={() => handleIndustrySelect(ind.slug)}
@@ -945,7 +962,7 @@ function LocationsContent() {
                               {t(ind.translationKey)}
                             </span>
                           </div>
-                        ))}
+                        )) : null}
                       </div>
                     </div>
 
@@ -1125,7 +1142,7 @@ function LocationsContent() {
                     )}
                     
                     <div className="space-y-2">
-                      {newEmployees.map((emp) => (
+                      {Array.isArray(newEmployees) ? newEmployees.map((emp) => (
                         <div 
                           key={emp.id} 
                           className={cn(
@@ -1202,7 +1219,7 @@ function LocationsContent() {
                             </button>
                           </div>
                         </div>
-                      ))}
+                      )) : null}
                     </div>
                   </div>
                 </div>
@@ -1252,10 +1269,11 @@ function LocationsContent() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredLocations.map((location) => {
+          {Array.isArray(filteredLocations) ? filteredLocations.map((location) => {
+            if (!location || !location.id) return null;
             const isPaused = location.status === 'paused' || location.status === 'yellow';
             const isActive = location.status === 'active' || location.status === 'green';
-            const hasProblems = location.hasProblems;
+            const hasProblems = Boolean(location.hasProblems);
             
             return (
               <motion.div
@@ -1271,7 +1289,7 @@ function LocationsContent() {
                 {/* Header: Name and Status Badge */}
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="text-lg font-semibold text-foreground flex-1 min-w-0 truncate">
-                    {location.name}
+                    {location.name || 'Без названия'}
                   </h3>
                   <div className="flex items-center gap-2 ml-2">
                     {isActive && !hasProblems && (
@@ -1298,8 +1316,8 @@ function LocationsContent() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Выручка сегодня</span>
                     <span className="text-sm font-semibold text-foreground">
-                      {location.revenue > 0 
-                        ? `${location.revenue.toLocaleString('ru-RU')} ${currency}`
+                      {typeof location.revenue === 'number' && location.revenue > 0 
+                        ? `${location.revenue.toLocaleString('ru-RU')} ${currency || '₴'}`
                         : "—"}
                     </span>
                   </div>
@@ -1318,7 +1336,7 @@ function LocationsContent() {
                   </div>
 
                   {/* Problematic Shifts - Only if > 0 */}
-                  {location.problematicShiftsCount > 0 && (
+                  {typeof location.problematicShiftsCount === 'number' && location.problematicShiftsCount > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Проблемные смены</span>
                       <span className="text-sm font-semibold text-red-600 dark:text-red-400">
@@ -1329,19 +1347,19 @@ function LocationsContent() {
                 </div>
 
                 {/* Manager (muted, secondary) */}
-                {location.manager && (
+                {location.manager && typeof location.manager === 'object' && location.manager.name && (
                   <div className="pt-3 border-t border-border">
                     <div className="flex items-center gap-2">
                       <User className="h-3.5 w-3.5 text-muted-foreground/50" />
                       <span className="text-xs text-muted-foreground/70 truncate">
-                        {location.manager.name}
+                        {String(location.manager.name)}
                       </span>
                     </div>
                   </div>
                 )}
               </motion.div>
             );
-          })}
+          }).filter(Boolean) : null}
         </div>
       )}
 
