@@ -223,7 +223,7 @@ export default function ForgotPasswordPage() {
                 return;
               }
               
-              const response = await fetch(`${API_URL}/api/email-verification/verify`, {
+              const response = await fetch(`${API_URL}/api/auth/verify-password-reset-code`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -280,7 +280,7 @@ export default function ForgotPasswordPage() {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/email-verification/verify`, {
+      const response = await fetch(`${API_URL}/api/auth/verify-password-reset-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
