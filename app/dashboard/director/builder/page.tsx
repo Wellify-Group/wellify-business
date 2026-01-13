@@ -123,25 +123,40 @@ export default function ReportConstructorPage() {
     // Build schema from enabled default blocks
     const enabledBlocks = defaultBlocks.filter(b => b.enabled);
     const schema: FormField[] = [
-      ...enabledBlocks.map(block => ({
-        id: block.id,
-        label: block.label,
-        type: block.type === 'number' ? 'number' : 
-              block.type === 'text' ? 'text_multiline' : 
-              block.type === 'confirmation' ? 'checkbox' : 'text',
-        required: block.required,
-        placeholder: block.hint
-      })),
-      ...customFields.map(field => ({
-        id: field.id,
-        label: field.name,
-        type: field.type === 'number' ? 'number' : 
-              field.type === 'text' ? 'text_multiline' : 
-              field.type === 'checkbox' ? 'checkbox' : 
-              field.type === 'photo' ? 'text' : 'text',
-        required: field.required,
-        placeholder: field.description
-      }))
+      ...enabledBlocks.map(block => {
+        let fieldType: 'number' | 'text' | 'text_multiline' | 'checkbox' = 'text';
+        if (block.type === 'number') {
+          fieldType = 'number';
+        } else if (block.type === 'text') {
+          fieldType = 'text_multiline';
+        } else if (block.type === 'confirmation') {
+          fieldType = 'checkbox';
+        }
+        return {
+          id: block.id,
+          label: block.label,
+          type: fieldType,
+          required: block.required,
+          placeholder: block.hint
+        };
+      }),
+      ...customFields.map(field => {
+        let fieldType: 'number' | 'text' | 'text_multiline' | 'checkbox' = 'text';
+        if (field.type === 'number') {
+          fieldType = 'number';
+        } else if (field.type === 'text') {
+          fieldType = 'text_multiline';
+        } else if (field.type === 'checkbox') {
+          fieldType = 'checkbox';
+        }
+        return {
+          id: field.id,
+          label: field.name,
+          type: fieldType,
+          required: field.required,
+          placeholder: field.description
+        };
+      })
     ];
 
     updateFormConfig({ 
