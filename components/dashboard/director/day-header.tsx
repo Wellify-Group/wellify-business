@@ -19,12 +19,7 @@ export function DayHeader() {
 
   return (
     <div className="flex items-center gap-4 py-4 border-b border-border/50">
-      <div>
-        <p className={cn(
-          "text-sm",
-          hasLocations ? "text-muted-foreground" : "text-muted-foreground/60"
-        )}>{date}</p>
-      </div>
+      {/* Дата убрана - она уже отображается в навбаре */}
       
       {/* Location selector */}
       {hasLocations ? (

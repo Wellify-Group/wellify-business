@@ -1,16 +1,40 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import useStore from "@/lib/store";
-import { FileText, Calendar, DollarSign, Users, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { FileText, Calendar, DollarSign, Users, AlertTriangle, CheckCircle2, MapPin, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function ShiftsPage() {
   const { t } = useLanguage();
-  const { shifts, employees, currency } = useStore();
+  const { shifts, employees, currency, locations } = useStore();
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
 
-  const sortedShifts = useMemo(() => {
-    return [...shifts].sort((a, b) => b.date - a.date);
+  // Фильтруем смены по выбранной локации
+  const filteredShifts = useMemo(() => {
+    let filtered = [...shifts];
+    
+    if (selectedLocationId !== "all") {
+      filtered = filtered.filter(shift => shift.locationId === selectedLocationId);
+    }
+    
+    return filtered.sort((a, b) => b.date - a.date);
+  }, [shifts, selectedLocationId]);
+
+  // Группируем смены по локациям для общего обзора
+  const shiftsByLocation = useMemo(() => {
+    const grouped: Record<string, typeof shifts> = {};
+    
+    shifts.forEach(shift => {
+      const locationId = shift.locationId || "unknown";
+      if (!grouped[locationId]) {
+        grouped[locationId] = [];
+      }
+      grouped[locationId].push(shift);
+    });
+    
+    return grouped;
   }, [shifts]);
 
   const formatDate = (timestamp: number) => {
@@ -31,27 +55,48 @@ export default function ShiftsPage() {
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Subtitle */}
-        <p className="text-sm text-muted-foreground">
-          {t("dashboard.nav_shifts")}
-        </p>
+        {/* Header with Location Filter */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.nav_shifts")}
+          </p>
+          
+          {/* Location Filter */}
+          <div className="relative">
+            <select
+              value={selectedLocationId}
+              onChange={(e) => setSelectedLocationId(e.target.value)}
+              className="appearance-none bg-card border border-border rounded-lg px-4 py-2 pr-10 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[180px]"
+            >
+              <option value="all">Вся сеть</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          </div>
+        </div>
 
-        {/* Stats Summary */}
+        {/* Stats Summary - показываем общую статистику или по выбранной локации */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-card p-4 sm:p-6 border border-border rounded-xl shadow-sm">
             <div className="flex items-center gap-3 mb-2">
               <FileText className="h-5 w-5 text-indigo-500" />
-              <span className="text-sm text-muted-foreground">Всего смен</span>
+              <span className="text-sm text-muted-foreground">
+                {selectedLocationId === "all" ? "Всего смен" : "Смен в точке"}
+              </span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{shifts.length}</p>
+            <p className="text-2xl font-bold text-foreground">{filteredShifts.length}</p>
           </div>
           <div className="bg-card p-4 sm:p-6 border border-border rounded-xl shadow-sm">
             <div className="flex items-center gap-3 mb-2">
               <DollarSign className="h-5 w-5 text-emerald-500" />
-              <span className="text-sm text-muted-foreground">Общая выручка</span>
+              <span className="text-sm text-muted-foreground">
+                {selectedLocationId === "all" ? "Общая выручка" : "Выручка точки"}
+              </span>
             </div>
             <p className="text-2xl font-bold text-foreground">
-              {shifts.reduce((acc, s) => acc + getShiftRevenue(s), 0).toLocaleString('ru-RU')} {currency}
+              {filteredShifts.reduce((acc, s) => acc + getShiftRevenue(s), 0).toLocaleString('ru-RU')} {currency}
             </p>
           </div>
           <div className="bg-card p-4 sm:p-6 border border-border rounded-xl shadow-sm">
@@ -60,14 +105,26 @@ export default function ShiftsPage() {
               <span className="text-sm text-muted-foreground">Проблемные смены</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
-              {shifts.filter(s => s.status === 'issue').length}
+              {filteredShifts.filter(s => s.status === 'issue').length}
             </p>
           </div>
         </div>
 
+        {/* Если выбрана конкретная локация, показываем детали по ней */}
+        {selectedLocationId !== "all" && (
+          <div className="bg-card p-4 border border-border rounded-xl">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">
+                {locations.find(l => l.id === selectedLocationId)?.name || "Неизвестная локация"}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Shifts List */}
         <div className="space-y-4">
-          {sortedShifts.map((shift) => {
+          {filteredShifts.map((shift) => {
             const employee = employees.find(e => e.id === shift.employeeId);
             const revenue = getShiftRevenue(shift);
 
@@ -88,14 +145,22 @@ export default function ShiftsPage() {
                       ) : (
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                       )}
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-base font-semibold text-foreground">
                           {employee?.name || shift.employeeName}
                         </h3>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(shift.date)}
-                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(shift.date)}
+                          </p>
+                          {shift.locationId && selectedLocationId === "all" && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {locations.find(l => l.id === shift.locationId)?.name || "Неизвестная локация"}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -155,10 +220,14 @@ export default function ShiftsPage() {
           })}
         </div>
 
-        {sortedShifts.length === 0 && (
+        {filteredShifts.length === 0 && (
           <div className="text-center py-12 bg-card border border-border rounded-xl">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Нет зарегистрированных смен</p>
+            <p className="text-muted-foreground">
+              {selectedLocationId === "all" 
+                ? "Нет зарегистрированных смен" 
+                : "Нет смен для выбранной точки"}
+            </p>
           </div>
         )}
       </div>

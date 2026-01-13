@@ -42,10 +42,8 @@ export const NavbarClock = () => {
   return (
     <div className="flex items-center gap-2 text-sm">
       <span className="tabular-nums font-medium text-foreground">{time}</span>
-      <span className="text-muted-foreground">•</span>
-      <span className="text-muted-foreground">{weekday}</span>
-      <span className="hidden lg:inline text-muted-foreground">•</span>
-      <span className="hidden lg:inline text-muted-foreground text-xs">{formattedDate}</span>
+      <span className="text-muted-foreground/60">{weekday}</span>
+      <span className="hidden lg:inline text-muted-foreground/60 text-xs">{formattedDate}</span>
     </div>
   );
 };

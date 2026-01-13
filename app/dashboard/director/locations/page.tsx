@@ -378,9 +378,9 @@ function LocationsContent() {
         <button
           data-tour="add-point"
           onClick={() => setIsAdding(true)}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl hover:from-primary/90 hover:to-primary/70 transition-all shadow-lg hover:shadow-xl font-semibold text-sm sm:text-base"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm hover:shadow-md"
         >
-          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+          <Plus className="h-4 w-4" />
           {t("dashboard.dash_add_point")}
         </button>
       </div>

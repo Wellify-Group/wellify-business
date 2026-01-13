@@ -229,8 +229,8 @@ export default function StaffPage() {
 
       {/* Add Staff Form */}
       {isAdding && modalRole && (
-        <div className="bg-card p-4 sm:p-6 border border-border rounded-xl shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
+        <div className="bg-card p-6 border border-border rounded-xl shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground mb-6">
             {editingId 
               ? (modalRole === 'manager' ? t("dashboard.team_edit_manager") || "Редактировать менеджера" : t("dashboard.team_edit_member") || "Редактировать сотрудника")
               : (modalRole === 'manager' ? t("dashboard.team_add_manager") : t("dashboard.team_add_member"))
@@ -239,6 +239,9 @@ export default function StaffPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Full Name - Required, Single field */}
             <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("reg_name_placeholder") || "Полное имя"} <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
                 value={newStaff.fullName}
@@ -248,7 +251,7 @@ export default function StaffPage() {
                 }}
                 placeholder={t("reg_name_placeholder") || "Полное имя"}
                 required
-                className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
             
@@ -256,71 +259,84 @@ export default function StaffPage() {
             {modalRole === 'manager' && (
               <>
                 <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Email <span className="text-destructive">*</span>
+                  </label>
                   <input
                     type="email"
                     value={newStaff.email}
                     onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
                     placeholder={t("dashboard.lbl_email_required") || "Email (обязательно)"}
                     required
-                    className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={newStaff.password}
-                    onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                    placeholder={editingId ? (t("dashboard.lbl_password_optional") || "Пароль (оставить пустым, чтобы не менять)") : (t("dashboard.lbl_password") || "Пароль (обязательно)")}
-                    required={!editingId}
-                    className="flex-1 px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={generatePassword}
-                    className="px-3 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors"
-                    title="Сгенерировать пароль"
-                  >
-                    <Dice1 className="h-4 w-4" />
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    {editingId ? (t("dashboard.lbl_password_optional") || "Пароль (необязательно)") : (t("dashboard.lbl_password") || "Пароль")} {!editingId && <span className="text-destructive">*</span>}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={newStaff.password}
+                      onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
+                      placeholder={editingId ? (t("dashboard.lbl_password_optional") || "Оставить пустым, чтобы не менять") : (t("dashboard.lbl_password") || "Пароль")}
+                      required={!editingId}
+                      className="flex-1 h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={generatePassword}
+                      className="h-10 px-3 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors border border-border"
+                      title="Сгенерировать пароль"
+                    >
+                      <Dice1 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </>
             )}
             
             {/* Employee-specific fields */}
             {modalRole === 'employee' && (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newStaff.pin}
-                  onChange={(e) => setNewStaff({ ...newStaff, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })}
-                  placeholder={t("dashboard.employee_pin") || "PIN"}
-                  maxLength={4}
-                  required
-                  className="flex-1 px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-center text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={generatePin}
-                  className="px-3 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors"
-                  title="Сгенерировать PIN"
-                >
-                  <Dice1 className="h-4 w-4" />
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  PIN <span className="text-destructive">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newStaff.pin}
+                    onChange={(e) => setNewStaff({ ...newStaff, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+                    placeholder={t("dashboard.employee_pin") || "PIN"}
+                    maxLength={4}
+                    required
+                    className="flex-1 h-10 px-4 bg-background border border-border rounded-lg text-center text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={generatePin}
+                    className="h-10 px-3 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors border border-border"
+                    title="Сгенерировать PIN"
+                  >
+                    <Dice1 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             )}
 
             {/* Location Assignment - For both Manager and Employee */}
             <div className="sm:col-span-2">
-              <label className="block text-xs text-muted-foreground mb-1">
-                {t("dashboard.pass_assign_location") || "Assign to Location"} <span className="text-muted-foreground/50">{t("dashboard.lbl_optional")}</span>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("dashboard.pass_assign_location") || "Назначить на локацию"} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
               </label>
               <div className="relative">
                 <select
                   value={newStaff.assignedPointId}
                   onChange={(e) => setNewStaff({ ...newStaff, assignedPointId: e.target.value })}
-                  className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground focus:ring-2 focus:ring-primary focus:border-transparent appearance-none pr-10"
+                  className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors appearance-none pr-10"
                 >
-                  <option value="">{t("dashboard.lbl_not_assigned") || "Not Assigned"}</option>
+                  <option value="">{t("dashboard.lbl_not_assigned") || "Не назначен"}</option>
                   {locations.map((location) => (
                     <option key={location.id} value={location.id}>
                       {location.name}
@@ -333,64 +349,64 @@ export default function StaffPage() {
             
             {/* Optional Details */}
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">
-                {t("dashboard.staff_phone")} <span className="text-muted-foreground/50">{t("dashboard.lbl_optional")}</span>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("dashboard.staff_phone")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
               </label>
               <input
                 type="tel"
                 value={newStaff.phone}
                 onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
                 placeholder={t("dashboard.staff_phone")}
-                className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">
-                {t("dashboard.staff_dob")} <span className="text-muted-foreground/50">{t("dashboard.lbl_optional")}</span>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("dashboard.staff_dob")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
               </label>
               <input
                 type="date"
                 value={newStaff.dob}
                 onChange={(e) => setNewStaff({ ...newStaff, dob: e.target.value })}
-                className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-xs text-muted-foreground mb-1">
-                {t("dashboard.staff_address")} <span className="text-muted-foreground/50">{t("dashboard.lbl_optional")}</span>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("dashboard.staff_address")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
               </label>
               <input
                 type="text"
                 value={newStaff.address}
                 onChange={(e) => setNewStaff({ ...newStaff, address: e.target.value })}
                 placeholder={t("dashboard.staff_address")}
-                className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
             {modalRole === 'employee' && (
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">
-                  {t("dashboard.staff_email")} <span className="text-muted-foreground/50">{t("dashboard.lbl_optional")}</span>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  {t("dashboard.staff_email")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
                 </label>
                 <input
                   type="email"
                   value={newStaff.email}
                   onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
                   placeholder={t("dashboard.staff_email")}
-                  className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 />
               </div>
             )}
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">
-                {t("dashboard.staff_job_title")} <span className="text-muted-foreground/50">{t("dashboard.lbl_optional")}</span>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                {t("dashboard.staff_job_title")} <span className="text-muted-foreground/50 text-xs font-normal">({t("dashboard.lbl_optional") || "необязательно"})</span>
               </label>
               <input
                 type="text"
                 value={newStaff.jobTitle}
                 onChange={(e) => setNewStaff({ ...newStaff, jobTitle: e.target.value })}
                 placeholder={t("dashboard.staff_job_title")}
-                className="w-full px-4 py-2 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 rounded-lg text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-10 px-4 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
             

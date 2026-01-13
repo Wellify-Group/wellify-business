@@ -61,30 +61,41 @@ export function DashboardHeader() {
 
   // Имя и инициалы - используем данные из профиля
   const userName = useMemo(() => {
-    if (!currentUser) return "User";
+    if (!currentUser) return "";
     
-    // Приоритет: fullName > составленное из частей > name
-    if (currentUser.fullName) {
+    // Приоритет: fullName > составленное из частей > name > email
+    if (currentUser.fullName && currentUser.fullName.trim() && currentUser.fullName !== "User") {
       return currentUser.fullName;
     }
     
     const parts: string[] = [];
-    if (currentUser.firstName) parts.push(currentUser.firstName);
-    if (currentUser.middleName) parts.push(currentUser.middleName);
-    if (currentUser.lastName) parts.push(currentUser.lastName);
+    if (currentUser.firstName && currentUser.firstName.trim()) parts.push(currentUser.firstName);
+    if (currentUser.middleName && currentUser.middleName.trim()) parts.push(currentUser.middleName);
+    if (currentUser.lastName && currentUser.lastName.trim()) parts.push(currentUser.lastName);
     
     if (parts.length > 0) {
       return parts.join(" ");
     }
     
-    return currentUser.name || "User";
+    if (currentUser.name && currentUser.name.trim() && currentUser.name !== "User") {
+      return currentUser.name;
+    }
+    
+    // Если ничего не найдено, возвращаем пустую строку (не показываем "User")
+    return "";
   }, [currentUser]);
   
   const userInitial = useMemo(() => {
-    if (!userName || userName === "User") return "U";
+    if (!userName || !userName.trim()) {
+      // Если имени нет, пытаемся взять из email или используем первую букву роли
+      if (currentUser?.email) {
+        return currentUser.email[0]?.toUpperCase() || "Д";
+      }
+      return "Д"; // Д для Директор
+    }
     // Берем первую букву имени
-    return userName.trim()[0]?.toUpperCase() || "U";
-  }, [userName]);
+    return userName.trim()[0]?.toUpperCase() || "Д";
+  }, [userName, currentUser]);
 
   // Флаг темы (для тумблера)
   const isDark = useMemo(
@@ -150,17 +161,17 @@ export function DashboardHeader() {
   const pathDepth = breadcrumbs.length;
 
   const getRoleLabel = () => {
-    if (!currentUser?.role) return t("dashboard.dash_employee") || "Сотрудник";
+    if (!currentUser?.role) return "Директор"; // По умолчанию директор для дашборда директора
     
     switch (currentUser.role) {
       case "director":
-        return t("dashboard.director_overview") || "Директор";
+        return "Директор";
       case "manager":
-        return t("dashboard.manager_panel") || "Менеджер";
+        return "Менеджер";
       case "employee":
-        return t("dashboard.dash_employee") || "Сотрудник";
+        return "Сотрудник";
       default:
-        return t("dashboard.dash_employee") || "Сотрудник";
+        return "Директор"; // По умолчанию директор
     }
   };
 
@@ -358,7 +369,7 @@ export function DashboardHeader() {
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
                     {userInitial}
                   </div>
-                  {userName && userName !== "User" && (
+                  {userName && userName.trim() && (
                     <span className="text-xs text-muted-foreground mt-0.5 leading-tight max-w-[120px] truncate">
                       {userName}
                     </span>
@@ -389,7 +400,7 @@ export function DashboardHeader() {
                       {/* User block */}
                       <div className="p-4 border-b border-border rounded-t-xl">
                         <p className="text-base font-semibold text-foreground">
-                          {userName}
+                          {userName || currentUser?.email || "Директор"}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {roleLabel}
@@ -461,28 +472,28 @@ export function DashboardHeader() {
                         </div>
 
                         {/* Language selector */}
-                        <button
-                          ref={languageButtonRef}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsProfileOpen(false);
-                            // Открываем меню, позиция обновится в useEffect
-                            setIsLanguageMenuOpen(true);
-                          }}
-                          className="flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md"
-                        >
-                          <div className="flex items-center flex-1">
-                            <div className="w-8 flex justify-center shrink-0">
-                              <Globe className="h-4 w-4 text-muted-foreground" />
+                        <div className="relative">
+                          <button
+                            ref={languageButtonRef}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsProfileOpen(false);
+                              // Открываем меню, позиция обновится в useEffect
+                              setIsLanguageMenuOpen(true);
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md"
+                          >
+                            <div className="flex items-center flex-1">
+                              <div className="w-8 flex justify-center shrink-0">
+                                <Globe className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                              <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
+                                {t("dashboard.menu_interface_language")}
+                              </span>
                             </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
-                              {t("dashboard.menu_interface_language")}
-                            </span>
-                          </div>
-                          <span className="text-xs font-medium text-muted-foreground shrink-0">
-                            {currentLanguage.label}
-                          </span>
-                        </button>
+                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isLanguageMenuOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                        </div>
 
                         <div className="h-px bg-border my-1 mx-4" />
 
@@ -519,7 +530,7 @@ export function DashboardHeader() {
         isLanguageMenuOpen &&
         createPortal(
           <div
-            className="fixed inset-0 pointer-events-none z-[10000]"
+            className="fixed inset-0 z-[10000]"
             onClick={() => setIsLanguageMenuOpen(false)}
           >
             <AnimatePresence>
@@ -527,58 +538,51 @@ export function DashboardHeader() {
                 ref={languageMenuRef}
                 initial={{
                   opacity: 0,
-                  y: languageMenuPosition === "top" ? 5 : -5,
+                  y: languageMenuPosition === "top" ? 10 : -10,
                   scale: 0.95,
                 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{
                   opacity: 0,
-                  y: languageMenuPosition === "top" ? 5 : -5,
+                  y: languageMenuPosition === "top" ? 10 : -10,
                   scale: 0.95,
                 }}
-                transition={{ duration: 0.15 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 style={{
                   position: "fixed",
                   top: `${languageMenuCoords.top}px`,
                   left: `${languageMenuCoords.left}px`,
-                  width: `${languageMenuCoords.width}px`,
-                  background: resolvedTheme === "dark" 
-                    ? "hsl(var(--popover) / 0.7)" 
-                    : "hsl(var(--popover) / 0.7)",
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                  border: `1px solid hsl(var(--border) / 0.5)`,
-                  boxShadow: resolvedTheme === "dark"
-                    ? "var(--shadow-floating)"
-                    : "var(--shadow-soft)",
+                  width: `${Math.max(languageMenuCoords.width, 200)}px`,
                 }}
-                className="pointer-events-auto rounded-lg max-h-[200px] overflow-y-auto custom-scroll"
+                className="pointer-events-auto bg-card backdrop-blur-sm border border-border rounded-xl shadow-[var(--shadow-floating)] overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
-                {languages.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => handleLanguageChange(lang.code)}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-all rounded-lg mx-1 my-0.5 ${
-                      language === lang.code
-                        ? "bg-primary/10 text-foreground backdrop-blur-sm"
-                        : "text-muted-foreground hover:bg-muted/50 backdrop-blur-sm"
-                    }`}
-                  >
-                    <span
-                      className={
+                <div className="p-1">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => handleLanguageChange(lang.code)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-all rounded-lg ${
                         language === lang.code
-                          ? "font-medium text-foreground"
-                          : "text-muted-foreground"
-                      }
+                          ? "bg-primary/10 text-foreground"
+                          : "text-muted-foreground hover:bg-muted"
+                      }`}
                     >
-                      {lang.fullLabel}
-                    </span>
-                    {language === lang.code && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
-                  </button>
-                ))}
+                      <span
+                        className={
+                          language === lang.code
+                            ? "font-medium text-foreground"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {lang.fullLabel}
+                      </span>
+                      {language === lang.code && (
+                        <Check className="h-4 w-4 text-primary shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </motion.div>
             </AnimatePresence>
           </div>,
