@@ -13,11 +13,13 @@ import { EventJournal } from "@/components/dashboard/director/event-journal";
 import { NetworkStatusIndicator } from "@/components/dashboard/director/network-status-indicator";
 import { QuickActions } from "@/components/dashboard/director/quick-actions";
 import { Problem, createProblemFromSource } from "@/lib/problem-types";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, MapPin, Users, FileText, ArrowRight, DollarSign, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function DirectorDashboard() {
   const { t, language } = useLanguage(); 
   const { locations, shifts, currency, employees, currentUser, hasSeenTour } = useStore();
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [recentEvents, setRecentEvents] = useState<Array<{
     id: string;
@@ -611,19 +613,113 @@ export default function DirectorDashboard() {
   }, [currentUser]);
   
   if (locations.length === 0) {
-    const welcomeText = t('dashboard.welcome_text') || `Добро пожаловать${directorName && directorName !== 'User' ? `, ${directorName}` : ''}`;
+    const handleAddFirstLocation = () => {
+      router.push('/dashboard/director/locations?action=new');
+    };
 
     return (
       <div className="space-y-6">
         <DayHeader />
-        <div className="flex flex-col items-center justify-center py-16 px-4 bg-card border border-border rounded-xl">
-          <div className="text-center max-w-md space-y-6">
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-              {welcomeText}
-            </h1>
-            <p className="text-muted-foreground mb-6">
-              {t('dashboard.welcome_subtitle') || 'Создайте первую торговую точку для начала работы'}
-            </p>
+        <div className="flex flex-col items-center justify-center min-h-[600px] px-4">
+          <div className="text-center max-w-2xl w-full space-y-8">
+            {/* Header */}
+            <div className="space-y-3">
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
+                Панель управления бизнесом
+              </h1>
+              <p className="text-base text-muted-foreground">
+                Контроль выручки, смен и персонала в одном месте
+              </p>
+            </div>
+
+            {/* Getting Started Steps */}
+            <div className="mt-12 space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Step 1 */}
+                <div className="flex flex-col items-start p-5 rounded-xl border border-border bg-card/50 hover:bg-card transition-colors">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <MapPin className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-foreground">Шаг 1</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Добавить точку</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Начните собирать выручку и смены
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex flex-col items-start p-5 rounded-xl border border-border bg-card/50 hover:bg-card transition-colors opacity-60">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-foreground">Шаг 2</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Добавить сотрудников</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Назначьте персонал на точки
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex flex-col items-start p-5 rounded-xl border border-border bg-card/50 hover:bg-card transition-colors opacity-60">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-foreground">Шаг 3</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Настроить отчёт смены</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Определите, что сотрудники отправляют
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Primary CTA */}
+            <div className="mt-8">
+              <button
+                onClick={handleAddFirstLocation}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
+              >
+                Добавить первую точку
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Placeholder Metric Cards */}
+            <div className="mt-16 grid gap-4 md:grid-cols-3">
+              <div className="p-5 rounded-xl border border-border/50 bg-card/30 opacity-40">
+                <div className="flex items-center gap-3 mb-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Выручка сети</span>
+                </div>
+                <p className="text-2xl font-semibold text-muted-foreground">—</p>
+              </div>
+              <div className="p-5 rounded-xl border border-border/50 bg-card/30 opacity-40">
+                <div className="flex items-center gap-3 mb-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Активные точки</span>
+                </div>
+                <p className="text-2xl font-semibold text-muted-foreground">—</p>
+              </div>
+              <div className="p-5 rounded-xl border border-border/50 bg-card/30 opacity-40">
+                <div className="flex items-center gap-3 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Проблемные смены</span>
+                </div>
+                <p className="text-2xl font-semibold text-muted-foreground">—</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
