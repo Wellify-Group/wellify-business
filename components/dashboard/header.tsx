@@ -18,6 +18,8 @@ import {
   Globe,
   Check,
   Moon,
+  Sun,
+  Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WeatherWidget } from "./weather-widget";
@@ -194,9 +196,9 @@ export function DashboardHeader() {
   const handleLanguageChange = async (langCode: Language) => {
     if (language !== langCode) {
       await setLanguage(langCode);
+      // Обновляем страницу для применения изменений
       router.refresh();
     }
-    setIsLanguageMenuOpen(false);
   };
 
   // Позиция подменю языков
@@ -394,127 +396,117 @@ export function DashboardHeader() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 top-full mt-2 w-64 bg-card backdrop-blur-sm border border-border rounded-xl shadow-[var(--shadow-floating)] z-[9999]"
+                      className="absolute right-0 top-full mt-2 w-72 bg-card backdrop-blur-sm border border-border rounded-xl shadow-[var(--shadow-floating)] z-[9999] overflow-hidden"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* User block */}
-                      <div className="p-4 border-b border-border rounded-t-xl">
-                        <p className="text-base font-semibold text-foreground">
-                          {userName || currentUser?.email || "Директор"}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
+                      {/* SECTION 1: ROLE CONTEXT (non-clickable) */}
+                      <div className="px-4 py-3 border-b border-border bg-muted/30">
+                        <p className="text-sm font-semibold text-foreground">
                           {roleLabel}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {userName || currentUser?.email || "—"}
                         </p>
                       </div>
 
-                      <div className="flex flex-col p-2">
-                        {/* Profile */}
-                        <button
-                          onClick={() => {
-                            setIsProfileOpen(false);
-                            router.push("/dashboard/director/settings");
-                          }}
-                          className="flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md"
-                        >
-                          <div className="flex items-center flex-1">
-                            <div className="w-8 flex justify-center">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
-                              {t("dashboard.profile")}
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* Dark mode toggle */}
-                        <div
-                          className="flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md cursor-pointer"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex items-center flex-1">
-                            <div className="w-8 flex justify-center">
-                              <Moon className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
-                              {t("dashboard.menu_dark_mode")}
-                            </span>
-                          </div>
-                          {mounted ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleThemeToggle();
-                              }}
-                              className={cn(
-                                "relative w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0",
-                                isDark
-                                  ? "bg-primary"
-                                  : "bg-muted"
-                              )}
-                              aria-label={
-                                isDark
-                                  ? t("dashboard.menu_dark_mode_on")
-                                  : t("dashboard.menu_dark_mode_off")
-                              }
-                            >
-                              <span
-                                className={cn(
-                                  "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform",
-                                  isDark ? "translate-x-5" : "translate-x-0"
-                                )}
-                              />
-                            </button>
-                          ) : (
-                            <div className="relative w-11 h-6 rounded-full bg-muted shrink-0">
-                              <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm" />
-                            </div>
-                          )}
+                      <div className="flex flex-col py-2">
+                        {/* SECTION 2: ACCOUNT */}
+                        <div className="px-2">
+                          <button
+                            onClick={() => {
+                              setIsProfileOpen(false);
+                              router.push("/dashboard/director/settings");
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted transition-colors rounded-lg text-sm text-foreground"
+                          >
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="font-medium">Профиль</span>
+                          </button>
                         </div>
 
-                        {/* Language selector */}
-                        <div className="relative">
+                        {/* SECTION 3: INTERFACE */}
+                        <div className="px-2 mt-1">
+                          {/* Theme Toggle */}
+                          <div
+                            className="flex items-center justify-between px-3 py-2.5 hover:bg-muted transition-colors rounded-lg cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              {mounted && isDark ? (
+                                <Moon className="h-4 w-4 text-muted-foreground shrink-0" />
+                              ) : (
+                                <Sun className="h-4 w-4 text-muted-foreground shrink-0" />
+                              )}
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-foreground block">Тема</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {mounted ? (isDark ? "Тёмная" : "Светлая") : "—"}
+                                </span>
+                              </div>
+                            </div>
+                            {mounted ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleThemeToggle();
+                                }}
+                                className={cn(
+                                  "relative w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shrink-0",
+                                  isDark ? "bg-primary" : "bg-muted"
+                                )}
+                                aria-label={isDark ? "Переключить на светлую тему" : "Переключить на тёмную тему"}
+                              >
+                                <span
+                                  className={cn(
+                                    "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform",
+                                    isDark ? "translate-x-5" : "translate-x-0"
+                                  )}
+                                />
+                              </button>
+                            ) : (
+                              <div className="relative w-11 h-6 rounded-full bg-muted shrink-0">
+                                <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Language Selector */}
                           <button
                             ref={languageButtonRef}
                             onClick={(e) => {
                               e.stopPropagation();
                               setIsProfileOpen(false);
-                              // Открываем меню, позиция обновится в useEffect
                               setIsLanguageMenuOpen(true);
                             }}
-                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted transition-colors rounded-md"
+                            className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted transition-colors rounded-lg"
                           >
-                            <div className="flex items-center flex-1">
-                              <div className="w-8 flex justify-center shrink-0">
-                                <Globe className="h-4 w-4 text-muted-foreground" />
+                            <div className="flex items-center gap-3 flex-1">
+                              <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div className="flex-1 text-left">
+                                <span className="text-sm font-medium text-foreground block">Язык интерфейса</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {currentLanguage.fullLabel}
+                                </span>
                               </div>
-                              <span className="text-sm font-medium flex-1 text-left ml-3 text-foreground">
-                                {t("dashboard.menu_interface_language")}
-                              </span>
                             </div>
-                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isLanguageMenuOpen ? 'rotate-180' : ''}`} />
+                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                           </button>
                         </div>
 
-                        <div className="h-px bg-border my-1 mx-4" />
-
-                        {/* Logout */}
-                        <button
-                          onClick={async () => {
-                            setIsProfileOpen(false);
-                            await logout();
-                            router.push("/login");
-                          }}
-                          className="flex items-center justify-between px-4 py-3 text-destructive hover:bg-destructive/10 transition-colors rounded-md"
-                        >
-                          <div className="flex items-center flex-1">
-                            <div className="w-8 flex justify-center">
-                              <LogOut className="h-4 w-4" />
-                            </div>
-                            <span className="text-sm font-medium flex-1 text-left ml-3">
-                              {t("logout")}
-                            </span>
-                          </div>
-                        </button>
+                        {/* SECTION 4: SYSTEM */}
+                        <div className="px-2 mt-2 pt-2 border-t border-border">
+                          <button
+                            onClick={async () => {
+                              setIsProfileOpen(false);
+                              await logout();
+                              router.push("/login");
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-destructive hover:bg-destructive/10 transition-colors rounded-lg text-sm font-medium"
+                          >
+                            <LogOut className="h-4 w-4 shrink-0" />
+                            <span>Выйти</span>
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   </>
@@ -525,63 +517,79 @@ export function DashboardHeader() {
         </div>
       </div>
 
-      {/* Языковое подменю через портал */}
+      {/* Language Selection Modal */}
       {mounted &&
         isLanguageMenuOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[10000]"
+            className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setIsLanguageMenuOpen(false)}
           >
             <AnimatePresence>
               <motion.div
                 ref={languageMenuRef}
-                initial={{
-                  opacity: 0,
-                  y: languageMenuPosition === "top" ? 10 : -10,
-                  scale: 0.95,
-                }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{
-                  opacity: 0,
-                  y: languageMenuPosition === "top" ? 10 : -10,
-                  scale: 0.95,
-                }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                style={{
-                  position: "fixed",
-                  top: `${languageMenuCoords.top}px`,
-                  left: `${languageMenuCoords.left}px`,
-                  width: `${Math.max(languageMenuCoords.width, 200)}px`,
-                }}
-                className="pointer-events-auto bg-card backdrop-blur-sm border border-border rounded-xl shadow-[var(--shadow-floating)] overflow-hidden"
+                className="pointer-events-auto bg-card border border-border rounded-xl shadow-[var(--shadow-floating)] w-full max-w-sm overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="p-1">
+                {/* Modal Header */}
+                <div className="px-6 py-4 border-b border-border">
+                  <h3 className="text-base font-semibold text-foreground">Язык интерфейса</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Выберите язык для интерфейса системы
+                  </p>
+                </div>
+
+                {/* Language Options */}
+                <div className="p-2">
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
-                      onClick={() => handleLanguageChange(lang.code)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-all rounded-lg ${
+                      onClick={async () => {
+                        await handleLanguageChange(lang.code);
+                        // Небольшая задержка для визуального фидбека
+                        setTimeout(() => {
+                          setIsLanguageMenuOpen(false);
+                        }, 100);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-all rounded-lg mb-1 ${
                         language === lang.code
                           ? "bg-primary/10 text-foreground"
                           : "text-muted-foreground hover:bg-muted"
                       }`}
                     >
-                      <span
-                        className={
-                          language === lang.code
-                            ? "font-medium text-foreground"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {lang.fullLabel}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={
+                            language === lang.code
+                              ? "font-medium text-foreground"
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {lang.fullLabel}
+                        </span>
+                        {language === lang.code && (
+                          <span className="text-xs text-primary font-medium">(текущий)</span>
+                        )}
+                      </div>
                       {language === lang.code && (
                         <Check className="h-4 w-4 text-primary shrink-0" />
                       )}
                     </button>
                   ))}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-6 py-3 border-t border-border bg-muted/30">
+                  <button
+                    onClick={() => setIsLanguageMenuOpen(false)}
+                    className="w-full px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors"
+                  >
+                    Отмена
+                  </button>
                 </div>
               </motion.div>
             </AnimatePresence>
