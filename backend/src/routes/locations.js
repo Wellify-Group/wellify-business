@@ -28,6 +28,48 @@ const authenticateToken = (req, res, next) => {
 };
 
 /**
+ * GET /api/locations/list
+ * Получить все локации директора (по business_id)
+ */
+router.get('/list', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Получаем business_id директора
+    const businessResult = await db.query(
+      'SELECT id FROM businesses WHERE owner_profile_id = $1',
+      [userId]
+    );
+    
+    if (businessResult.rows.length === 0) {
+      return res.json({ locations: [] });
+    }
+    
+    const businessId = businessResult.rows[0].id;
+    
+    // БЕЗ алиаса "l."
+    const result = await db.query(
+      `SELECT 
+        id, name, address, access_code,
+        created_at, updated_at
+       FROM locations 
+       WHERE business_id = $1
+       ORDER BY created_at DESC`,
+      [businessId]
+    );
+    
+    res.json({ locations: result.rows });
+    
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch locations',
+      details: error.message 
+    });
+  }
+});
+
+/**
  * GET /api/locations
  * Получить все локации пользователя
  */
