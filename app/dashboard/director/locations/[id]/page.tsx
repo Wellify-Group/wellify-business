@@ -227,175 +227,86 @@ export default function LocationProfilePage() {
     }
   };
 
+  // Calculate location metrics
+  const today = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start: start.getTime(), end: end.getTime() };
+  }, []);
+
+  const locationShifts = useMemo(() => {
+    return shifts.filter(s => s.locationId === location.id);
+  }, [shifts, location.id]);
+
+  const todayShifts = useMemo(() => {
+    return locationShifts.filter(s => s.date >= today.start && s.date <= today.end);
+  }, [locationShifts, today]);
+
+  const todayRevenue = useMemo(() => {
+    return todayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+  }, [todayShifts]);
+
+  const activeShift = useMemo(() => {
+    return todayShifts.find(s => s.status === 'active' && !s.clockOut);
+  }, [todayShifts]);
+
+  const problematicShifts = useMemo(() => {
+    return todayShifts.filter(s => s.status === 'issue' || s.anomalies?.length > 0);
+  }, [todayShifts]);
+
+  const hasProblems = problematicShifts.length > 0 || location.status === 'error' || location.status === 'red';
+
+  const planPercent = location.dailyPlan && location.dailyPlan > 0
+    ? Math.round((todayRevenue / location.dailyPlan) * 100)
+    : 0;
+
+  const recentShifts = useMemo(() => {
+    return locationShifts
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 5);
+  }, [locationShifts]);
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Cover Banner */}
-      <div className="relative h-48 sm:h-64 w-full overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
-        {location.branding?.banner || location.coverImage ? (
-          <img 
-            src={location.branding?.banner || location.coverImage} 
-            alt={location.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-indigo-900/50 via-purple-900/50 to-pink-900/50" />
-        )}
-        
-        {/* Banner Controls - Top Right */}
-        <div className="absolute top-4 right-4 flex gap-2 z-10">
-          {location.branding?.banner || location.coverImage ? (
-            <>
-              <button
-                onClick={() => handleFileSelect('banner')}
-                className="px-3 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-lg transition-all flex items-center gap-2 text-sm font-medium border border-white/10"
-                title={t("dashboard.btn_edit")}
-              >
-                <Crop className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("dashboard.btn_edit")}</span>
-              </button>
-              <button
-                onClick={handleDeleteBanner}
-                className="px-3 py-2 bg-black/60 hover:bg-rose-500/80 backdrop-blur-sm text-white rounded-lg transition-all flex items-center gap-2 text-sm font-medium border border-white/10"
-                title={t("dashboard.btn_delete")}
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("dashboard.btn_delete")}</span>
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => handleFileSelect('banner')}
-              className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white rounded-lg transition-all flex items-center gap-2 text-sm font-medium border border-white/10"
-            >
-              <Camera className="h-4 w-4" />
-              <span>{t("dashboard.btn_upload_cover")}</span>
-            </button>
-          )}
-        </div>
-        
-        <input
-          ref={bannerInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleBannerUpload}
-          className="hidden"
-        />
-      </div>
-
-      {/* Profile Header */}
-      <div className="relative px-4 sm:px-6 lg:px-8 pb-6 border-b border-border">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12 sm:-mt-16">
-          {/* Logo Avatar */}
-          <div className="relative group">
-            {location.branding?.logo ? (
-              <>
-                <img 
-                  src={location.branding.logo} 
-                  alt={location.name}
-                  onClick={() => setIsLogoPreviewOpen(true)}
-                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-background shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
-                />
-                <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
-                  <Maximize2 className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+      {/* Header */}
+      <div className="border-b border-border bg-card">
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-start justify-between gap-4">
+            {/* Left: Name and Status */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-3">
+                {location.name}
+              </h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Status Badge */}
+                <div className={cn(
+                  "px-3 py-1 rounded-md text-sm font-medium",
+                  isActive && !hasProblems && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+                  isPaused && "bg-muted text-muted-foreground border border-border",
+                  hasProblems && "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                )}>
+                  {isActive && !hasProblems && "Активна"}
+                  {isPaused && "Приостановлена"}
+                  {hasProblems && "Проблемы"}
                 </div>
-              </>
-            ) : (
-              <div 
-                onClick={() => handleFileSelect('logo')}
-                className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-4 border-background shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
-              >
-                {location.name[0].toUpperCase()}
               </div>
-            )}
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleLogoUpload}
-              className="hidden"
-            />
-            {location.branding?.logo && (
-            <button 
-              onClick={() => handleFileSelect('logo')}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center border-2 border-background hover:bg-primary/90 transition-colors z-10"
-              title={t("dashboard.btn_edit")}
-            >
-              <Camera className="h-4 w-4" />
-            </button>
-            )}
-          </div>
-
-          {/* Title Block */}
-          <div className="flex-1 pb-2 mt-16 sm:mt-20">
-            <h1 className="text-2xl sm:text-3xl font-bold text-card-foreground mb-2">
-              {location.name}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4" />
-                <span>{location.address}</span>
-              </div>
-              {location.contact?.phone && (
-                <div className="flex items-center gap-1.5">
-                  <Phone className="h-4 w-4" />
-                  <span>{location.contact.phone}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Status Bar & Actions */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap justify-end">
-            {/* Status Badge */}
-            <div className={cn(
-              "px-4 py-2 rounded-lg font-semibold text-sm",
-              isActive && "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30",
-              isPaused && "bg-blue-500/20 text-blue-500 border border-blue-500/30",
-              !isActive && !isPaused && "bg-zinc-500/20 text-zinc-500 border border-zinc-500/30"
-            )}>
-              {isActive 
-              ? (t("dashboard.loc_active") || "Активна") 
-              : isPaused 
-                ? (t("dashboard.status_suspended") || "Приостановлена") 
-                : getStatusText(location.status)}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 justify-end items-center">
+            {/* Right: Quick Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
-                onClick={handlePause}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap",
-                  isPaused 
-                    ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border border-emerald-500/20"
-                    : "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20"
-                )}
+                onClick={() => setActiveTab('history')}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
               >
-                {isPaused ? (
-                  <>
-                    <PlayCircle className="h-4 w-4" />
-                    Возобновить
-                  </>
-                ) : (
-                  <>
-                    <PauseCircle className="h-4 w-4" />
-                    Приостановить
-                  </>
-                )}
+                Перейти к сменам
               </button>
               <button
-                onClick={handleDuplicate}
-                className="px-4 py-2 rounded-lg font-medium text-sm bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 border border-indigo-500/20 transition-colors flex items-center gap-2 whitespace-nowrap"
+                onClick={() => setActiveTab('settings')}
+                className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors font-medium text-sm"
               >
-                <Copy className="h-4 w-4" />
-                Дублировать
-              </button>
-              <button
-                onClick={handleArchive}
-                className="px-4 py-2 rounded-lg font-medium text-sm bg-zinc-500/10 text-zinc-500 hover:bg-zinc-500/20 border border-zinc-500/20 transition-colors flex items-center gap-2 whitespace-nowrap"
-              >
-                <Archive className="h-4 w-4" />
-                Архивировать
+                Настройки точки
               </button>
             </div>
           </div>
@@ -407,7 +318,7 @@ export default function LocationProfilePage() {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {[
-              { id: 'info' as TabType, label: 'Информация', icon: FileText },
+              { id: 'info' as TabType, label: 'Обзор', icon: FileText },
               { id: 'team' as TabType, label: 'Команда', icon: Users },
               { id: 'schedule' as TabType, label: 'Расписание', icon: Clock },
               { id: 'settings' as TabType, label: 'Настройки', icon: Settings },
@@ -438,7 +349,20 @@ export default function LocationProfilePage() {
       {/* Tab Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'info' && (
-          <InfoTab location={location} />
+          <OperationalDashboard
+            location={location}
+            todayRevenue={todayRevenue}
+            activeShift={activeShift}
+            problematicShifts={problematicShifts}
+            hasProblems={hasProblems}
+            planPercent={planPercent}
+            dailyPlan={location.dailyPlan}
+            recentShifts={recentShifts}
+            employees={employees}
+            currency={currency}
+            locationManager={locationManager}
+            onNavigateToTab={setActiveTab}
+          />
         )}
         {activeTab === 'team' && (
           <TeamTab 
@@ -572,7 +496,291 @@ function getStatusText(status: string): string {
   }
 }
 
-// Info Tab Component
+// Operational Dashboard Component
+function OperationalDashboard({
+  location,
+  todayRevenue,
+  activeShift,
+  problematicShifts,
+  hasProblems,
+  planPercent,
+  dailyPlan,
+  recentShifts,
+  employees,
+  currency,
+  locationManager,
+  onNavigateToTab,
+}: {
+  location: any;
+  todayRevenue: number;
+  activeShift: any;
+  problematicShifts: any[];
+  hasProblems: boolean;
+  planPercent: number;
+  dailyPlan?: number;
+  recentShifts: any[];
+  employees: any[];
+  currency: string;
+  locationManager: any;
+  onNavigateToTab: (tab: TabType) => void;
+}) {
+  const [elapsedTime, setElapsedTime] = useState<string>("");
+
+  useEffect(() => {
+    if (!activeShift?.clockIn) return;
+
+    const updateTimer = () => {
+      const start = new Date(activeShift.clockIn).getTime();
+      const now = Date.now();
+      const diff = now - start;
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      setElapsedTime(`${hours}ч ${minutes}м`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000);
+    return () => clearInterval(interval);
+  }, [activeShift]);
+
+  const activeEmployee = activeShift
+    ? employees.find(e => e.id === activeShift.employeeId)
+    : null;
+
+  const shiftStartTime = activeShift?.clockIn
+    ? new Date(activeShift.clockIn).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Key Metrics Block */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Revenue Today */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="text-sm text-muted-foreground mb-2">Выручка сегодня</div>
+          <div className="text-2xl font-semibold text-foreground">
+            {todayRevenue > 0 
+              ? `${todayRevenue.toLocaleString('ru-RU')} ${currency}`
+              : "—"}
+          </div>
+        </div>
+
+        {/* Active Shift */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="text-sm text-muted-foreground mb-2">Активная смена</div>
+          <div className="text-2xl font-semibold text-foreground mb-1">
+            {activeShift ? "Есть" : "Нет"}
+          </div>
+          {activeEmployee && (
+            <div className="text-xs text-muted-foreground mt-1">
+              {activeEmployee.name}
+            </div>
+          )}
+        </div>
+
+        {/* Problems Count */}
+        <div className={cn(
+          "bg-card border rounded-xl p-5",
+          hasProblems ? "border-red-500/50 bg-red-500/5" : "border-border"
+        )}>
+          <div className="text-sm text-muted-foreground mb-2">Количество проблем</div>
+          <div className={cn(
+            "text-2xl font-semibold",
+            hasProblems ? "text-red-600 dark:text-red-400" : "text-foreground"
+          )}>
+            {problematicShifts.length}
+          </div>
+        </div>
+
+        {/* Plan vs Fact */}
+        {dailyPlan && dailyPlan > 0 && (
+          <div className="bg-card border border-border rounded-xl p-5 opacity-60">
+            <div className="text-sm text-muted-foreground mb-2">План / Факт</div>
+            <div className="text-2xl font-semibold text-foreground">
+              {planPercent}%
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {todayRevenue.toLocaleString('ru-RU')} / {dailyPlan.toLocaleString('ru-RU')} {currency}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Active Shift Block */}
+      {activeShift ? (
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Активная смена</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-muted-foreground">Сотрудник</div>
+                <div className="text-base font-medium text-foreground mt-1">
+                  {activeEmployee?.name || "Неизвестно"}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm text-muted-foreground">Начало смены</div>
+                <div className="text-base font-medium text-foreground mt-1">
+                  {shiftStartTime || "—"}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-4 border-t border-border">
+              <div>
+                <div className="text-sm text-muted-foreground">Время работы</div>
+                <div className="text-lg font-semibold text-foreground mt-1">
+                  {elapsedTime || "—"}
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div>
+                  <span className="block">Наличные</span>
+                  <span className="text-foreground font-medium">
+                    {activeShift.revenueCash || 0} {currency}
+                  </span>
+                </div>
+                <div>
+                  <span className="block">Терминал</span>
+                  <span className="text-foreground font-medium">
+                    {activeShift.revenueCard || 0} {currency}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-xl p-6 text-center">
+          <div className="text-base text-muted-foreground">Сейчас нет активной смены</div>
+        </div>
+      )}
+
+      {/* Problems Block */}
+      {hasProblems && problematicShifts.length > 0 && (
+        <div className="bg-card border border-red-500/50 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-4">
+            Требует внимания
+          </h2>
+          <div className="space-y-3">
+            {problematicShifts.map((shift) => {
+              const employee = employees.find(e => e.id === shift.employeeId);
+              const shiftDate = new Date(shift.date).toLocaleDateString('ru-RU');
+              return (
+                <div
+                  key={shift.id}
+                  className="flex items-start justify-between p-4 bg-red-500/5 border border-red-500/20 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-foreground mb-1">
+                      {shift.anomalies?.length > 0
+                        ? shift.anomalies[0]
+                        : "Проблема в смене"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {employee?.name || "Неизвестно"} • {shiftDate}
+                    </div>
+                  </div>
+                  <div className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs font-medium">
+                    Новое
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Shifts Block */}
+      <div className="bg-card border border-border rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Последние смены</h2>
+          <button
+            onClick={() => onNavigateToTab('history')}
+            className="text-sm text-primary hover:text-primary/80 font-medium"
+          >
+            Показать все смены
+          </button>
+        </div>
+        {recentShifts.length > 0 ? (
+          <div className="space-y-2">
+            {recentShifts.map((shift) => {
+              const employee = employees.find(e => e.id === shift.employeeId);
+              const shiftDate = new Date(shift.date).toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+              const shiftRevenue = shift.revenueCash + shift.revenueCard;
+              const isProblem = shift.status === 'issue' || shift.anomalies?.length > 0;
+              return (
+                <div
+                  key={shift.id}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-lg border transition-colors",
+                    isProblem
+                      ? "bg-red-500/5 border-red-500/20"
+                      : "bg-muted/30 border-border hover:bg-muted/50"
+                  )}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-foreground truncate">
+                      {employee?.name || "Неизвестно"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {shiftDate}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 ml-4">
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-foreground">
+                        {shiftRevenue.toLocaleString('ru-RU')} {currency}
+                      </div>
+                      <div className={cn(
+                        "text-xs mt-0.5",
+                        isProblem ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                      )}>
+                        {isProblem ? "Проблемы" : "OK"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <div className="text-sm">Нет смен</div>
+          </div>
+        )}
+      </div>
+
+      {/* Secondary Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {locationManager && (
+          <div className="bg-card border border-border rounded-xl p-4 opacity-60">
+            <div className="text-xs text-muted-foreground mb-1">Назначенный менеджер</div>
+            <div className="text-sm font-medium text-foreground">
+              {locationManager.name}
+            </div>
+          </div>
+        )}
+        <div className="bg-card border border-border rounded-xl p-4 opacity-60">
+          <div className="text-xs text-muted-foreground mb-1">Валюта</div>
+          <div className="text-sm font-medium text-foreground">{currency}</div>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 opacity-60">
+          <div className="text-xs text-muted-foreground mb-1">Часовой пояс</div>
+          <div className="text-sm font-medium text-foreground">
+            {Intl.DateTimeFormat().resolvedOptions().timeZone}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Info Tab Component (kept for editing)
 function InfoTab({ location }: { location: any }) {
   const { t } = useLanguage();
   const { updateLocationProfile } = useStore();

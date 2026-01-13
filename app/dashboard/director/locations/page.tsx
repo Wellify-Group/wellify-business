@@ -52,6 +52,14 @@ function LocationsContent() {
   const [deleteLocationId, setDeleteLocationId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused" | "problems">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+  const [wizardData, setWizardData] = useState({
+    name: "",
+    businessType: "",
+    currency: currency || "₴",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    managerId: null as string | null,
+  });
   
   // Всегда синхронизируем локации с сервером при заходе на страницу
   useEffect(() => {
@@ -182,6 +190,10 @@ function LocationsContent() {
 
   const handleIndustrySelect = (industrySlug: string) => {
     setSelectedIndustry(industrySlug);
+    // Also update wizard data if in wizard mode
+    if (wizardStep === 1) {
+      setWizardData({ ...wizardData, businessType: industrySlug });
+    }
     
     // Update form config based on industry
     const profile = INDUSTRIES[industrySlug] || INDUSTRIES['cafe'];
@@ -512,30 +524,361 @@ function LocationsContent() {
         </div>
       </div>
 
-      {/* Add Location Form */}
+      {/* Add Location Wizard */}
       <AnimatePresence>
-        {isAdding && (
+        {isAdding && !editingLocation && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="glass-card p-6 sm:p-8"
+            className="bg-card border border-border rounded-xl p-6 sm:p-8"
+          >
+            {/* Wizard Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground mb-1">
+                  {wizardStep === 1 && "Добавление точки продаж"}
+                  {wizardStep === 2 && "Операционные настройки"}
+                  {wizardStep === 3 && "Точка почти готова"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Шаг {wizardStep} из 3
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsAdding(false);
+                  setWizardStep(1);
+                  setWizardData({
+                    name: "",
+                    businessType: "",
+                    currency: currency || "₴",
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    managerId: null,
+                  });
+                  setSelectedIndustry("");
+                }}
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex items-center flex-1">
+                    <div
+                      className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors",
+                        wizardStep >= step
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {wizardStep > step ? <Check className="h-4 w-4" /> : step}
+                    </div>
+                    {step < 3 && (
+                      <div
+                        className={cn(
+                          "flex-1 h-0.5 mx-2 transition-colors",
+                          wizardStep > step ? "bg-primary" : "bg-border"
+                        )}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Wizard Steps */}
+            <div className="space-y-6">
+              {/* STEP 1: Basic Info */}
+              {wizardStep === 1 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Название точки <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={wizardData.name}
+                      onChange={(e) => setWizardData({ ...wizardData, name: e.target.value })}
+                      placeholder="Например: Кафе на Ленина"
+                      className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Тип бизнеса <span className="text-destructive">*</span>
+                    </label>
+                    <select
+                      value={wizardData.businessType}
+                      onChange={(e) => {
+                        setWizardData({ ...wizardData, businessType: e.target.value });
+                        if (e.target.value) {
+                          handleIndustrySelect(e.target.value);
+                        }
+                      }}
+                      className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
+                      required
+                    >
+                      <option value="">Выберите тип</option>
+                      <option value="cafe">Кафе / Ресторан</option>
+                      <option value="coffee">Кофейня</option>
+                      <option value="shop">Магазин</option>
+                      <option value="other">Другое</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (wizardData.name && wizardData.businessType) {
+                        setWizardStep(2);
+                      }
+                    }}
+                    disabled={!wizardData.name || !wizardData.businessType}
+                    className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Продолжить
+                  </button>
+                </motion.div>
+              )}
+
+              {/* STEP 2: Operations Setup */}
+              {wizardStep === 2 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Валюта точки <span className="text-destructive">*</span>
+                    </label>
+                    <select
+                      value={wizardData.currency}
+                      onChange={(e) => setWizardData({ ...wizardData, currency: e.target.value })}
+                      className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
+                      required
+                    >
+                      <option value="₴">₴ Гривна (UAH)</option>
+                      <option value="$">$ Доллар (USD)</option>
+                      <option value="€">€ Евро (EUR)</option>
+                      <option value="₽">₽ Рубль (RUB)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Часовой пояс
+                    </label>
+                    <input
+                      type="text"
+                      value={wizardData.timezone}
+                      onChange={(e) => setWizardData({ ...wizardData, timezone: e.target.value })}
+                      className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Определён автоматически, можно изменить
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Менеджер точки
+                    </label>
+                    <select
+                      value={wizardData.managerId || ""}
+                      onChange={(e) => setWizardData({ ...wizardData, managerId: e.target.value || null })}
+                      className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
+                    >
+                      <option value="">Пропустить (можно добавить позже)</option>
+                      {employees
+                        .filter(emp => emp.role === 'manager')
+                        .map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.name}</option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Эти настройки можно изменить позже
+                  </p>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setWizardStep(1)}
+                      className="flex-1 px-6 py-3 bg-muted text-foreground rounded-xl hover:bg-muted/80 transition-colors font-medium"
+                    >
+                      Назад
+                    </button>
+                    <button
+                      onClick={() => setWizardStep(3)}
+                      className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium"
+                    >
+                      Продолжить
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* STEP 3: Finalization */}
+              {wizardStep === 3 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Summary */}
+                  <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Название</span>
+                      <span className="text-sm font-medium text-foreground">{wizardData.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Тип бизнеса</span>
+                      <span className="text-sm font-medium text-foreground">
+                        {wizardData.businessType === "cafe" && "Кафе / Ресторан"}
+                        {wizardData.businessType === "coffee" && "Кофейня"}
+                        {wizardData.businessType === "shop" && "Магазин"}
+                        {wizardData.businessType === "other" && "Другое"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Валюта</span>
+                      <span className="text-sm font-medium text-foreground">{wizardData.currency}</span>
+                    </div>
+                    {wizardData.managerId && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Менеджер</span>
+                        <span className="text-sm font-medium text-foreground">
+                          {employees.find(e => e.id === wizardData.managerId)?.name || "—"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* What's next */}
+                  <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                    <p className="text-sm font-medium text-foreground mb-2">Что дальше?</p>
+                    <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                      <li>Можно добавить сотрудников</li>
+                      <li>Можно настроить отчёт смены</li>
+                    </ul>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setWizardStep(2)}
+                      className="flex-1 px-6 py-3 bg-muted text-foreground rounded-xl hover:bg-muted/80 transition-colors font-medium"
+                    >
+                      Назад
+                    </button>
+                    <button
+                      onClick={async () => {
+                        // Apply industry config if first location
+                        if (isFirstLocation && wizardData.businessType) {
+                          handleIndustrySelect(wizardData.businessType);
+                        }
+                        
+                        // Create location with wizard data
+                        const locationId = await addLocation({
+                          name: wizardData.name,
+                          address: "", // Can be added later
+                          status: 'active',
+                          dailyPlan: undefined,
+                          managerId: wizardData.managerId,
+                        });
+                        
+                        // Reset wizard
+                        setIsAdding(false);
+                        setWizardStep(1);
+                        setWizardData({
+                          name: "",
+                          businessType: "",
+                          currency: currency || "₴",
+                          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                          managerId: null,
+                        });
+                        setSelectedIndustry("");
+                        
+                        toast.success("Точка создана");
+                      }}
+                      className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium"
+                    >
+                      Создать точку
+                    </button>
+                    <button
+                      onClick={async () => {
+                        // Apply industry config if first location
+                        if (isFirstLocation && wizardData.businessType) {
+                          handleIndustrySelect(wizardData.businessType);
+                        }
+                        
+                        const locationId = await addLocation({
+                          name: wizardData.name,
+                          address: "",
+                          status: 'active',
+                          dailyPlan: undefined,
+                          managerId: wizardData.managerId,
+                        });
+                        
+                        setIsAdding(false);
+                        setWizardStep(1);
+                        setWizardData({
+                          name: "",
+                          businessType: "",
+                          currency: currency || "₴",
+                          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                          managerId: null,
+                        });
+                        setSelectedIndustry("");
+                        
+                        router.push(`/dashboard/director/locations/${locationId}`);
+                      }}
+                      className="px-6 py-3 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors font-medium border border-primary/20"
+                    >
+                      Создать и настроить
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Edit Location Form (keep existing for editing) */}
+        {isAdding && editingLocation && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-card border border-border rounded-xl p-6 sm:p-8"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-card-foreground">
-                {editingLocation ? t("dashboard.loc_edit_title") : t("dashboard.loc_add_title")}
+              <h2 className="text-xl font-semibold text-foreground">
+                {t("dashboard.loc_edit_title")}
               </h2>
               <button
                 onClick={() => {
                   setIsAdding(false);
                   setEditingLocation(null);
                   setNewLocation({ name: "", address: "", dailyPlan: "" });
-                  setNewEmployees([]);
-                  setNewManager(null);
                 }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
               >
-                <X className="h-5 w-5 text-card-foreground" />
+                <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
             <div className="space-y-4">
@@ -897,39 +1240,39 @@ function LocationsContent() {
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={() => router.push(`/dashboard/director/locations/${location.id}`)}
                 className={cn(
-                  "bg-card border border-border rounded-xl p-5 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50",
+                  "bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all cursor-pointer hover:border-primary/30",
                   hasProblems && "border-red-500/50 bg-red-500/5"
                 )}
               >
-                {/* Header: Name and Status */}
+                {/* Header: Name and Status Badge */}
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-foreground truncate mb-1">
-                      {location.name}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      {isActive && !hasProblems && (
-                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Активна</span>
-                      )}
-                      {isPaused && (
-                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Приостановлена</span>
-                      )}
-                      {hasProblems && (
-                        <span className="text-xs font-medium text-red-600 dark:text-red-400">Проблемы</span>
-                      )}
-                    </div>
+                  <h3 className="text-lg font-semibold text-foreground flex-1 min-w-0 truncate">
+                    {location.name}
+                  </h3>
+                  <div className="flex items-center gap-2 ml-2">
+                    {isActive && !hasProblems && (
+                      <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        Активна
+                      </span>
+                    )}
+                    {isPaused && (
+                      <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground border border-border">
+                        Приостановлена
+                      </span>
+                    )}
+                    {hasProblems && (
+                      <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                        Проблемы
+                      </span>
+                    )}
                   </div>
-                  {getStatusDot(location.status)}
                 </div>
 
-                {/* Key Metrics */}
-                <div className="space-y-3 mb-4">
+                {/* Key Metrics - Visible without hover */}
+                <div className="space-y-2.5 mb-4">
                   {/* Revenue Today */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Выручка за сегодня</span>
-                    </div>
+                    <span className="text-sm text-muted-foreground">Выручка сегодня</span>
                     <span className="text-sm font-semibold text-foreground">
                       {location.revenue > 0 
                         ? `${location.revenue.toLocaleString('ru-RU')} ${currency}`
@@ -939,27 +1282,21 @@ function LocationsContent() {
 
                   {/* Active Shift */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Активная смена</span>
-                    </div>
+                    <span className="text-sm text-muted-foreground">Активная смена</span>
                     <span className={cn(
                       "text-sm font-medium",
                       location.hasActiveShift 
                         ? "text-emerald-600 dark:text-emerald-400" 
                         : "text-muted-foreground"
                     )}>
-                      {location.hasActiveShift ? "Есть" : "Нет"}
+                      {location.hasActiveShift ? "Да" : "Нет"}
                     </span>
                   </div>
 
-                  {/* Problematic Shifts */}
+                  {/* Problematic Shifts - Only if > 0 */}
                   {location.problematicShiftsCount > 0 && (
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500" />
-                        <span className="text-sm text-muted-foreground">Проблемные смены</span>
-                      </div>
+                      <span className="text-sm text-muted-foreground">Проблемные смены</span>
                       <span className="text-sm font-semibold text-red-600 dark:text-red-400">
                         {location.problematicShiftsCount}
                       </span>
@@ -967,12 +1304,12 @@ function LocationsContent() {
                   )}
                 </div>
 
-                {/* Manager (muted, optional) */}
+                {/* Manager (muted, secondary) */}
                 {location.manager && (
                   <div className="pt-3 border-t border-border">
                     <div className="flex items-center gap-2">
-                      <User className="h-3.5 w-3.5 text-muted-foreground/60" />
-                      <span className="text-xs text-muted-foreground/80 truncate">
+                      <User className="h-3.5 w-3.5 text-muted-foreground/50" />
+                      <span className="text-xs text-muted-foreground/70 truncate">
                         {location.manager.name}
                       </span>
                     </div>
