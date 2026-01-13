@@ -16,11 +16,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const isEmployeeRoute = pathname?.startsWith('/dashboard/employee');
   
-  // Auto-sync on mount if user is logged in
+  // Load user from API if currentUser is null but token exists
   useEffect(() => {
-    if (currentUser?.id) {
-      syncWithServer();
-    }
+    const loadUserIfNeeded = async () => {
+      // Если currentUser уже есть, синхронизируем
+      if (currentUser?.id) {
+        syncWithServer();
+        return;
+      }
+      
+      // Проверяем наличие токена
+      if (typeof window === 'undefined') return;
+      
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      if (!token) {
+        // Нет токена - пользователь не авторизован
+        return;
+      }
+      
+      // Токен есть, но currentUser отсутствует - загружаем из API
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+        if (!API_URL) return;
+        
+        const response = await fetch(`${API_URL}/api/auth/user`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            // Сохраняем пользователя в store
+            useStore.setState({ currentUser: data.user });
+            // Затем синхронизируем
+            await useStore.getState().syncWithServer();
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load user from API:', error);
+      }
+    };
+    
+    loadUserIfNeeded();
   }, [currentUser?.id, syncWithServer]);
 
   // Employee route: Full-width terminal view (no sidebar, no header)
