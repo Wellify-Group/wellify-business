@@ -90,11 +90,19 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Business ID and name are required' });
     }
 
-    // Проверяем, что пользователь имеет доступ к бизнесу
+    // Проверяем, что пользователь имеет доступ к бизнесу: либо владелец, либо активный сотрудник
     const businessCheck = await db.query(
       `SELECT b.id FROM businesses b
-       JOIN staff s ON b.id = s.business_id
-       WHERE b.id = $1 AND s.profile_id = $2 AND s.активен = true`,
+       WHERE b.id = $1 
+       AND (
+         b.owner_profile_id = $2
+         OR EXISTS (
+           SELECT 1 FROM staff s 
+           WHERE s.business_id = b.id 
+           AND s.profile_id = $2 
+           AND s.активен = true
+         )
+       )`,
       [business_id, req.userId]
     );
 
@@ -138,12 +146,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { name, address, access_code } = req.body;
 
-    // Проверяем доступ
+    // Проверяем доступ: либо владелец бизнеса, либо активный сотрудник
     const locationCheck = await db.query(
       `SELECT l.id FROM locations l
        JOIN businesses b ON l.business_id = b.id
-       JOIN staff s ON b.id = s.business_id
-       WHERE l.id = $1 AND s.profile_id = $2 AND s.активен = true`,
+       WHERE l.id = $1 
+       AND (
+         b.owner_profile_id = $2
+         OR EXISTS (
+           SELECT 1 FROM staff s 
+           WHERE s.business_id = b.id 
+           AND s.profile_id = $2 
+           AND s.активен = true
+         )
+       )`,
       [id, req.userId]
     );
 
