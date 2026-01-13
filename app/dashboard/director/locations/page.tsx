@@ -38,7 +38,7 @@ function LocationsContent() {
     fetchLocations,
     savedCompanyId,
   } = useStore();    
-  const { toast } = useToast();
+  const { toast, success } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
@@ -813,7 +813,7 @@ function LocationsContent() {
                         });
                         setSelectedIndustry("");
                         
-                        toast.success("Точка создана");
+                        success("Точка создана");
                       }}
                       className="flex-1 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-medium"
                     >
