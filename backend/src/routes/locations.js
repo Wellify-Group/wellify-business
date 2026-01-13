@@ -35,12 +35,20 @@ router.get('/', authenticateToken, async (req, res) => {
   try {
     const { business_id } = req.query;
 
+    // Проверяем доступ: либо пользователь владелец бизнеса, либо сотрудник с активным статусом
     let query = `
-      SELECT l.id, l.business_id, l.name, l.address, l.access_code, l.created_at, l.updated_at
+      SELECT DISTINCT l.id, l.business_id, l.name, l.address, l.access_code, l.created_at, l.updated_at
       FROM locations l
       JOIN businesses b ON l.business_id = b.id
-      JOIN staff s ON b.id = s.business_id
-      WHERE s.profile_id = $1 AND s.активен = true
+      WHERE (
+        b.owner_profile_id = $1
+        OR EXISTS (
+          SELECT 1 FROM staff s 
+          WHERE s.business_id = b.id 
+          AND s.profile_id = $1 
+          AND s.активен = true
+        )
+      )
     `;
     const params = [req.userId];
 
@@ -182,12 +190,20 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Проверяем доступ
+    // Проверяем доступ: либо владелец бизнеса, либо активный сотрудник
     const locationCheck = await db.query(
       `SELECT l.id FROM locations l
        JOIN businesses b ON l.business_id = b.id
-       JOIN staff s ON b.id = s.business_id
-       WHERE l.id = $1 AND s.profile_id = $2 AND s.активен = true`,
+       WHERE l.id = $1 
+       AND (
+         b.owner_profile_id = $2
+         OR EXISTS (
+           SELECT 1 FROM staff s 
+           WHERE s.business_id = b.id 
+           AND s.profile_id = $2 
+           AND s.активен = true
+         )
+       )`,
       [id, req.userId]
     );
 
