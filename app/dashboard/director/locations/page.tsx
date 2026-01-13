@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { useLanguage } from "@/components/language-provider";
 import useStore from "@/lib/store";
-import { Plus, Trash2, MapPin, Edit2, MoreVertical, BarChart3, X, User, ChevronLeft, ChevronRight, UserPlus, Dices, Check, Pencil, Briefcase, PauseCircle, PlayCircle, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { Plus, Trash2, MapPin, Edit2, MoreVertical, BarChart3, X, User, ChevronLeft, ChevronRight, UserPlus, Dices, Check, Pencil, Briefcase, PauseCircle, PlayCircle, ChevronRight as ChevronRightIcon, Search, Filter, AlertTriangle, DollarSign, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -50,6 +50,8 @@ function LocationsContent() {
   const industryScrollRef = useRef<HTMLDivElement>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteLocationId, setDeleteLocationId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused" | "problems">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Всегда синхронизируем локации с сервером при заходе на страницу
   useEffect(() => {
@@ -91,17 +93,26 @@ function LocationsContent() {
     return shifts.filter(s => s.date >= today.start && s.date <= today.end);
   }, [shifts, today]);
 
-  // Calculate revenue for each location
+  // Calculate revenue and status for each location
   const locationsWithData = useMemo(() => {
     return locations.map(location => {
-      // Mock: assign shifts to locations (in real app, this would be based on locationId in shift)
-      const locShifts = todayShifts; // Simplified: all shifts for now
+      // Get shifts for this location
+      const locShifts = todayShifts.filter(s => s.locationId === location.id);
       const locRevenue = locShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
       const locPlanPercent = location.dailyPlan && location.dailyPlan > 0 
         ? Math.round((locRevenue / location.dailyPlan) * 100) 
         : 0;
       
-      // Get manager dynamically from employees list - fix ghost manager bug
+      // Check for active shift (status === 'active' and no clockOut)
+      const hasActiveShift = locShifts.some(s => s.status === 'active' && !s.clockOut);
+      
+      // Count problematic shifts (status === 'issue')
+      const problematicShiftsCount = locShifts.filter(s => s.status === 'issue').length;
+      
+      // Determine if location has problems
+      const hasProblems = problematicShiftsCount > 0 || location.status === 'error' || location.status === 'red';
+      
+      // Get manager dynamically from employees list
       const currentManager = location.managerId 
         ? employees.find(e => e.id === location.managerId)
         : null;
@@ -110,10 +121,38 @@ function LocationsContent() {
         ...location,
         revenue: locRevenue,
         planPercent: locPlanPercent,
-        manager: currentManager
+        manager: currentManager,
+        hasActiveShift,
+        problematicShiftsCount,
+        hasProblems
       };
     });
   }, [locations, todayShifts, employees]);
+
+  // Filter locations based on status and search
+  const filteredLocations = useMemo(() => {
+    let filtered = locationsWithData.filter(loc => loc.status !== 'archived');
+    
+    // Status filter
+    if (statusFilter === "active") {
+      filtered = filtered.filter(loc => loc.status === 'active' || loc.status === 'green');
+    } else if (statusFilter === "paused") {
+      filtered = filtered.filter(loc => loc.status === 'paused');
+    } else if (statusFilter === "problems") {
+      filtered = filtered.filter(loc => loc.hasProblems);
+    }
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(loc => 
+        loc.name.toLowerCase().includes(query) ||
+        loc.address?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [locationsWithData, statusFilter, searchQuery]);
 
   const scrollIndustry = (direction: "left" | "right") => {
     if (!industryScrollRef.current) return;
@@ -369,21 +408,108 @@ function LocationsContent() {
     }
   };
 
+  // Empty state
+  if (locations.length === 0 && !isAdding) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col items-center justify-center min-h-[600px] px-4">
+          <div className="text-center max-w-md w-full space-y-6">
+            {/* Header */}
+            <div className="space-y-3">
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground">
+                Точки продаж
+              </h1>
+              <p className="text-base text-muted-foreground">
+                Управление всеми торговыми точками сети
+              </p>
+            </div>
+
+            {/* Primary CTA */}
+            <div className="mt-8">
+              <button
+                onClick={() => setIsAdding(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm hover:shadow-md"
+              >
+                Добавить первую точку
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Supporting text */}
+            <p className="text-sm text-muted-foreground mt-6">
+              После добавления точки вы сможете отслеживать выручку, смены и проблемы
+            </p>
+          </div>
+        </div>
+
+        {/* Add Location Form (if opened) */}
+        <AnimatePresence>
+          {isAdding && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-card border border-border rounded-xl p-6 sm:p-8"
+            >
+              {/* Form will be rendered in the main return - we need to move it here or keep it in main return */}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Subtitle and Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <p className="text-sm sm:text-base text-muted-foreground">
-          {t("dashboard.loc_subtitle")}
-        </p>
-        <button
-          data-tour="add-point"
-          onClick={() => setIsAdding(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm hover:shadow-md"
-        >
-          <Plus className="h-4 w-4" />
-          {t("dashboard.dash_add_point")}
-        </button>
+      {/* Page Header */}
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Точки продаж</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Управление всеми торговыми точками сети
+          </p>
+        </div>
+
+        {/* Controls: Filters and Search */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Status Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="px-3 py-2 bg-card border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="all">Все</option>
+              <option value="active">Активные</option>
+              <option value="paused">Приостановленные</option>
+              <option value="problems">Проблемные</option>
+            </select>
+          </div>
+
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск по названию или адресу..."
+              className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          {/* Add Location Button (only when locations exist) */}
+          {locations.length > 0 && (
+            <button
+              onClick={() => setIsAdding(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Добавить точку
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Add Location Form */}
@@ -742,141 +868,119 @@ function LocationsContent() {
         )}
       </AnimatePresence>
 
-      {/* Locations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {locationsWithData.filter(loc => loc.status !== 'archived').map((location) => {
-          const isPaused = location.status === 'paused';
-          return (
-            <motion.div
-              key={location.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={() => router.push(`/dashboard/director/locations/${location.id}`)}
-              className={cn(
-                "glass-card p-6 hover:shadow-2xl transition-all duration-200 cursor-pointer hover:scale-[1.01] hover:border-zinc-500 relative",
-                isPaused && "opacity-60 grayscale-[0.5] border-blue-500/30"
-              )}
-            >
-              {/* Header: Status Dot + Logo + Name */}
-              <div className="flex items-start justify-between mb-6">
-                <div 
-                  className="flex items-center gap-3 flex-1 min-w-0"
-                >
-                  {getStatusDot(location.status)}
-                  {/* Mini Logo */}
-                  {location.branding?.logo ? (
-                    <img 
-                      src={location.branding.logo} 
-                      alt={location.name}
-                      className="w-10 h-10 rounded-full object-cover border border-white/10 flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold border border-white/10 flex-shrink-0">
-                      {location.name[0].toUpperCase()}
-                    </div>
-                  )}
+      {/* Locations Grid - Control Cards */}
+      {filteredLocations.length === 0 ? (
+        <div className="text-center py-16 bg-card border border-border rounded-xl">
+          <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+          <p className="text-base font-medium text-foreground mb-1">
+            {searchQuery || statusFilter !== "all" 
+              ? "Ничего не найдено" 
+              : "Нет локаций"}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {searchQuery || statusFilter !== "all"
+              ? "Попробуйте изменить фильтры"
+              : "Добавьте первую точку продаж"}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLocations.map((location) => {
+            const isPaused = location.status === 'paused' || location.status === 'yellow';
+            const isActive = location.status === 'active' || location.status === 'green';
+            const hasProblems = location.hasProblems;
+            
+            return (
+              <motion.div
+                key={location.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => router.push(`/dashboard/director/locations/${location.id}`)}
+                className={cn(
+                  "bg-card border border-border rounded-xl p-5 hover:shadow-lg transition-all cursor-pointer hover:border-primary/50",
+                  hasProblems && "border-red-500/50 bg-red-500/5"
+                )}
+              >
+                {/* Header: Name and Status */}
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-card-foreground truncate">
+                    <h3 className="text-lg font-semibold text-foreground truncate mb-1">
                       {location.name}
                     </h3>
-                    {isPaused && (
-                      <p className="text-xs text-blue-500 font-medium mt-1">{t("dashboard.status_suspended")}</p>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {isActive && !hasProblems && (
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Активна</span>
+                      )}
+                      {isPaused && (
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Приостановлена</span>
+                      )}
+                      {hasProblems && (
+                        <span className="text-xs font-medium text-red-600 dark:text-red-400">Проблемы</span>
+                      )}
+                    </div>
                   </div>
+                  {getStatusDot(location.status)}
                 </div>
-                <div className="flex items-center gap-2">
-                  {/* Pause/Resume Button */}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePauseLocation(location.id);
-                    }}
-                    className={cn(
-                      "p-2 rounded-lg transition-colors",
-                      isPaused
-                        ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20"
-                        : "bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/20"
-                    )}
-                    title={isPaused ? "Resume" : "Pause"}
-                  >
-                    {isPaused ? (
-                      <PlayCircle className="h-4 w-4" />
-                    ) : (
-                      <PauseCircle className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
 
-                {/* Body */}
-                <div className="space-y-4 mb-6">
-                  {/* Address */}
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {location.address}
-                    </p>
+                {/* Key Metrics */}
+                <div className="space-y-3 mb-4">
+                  {/* Revenue Today */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Выручка за сегодня</span>
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">
+                      {location.revenue > 0 
+                        ? `${location.revenue.toLocaleString('ru-RU')} ${currency}`
+                        : "—"}
+                    </span>
                   </div>
 
-                  {/* Manager */}
-                  <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    {location.manager ? (
+                  {/* Active Shift */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Активная смена</span>
+                    </div>
+                    <span className={cn(
+                      "text-sm font-medium",
+                      location.hasActiveShift 
+                        ? "text-emerald-600 dark:text-emerald-400" 
+                        : "text-muted-foreground"
+                    )}>
+                      {location.hasActiveShift ? "Есть" : "Нет"}
+                    </span>
+                  </div>
+
+                  {/* Problematic Shifts */}
+                  {location.problematicShiftsCount > 0 && (
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400">
-                          {location.manager.name[0].toUpperCase()}
-                        </div>
-                        <span className="text-sm text-card-foreground">
-                          {t("dashboard.loc_manager")}: {location.manager.name}
-                        </span>
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                        <span className="text-sm text-muted-foreground">Проблемные смены</span>
                       </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">
-                        {t("dashboard.loc_manager")}: {t("dashboard.team_no_managers") || "Менеджер не назначен"}
+                      <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                        {location.problematicShiftsCount}
                       </span>
-                    )}
-                  </div>
-
-                  {/* Daily Plan Progress */}
-                  {location.dailyPlan && location.dailyPlan > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">{t("dashboard.loc_daily_plan")}</span>
-                        <span className="text-card-foreground font-semibold">
-                          {location.planPercent}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-black/40 rounded-full h-2.5 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            location.planPercent >= 90 
-                              ? 'bg-emerald-500' 
-                              : location.planPercent < 80
-                              ? 'bg-rose-500'
-                              : 'bg-blue-500'
-                          }`}
-                          style={{ width: `${Math.min(location.planPercent, 100)}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{location.revenue.toLocaleString('ru-RU')} {currency}</span>
-                        <span>{location.dailyPlan.toLocaleString('ru-RU')} {currency}</span>
-                      </div>
                     </div>
                   )}
                 </div>
-              </motion.div>
-          );
-        })}
-      </div>
 
-      {/* Empty State */}
-      {locations.length === 0 && !isAdding && (
-        <div className="text-center py-16 glass-card">
-          <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-          <p className="text-lg font-semibold text-card-foreground mb-2">Нет добавленных точек</p>
-          <p className="text-sm text-muted-foreground">Начните с добавления первой точки продаж</p>
+                {/* Manager (muted, optional) */}
+                {location.manager && (
+                  <div className="pt-3 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <User className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      <span className="text-xs text-muted-foreground/80 truncate">
+                        {location.manager.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
