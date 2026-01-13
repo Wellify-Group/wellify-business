@@ -111,7 +111,7 @@ export default function LocationProfilePage() {
   const locationShifts = useMemo(() => {
     if (!location) return [];
     return shifts.filter(s => s.locationId === location.id);
-  }, [shifts, location?.id]);
+  }, [shifts, location]);
 
   const todayShifts = useMemo(() => {
     return locationShifts.filter(s => s.date >= today.start && s.date <= today.end);
@@ -122,7 +122,7 @@ export default function LocationProfilePage() {
   }, [todayShifts]);
 
   const activeShift = useMemo(() => {
-    return todayShifts.find(s => s.status === 'active' && !s.clockOut);
+    return todayShifts.find(s => s.clockIn && !s.clockOut);
   }, [todayShifts]);
 
   const problematicShifts = useMemo(() => {
@@ -132,7 +132,7 @@ export default function LocationProfilePage() {
   const hasProblems = useMemo(() => {
     if (!location) return false;
     return problematicShifts.length > 0 || location.status === 'error' || location.status === 'red';
-  }, [problematicShifts, location?.status]);
+  }, [problematicShifts, location]);
 
   const planPercent = useMemo(() => {
     if (!location?.dailyPlan || location.dailyPlan <= 0) return 0;
