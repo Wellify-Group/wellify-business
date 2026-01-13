@@ -102,21 +102,3 @@ CREATE INDEX IF NOT EXISTS idx_support_sessions_user ON support_sessions(user_id
 CREATE INDEX IF NOT EXISTS idx_support_sessions_telegram ON support_sessions(telegram_chat_id);
 CREATE INDEX IF NOT EXISTS idx_support_messages_session ON support_messages(session_id);
 
--- Триггеры для updated_at на новых таблицах
-CREATE TRIGGER update_businesses_updated_at BEFORE UPDATE ON businesses
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_staff_updated_at BEFORE UPDATE ON staff
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_user_subscriptions_updated_at BEFORE UPDATE ON user_subscriptions
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_shifts_updated_at BEFORE UPDATE ON shifts
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_support_sessions_updated_at BEFORE UPDATE ON support_sessions
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
