@@ -10,6 +10,17 @@ export const Clock = () => {
     return () => clearInterval(id);
   }, []);
 
+  if (!mounted || !time) {
+    return (
+      <span 
+        className="text-xs font-mono text-muted-foreground mr-4"
+        suppressHydrationWarning
+      >
+        --:--:--
+      </span>
+    );
+  }
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('ru-RU', {
       hour: '2-digit',

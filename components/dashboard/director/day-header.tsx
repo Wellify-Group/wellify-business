@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useStore from "@/lib/store";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,14 +8,22 @@ export function DayHeader() {
   const { locations, currentUser } = useStore();
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("today");
+  const [mounted, setMounted] = useState(false);
 
-  const date = new Date().toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const hasLocations = locations.length > 0;
+  const date = useMemo(() => {
+    if (typeof window === 'undefined' || !mounted) return '';
+    return new Date().toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }, [mounted]);
+
+  const hasLocations = Array.isArray(locations) && locations.length > 0;
 
   return (
     <div className="flex items-center gap-4 py-4 border-b border-border/50">
