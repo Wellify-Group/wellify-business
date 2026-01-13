@@ -307,6 +307,8 @@ function LocationsContent() {
       });
 
       // Refresh locations list from server
+      // Wait a bit to ensure server has processed the creation
+      await new Promise(resolve => setTimeout(resolve, 500));
       const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
       if (effectiveBusinessId) {
         await fetchLocations(effectiveBusinessId);
@@ -808,6 +810,8 @@ function LocationsContent() {
                         });
                         
                         // Refresh locations list from server
+                        // Wait a bit to ensure server has processed the creation
+                        await new Promise(resolve => setTimeout(resolve, 500));
                         const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
                         if (effectiveBusinessId) {
                           await fetchLocations(effectiveBusinessId);
@@ -847,6 +851,8 @@ function LocationsContent() {
                         });
                         
                         // Refresh locations list from server
+                        // Wait a bit to ensure server has processed the creation
+                        await new Promise(resolve => setTimeout(resolve, 500));
                         const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
                         if (effectiveBusinessId) {
                           await fetchLocations(effectiveBusinessId);

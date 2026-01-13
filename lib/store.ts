@@ -1898,10 +1898,20 @@ export const useStore = create<AppState>()(
 
           const newLocation = data.location;
 
-          // Update local state
+          // Update local state immediately for instant UI feedback
           set((state: AppState) => ({
             locations: [...state.locations, newLocation]
           }));
+
+          // Also refresh from server to ensure consistency
+          if (businessId) {
+            // Use setTimeout to ensure server has processed the creation
+            setTimeout(() => {
+              get().fetchLocations(businessId).catch(err => {
+                console.error('Failed to refresh locations after creation:', err);
+              });
+            }, 500);
+          }
 
           return newLocation.id;
         } catch (error) {
