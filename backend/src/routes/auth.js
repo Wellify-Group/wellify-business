@@ -348,6 +348,83 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 /**
+ * POST /api/auth/verify-password-reset-code
+ * Проверить код восстановления пароля и вернуть токен для сброса
+ */
+router.post('/verify-password-reset-code', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and code are required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedCode = code.toString().trim().replace(/\D/g, '');
+
+    if (normalizedCode.length !== 6) {
+      return res.status(400).json({ error: 'Code must be 6 digits' });
+    }
+
+    // Проверяем код верификации email
+    const verificationResult = await db.query(
+      `SELECT * FROM email_verifications
+       WHERE email = $1 AND token = $2 AND verified_at IS NULL AND expires_at > NOW()`,
+      [normalizedEmail, normalizedCode]
+    );
+
+    if (verificationResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    const verification = verificationResult.rows[0];
+
+    // Находим пользователя
+    const userResult = await db.query(
+      'SELECT id, email FROM users WHERE email = $1',
+      [normalizedEmail]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Генерируем токен для сброса пароля
+    const resetToken = jwt.sign(
+      { userId: user.id, email: user.email, type: 'password_reset' },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Сохраняем токен в БД
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 час
+    await db.query(
+      `INSERT INTO password_resets (user_id, email, token, expires_at)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (token) DO UPDATE SET expires_at = $4, used_at = NULL`,
+      [user.id, user.email, resetToken, expiresAt]
+    );
+
+    // Помечаем код верификации как использованный
+    await db.query(
+      'UPDATE email_verifications SET verified_at = NOW() WHERE id = $1',
+      [verification.id]
+    );
+
+    res.json({ 
+      success: true, 
+      message: 'Code verified successfully',
+      token: resetToken 
+    });
+  } catch (error) {
+    logger.error('Verify password reset code error', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * POST /api/auth/reset-password
  * Сбросить пароль по токену
  */
