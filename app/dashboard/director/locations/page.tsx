@@ -111,8 +111,8 @@ function LocationsContent() {
         ? Math.round((locRevenue / location.dailyPlan) * 100) 
         : 0;
       
-      // Check for active shift (status === 'active' and no clockOut)
-      const hasActiveShift = locShifts.some(s => s.status === 'active' && !s.clockOut);
+      // Check for active shift (no clockOut means shift is active)
+      const hasActiveShift = locShifts.some(s => !s.clockOut);
       
       // Count problematic shifts (status === 'issue')
       const problematicShiftsCount = locShifts.filter(s => s.status === 'issue').length;
