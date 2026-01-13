@@ -1819,8 +1819,62 @@ export const useStore = create<AppState>()(
       addLocation: async (locationData: Omit<Location, 'id' | 'businessId'>) => {
         try {
           const currentUser = get().currentUser;
-          if (!currentUser || !currentUser.businessId) {
-            console.error('Cannot add location: no current user or businessId');
+          if (!currentUser) {
+            console.error('Cannot add location: no current user');
+            return '';
+          }
+
+          // Если у директора нет businessId, создаем бизнес автоматически
+          let businessId = currentUser.businessId;
+          if (!businessId && currentUser.role === 'director') {
+            try {
+              const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+              if (!API_URL) {
+                console.error('API URL is not configured');
+                return '';
+              }
+
+              // Генерируем код компании
+              const generateCompanyCode = () => {
+                const part = () => Math.floor(1000 + Math.random() * 9000);
+                return `${part()}-${part()}-${part()}-${part()}`;
+              };
+
+              const token = typeof window !== 'undefined' 
+                ? (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '')
+                : '';
+
+              const businessResponse = await fetch(`${API_URL}/api/businesses`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  название: currentUser.fullName || currentUser.name || 'Мой бизнес',
+                  код_компании: generateCompanyCode(),
+                }),
+              });
+
+              const businessData = await businessResponse.json();
+              if (businessResponse.ok && businessData.success && businessData.business) {
+                businessId = businessData.business.id;
+                // Обновляем currentUser с новым businessId
+                set((state: AppState) => ({
+                  currentUser: state.currentUser ? { ...state.currentUser, businessId } : null,
+                }));
+              } else {
+                console.error('Failed to create business:', businessData.error);
+                return '';
+              }
+            } catch (businessError) {
+              console.error('Error creating business:', businessError);
+              return '';
+            }
+          }
+
+          if (!businessId) {
+            console.error('Cannot add location: no businessId');
             return '';
           }
 
@@ -1831,7 +1885,7 @@ export const useStore = create<AppState>()(
             },
             body: JSON.stringify({
               ...locationData,
-              businessId: currentUser.businessId,
+              businessId: businessId,
             }),
           });
 
