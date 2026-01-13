@@ -1818,7 +1818,14 @@ export const useStore = create<AppState>()(
       
       addLocation: async (locationData: Omit<Location, 'id' | 'businessId'>) => {
         try {
-          const currentUser = get().currentUser;
+          // Пытаемся получить currentUser несколько раз, так как persist store может загружаться асинхронно
+          let currentUser = get().currentUser;
+          if (!currentUser) {
+            // Даем время на загрузку из localStorage
+            await new Promise(resolve => setTimeout(resolve, 100));
+            currentUser = get().currentUser;
+          }
+          
           if (!currentUser) {
             console.error('Cannot add location: no current user');
             return '';
