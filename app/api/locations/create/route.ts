@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveLocation } from '@/lib/db';
-import { Location } from '@/lib/store';
 
 export const runtime = 'nodejs';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || process.env.RENDER_API_URL || '';
+
 /**
  * POST /api/locations/create
- * Create a new location
+ * Create a new location (proxies to backend)
  *
  * Body: { name, address, businessId, ... }
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!BACKEND_URL) {
+      return NextResponse.json(
+        { success: false, error: 'Backend URL is not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
-    const { name, address, businessId, status, accessCode, dailyPlan, branding, contact, schedule, settings, managerId } = body;
+    const { name, address, businessId, status, accessCode, managerId } = body;
 
     // Validation
     if (!name || !businessId) {
@@ -23,60 +30,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique ID
-    const locationId = `loc-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    // Get token from Authorization header or cookie
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || 
+                  request.cookies.get('auth_token')?.value;
 
-    // Helper function to generate 16-digit code
-    const generate16DigitCode = () => {
-      const part1 = Math.floor(1000 + Math.random() * 9000);
-      const part2 = Math.floor(1000 + Math.random() * 9000);
-      const part3 = Math.floor(1000 + Math.random() * 9000);
-      const part4 = Math.floor(1000 + Math.random() * 9000);
-      return `${part1}-${part2}-${part3}-${part4}`;
-    };
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    // Default schedule
-    const defaultSchedule = {
-      mon: { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '14:00', active: true },
-      tue: { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '14:00', active: true },
-      wed: { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '14:00', active: true },
-      thu: { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '14:00', active: true },
-      fri: { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '14:00', active: true },
-      sat: { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '14:00', active: true },
-      sun: { start: '09:00', end: '21:00', lunchStart: '13:00', lunchEnd: '14:00', active: false }
-    };
+    // Proxy to backend /api/locations
+    const response = await fetch(`${BACKEND_URL}/api/locations`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        business_id: businessId,
+        name: name.trim(),
+        address: (address || '').trim(),
+        access_code: accessCode || null,
+      }),
+    });
 
-    // Create new location object
-    const newLocation: Location = {
-      id: locationId,
-      name: name.trim(),
-      address: (address || '').trim(),
-      businessId: businessId,
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { success: false, error: data.error || 'Failed to create location' },
+        { status: response.status }
+      );
+    }
+
+    // Transform backend response to frontend format
+    const location = {
+      id: data.location.id,
+      businessId: data.location.businessId,
+      name: data.location.name,
+      address: data.location.address || '',
       status: status || 'active',
-      accessCode: accessCode || generate16DigitCode(),
-      dailyPlan: dailyPlan,
-      branding: branding || { logo: null, banner: null },
-      contact: contact,
-      schedule: schedule || defaultSchedule,
-      settings: settings || {},
+      accessCode: data.location.accessCode || null,
       managerId: managerId || null,
+      dailyPlan: undefined,
+      branding: { logo: null, banner: null },
+      contact: null,
+      schedule: null,
+      settings: {},
       documents: [],
       history: [],
-      lastShiftNumber: 0 // Initialize shift counter
+      lastShiftNumber: 0,
     };
-
-    // Save location to file system
-    await saveLocation(newLocation);
 
     return NextResponse.json({
       success: true,
-      location: newLocation,
+      location,
     }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create location error:', error);
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
