@@ -99,6 +99,52 @@ export default function LocationProfilePage() {
     return locations.find(loc => loc.id === params.id);
   }, [locations, params.id]);
 
+  // Calculate location metrics (must be before early return)
+  const today = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    return { start: start.getTime(), end: end.getTime() };
+  }, []);
+
+  const locationShifts = useMemo(() => {
+    if (!location) return [];
+    return shifts.filter(s => s.locationId === location.id);
+  }, [shifts, location?.id]);
+
+  const todayShifts = useMemo(() => {
+    return locationShifts.filter(s => s.date >= today.start && s.date <= today.end);
+  }, [locationShifts, today]);
+
+  const todayRevenue = useMemo(() => {
+    return todayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
+  }, [todayShifts]);
+
+  const activeShift = useMemo(() => {
+    return todayShifts.find(s => s.status === 'active' && !s.clockOut);
+  }, [todayShifts]);
+
+  const problematicShifts = useMemo(() => {
+    return todayShifts.filter(s => s.status === 'issue' || s.anomalies?.length > 0);
+  }, [todayShifts]);
+
+  const hasProblems = useMemo(() => {
+    if (!location) return false;
+    return problematicShifts.length > 0 || location.status === 'error' || location.status === 'red';
+  }, [problematicShifts, location?.status]);
+
+  const planPercent = useMemo(() => {
+    if (!location?.dailyPlan || location.dailyPlan <= 0) return 0;
+    return Math.round((todayRevenue / location.dailyPlan) * 100);
+  }, [todayRevenue, location?.dailyPlan]);
+
+  const recentShifts = useMemo(() => {
+    return locationShifts
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 5);
+  }, [locationShifts]);
+
   if (!location) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -226,47 +272,6 @@ export default function LocationProfilePage() {
       error("Ошибка при удалении логотипа");
     }
   };
-
-  // Calculate location metrics
-  const today = useMemo(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    return { start: start.getTime(), end: end.getTime() };
-  }, []);
-
-  const locationShifts = useMemo(() => {
-    return shifts.filter(s => s.locationId === location.id);
-  }, [shifts, location.id]);
-
-  const todayShifts = useMemo(() => {
-    return locationShifts.filter(s => s.date >= today.start && s.date <= today.end);
-  }, [locationShifts, today]);
-
-  const todayRevenue = useMemo(() => {
-    return todayShifts.reduce((acc, s) => acc + s.revenueCash + s.revenueCard, 0);
-  }, [todayShifts]);
-
-  const activeShift = useMemo(() => {
-    return todayShifts.find(s => s.status === 'active' && !s.clockOut);
-  }, [todayShifts]);
-
-  const problematicShifts = useMemo(() => {
-    return todayShifts.filter(s => s.status === 'issue' || s.anomalies?.length > 0);
-  }, [todayShifts]);
-
-  const hasProblems = problematicShifts.length > 0 || location.status === 'error' || location.status === 'red';
-
-  const planPercent = location.dailyPlan && location.dailyPlan > 0
-    ? Math.round((todayRevenue / location.dailyPlan) * 100)
-    : 0;
-
-  const recentShifts = useMemo(() => {
-    return locationShifts
-      .sort((a, b) => b.date - a.date)
-      .slice(0, 5);
-  }, [locationShifts]);
 
   return (
     <div className="min-h-screen bg-background">
