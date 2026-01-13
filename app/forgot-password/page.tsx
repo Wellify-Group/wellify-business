@@ -237,9 +237,16 @@ export default function ForgotPasswordPage() {
               const data = await response.json();
 
               if (data.success) {
-                // TODO: Страница сброса пароля временно удалена
-                setCodeSent(false);
-                setError('Код верифицирован. Функция сброса пароля будет добавлена позже.');
+                // Код верифицирован - сохраняем токен и переходим к сбросу пароля
+                if (data.token) {
+                  // Сохраняем токен для сброса пароля
+                  sessionStorage.setItem('password_reset_token', data.token);
+                  sessionStorage.setItem('password_reset_email', email.trim().toLowerCase());
+                  // Переходим на страницу сброса пароля
+                  router.push('/reset-password');
+                } else {
+                  setError('Токен не получен. Попробуйте еще раз.');
+                }
                 setIsSubmitting(false);
                 return;
               } else {
