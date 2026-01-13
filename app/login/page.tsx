@@ -113,18 +113,16 @@ export default function LoginPage() {
         tokenStorage.set(session.token);
       }
 
-      // Получаем профиль для проверки верификации телефона
+      // Получаем профиль для проверки роли
       try {
         const profileData = await api.getProfile();
         const profile = profileData.profile;
         
-        // Если телефон не подтверждён - редирект на шаг 3 регистрации
-        if (profile && (profile.phone_verified !== true)) {
-          router.replace("/register?step=3");
-          return;
-        }
+        // НЕ перенаправляем на регистрацию, если телефон не подтверждён
+        // Пользователь уже зарегистрирован, просто телефон не подтверждён
+        // Это можно обработать позже в дашборде, если нужно
 
-        // Всё ок - редирект в дашборд в зависимости от роли
+        // Редирект в дашборд в зависимости от роли
         // Роль уже есть в user из login ответа, но проверяем профиль если нужно
         const role = profile?.role || user.role || "director";
         if (role === "director") {
@@ -136,7 +134,15 @@ export default function LoginPage() {
         }
       } catch (profileError) {
         // Если профиль не найден или ошибка - всё равно редирект в дашборд директора
-        router.replace("/dashboard/director");
+        // Используем роль из user, который уже получен из login
+        const role = user.role || "director";
+        if (role === "director") {
+          router.replace("/dashboard/director");
+        } else if (role === "manager") {
+          router.replace("/dashboard/manager");
+        } else {
+          router.replace("/dashboard/employee");
+        }
       }
     } catch (err: any) {
       console.error("Login error:", err);
