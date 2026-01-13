@@ -34,37 +34,58 @@ const authenticateToken = (req, res, next) => {
 router.get('/list', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
+    console.log('📍 Fetching locations for user:', userId);
     
-    // Получаем business_id директора
-    const businessResult = await db.query(
-      'SELECT id FROM businesses WHERE owner_profile_id = $1',
-      [userId]
-    );
+    // ИСПОЛЬЗУЕМ owner_profile_id вместо director_id
+    const businessQuery = `
+      SELECT id FROM businesses 
+      WHERE owner_profile_id = $1
+    `;
+    
+    const businessResult = await db.query(businessQuery, [userId]);
+    console.log('🏢 Business query result:', businessResult.rows);
     
     if (businessResult.rows.length === 0) {
+      console.log('❌ No business found for user');
       return res.json({ locations: [] });
     }
     
     const businessId = businessResult.rows[0].id;
+    console.log('✅ Business ID:', businessId);
     
-    // БЕЗ алиаса "l."
-    const result = await db.query(
-      `SELECT 
-        id, name, address, access_code,
-        created_at, updated_at
-       FROM locations 
-       WHERE business_id = $1
-       ORDER BY created_at DESC`,
-      [businessId]
-    );
+    // Получаем локации БЕЗ алиаса "l." с русскими названиями колонок
+    const locationsQuery = `
+      SELECT 
+        id, 
+        название as name, 
+        адрес as address, 
+        тип as type,
+        код_точки as point_code,
+        менеджер_ключ as manager_key,
+        активна as active,
+        код_компании as company_code,
+        created_at, 
+        updated_at
+      FROM locations 
+      WHERE business_id = $1
+      ORDER BY created_at DESC
+    `;
     
-    res.json({ locations: result.rows });
+    const locationsResult = await db.query(locationsQuery, [businessId]);
+    console.log('📍 Locations found:', locationsResult.rows.length);
+    
+    res.json({ 
+      success: true,
+      locations: locationsResult.rows 
+    });
     
   } catch (error) {
-    console.error('Error fetching locations:', error);
+    console.error('❌ Error fetching locations:', error);
     res.status(500).json({ 
+      success: false,
       error: 'Failed to fetch locations',
-      details: error.message 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
