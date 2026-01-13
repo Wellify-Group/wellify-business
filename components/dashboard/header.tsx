@@ -183,11 +183,11 @@ export function DashboardHeader() {
     setMounted(true);
   }, []);
 
-  // Языки
+  // Языки - статичные значения для надежности
   const languages: { code: Language; label: string; fullLabel: string }[] = [
-    { code: "ru", label: "RU", fullLabel: t("dashboard.menu_lang_russian") },
-    { code: "ua", label: "UA", fullLabel: t("dashboard.menu_lang_ukrainian") },
-    { code: "en", label: "EN", fullLabel: t("dashboard.menu_lang_english") },
+    { code: "ru", label: "RU", fullLabel: "Русский" },
+    { code: "ua", label: "UA", fullLabel: "Українська" },
+    { code: "en", label: "EN", fullLabel: "English" },
   ];
 
   const currentLanguage =
