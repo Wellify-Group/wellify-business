@@ -93,7 +93,8 @@ router.post('/login', async (req, res) => {
     // Находим пользователя
     const userResult = await db.query(
       `SELECT u.id, u.email, u.password_hash, u.email_verified, u.phone, u.phone_verified,
-              p.full_name, p.role, p.language
+              p.id as profile_id, p.first_name, p.last_name, p.middle_name, p.full_name, 
+              p.role, p.language, p.telegram_id, p.telegram_username
        FROM users u
        LEFT JOIN profiles p ON u.id = p.id
        WHERE u.email = $1`,
@@ -110,6 +111,30 @@ router.post('/login', async (req, res) => {
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Если профиля нет, создаем минимальный профиль
+    if (!user.profile_id) {
+      try {
+        await db.query(
+          `INSERT INTO profiles (id, role, language, email_verified, phone_verified, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+          [
+            user.id,
+            'director',
+            'ru',
+            user.email_verified || false,
+            user.phone_verified || false
+          ]
+        );
+        // Обновляем данные пользователя
+        user.role = 'director';
+        user.language = 'ru';
+        user.full_name = null;
+      } catch (profileError) {
+        logger.error('Failed to create profile during login', profileError);
+        // Продолжаем выполнение, даже если не удалось создать профиль
+      }
     }
 
     // Обновляем last_sign_in_at
@@ -129,12 +154,17 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        email_verified: user.email_verified,
+        email_verified: user.email_verified || false,
         phone: user.phone,
-        phone_verified: user.phone_verified,
+        phone_verified: user.phone_verified || false,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        middle_name: user.middle_name,
         full_name: user.full_name,
-        role: user.role,
-        language: user.language,
+        role: user.role || 'director',
+        language: user.language || 'ru',
+        telegram_id: user.telegram_id,
+        telegram_username: user.telegram_username,
       },
       token,
     });
@@ -162,7 +192,10 @@ router.get('/user', async (req, res) => {
     // Получаем пользователя
     const userResult = await db.query(
       `SELECT u.id, u.email, u.email_verified, u.phone, u.phone_verified, u.created_at,
-              p.full_name, p.avatar_url, p.role, p.language
+              p.id as profile_id, p.first_name, p.last_name, p.middle_name, p.full_name, 
+              p.birth_date, p.avatar_url, p.role, p.language, 
+              p.telegram_id, p.telegram_username, p.telegram_first_name, p.telegram_last_name,
+              p.phone_verified as profile_phone_verified, p.email_verified as profile_email_verified
        FROM users u
        LEFT JOIN profiles p ON u.id = p.id
        WHERE u.id = $1`,
@@ -173,7 +206,52 @@ router.get('/user', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user: userResult.rows[0] });
+    const user = userResult.rows[0];
+
+    // Если профиля нет, создаем минимальный профиль
+    if (!user.profile_id) {
+      try {
+        await db.query(
+          `INSERT INTO profiles (id, role, language, email_verified, phone_verified, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+          [
+            decoded.userId,
+            'director',
+            'ru',
+            user.email_verified || false,
+            user.phone_verified || false
+          ]
+        );
+        // Обновляем данные пользователя
+        user.role = 'director';
+        user.language = 'ru';
+      } catch (profileError) {
+        logger.error('Failed to create profile in /user endpoint', profileError);
+      }
+    }
+
+    res.json({ 
+      user: {
+        id: user.id,
+        email: user.email,
+        email_verified: user.email_verified || false,
+        phone: user.phone,
+        phone_verified: user.phone_verified || false,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        middle_name: user.middle_name,
+        full_name: user.full_name,
+        birth_date: user.birth_date,
+        role: user.role || 'director',
+        language: user.language || 'ru',
+        telegram_id: user.telegram_id,
+        telegram_username: user.telegram_username,
+        telegram_first_name: user.telegram_first_name,
+        telegram_last_name: user.telegram_last_name,
+        avatar_url: user.avatar_url,
+        created_at: user.created_at,
+      }
+    });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });
