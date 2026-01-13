@@ -37,7 +37,23 @@ function LocationsContent() {
     deleteLocation,
     fetchLocations,
     savedCompanyId,
-  } = useStore();    
+  } = useStore();
+  
+  // Проверяем, что currentUser загружен
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
+  
+  useEffect(() => {
+    // Проверяем, что currentUser загружен из persist store
+    if (currentUser || typeof window === 'undefined') {
+      setIsUserLoaded(true);
+    } else {
+      // Даем время на загрузку из localStorage
+      const timer = setTimeout(() => {
+        setIsUserLoaded(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser]);    
   const { toast, success } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -819,6 +835,12 @@ function LocationsContent() {
                     </button>
                     <button
                       onClick={async () => {
+                        // Проверяем, что currentUser загружен
+                        if (!currentUser) {
+                          toast("Ошибка: пользователь не загружен. Пожалуйста, обновите страницу.");
+                          return;
+                        }
+                        
                         // Apply industry config if first location
                         if (isFirstLocation && wizardData.businessType) {
                           handleIndustrySelect(wizardData.businessType);
@@ -832,6 +854,11 @@ function LocationsContent() {
                           dailyPlan: undefined,
                           managerId: wizardData.managerId,
                         });
+                        
+                        if (!locationId) {
+                          toast("Ошибка: не удалось создать точку. Проверьте, что вы авторизованы.");
+                          return;
+                        }
                         
                         // Refresh locations list from server
                         // Wait a bit to ensure server has processed the creation
@@ -861,6 +888,12 @@ function LocationsContent() {
                     </button>
                     <button
                       onClick={async () => {
+                        // Проверяем, что currentUser загружен
+                        if (!currentUser) {
+                          toast("Ошибка: пользователь не загружен. Пожалуйста, обновите страницу.");
+                          return;
+                        }
+                        
                         // Apply industry config if first location
                         if (isFirstLocation && wizardData.businessType) {
                           handleIndustrySelect(wizardData.businessType);
@@ -873,6 +906,11 @@ function LocationsContent() {
                           dailyPlan: undefined,
                           managerId: wizardData.managerId,
                         });
+                        
+                        if (!locationId) {
+                          toast("Ошибка: не удалось создать точку. Проверьте, что вы авторизованы.");
+                          return;
+                        }
                         
                         // Refresh locations list from server
                         // Wait a bit to ensure server has processed the creation
