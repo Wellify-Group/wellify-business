@@ -7,7 +7,7 @@ import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { 
   LayoutDashboard, MapPin, Users, FileText, Settings, 
-  Maximize, Minimize, Package, Warehouse, History
+  Maximize, Minimize, Package
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,8 +44,6 @@ export function AppSidebar() {
     ] : []),
     { name: t("dashboard.nav_shifts"), href: "/dashboard/director/shifts", icon: FileText, id: "nav-shifts" },
     { name: t("dashboard.nav_inventory"), href: "/dashboard/manager/inventory", icon: Package, id: "nav-inventory", roles: ['director', 'manager'] },
-    { name: "Склад", href: "/dashboard/director/warehouse", icon: Warehouse, id: "nav-warehouse", roles: ['director', 'manager'] },
-    { name: "История закупок", href: "/dashboard/director/purchases", icon: History, id: "nav-purchases", roles: ['director', 'manager'] },
     ...(!isManager ? [
       { name: t("dashboard.nav_builder"), href: "/dashboard/director/builder", icon: Settings, id: "nav-builder" },
     ] : []),

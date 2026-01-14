@@ -2725,49 +2725,27 @@ export const useStore = create<AppState>()(
             }
           }
 
-          const response = await fetch(`/api/sync?userId=${encodeURIComponent(currentUser.id)}&role=${encodeURIComponent(currentUser.role)}`);
-          const data = await response.json();
-
-          if (response.ok && data.success && data.data) {
-            // Объединяем данные: приоритет у данных из Supabase для профиля директора
+          // Обновляем данные пользователя из Supabase, если они есть
+          if (supabaseProfileData && currentUser.role === 'director') {
             const updatedUser = {
-              ...data.data.user,
-              // Для директоров: используем данные из Supabase, если они есть
-              ...(currentUser.role === 'director' && supabaseProfileData ? {
-                firstName: supabaseProfileData.firstName || data.data.user.name?.split(' ')[0],
-                lastName: supabaseProfileData.lastName || data.data.user.name?.split(' ')[1],
-                middleName: supabaseProfileData.middleName || data.data.user.name?.split(' ')[2],
-                phone: supabaseProfileData.phone || data.data.user.phone,
-                dob: supabaseProfileData.dob || data.data.user.dob,
-                email: supabaseProfileData.email || data.data.user.email,
-                fullName: supabaseProfileData.fullName || data.data.user.fullName,
-                role: supabaseProfileData.role || data.data.user.role,
-                businessId: supabaseProfileData.businessId || data.data.user.businessId || currentUser.businessId,
-                companyCode: supabaseProfileData.companyCode || data.data.user.companyCode || currentUser.companyCode,
-              } : {
-                // Fallback для других ролей или если Supabase не вернул данные
-                firstName: (currentUser as any).firstName || data.data.user.name?.split(' ')[0],
-                lastName: (currentUser as any).lastName || data.data.user.name?.split(' ')[1],
-                middleName: (currentUser as any).middleName || data.data.user.name?.split(' ')[2],
-                phone: (currentUser as any).phone || data.data.user.phone,
-                dob: (currentUser as any).dob || data.data.user.dob,
-                email: (currentUser as any).email || data.data.user.email,
-                fullName: (currentUser as any).fullName || data.data.user.fullName,
-              }),
+              ...currentUser,
+              firstName: supabaseProfileData.firstName || currentUser.name?.split(' ')[0],
+              lastName: supabaseProfileData.lastName || currentUser.name?.split(' ')[1],
+              middleName: supabaseProfileData.middleName || currentUser.name?.split(' ')[2],
+              phone: supabaseProfileData.phone || currentUser.phone,
+              dob: supabaseProfileData.dob || (currentUser as any).dob,
+              email: supabaseProfileData.email || currentUser.email,
+              fullName: supabaseProfileData.fullName || currentUser.name,
+              role: supabaseProfileData.role || currentUser.role,
+              businessId: supabaseProfileData.businessId || currentUser.businessId,
+              companyCode: supabaseProfileData.companyCode || currentUser.companyCode,
             };
 
             set({
               currentUser: updatedUser,
               user: updatedUser,
-              locations: data.data.locations || [],
-              employees: data.data.employees || [],
-              shifts: data.data.shifts || [],
-              // Update users array
-              users: get().users.map(u => {
-                const updated = data.data.employees?.find((e: User) => e.id === u.id);
-                return updated || u;
-              }),
             });
+          }
 
             // Для сотрудников: синхронизируем активную смену с сервером
             if (currentUser.role === 'employee') {

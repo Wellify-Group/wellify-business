@@ -12,16 +12,15 @@ import { usePathname } from "next/navigation";
 import { SIDEBAR_EXPANDED, SIDEBAR_COLLAPSED } from "@/lib/constants";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isSidebarCollapsed, syncWithServer, currentUser } = useStore();
+  const { isSidebarCollapsed, currentUser } = useStore();
   const pathname = usePathname();
   const isEmployeeRoute = pathname?.startsWith('/dashboard/employee');
   
   // Load user from API if currentUser is null but token exists
   useEffect(() => {
     const loadUserIfNeeded = async () => {
-      // Если currentUser уже есть, синхронизируем
+      // Если currentUser уже есть, ничего не делаем
       if (currentUser?.id) {
-        syncWithServer();
         return;
       }
       
@@ -52,8 +51,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           if (data.user) {
             // Сохраняем пользователя в store
             useStore.setState({ currentUser: data.user });
-            // Затем синхронизируем
-            await useStore.getState().syncWithServer();
           }
         }
       } catch (error) {
@@ -62,7 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
     
     loadUserIfNeeded();
-  }, [currentUser?.id, syncWithServer]);
+  }, [currentUser?.id]);
 
   // Employee route: Full-width terminal view (no sidebar, no header)
   // Employee layout обрабатывает свой собственный layout, просто передаём children
