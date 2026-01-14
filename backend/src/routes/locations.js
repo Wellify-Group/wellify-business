@@ -180,12 +180,15 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied to this business' });
     }
 
+    // Генерируем уникальный код_точки автоматически
+    const pointCode = `LOC-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    
     // Создаём локацию
     const result = await db.query(
-      `INSERT INTO locations (business_id, название, адрес, менеджер_ключ)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, business_id, название as name, адрес as address, менеджер_ключ as access_code, created_at, updated_at`,
-      [business_id, name, address || null, access_code || null]
+      `INSERT INTO locations (business_id, код_точки, название, адрес, менеджер_ключ, активна)
+       VALUES ($1, $2, $3, $4, $5, true)
+       RETURNING id, business_id, код_точки as point_code, название as name, адрес as address, менеджер_ключ as access_code, активна as active, created_at, updated_at`,
+      [business_id, pointCode, name, address || null, access_code || null]
     );
 
     const location = result.rows[0];
