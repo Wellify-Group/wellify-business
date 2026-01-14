@@ -4,20 +4,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const business_id = searchParams.get('businessId');
-
-    if (!business_id) {
-      return Response.json(
-        {
-          success: false,
-          error: 'businessId is required',
-          locations: [],
-        },
-        { status: 400 },
-      );
-    }
-
     if (!API_URL) {
       return Response.json(
         {
@@ -29,7 +15,7 @@ export async function GET(req: Request) {
       );
     }
 
-    // Получаем токен из cookies
+    // Получаем токен из Authorization header или cookies
     const token = req.headers.get('authorization')?.replace('Bearer ', '') ||
                   req.headers.get('cookie')?.split('auth_token=')[1]?.split(';')[0];
 
@@ -41,8 +27,9 @@ export async function GET(req: Request) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Проксируем запрос на backend
-    const response = await fetch(`${API_URL}/api/locations?business_id=${business_id}`, {
+    // Проксируем запрос на backend /api/locations/list
+    // Backend сам определяет businessId из userId в токене
+    const response = await fetch(`${API_URL}/api/locations/list`, {
       method: 'GET',
       headers,
     });

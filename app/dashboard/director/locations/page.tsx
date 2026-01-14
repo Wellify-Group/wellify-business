@@ -77,22 +77,44 @@ function LocationsContent() {
     managerId: null as string | null,
   });
   
-  // Всегда синхронизируем локации с сервером при заходе на страницу
+  // Загружаем локации один раз при монтировании компонента
   useEffect(() => {
-    // Пытаемся взять businessId из текущего пользователя или из savedCompanyId
-    let effectiveBusinessId =
-      currentUser?.businessId ||
-      savedCompanyId ||
-      (Array.isArray(locations) && locations.length > 0 && locations[0]?.businessId ? locations[0].businessId : null);
+    // Backend endpoint /api/locations/list сам определяет businessId из userId
+    // Не нужно передавать businessId в параметрах
+    const loadLocations = async () => {
+      try {
+        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+        
+        if (!API_URL) {
+          console.error('API URL not configured');
+          return;
+        }
 
-    if (!effectiveBusinessId) {
-      // Для новых пользователей без бизнеса это нормально - просто не загружаем локации
-      // Предупреждение убрано, так как это не ошибка
-      return;
+        const response = await fetch(`${API_URL}/api/locations/list`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+        console.log('📍 Locations response:', data);
+
+        if (response.ok && data.success && data.locations) {
+          useStore.setState({ locations: data.locations });
+        }
+      } catch (error) {
+        console.error('Error loading locations:', error);
+      }
+    };
+
+    // Загружаем только если есть currentUser
+    if (currentUser?.id) {
+      loadLocations();
     }
-
-    fetchLocations(effectiveBusinessId);
-  }, [currentUser?.businessId, savedCompanyId, fetchLocations, locations]);
+  }, [currentUser?.id]); // Только при изменении userId
 
   // Show industry selection only for first location
   const isFirstLocation = !Array.isArray(locations) || locations.length === 0;
@@ -345,10 +367,8 @@ function LocationsContent() {
       // Refresh locations list from server
       // Wait a bit to ensure server has processed the creation
       await new Promise(resolve => setTimeout(resolve, 500));
-      const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
-      if (effectiveBusinessId) {
-        await fetchLocations(effectiveBusinessId);
-      }
+      // Backend сам определяет businessId из userId, параметр не нужен
+      await fetchLocations();
 
       // Auto-confirm any pending rows before adding
       const confirmedEmployees = newEmployees.map(emp => {
@@ -863,10 +883,8 @@ function LocationsContent() {
                         // Refresh locations list from server
                         // Wait a bit to ensure server has processed the creation
                         await new Promise(resolve => setTimeout(resolve, 500));
-                        const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
-                        if (effectiveBusinessId) {
-                          await fetchLocations(effectiveBusinessId);
-                        }
+                        // Backend сам определяет businessId из userId, параметр не нужен
+                        await fetchLocations();
                         
                         // Reset wizard
                         setIsAdding(false);
@@ -915,10 +933,8 @@ function LocationsContent() {
                         // Refresh locations list from server
                         // Wait a bit to ensure server has processed the creation
                         await new Promise(resolve => setTimeout(resolve, 500));
-                        const effectiveBusinessId = currentUser?.businessId || savedCompanyId;
-                        if (effectiveBusinessId) {
-                          await fetchLocations(effectiveBusinessId);
-                        }
+                        // Backend сам определяет businessId из userId, параметр не нужен
+                        await fetchLocations();
                         
                         setIsAdding(false);
                         setWizardStep(1);

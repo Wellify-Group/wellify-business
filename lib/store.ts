@@ -1796,9 +1796,28 @@ export const useStore = create<AppState>()(
         };
       },
       
-      fetchLocations: async (businessId: string) => {
+      fetchLocations: async (businessId?: string) => {
         try {
-          const response = await fetch(`/api/locations/list?businessId=${encodeURIComponent(businessId)}`);
+          // Backend endpoint /api/locations/list сам определяет businessId из userId
+          // Параметр businessId не нужен, но оставляем для обратной совместимости
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+          const token = typeof window !== 'undefined' 
+            ? (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))
+            : null;
+          
+          if (!API_URL) {
+            console.error('API URL not configured');
+            return;
+          }
+
+          const response = await fetch(`${API_URL}/api/locations/list`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
           const data = await response.json();
           
           if (response.ok && data.success && data.locations) {
