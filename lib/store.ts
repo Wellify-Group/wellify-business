@@ -2747,51 +2747,50 @@ export const useStore = create<AppState>()(
             });
           }
 
-            // Для сотрудников: синхронизируем активную смену с сервером
-            if (currentUser.role === 'employee') {
-              const locationId = get().savedLocationId || currentUser.assignedPointId;
-              if (locationId) {
-                try {
-                  const activeShiftResponse = await fetch(`/api/employee/shifts/active?employeeId=${encodeURIComponent(currentUser.id)}&locationId=${encodeURIComponent(locationId)}`);
-                  const activeShiftData = await activeShiftResponse.json();
-                  
-                  if (activeShiftResponse.ok && activeShiftData.success) {
-                    if (activeShiftData.shift) {
-                      // На сервере есть активная смена - обновляем локальную
-                      const serverShift = activeShiftData.shift;
-                      set({
-                        currentShift: {
-                          id: serverShift.id,
-                          startTime: serverShift.startTime,
-                          locationId: serverShift.locationId,
-                          employeeId: serverShift.employeeId,
-                          status: serverShift.status,
-                          readableNumber: serverShift.readableNumber,
-                          totalRevenue: serverShift.totalRevenue,
-                          totalChecks: serverShift.totalChecks,
-                          totalGuests: serverShift.totalGuests,
-                        },
-                        shiftEndTime: null,
-                        shiftElapsedTime: null,
-                      });
-                      // Запускаем единый интервал таймера, если смена активна
-                      if (serverShift.status === 'active') {
-                        startShiftTimer();
-                      }
-                      console.log('[Sync] Loaded active shift from server:', serverShift.id);
-                    } else {
-                      // На сервере нет активной смены - очищаем локальную, если она есть
-                      const localActiveShift = get().currentShift;
-                      if (localActiveShift && localActiveShift.status === 'active') {
-                        console.log('[Sync] Clearing stale local active shift - no active shift on server');
-                        set({ currentShift: null, shiftEndTime: null, shiftElapsedTime: null });
-                        stopShiftTimer();
-                      }
+          // Для сотрудников: синхронизируем активную смену с сервером
+          if (currentUser.role === 'employee') {
+            const locationId = get().savedLocationId || currentUser.assignedPointId;
+            if (locationId) {
+              try {
+                const activeShiftResponse = await fetch(`/api/employee/shifts/active?employeeId=${encodeURIComponent(currentUser.id)}&locationId=${encodeURIComponent(locationId)}`);
+                const activeShiftData = await activeShiftResponse.json();
+                
+                if (activeShiftResponse.ok && activeShiftData.success) {
+                  if (activeShiftData.shift) {
+                    // На сервере есть активная смена - обновляем локальную
+                    const serverShift = activeShiftData.shift;
+                    set({
+                      currentShift: {
+                        id: serverShift.id,
+                        startTime: serverShift.startTime,
+                        locationId: serverShift.locationId,
+                        employeeId: serverShift.employeeId,
+                        status: serverShift.status,
+                        readableNumber: serverShift.readableNumber,
+                        totalRevenue: serverShift.totalRevenue,
+                        totalChecks: serverShift.totalChecks,
+                        totalGuests: serverShift.totalGuests,
+                      },
+                      shiftEndTime: null,
+                      shiftElapsedTime: null,
+                    });
+                    // Запускаем единый интервал таймера, если смена активна
+                    if (serverShift.status === 'active') {
+                      startShiftTimer();
+                    }
+                    console.log('[Sync] Loaded active shift from server:', serverShift.id);
+                  } else {
+                    // На сервере нет активной смены - очищаем локальную, если она есть
+                    const localActiveShift = get().currentShift;
+                    if (localActiveShift && localActiveShift.status === 'active') {
+                      console.log('[Sync] Clearing stale local active shift - no active shift on server');
+                      set({ currentShift: null, shiftEndTime: null, shiftElapsedTime: null });
+                      stopShiftTimer();
                     }
                   }
-                } catch (error) {
-                  console.error('[Sync] Error syncing active shift:', error);
                 }
+              } catch (error) {
+                console.error('[Sync] Error syncing active shift:', error);
               }
             }
           }
