@@ -342,7 +342,7 @@ export interface AppState {
   sendManagerMessage: (text: string) => void;
   
   // Locations
-  fetchLocations: (businessId: string) => Promise<void>;
+  fetchLocations: (businessId?: string) => Promise<void>;
   addLocation: (location: Omit<Location, 'id' | 'businessId'>) => Promise<string>; // Returns location ID
   getCurrentLocation: () => Location | null;
   updateLocationSettings: (locationId: string, settings: { themeColor?: string; coverImage?: string }) => void;
@@ -1930,14 +1930,12 @@ export const useStore = create<AppState>()(
           }));
 
           // Also refresh from server to ensure consistency
-          if (businessId) {
-            // Use setTimeout to ensure server has processed the creation
-            setTimeout(() => {
-              get().fetchLocations(businessId).catch(err => {
-                console.error('Failed to refresh locations after creation:', err);
-              });
-            }, 500);
-          }
+          // Backend сам определяет businessId из userId, параметр не нужен
+          setTimeout(() => {
+            get().fetchLocations().catch(err => {
+              console.error('Failed to refresh locations after creation:', err);
+            });
+          }, 500);
 
           return newLocation.id;
         } catch (error) {
