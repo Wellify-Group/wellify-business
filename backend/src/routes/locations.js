@@ -100,27 +100,34 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Проверяем доступ: либо пользователь владелец бизнеса, либо сотрудник с активным статусом
     let query = `
-      SELECT DISTINCT l.id, l.business_id, l.name, l.address, l.access_code, l.created_at, l.updated_at
-      FROM locations l
-      JOIN businesses b ON l.business_id = b.id
+      SELECT DISTINCT 
+        locations.id, 
+        locations.business_id, 
+        locations.название as name, 
+        locations.адрес as address, 
+        locations.менеджер_ключ as access_code, 
+        locations.created_at, 
+        locations.updated_at
+      FROM locations
+      JOIN businesses ON locations.business_id = businesses.id
       WHERE (
-        b.owner_profile_id = $1
+        businesses.owner_profile_id = $1
         OR EXISTS (
-          SELECT 1 FROM staff s 
-          WHERE s.business_id = b.id 
-          AND s.profile_id = $1 
-          AND s.активен = true
+          SELECT 1 FROM staff 
+          WHERE staff.business_id = businesses.id 
+          AND staff.profile_id = $1 
+          AND staff.активен = true
         )
       )
     `;
     const params = [req.userId];
 
     if (business_id) {
-      query += ' AND l.business_id = $2';
+      query += ' AND locations.business_id = $2';
       params.push(business_id);
     }
 
-    query += ' ORDER BY l.created_at DESC';
+    query += ' ORDER BY locations.created_at DESC';
 
     const result = await db.query(query, params);
 
@@ -175,9 +182,9 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Создаём локацию
     const result = await db.query(
-      `INSERT INTO locations (business_id, name, address, access_code)
+      `INSERT INTO locations (business_id, название, адрес, менеджер_ключ)
        VALUES ($1, $2, $3, $4)
-       RETURNING id, business_id, name, address, access_code, created_at, updated_at`,
+       RETURNING id, business_id, название as name, адрес as address, менеджер_ключ as access_code, created_at, updated_at`,
       [business_id, name, address || null, access_code || null]
     );
 
@@ -211,16 +218,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Проверяем доступ: либо владелец бизнеса, либо активный сотрудник
     const locationCheck = await db.query(
-      `SELECT l.id FROM locations l
-       JOIN businesses b ON l.business_id = b.id
-       WHERE l.id = $1 
+      `SELECT locations.id 
+       FROM locations
+       JOIN businesses ON locations.business_id = businesses.id
+       WHERE locations.id = $1 
        AND (
-         b.owner_profile_id = $2
+         businesses.owner_profile_id = $2
          OR EXISTS (
-           SELECT 1 FROM staff s 
-           WHERE s.business_id = b.id 
-           AND s.profile_id = $2 
-           AND s.активен = true
+           SELECT 1 FROM staff 
+           WHERE staff.business_id = businesses.id 
+           AND staff.profile_id = $2 
+           AND staff.активен = true
          )
        )`,
       [id, req.userId]
@@ -233,12 +241,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Обновляем локацию
     const result = await db.query(
       `UPDATE locations
-       SET name = COALESCE($1, name),
-           address = COALESCE($2, address),
-           access_code = COALESCE($3, access_code),
+       SET название = COALESCE($1, название),
+           адрес = COALESCE($2, адрес),
+           менеджер_ключ = COALESCE($3, менеджер_ключ),
            updated_at = NOW()
        WHERE id = $4
-       RETURNING id, business_id, name, address, access_code, created_at, updated_at`,
+       RETURNING id, business_id, название as name, адрес as address, менеджер_ключ as access_code, created_at, updated_at`,
       [name, address, access_code, id]
     );
 
@@ -271,16 +279,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     // Проверяем доступ: либо владелец бизнеса, либо активный сотрудник
     const locationCheck = await db.query(
-      `SELECT l.id FROM locations l
-       JOIN businesses b ON l.business_id = b.id
-       WHERE l.id = $1 
+      `SELECT locations.id 
+       FROM locations
+       JOIN businesses ON locations.business_id = businesses.id
+       WHERE locations.id = $1 
        AND (
-         b.owner_profile_id = $2
+         businesses.owner_profile_id = $2
          OR EXISTS (
-           SELECT 1 FROM staff s 
-           WHERE s.business_id = b.id 
-           AND s.profile_id = $2 
-           AND s.активен = true
+           SELECT 1 FROM staff 
+           WHERE staff.business_id = businesses.id 
+           AND staff.profile_id = $2 
+           AND staff.активен = true
          )
        )`,
       [id, req.userId]
