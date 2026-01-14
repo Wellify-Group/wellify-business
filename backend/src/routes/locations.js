@@ -34,29 +34,43 @@ const authenticateToken = (req, res, next) => {
 router.get('/list', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
-    console.log('📍 Fetching locations for user:', userId);
+    console.log('📍 [GET /list] Fetching locations for userId:', userId);
     
+    // НЕ используем req.query.businessId - определяем из userId
     // ИСПОЛЬЗУЕМ owner_profile_id вместо director_id
     const businessQuery = `
-      SELECT id FROM businesses 
+      SELECT id, owner_profile_id, название, код_компании
+      FROM businesses 
       WHERE owner_profile_id = $1
     `;
     
     const businessResult = await db.query(businessQuery, [userId]);
-    console.log('🏢 Business query result:', businessResult.rows);
+    console.log('🏢 [GET /list] Business query result:', {
+      userId,
+      found: businessResult.rows.length,
+      businesses: businessResult.rows.map(b => ({
+        id: b.id,
+        owner_profile_id: b.owner_profile_id,
+        название: b.название
+      }))
+    });
     
     if (businessResult.rows.length === 0) {
-      console.log('❌ No business found for user');
-      return res.json({ locations: [] });
+      console.log('❌ [GET /list] No business found for userId:', userId);
+      return res.json({ 
+        success: true,
+        locations: [] 
+      });
     }
     
     const businessId = businessResult.rows[0].id;
-    console.log('✅ Business ID:', businessId);
+    console.log('✅ [GET /list] Business ID:', businessId);
     
     // Получаем локации БЕЗ алиаса "l." с русскими названиями колонок
     const locationsQuery = `
       SELECT 
         id, 
+        business_id,
         название as name, 
         адрес as address, 
         тип as type,
@@ -72,7 +86,15 @@ router.get('/list', authenticateToken, async (req, res) => {
     `;
     
     const locationsResult = await db.query(locationsQuery, [businessId]);
-    console.log('📍 Locations found:', locationsResult.rows.length);
+    console.log('📍 [GET /list] Locations query result:', {
+      businessId,
+      found: locationsResult.rows.length,
+      locations: locationsResult.rows.map(l => ({
+        id: l.id,
+        name: l.name,
+        business_id: l.business_id
+      }))
+    });
     
     res.json({ 
       success: true,
@@ -80,7 +102,7 @@ router.get('/list', authenticateToken, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ Error fetching locations:', error);
+    console.error('❌ [GET /list] Error fetching locations:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch locations',
