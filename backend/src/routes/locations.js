@@ -101,13 +101,13 @@ router.get('/', authenticateToken, async (req, res) => {
     // Проверяем доступ: либо пользователь владелец бизнеса, либо сотрудник с активным статусом
     let query = `
       SELECT DISTINCT 
-        locations.id, 
-        locations.business_id, 
-        locations.название as name, 
-        locations.адрес as address, 
-        locations.менеджер_ключ as access_code, 
-        locations.created_at, 
-        locations.updated_at
+        id, 
+        business_id, 
+        название as name, 
+        адрес as address, 
+        менеджер_ключ as access_code, 
+        created_at, 
+        updated_at
       FROM locations
       JOIN businesses ON locations.business_id = businesses.id
       WHERE (
@@ -127,7 +127,7 @@ router.get('/', authenticateToken, async (req, res) => {
       params.push(business_id);
     }
 
-    query += ' ORDER BY locations.created_at DESC';
+    query += ' ORDER BY created_at DESC';
 
     const result = await db.query(query, params);
 
@@ -218,7 +218,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Проверяем доступ: либо владелец бизнеса, либо активный сотрудник
     const locationCheck = await db.query(
-      `SELECT locations.id 
+      `SELECT id 
        FROM locations
        JOIN businesses ON locations.business_id = businesses.id
        WHERE locations.id = $1 
@@ -279,7 +279,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     // Проверяем доступ: либо владелец бизнеса, либо активный сотрудник
     const locationCheck = await db.query(
-      `SELECT locations.id 
+      `SELECT id 
        FROM locations
        JOIN businesses ON locations.business_id = businesses.id
        WHERE locations.id = $1 
