@@ -20,6 +20,7 @@ import {
   Moon,
   Sun,
   Settings,
+  PlayCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { WeatherWidget } from "./weather-widget";
@@ -43,6 +44,7 @@ export function DashboardHeader() {
     openMessageComposer,
     locations,
     isSidebarCollapsed,
+    startDashboardTour,
   } = useStore();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -422,6 +424,20 @@ export function DashboardHeader() {
                             <User className="h-4 w-4 text-muted-foreground shrink-0" />
                             <span className="font-medium">Профиль</span>
                           </button>
+                          {currentUser?.role === 'director' && (
+                            <button
+                              onClick={() => {
+                                setIsProfileOpen(false);
+                                startDashboardTour();
+                                // Dispatch custom event to trigger tour
+                                window.dispatchEvent(new Event('startDashboardTour'));
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted transition-colors rounded-lg text-sm text-foreground mt-1"
+                            >
+                              <PlayCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="font-medium">Пройти тур заново</span>
+                            </button>
+                          )}
                         </div>
 
                         {/* SECTION 3: INTERFACE */}

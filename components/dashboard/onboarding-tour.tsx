@@ -1,24 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import useStore from "@/lib/store";
 import { useLanguage } from "@/components/language-provider";
 import { X } from "lucide-react";
 
-// Step Configuration for Director/Manager
-const directorSteps = [
-  { id: 0, target: null }, // Welcome (Center)
-  { id: 1, target: "dashboard-header", position: "bottom" },
-  { id: 2, target: "app-sidebar", position: "right" },
-  { id: 3, target: "nav-overview", position: "right" },
-  { id: 4, target: "nav-locations", position: "right" },
-  { id: 5, target: "nav-staff", position: "right" },
-  { id: 6, target: "nav-shifts", position: "right" },
-  { id: 7, target: "nav-builder", position: "right" },
-  { id: 8, target: "btn-fullscreen", position: "top" },
-  { id: 9, target: "user-profile-trigger", position: "bottom-left" }, // Settings
-  { id: 10, target: null }, // Finish (Center)
+// Step Configuration for Director Dashboard
+const directorDashboardSteps = [
+  { 
+    id: 0, 
+    target: null, 
+    title: "Панель управления бизнесом",
+    description: "Это обзор всей сети. Здесь вы сразу видите выручку, проблемы и активность точек."
+  },
+  { 
+    id: 1, 
+    target: "tour-critical-problems", 
+    position: "left",
+    title: "Контроль проблем",
+    description: "Этот блок показывает всё, что требует немедленного внимания: неоткрытые смены, ошибки, отсутствие менеджеров."
+  },
+  { 
+    id: 2, 
+    target: "tour-metrics", 
+    position: "bottom",
+    title: "Ключевые показатели",
+    description: "Выручка, план, средний чек и количество гостей — всё в одном месте."
+  },
+  { 
+    id: 3, 
+    target: "tour-locations-table", 
+    position: "top",
+    title: "Управление точками",
+    description: "Каждая точка — это отдельный операционный центр со сменами, персоналом и отчётами."
+  },
+  { 
+    id: 4, 
+    target: "app-sidebar", 
+    position: "right",
+    title: "Разделы системы",
+    description: "Слева — основные разделы: точки, персонал, смены, склад и отчёты."
+  },
+  { 
+    id: 5, 
+    target: null, 
+    title: "Вы готовы к работе",
+    description: "Теперь вы видите бизнес целиком. Начните с добавления первой точки."
+  },
 ];
 
 // Step Configuration for Employee (Simplified)
@@ -30,7 +59,11 @@ const employeeSteps = [
   { id: 4, target: null }, // Finish (Center)
 ];
 
-export function OnboardingTour() {
+interface OnboardingTourProps {
+  onComplete?: () => void;
+}
+
+export function OnboardingTour({ onComplete }: OnboardingTourProps = {}) {
   const { t } = useLanguage();
   const { completeTour, currentUser } = useStore();
   const [currentStep, setCurrentStep] = useState(0);
@@ -38,7 +71,7 @@ export function OnboardingTour() {
   
   // Determine which steps to use based on role
   const isEmployee = currentUser?.role === 'employee';
-  const steps = isEmployee ? employeeSteps : directorSteps;
+  const steps = isEmployee ? employeeSteps : directorDashboardSteps;
 
   // Find target element position
   useEffect(() => {
@@ -56,19 +89,34 @@ export function OnboardingTour() {
       // Scroll into view if needed
       element.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  }, [currentStep]);
+  }, [currentStep, steps]);
 
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+  // Handle ESC key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleSkip();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [handleSkip]);
+
+  const handleSkip = useCallback(() => {
+    if (onComplete) {
+      onComplete();
     } else {
       completeTour();
     }
-  };
+  }, [onComplete, completeTour]);
 
-  const handleSkip = () => {
-    completeTour();
-  };
+  const handleNext = useCallback(() => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleSkip();
+    }
+  }, [currentStep, steps.length, handleSkip]);
 
   // Calculate Spotlight Style
   const spotlightStyle = targetRect
@@ -80,7 +128,7 @@ export function OnboardingTour() {
         boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.85)", // Dark overlay
       }
     : {
-        // If no target (Center steps 0 and 10), make the "hole" invisible or full screen dark
+        // If no target (Center steps), make the "hole" invisible or full screen dark
         top: "50%",
         left: "50%",
         width: 0,
@@ -92,7 +140,7 @@ export function OnboardingTour() {
   const getCardPosition = () => {
     if (!targetRect) return { top: "50%", left: "50%", x: "-50%", y: "-50%" }; // Center
 
-    const step = steps[currentStep];
+    const step = steps[currentStep] as any;
     const gap = 20;
 
     if (step.position === "right") {
@@ -104,6 +152,9 @@ export function OnboardingTour() {
     if (step.position === "top") {
       return { top: targetRect.top - gap, left: targetRect.left, x: 0, y: "-100%" };
     }
+    if (step.position === "left") {
+      return { top: targetRect.top, left: targetRect.left - gap, x: "-100%", y: 0 };
+    }
     if (step.position === "bottom-left") {
        return { top: targetRect.bottom + gap, left: targetRect.right, x: "-100%", y: 0 };
     }
@@ -113,6 +164,30 @@ export function OnboardingTour() {
   const cardPos = getCardPosition();
   const isLastStep = currentStep === steps.length - 1;
   const isFirstStep = currentStep === 0;
+  const step = steps[currentStep] as any;
+
+  // Get step content
+  const getStepTitle = () => {
+    if (isEmployee) {
+      if (currentStep === 0) return t("dashboard.tour_welcome") || "Добро пожаловать!";
+      if (currentStep === 1) return t("dashboard.tour_emp_shift") || "Моя смена";
+      if (currentStep === 2) return t("dashboard.tour_emp_loc") || "Информация о точке";
+      if (currentStep === 3) return t("dashboard.tour_emp_chat") || "Общение";
+      return t("dashboard.tour_finish") || "Готово!";
+    }
+    return step.title || `Шаг ${currentStep + 1}`;
+  };
+
+  const getStepDescription = () => {
+    if (isEmployee) {
+      if (currentStep === 0) return t("dashboard.tour_welcome_desc") || "Добро пожаловать в WELLIFY business! Этот краткий тур покажет вам основные функции.";
+      if (currentStep === 1) return t("dashboard.tour_emp_shift") || "Моя смена - Начинайте/завершайте смену здесь. Введите выручку и чек-лист.";
+      if (currentStep === 2) return t("dashboard.tour_emp_loc") || "Информация о точке - Посмотрите правила и контакты менеджера.";
+      if (currentStep === 3) return t("dashboard.tour_emp_chat") || "Общение - Читайте задачи и сообщайте о проблемах.";
+      return t("dashboard.tour_finish_desc") || "Отличной смены! Не забудьте закрыть смену перед уходом.";
+    }
+    return step.description || "";
+  };
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-hidden">
@@ -126,7 +201,7 @@ export function OnboardingTour() {
 
       {/* The Card */}
       <motion.div
-        className="absolute bg-white dark:bg-zinc-900 text-foreground p-6 rounded-2xl w-[360px] shadow-2xl border border-border"
+        className="absolute bg-white dark:bg-zinc-900 text-foreground p-6 rounded-2xl w-[400px] shadow-2xl border border-border"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ 
           opacity: 1, 
@@ -142,17 +217,7 @@ export function OnboardingTour() {
         {/* Header: Title + Close */}
         <div className="flex justify-between items-start mb-3">
           <h3 className="text-xl font-bold leading-tight">
-            {isEmployee 
-              ? (currentStep === 0 
-                  ? (t("dashboard.tour_welcome") || "Добро пожаловать!")
-                  : currentStep === 1
-                  ? (t("dashboard.tour_emp_shift") || "Моя смена")
-                  : currentStep === 2
-                  ? (t("dashboard.tour_emp_loc") || "Информация о точке")
-                  : currentStep === 3
-                  ? (t("dashboard.tour_emp_chat") || "Общение")
-                  : (t("dashboard.tour_finish") || "Готово!"))
-              : t(`dashboard.tour_${currentStep}_title`)}
+            {getStepTitle()}
           </h3>
           <button 
             onClick={handleSkip} 
@@ -165,18 +230,20 @@ export function OnboardingTour() {
 
         {/* Body */}
         <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
-          {isEmployee
-            ? (currentStep === 0
-                ? (t("dashboard.tour_welcome_desc") || "Добро пожаловать в WELLIFY business! Этот краткий тур покажет вам основные функции.")
-                : currentStep === 1
-                ? (t("dashboard.tour_emp_shift") || "Моя смена - Начинайте/завершайте смену здесь. Введите выручку и чек-лист.")
-                : currentStep === 2
-                ? (t("dashboard.tour_emp_loc") || "Информация о точке - Посмотрите правила и контакты менеджера.")
-                : currentStep === 3
-                ? (t("dashboard.tour_emp_chat") || "Общение - Читайте задачи и сообщайте о проблемах.")
-                : (t("dashboard.tour_finish_desc") || "Отличной смены! Не забудьте закрыть смену перед уходом."))
-            : t(`dashboard.tour_${currentStep}_desc`)}
+          {getStepDescription()}
         </p>
+
+        {/* Progress Indicator */}
+        <div className="mb-4 flex gap-1">
+          {steps.map((_, index) => (
+            <div
+              key={index}
+              className={`h-1 flex-1 rounded-full transition-colors ${
+                index <= currentStep ? 'bg-primary' : 'bg-muted'
+              }`}
+            />
+          ))}
+        </div>
 
         {/* Footer: Buttons */}
         <div className="flex justify-between items-center">
@@ -184,16 +251,16 @@ export function OnboardingTour() {
             onClick={handleSkip} 
             className="text-sm text-muted-foreground hover:text-foreground font-medium px-2 transition-colors"
           >
-            {t('dashboard.tour_btn_skip')}
+            {isLastStep ? "Закрыть" : "Пропустить"}
           </button>
           
           <button 
             onClick={handleNext} 
             className="px-6 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-sm font-bold shadow-lg transform hover:scale-105 transition-all"
           >
-            {currentStep === 0 ? t('dashboard.tour_btn_start') : 
-             currentStep === steps.length - 1 ? t('dashboard.tour_btn_finish') : 
-             t('dashboard.tour_btn_next')}
+            {isFirstStep ? "Начать" : 
+             isLastStep ? "Начать работу" : 
+             "Далее"}
           </button>
         </div>
       </motion.div>

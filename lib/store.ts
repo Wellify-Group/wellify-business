@@ -259,6 +259,7 @@ export interface AppState {
   isMessageComposerOpen: boolean;
   messageComposerRecipientId: string | null;
   hasSeenTour: boolean;
+  hasSeenDashboardTour: boolean;
   isLocationInfoOpen: boolean;
   formConfig: FormConfig;
   showBigTimer: boolean; // Флаг отображения большого таймера (DEPRECATED)
@@ -386,6 +387,8 @@ export interface AppState {
   
   // Onboarding Tour
   completeTour: () => void;
+  completeDashboardTour: () => void;
+  startDashboardTour: () => void;
   
   // Demo Data - опциональный помощник для демо-режима. По умолчанию стор пустой.
   loadDemoData: () => void;
@@ -530,6 +533,7 @@ export const useStore = create<AppState>()(
       messageComposerRecipientId: null,
       isLocationInfoOpen: false,
       hasSeenTour: false,
+      hasSeenDashboardTour: false,
       showBigTimer: false, // DEPRECATED
       isBigTimerVisible: true, // DEPRECATED
       isTimerVisible: true, // По умолчанию таймер виден
@@ -2500,6 +2504,14 @@ export const useStore = create<AppState>()(
         set({ hasSeenTour: true });
       },
       
+      completeDashboardTour: () => {
+        set({ hasSeenDashboardTour: true });
+      },
+      
+      startDashboardTour: () => {
+        set({ hasSeenDashboardTour: false });
+      },
+      
       toggleShowBigTimer: () => {
         set((state: AppState) => ({ 
           showBigTimer: !state.showBigTimer,
@@ -2827,6 +2839,7 @@ export const useStore = create<AppState>()(
       ultraMode: state.ultraMode,
       isSidebarCollapsed: state.isSidebarCollapsed,
       hasSeenTour: state.hasSeenTour,
+      hasSeenDashboardTour: state.hasSeenDashboardTour,
       users: state.users,
       employees: state.employees,
       locations: state.locations,

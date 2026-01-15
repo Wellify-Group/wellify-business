@@ -18,9 +18,26 @@ import { useRouter } from "next/navigation";
 
 export default function DirectorDashboard() {
   const { t, language } = useLanguage(); 
-  const { locations, shifts, currency, employees, currentUser, hasSeenTour } = useStore();
+  const { locations, shifts, currency, employees, currentUser, hasSeenDashboardTour, completeDashboardTour, startDashboardTour } = useStore();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+  const [showTour, setShowTour] = useState(!hasSeenDashboardTour);
+  
+  // Listen for manual tour start
+  useEffect(() => {
+    const handleTourStart = () => {
+      setShowTour(true);
+    };
+    
+    // Check if tour was manually started (hasSeenDashboardTour was reset)
+    if (!hasSeenDashboardTour) {
+      setShowTour(true);
+    }
+    
+    // Listen for custom event to start tour manually
+    window.addEventListener('startDashboardTour', handleTourStart);
+    return () => window.removeEventListener('startDashboardTour', handleTourStart);
+  }, [hasSeenDashboardTour]);
   const [recentEvents, setRecentEvents] = useState<Array<{
     id: string;
     message: string;
@@ -728,7 +745,7 @@ export default function DirectorDashboard() {
 
   return (
     <div className="space-y-6 pb-6 h-full overflow-y-auto">
-      {!hasSeenTour && <OnboardingTour />}
+      {showTour && <OnboardingTour onComplete={() => { completeDashboardTour(); setShowTour(false); }} />}
       
       {/* Header */}
       <DayHeader />
@@ -743,7 +760,7 @@ export default function DirectorDashboard() {
       />
 
       {/* KPI Cards - Grouped */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+      <div id="tour-metrics" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
         {/* Left group: Revenue metrics */}
         <KPICard
           label={t('dashboard.revenue_today') || 'Выручка за сегодня'}
@@ -825,13 +842,13 @@ export default function DirectorDashboard() {
 
       {/* Locations & Shifts + Problem Center */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-8">
+        <div id="tour-locations-table" className="xl:col-span-8">
           <LocationsShiftsTable
             data={locationsShiftsData}
             currency={currency}
           />
         </div>
-        <div className="xl:col-span-4">
+        <div id="tour-critical-problems" className="xl:col-span-4">
           <ProblemCenter
             networkStatus={networkStatus}
             notifications={notifications}

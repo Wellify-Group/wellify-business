@@ -3,7 +3,7 @@
 import { useLanguage } from "@/components/language-provider";
 import useStore, { User } from "@/lib/store";
 import { UserPlus, AlertTriangle, Users, MapPin, Briefcase, Dice1, ChevronDown, X, Plus, Check, Filter, Search, Eye, Lock, Mail } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -93,60 +93,65 @@ export default function StaffPage() {
   }, [staffWithMetrics, locationFilter, roleFilter, problemsFilter, searchQuery]);
 
   // Generate PIN
-  const generatePin = () => {
+  const generatePin = useCallback(() => {
     const pin = Math.floor(1000 + Math.random() * 9000).toString();
-    setWizardData({ ...wizardData, pin });
-  };
+    setWizardData(prev => ({ ...prev, pin }));
+  }, []);
 
   // Generate Password
-  const generatePassword = () => {
+  const generatePassword = useCallback(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
     for (let i = 0; i < 12; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setWizardData({ ...wizardData, password });
-  };
+    setWizardData(prev => ({ ...prev, password }));
+  }, []);
 
   // Handle wizard completion
   const handleWizardComplete = async () => {
     if (!wizardData.role || !wizardData.name) return;
 
-    if (wizardData.role === 'manager') {
-      if (!wizardData.email || !wizardData.password) return;
-      await addEmployee({
-        name: wizardData.name.split(' ')[0] || wizardData.name,
-        fullName: wizardData.name,
-        email: wizardData.email,
-        password: wizardData.password,
-        role: "manager",
-        status: "active",
-        assignedPointId: wizardData.assignedPointId || undefined,
-      });
-    } else {
-      if (!wizardData.pin) return;
-      await addEmployee({
-        name: wizardData.name.split(' ')[0] || wizardData.name,
-        fullName: wizardData.name,
-        pin: wizardData.pin,
-        role: "employee",
-        status: "active",
-        assignedPointId: wizardData.assignedPointId || undefined,
-      });
-    }
+    try {
+      if (wizardData.role === 'manager') {
+        if (!wizardData.email || !wizardData.password) return;
+        await addEmployee({
+          name: wizardData.name.split(' ')[0] || wizardData.name,
+          fullName: wizardData.name,
+          email: wizardData.email,
+          password: wizardData.password,
+          role: "manager",
+          status: "active",
+          assignedPointId: wizardData.assignedPointId || undefined,
+        });
+      } else {
+        if (!wizardData.pin) return;
+        await addEmployee({
+          name: wizardData.name.split(' ')[0] || wizardData.name,
+          fullName: wizardData.name,
+          pin: wizardData.pin,
+          role: "employee",
+          status: "active",
+          assignedPointId: wizardData.assignedPointId || undefined,
+        });
+      }
 
-    // Reset wizard
-    setIsAdding(false);
-    setWizardStep(1);
-    setWizardData({
-      role: "",
-      name: "",
-      authType: "",
-      pin: "",
-      email: "",
-      password: "",
-      assignedPointId: "",
-    });
+      // Reset wizard after successful creation
+      setIsAdding(false);
+      setWizardStep(1);
+      setWizardData({
+        role: "",
+        name: "",
+        authType: "",
+        pin: "",
+        email: "",
+        password: "",
+        assignedPointId: "",
+      });
+    } catch (error) {
+      console.error('Failed to create employee:', error);
+      // Don't reset wizard on error so user can fix and retry
+    }
   };
 
   // Empty state
@@ -386,7 +391,7 @@ export default function StaffPage() {
               >
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={() => setWizardData({ ...wizardData, role: "employee" })}
+                    onClick={() => setWizardData(prev => ({ ...prev, role: "employee" }))}
                     className={cn(
                       "p-6 rounded-xl border-2 transition-all text-left",
                       wizardData.role === "employee"
@@ -412,7 +417,7 @@ export default function StaffPage() {
                   </button>
 
                   <button
-                    onClick={() => setWizardData({ ...wizardData, role: "manager" })}
+                    onClick={() => setWizardData(prev => ({ ...prev, role: "manager" }))}
                     className={cn(
                       "p-6 rounded-xl border-2 transition-all text-left",
                       wizardData.role === "manager"
@@ -439,14 +444,14 @@ export default function StaffPage() {
                 </div>
 
                 <button
-                  onClick={() => {
+                    onClick={() => {
                     if (wizardData.role) {
                       setWizardStep(2);
                       // Set auth type based on role
                       if (wizardData.role === "employee") {
-                        setWizardData({ ...wizardData, authType: "pin" });
+                        setWizardData(prev => ({ ...prev, authType: "pin" }));
                       } else {
-                        setWizardData({ ...wizardData, authType: "email" });
+                        setWizardData(prev => ({ ...prev, authType: "email" }));
                       }
                     }
                   }}
@@ -473,7 +478,7 @@ export default function StaffPage() {
                   <input
                     type="text"
                     value={wizardData.name}
-                    onChange={(e) => setWizardData({ ...wizardData, name: e.target.value })}
+                    onChange={(e) => setWizardData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Полное имя"
                     className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
                     required
@@ -489,7 +494,7 @@ export default function StaffPage() {
                       <input
                         type="text"
                         value={wizardData.pin}
-                        onChange={(e) => setWizardData({ ...wizardData, pin: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+                        onChange={(e) => setWizardData(prev => ({ ...prev, pin: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
                         placeholder="4 цифры"
                         maxLength={4}
                         className="flex-1 h-12 px-4 bg-background border border-border rounded-xl text-center text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all font-mono"
@@ -516,7 +521,7 @@ export default function StaffPage() {
                       <input
                         type="email"
                         value={wizardData.email}
-                        onChange={(e) => setWizardData({ ...wizardData, email: e.target.value })}
+                        onChange={(e) => setWizardData(prev => ({ ...prev, email: e.target.value }))}
                         placeholder="email@example.com"
                         className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all"
                         required
@@ -530,7 +535,7 @@ export default function StaffPage() {
                         <input
                           type="password"
                           value={wizardData.password}
-                          onChange={(e) => setWizardData({ ...wizardData, password: e.target.value })}
+                          onChange={(e) => setWizardData(prev => ({ ...prev, password: e.target.value }))}
                           placeholder="Минимум 6 символов"
                           className="flex-1 h-12 px-4 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all font-mono"
                           required
@@ -585,7 +590,7 @@ export default function StaffPage() {
                   <div className="relative">
                     <select
                       value={wizardData.assignedPointId}
-                      onChange={(e) => setWizardData({ ...wizardData, assignedPointId: e.target.value })}
+                      onChange={(e) => setWizardData(prev => ({ ...prev, assignedPointId: e.target.value }))}
                       className="w-full h-12 px-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary/60 focus:outline-none transition-all appearance-none pr-10"
                     >
                       <option value="">Пропустить (можно добавить позже)</option>
