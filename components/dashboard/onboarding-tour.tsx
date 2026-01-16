@@ -91,24 +91,25 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps = {}) {
     }
   }, [currentStep, steps]);
 
-  // Handle ESC key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleSkip();
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [handleSkip]);
+  /// СНАЧАЛА объявляем handleSkip
+const handleSkip = useCallback(() => {
+  if (onComplete) {
+    onComplete();
+  } else {
+    completeTour();
+  }
+}, [onComplete, completeTour]);
 
-  const handleSkip = useCallback(() => {
-    if (onComplete) {
-      onComplete();
-    } else {
-      completeTour();
+// ПОТОМ используем в useEffect
+useEffect(() => {
+  const handleEsc = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      handleSkip();
     }
-  }, [onComplete, completeTour]);
+  };
+  window.addEventListener('keydown', handleEsc);
+  return () => window.removeEventListener('keydown', handleEsc);
+}, [handleSkip]);
 
   const handleNext = useCallback(() => {
     if (currentStep < steps.length - 1) {
